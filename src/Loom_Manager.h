@@ -13,16 +13,26 @@
  * This class manages the JSON document store of all sensor information 
  */
 
-
-
 class Manager{
     public:
 
-        // Adds the module to the list of registered modules stored by the manager
+        /**
+         * Registers a new sub-module to be controlled by the manager (Used on sensors so measure and package calls can all be called at once)
+         * @param module Pointer to a class the inherits from Module that we want to add
+         */ 
         void registerModule(Module* module){modules.push_back(module);}; 
 
+        /**
+         * Constructs a new Manager
+         * @param devName Device name to provided for logging purposes
+         * @param instanceNum Instance number for logging purposes
+         */ 
         Manager(String devName, uint32_t instanceNum) : deviceName(devName), instanceNumber(instanceNum) {};
 
+        /**
+         * Get a reference to the JSON document that sensor data is stored in
+         * @return reference to the main JSON document
+         */ 
         StaticJsonDocument<2000>& getDocument() {return doc;}; // Returns a reference to the main JSON document storing 
 
         /**
@@ -109,8 +119,18 @@ class Manager{
             Serial.println("\n");
         };
     
-        String get_device_name(){return deviceName;};
-        int get_instance_num(){return instanceNumber;};    
+        /**
+         * Gets the current device name set by the user
+         * @return current device name
+         */ 
+        String get_device_name(){ return deviceName; };
+
+        /**
+         * Gets the current device instance number
+         * @return current device instance number
+         */ 
+        int get_instance_num(){ return instanceNumber; };    
+
     private:
 
         /* Device Information */
