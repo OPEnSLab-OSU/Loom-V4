@@ -2,7 +2,6 @@
 
 #include <ArduinoJson.h>
 #include <vector>
-#include <cstdarg>
 
 #include "Module.h"
 
@@ -14,11 +13,15 @@
  * This class manages the JSON document store of all sensor information 
  */
 
+
+
 class Manager{
     public:
 
         // Adds the module to the list of registered modules stored by the manager
         void registerModule(Module* module){modules.push_back(module);}; 
+
+        Manager(String devName, uint32_t instanceNum) : deviceName(devName), instanceNumber(instanceNum) {};
 
         StaticJsonDocument<2000>& getDocument() {return doc;}; // Returns a reference to the main JSON document storing 
 
@@ -106,9 +109,18 @@ class Manager{
             Serial.println("\n");
         };
     
+        String get_device_name(){return deviceName;};
+        int get_instance_num(){return instanceNumber;};    
     private:
+
+        /* Device Information */
+        String deviceName;                   // Name of the device
+        uint32_t instanceNumber;             // Instance number of the device
+        uint32_t packetNumber = 1;           // Tracks the current packet number
+
+        /* Module Data */
         StaticJsonDocument<2000> doc;        // JSON document that will store all sensor information
         std::vector<Module*> modules;        // List of modules that have been added to the stack
 
-        uint32_t packetNumber = 1;           // Tracks the current packet number
+       
 };

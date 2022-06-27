@@ -14,7 +14,7 @@
 
 
 // Manager handles all loom simplicity 
-Manager manager;
+Manager manager("Device", 1);
 
 // The manager should be passed into each Loomified sensor to enable easy measure and packing functionality
 Loom_SDI12 decagon(manager, 11);

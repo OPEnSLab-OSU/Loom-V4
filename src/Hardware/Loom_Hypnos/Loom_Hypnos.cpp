@@ -19,6 +19,18 @@ Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, bool useSD) : Mod
     pinMode(6, OUTPUT);                     // 5v power rail
     pinMode(LED_BUILTIN, OUTPUT);           // Status LED
     pinMode(12, INPUT_PULLUP);              // RTC Interrupt
+
+    // Create the SD Manager if we want to use SD
+    if(useSD)
+        sdMan = new SDManager(manInst, sd_chip_select);
+
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+Loom_Hypnos::~Loom_Hypnos(){   
+    if(sdMan != nullptr)
+        delete sdMan;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -37,6 +49,8 @@ void Loom_Hypnos::enable(){
         pinMode(23, OUTPUT);
         pinMode(24, OUTPUT);
         pinMode(sd_chip_select, OUTPUT);
+
+        sdMan->begin();
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -56,6 +70,7 @@ void Loom_Hypnos::disable(){
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 /* Interrupt Functionality */
 
@@ -126,6 +141,9 @@ void Loom_Hypnos::initializeRTC(){
         printModuleName(); Serial.println("Couldn't start RTC! Check your connections... Execution will now hang as this is likely a fatal error");
         while(1);
     }
+
+    // Set the time to the last compile time
+    RTC_DS.adjust(DateTime(F(__DATE__), F(__TIME__)));
 
     // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't happen with coin cell batt backup
 	if (RTC_DS.lostPower()) {

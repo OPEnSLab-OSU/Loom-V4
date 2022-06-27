@@ -5,6 +5,8 @@
 
 #include "Arduino.h"
 #include "Module.h"
+
+#include "Hardware/Loom_Hypnos/SDManager.h"
 #include "Loom_Manager.h"
 
 // Used to pass along the user defined interrupt callback
@@ -36,10 +38,26 @@ class Loom_Hypnos : public Module{
         /**
          * Constructs a new Hypnos Instance
          * @param version The version of the Hypnos in use, this changes which pin is used as and SD chip select
+         * @param use_custom_time Use a specific time set by the user that is different than the compile time
          * @param useSD Whether or not SD card functionality should be enabled
          */ 
-        Loom_Hypnos(HYPNOS_VERSION version, bool useSD = true);
-        Loom_Hypnos(Manager& man, HYPNOS_VERSION version, bool useSD = true);
+        Loom_Hypnos(HYPNOS_VERSION version, bool use_custom_time = false, bool useSD = false);
+
+        /**
+         * Constructs a new Hypnos Instance using the manager to hold information about the device
+         * @param man Reference to the manager
+         * @param version The version of the Hypnos in use, this changes which pin is used as and SD chip select
+         * @param use_custom_time Use a specific time set by the user that is different than the compile time
+         * @param useSD Whether or not SD card functionality should be enabled
+         */ 
+        Loom_Hypnos(Manager& man, HYPNOS_VERSION version, bool use_custom_time = false, bool useSD = true);
+
+        /**
+         *  Cleanup any dynamically allocated pointers
+         */ 
+        ~Loom_Hypnos();
+
+        /* Power Control Functionality */
 
         /**
          * Enable the Hypnos board
@@ -52,6 +70,15 @@ class Loom_Hypnos : public Module{
          * Disables the Power Rails and sets the SPI pins to INPUT which effectively disables them
          */ 
         void disable();
+
+        /* SD Functionality */
+
+        /**
+         * Log the current sensor data to a file on the SD card
+         */ 
+        bool logToSD() { sdMan->log(getCurrentTime()); };
+
+        /* Sleep Functionality */
 
         /**
          * Enables RTC based interrupts using the DS3231 on the Hypnos
@@ -70,7 +97,6 @@ class Loom_Hypnos : public Module{
          */ 
         bool reattachRTCInterrupt();
 
-
         /**
          * Set the next interrupt to be triggered at a set interval in the future
          * @param duration The time that will elapse before the next interrupt is triggered
@@ -82,10 +108,16 @@ class Loom_Hypnos : public Module{
          * @param waitForSerial whether or not we should wait for the user to open the serial monitor before continuing execution
          */ 
         void sleep(bool waitForSerial = false);
+
+        /**
+         * Get the current time from the RTC
+         */ 
+        DateTime getCurrentTime() { return RTC_DS.now(); };
     
     private:
 
-        Manager* manInst;
+        Manager* manInst = nullptr;                                         // Instance of the manager
+        SDManager* sdMan = nullptr;                                         // SD Manager
 
         int sd_chip_select;                                                 // Pin that the SD card will use to communicate with the Hypnos
         bool enableSD;                                                      // Specifies whether or not the SD card should be enabled on the Hypnos

@@ -12,11 +12,13 @@
 
 
 // Manager handles all loom simplicity 
-Manager manager;
+Manager manager("Device", 1);
 
 // The manager should be passed into each Loomified sensor to enable easy measure and packing functionality
 Loom_SDI12 decagon(manager, 11);
-Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2, false);
+
+// Use compile time to set the RTC and disable the SD card
+Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2, false, false);
 
 // Called when the interrupt is triggered 
 void isrTrigger(){
