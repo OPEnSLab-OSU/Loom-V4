@@ -1,15 +1,16 @@
 /**
- * This is an example use case for the Hypnos board's SD logging functionality
- * This allows the user to log sensor and debug data to an SD card inserted into the Hypnos
+ * This is an example use case for using the SHT31 Sensor
  */
 
 #include <Loom_Hypnos.h>
 #include <Loom_Manager.h>
+#include <Loom_SHT31.h>
 
 Manager manager("Chime", 1);
 
 // Create a new Hypnos object setting the version to determine the SD Chip select pin
-Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2);
+Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2, false, false);
+Loom_SHT31 sht(manager);
 
 
 void setup() {
@@ -20,16 +21,14 @@ void setup() {
   
   // Enable the hypnos rails
   hypnos.enable();
-
-  manager.addData("Test", "Test1", 31);
-  manager.addData("Test", "Test2", 34);
-
-  manager.display_data();
-  
-  hypnos.logToSD();
-  hypnos.logToSD();
+  manager.initialize();
 }
 
 void loop() {
-  
+  manager.measure();
+  manager.package();
+
+  manager.display_data();
+
+  delay(4000);
 }

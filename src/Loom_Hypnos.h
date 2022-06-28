@@ -28,11 +28,13 @@ class Loom_Hypnos : public Module{
 
         /* These aren't used with the Hypnos */
         void measure() override {};                               
-        void package() override {};                                
         void print_measurements() override {};
         void initialize() override {};    
         void power_up() override {};
-        void power_down() override {};                         
+        void power_down() override {}; 
+
+        // We want to use the package method to add the timestamp to the JSON
+        void package() override;                           
     public:
 
         /**
@@ -112,7 +114,14 @@ class Loom_Hypnos : public Module{
         /**
          * Get the current time from the RTC
          */ 
-        DateTime getCurrentTime() { return RTC_DS.now(); };
+        DateTime getCurrentTime() {
+            if(RTC_initialized)
+                return RTC_DS.now(); 
+            else{
+                printModuleName(); Serial.println("Attempted to pull time when RTC was not previously initialized! Returned default datetime");
+                return DateTime();
+            }
+        };
     
     private:
 
@@ -126,11 +135,14 @@ class Loom_Hypnos : public Module{
 
         RTC_DS3231 RTC_DS;                                                  // Real time clock reference
         bool RTC_initialized = false;                                       // Did the RTC initialize correctly?
+        
+        bool custom_time = false;
 
         bool hasInterruptBeenRegistered = false;                            // If we have actually registered and interrupt previously or not
         InterruptCallbackFunction callbackFunc;                             // Function to be called when an interrupt is triggered
 
-        void initializeRTC();                                               // Initialize the real-time clock present on the Hypnos
+        void set_custom_time();                                             // Set a custom time on startup for the RTC to use
+        void initializeRTC();                                               // Initialize RTC
 
         /* Sleep functionality */
 

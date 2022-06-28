@@ -33,8 +33,12 @@ bool SDManager::writeLineToFile(String filename, String content){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void SDManager::createHeaders(){
+
+    // Constants not pulled from the JSON
     headers[0] += "ID,,";
     headers[1] += "name,instance,";
+
+    // Get all JSON keys  
     for(JsonPair keyValue : manInst->getDocument().as<JsonObject>()){
         
         headers[0] += String(keyValue.key().c_str());

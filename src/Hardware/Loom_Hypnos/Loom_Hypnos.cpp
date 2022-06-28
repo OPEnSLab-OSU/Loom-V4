@@ -1,7 +1,7 @@
 #include "../../Loom_Hypnos.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Hypnos::Loom_Hypnos(HYPNOS_VERSION version, bool useSD) : Module("Hypnos"), sd_chip_select(version), enableSD(useSD){
+Loom_Hypnos::Loom_Hypnos(HYPNOS_VERSION version, bool use_custom_time, bool useSD) : Module("Hypnos"), custom_time(use_custom_time), sd_chip_select(version), enableSD(useSD){
     // Set the pins to write mode
     pinMode(5, OUTPUT);                     // 3.3v power rail
     pinMode(6, OUTPUT);                     // 5v power rail
@@ -11,7 +11,7 @@ Loom_Hypnos::Loom_Hypnos(HYPNOS_VERSION version, bool useSD) : Module("Hypnos"),
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, bool useSD) : Module("Hypnos"), sd_chip_select(version), enableSD(useSD){
+Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, bool use_custom_time, bool useSD) : Module("Hypnos"), custom_time(use_custom_time), sd_chip_select(version), enableSD(useSD){
     manInst = &man;
 
     // Set the pins to write mode
@@ -24,6 +24,9 @@ Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, bool useSD) : Mod
     if(useSD)
         sdMan = new SDManager(manInst, sd_chip_select);
 
+    // Add the Hypnos to the module register s
+    manInst->registerModule(this);
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -31,6 +34,25 @@ Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, bool useSD) : Mod
 Loom_Hypnos::~Loom_Hypnos(){   
     if(sdMan != nullptr)
         delete sdMan;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::package(){
+    // Formatted as: YYYY-MM-DDTHH:MM:SSZ
+    String timeString =   String(getCurrentTime().year()) 
+                        + "-"
+                        + String(getCurrentTime().month())
+                        + "-"
+                        + String(getCurrentTime().day())
+                        + "T"
+                        + String(getCurrentTime().hour())
+                        + ":"
+                        + String(getCurrentTime().minute())
+                        + ":"
+                        + String(getCurrentTime().second())
+                        + "Z";
+    manInst->getDocument()["Timestamp"]["time"] = timeString;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -52,6 +74,10 @@ void Loom_Hypnos::enable(){
 
         sdMan->begin();
     }
+
+    // If the RTC hasn't already been initialized then do so now
+    if(!RTC_initialized)
+        initializeRTC();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -79,7 +105,9 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc){
 
     printModuleName(); Serial.println("Registering Real-Time Clock Interrupt...");
 
-    initializeRTC();
+    // If the RTC hasn't already been initialized then do so now
+    if(!RTC_initialized)
+        initializeRTC();
 
     // Make sure a callback function was supplied
     if(isrFunc != nullptr){
@@ -87,9 +115,6 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc){
         attachInterrupt(digitalPinToInterrupt(12), isrFunc, LOW);
         attachInterrupt(digitalPinToInterrupt(12), isrFunc, LOW);
         printModuleName(); Serial.println("Interrupt successfully attached!");
-
-        // Try to init the RTC on the Hypnos
-        printModuleName(); Serial.println("Attempting to enable DS3231 Real-Time Clock...");
         
 
         // We have registered this interrupt previously
@@ -157,9 +182,96 @@ void Loom_Hypnos::initializeRTC(){
 
     RTC_DS.writeSqwPinMode(DS3231_OFF);
 
+    // If we want to set a custom time
+    if(custom_time){
+        set_custom_time();
+    }
+
 
     // We successfully started the RTC 
     printModuleName(); Serial.println("DS3231 Real-Time Clock Initialized Successfully!");
+    RTC_initialized = true;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::set_custom_time(){
+
+   	// initialized variable for user input
+	String computer_year = "";
+	String computer_month = "";
+	String computer_day = "";
+	String computer_hour = "";
+	String computer_min = "";
+	String computer_sec = "";
+
+	// Let the user know that they should enter local time
+	printModuleName();
+	Serial.println("Please use your local time, not UTC!");
+
+	// Entering the year
+	printModuleName();
+	Serial.println("Enter the Year (Four digits, e.g. 2020)");
+  
+	while(computer_year == ""){
+		computer_year = Serial.readStringUntil('\n');
+	}
+	printModuleName();
+	Serial.println("Year Entered: " + computer_year);
+
+	// Entering the month
+	printModuleName();
+	Serial.println("Enter the Month (1 ~ 12)");
+
+	while(computer_month == ""){
+		computer_month = Serial.readStringUntil('\n');
+	}
+	printModuleName();
+	Serial.println("Month Entered: " + computer_month);
+
+	// Entering the day
+	printModuleName();
+	Serial.println("Enter the Day (1 ~ 31)");
+
+	while(computer_day  == ""){
+		computer_day = Serial.readStringUntil('\n');
+	}
+	printModuleName();
+	Serial.println("Day Entered: " + computer_day);
+
+	// Entering the hour
+	printModuleName();
+	Serial.println("Enter the Hour (0 ~ 23)");
+
+	while(computer_hour == ""){
+		computer_hour = Serial.readStringUntil('\n');
+	}
+	printModuleName();
+	Serial.println("Hour Entered: "+computer_hour);
+
+	// Entering the minute
+	printModuleName();
+	Serial.println("Enter the Minute (0 ~ 59)");
+
+	while(computer_min == ""){
+		computer_min = Serial.readStringUntil('\n');
+	}
+	printModuleName();
+	Serial.println("Minute Entered: "+computer_min);
+
+	// Entering the second
+	printModuleName();
+	Serial.println("Enter the Second (0 ~ 59)");
+	while(computer_sec == ""){
+		computer_sec = Serial.readStringUntil('\n');
+	}
+
+    // Set the RTC to the custom time
+    RTC_DS.adjust(DateTime(computer_year.toInt(), computer_month.toInt(), computer_day.toInt(), computer_hour.toInt(), computer_min.toInt(), computer_sec.toInt()));
+
+    // Entering the second
+	printModuleName();
+	Serial.println("Custom time successfully set to: " + String(getCurrentTime().text()));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

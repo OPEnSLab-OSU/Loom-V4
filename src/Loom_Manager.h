@@ -20,7 +20,9 @@ class Manager{
          * Registers a new sub-module to be controlled by the manager (Used on sensors so measure and package calls can all be called at once)
          * @param module Pointer to a class the inherits from Module that we want to add
          */ 
-        void registerModule(Module* module){modules.push_back(module);}; 
+        void registerModule(Module* module){
+            modules.push_back(module);
+        }; 
 
         /**
          * Constructs a new Manager
@@ -68,14 +70,20 @@ class Manager{
             for(int i = 0; i < modules.size(); i++){
                 modules[i]->initialize();
             }
+            hasInitialized = true;
         };
 
         /**
          *  Calls the measure function to pull data from the sensors on all added modules
          */
         void measure() {
-            for(int i = 0; i < modules.size(); i++){
-                modules[i]->measure();
+            if(hasInitialized){
+                for(int i = 0; i < modules.size(); i++){
+                    modules[i]->measure();
+                }
+            }
+            else{
+                 Serial.println("[Manager] Unable to collect data as the manager and thus all sensors connected to it have not been initialized! Call manager.initialize() to fix this.");
             }
         };
 
@@ -113,7 +121,7 @@ class Manager{
         /**
          * Prints out the current JSON Document to the Serial bus
          */ 
-        void printJSON(){
+        void display_data(){
             Serial.println("\n[Manager] Data Json: ");
             serializeJsonPretty(doc, Serial);
             Serial.println("\n");
@@ -141,6 +149,9 @@ class Manager{
         /* Module Data */
         StaticJsonDocument<2000> doc;        // JSON document that will store all sensor information
         std::vector<Module*> modules;        // List of modules that have been added to the stack
+
+        /* Validation */
+        bool hasInitialized = false;         // Whether or not the initialize function has been called, if not it could be the source of hanging so we want to know
 
        
 };

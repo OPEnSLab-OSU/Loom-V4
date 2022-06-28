@@ -1,19 +1,22 @@
 /**
- * This is an example use case for the Hypnos board's sleep functionality in addition to the SD logging
- * This example increments a counter each power cycle logging the data to the SD card.
+ * In lab use case example for the WeatherChimes project
  * 
- * NOTE: THIS EXAMPLE DOESN"T WAIT FOR SERIAL AFTER SLEEPING
+ * This project uses SDI12, TSL2591 and an SHT31 sensor to log environment data and logs it to both the SD card and also MQTT/MongoDB
  */
 
 #include <Loom_Hypnos.h>
 #include <Loom_Manager.h>
+#include <Loom_SHT31.h>
+#include <Loom_TSL2591.h>
 
 Manager manager("Chime", 1);
 
 // Create a new Hypnos object setting the version to determine the SD Chip select pin, and starting without the SD card functionality
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2);
 
-int testCounter = 0;
+// Create the TSL2591 and SHT classes
+Loom_SHT31 sht(manager);
+Loom_TSL2591 tsl(manager);
 
 // Called when the interrupt is triggered 
 void isrTrigger(){
@@ -22,12 +25,12 @@ void isrTrigger(){
 
 void setup() {
 
-  // Start and wait for the user to open the Serial monitor
-  Serial.begin(115200);
-  while(!Serial);
+  // Wait 20 seconds for the serial console to open
+  manager.beginSerial();
 
   // Enable the hypnos rails
   hypnos.enable();
+  manager.initialize();
 
   // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);
@@ -35,8 +38,9 @@ void setup() {
 
 void loop() {
 
-  // Add some random data to show it logging correctly 
-  manager.addData("Test", "Test1", testCounter);
+  // Measure and package the data
+  manager.measure();
+  manager.package();
   
   // Print the current JSON packet
   manager.display_data();            
@@ -51,6 +55,5 @@ void loop() {
   hypnos.reattachRTCInterrupt();
   
   // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
-  hypnos.sleep(false);
-  testCounter++;
+  hypnos.sleep(true);
 }

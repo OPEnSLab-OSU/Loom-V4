@@ -38,7 +38,7 @@ void loop() {
 
   manager.measure();        // Pull the sensors for measurements
   manager.package();        // Package the data into JSON
-  manager.printJSON();      // Print the current packaged json packet out
+  manager.display_data();      // Print the current packaged json packet out
 
   // Set the RTC interrupt alarm to wake the device in 10 seconds
   hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 10));

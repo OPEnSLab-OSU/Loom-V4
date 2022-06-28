@@ -33,7 +33,7 @@ void loop() {
 
   manager.measure();        // Pull the sensors for measurements
   manager.package();        // Package the data into JSON
-  manager.printJSON();      // Print the current packaged json packet out
+  manager.display_data();      // Print the current packaged json packet out
 
   delay(4000);              // Wait 4 seconds before pulling data again
 }
