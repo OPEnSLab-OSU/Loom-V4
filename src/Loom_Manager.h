@@ -126,6 +126,16 @@ class Manager{
             serializeJsonPretty(doc, Serial);
             Serial.println("\n");
         };
+
+        /** 
+         * Get a serialized version of the JSON packet as a string
+         * @return JSON String
+         */
+        String getJSONString(){
+            String jsonString ="";
+            serializeJson(doc, jsonString);
+            return jsonString;
+        };
     
         /**
          * Gets the current device name set by the user

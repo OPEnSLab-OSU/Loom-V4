@@ -39,19 +39,25 @@ Loom_Hypnos::~Loom_Hypnos(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::package(){
-    // Formatted as: YYYY-MM-DDTHH:MM:SSZ
+    // Formatted as: YYYY-MM-DD HH:MM:SS
+    int month = getCurrentTime().month();
+    int day = getCurrentTime().day();
+
+    String dayString = (day < 10) ? "0" + String(day) : String(day);
+    String monthString = (month < 10) ? "0" + String(month) : String(month);
+    
     String timeString =   String(getCurrentTime().year()) 
                         + "-"
-                        + String(getCurrentTime().month())
+                        + monthString
                         + "-"
-                        + String(getCurrentTime().day())
-                        + "T"
+                        + dayString
+                        + " "
                         + String(getCurrentTime().hour())
                         + ":"
                         + String(getCurrentTime().minute())
                         + ":"
-                        + String(getCurrentTime().second())
-                        + "Z";
+                        + String(getCurrentTime().second());
+                        
     manInst->getDocument()["Timestamp"]["time"] = timeString;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -292,6 +298,9 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::sleep(bool waitForSerial){
+    // Try to power down the active modules
+    manInst->power_down();
+    
     disable();                      // Disable the power rails before sleeping
     pre_sleep();                    // Pre-sleep cleanup
     LowPower.standby();             // Go to sleep and hang
@@ -310,8 +319,7 @@ void Loom_Hypnos::pre_sleep(){
     Serial.end();
     USBDevice.detach();
 
-    // Try to power down the active modules
-    manInst->power_down();
+   
 
     attachInterrupt(digitalPinToInterrupt(12), callbackFunc, LOW);
     attachInterrupt(digitalPinToInterrupt(12), callbackFunc, LOW);

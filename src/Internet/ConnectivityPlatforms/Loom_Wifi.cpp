@@ -29,7 +29,10 @@ void Loom_WIFI::initialize() {
         // Verify the wifi connection after we have connected
         verifyConnection();
 
+        IPAddress ip = WiFi.localIP();
         printModuleName(); Serial.println("Successfully Initalized Wifi!");
+        printModuleName(); Serial.print("Device IP Address: ");
+        Serial.println(ip);
 
         
     }
