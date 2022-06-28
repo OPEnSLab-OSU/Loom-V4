@@ -1,7 +1,7 @@
 #include "../../Loom_WiFi.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_WIFI::Loom_WIFI(Manager& man, String name, String password) : Module("WiFi Manager"), manInst(&man) wifi_name(name), wifi_password(password) {
+Loom_WIFI::Loom_WIFI(Manager& man, String name, String password) : Module("WiFi Manager"), manInst(&man), wifi_name(name), wifi_password(password) {
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -24,9 +24,14 @@ void Loom_WIFI::initialize() {
         // Call the power up class to connect to the wifi network
         power_up();
 
+        hasInitialized = true;
+
+        // Verify the wifi connection after we have connected
+        verifyConnection();
+
         printModuleName(); Serial.println("Successfully Initalized Wifi!");
 
-        hasInitialized = true;
+        
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
