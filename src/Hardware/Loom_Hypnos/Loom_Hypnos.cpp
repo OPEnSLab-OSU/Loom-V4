@@ -43,6 +43,7 @@ void Loom_Hypnos::package(){
     int month = getCurrentTime().month();
     int day = getCurrentTime().day();
 
+    // Adds a trailing 0 to numbers less than 10
     String dayString = (day < 10) ? "0" + String(day) : String(day);
     String monthString = (month < 10) ? "0" + String(month) : String(month);
     
@@ -57,7 +58,7 @@ void Loom_Hypnos::package(){
                         + String(getCurrentTime().minute())
                         + ":"
                         + String(getCurrentTime().second());
-                        
+
     manInst->getDocument()["Timestamp"]["time"] = timeString;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

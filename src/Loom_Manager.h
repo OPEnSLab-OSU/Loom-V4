@@ -91,6 +91,9 @@ class Manager{
          *  Calls the package function to store all data from those sensors into a nice JSON package
          */
         void package(){
+
+            // Clear the document so that we don't get null characters after too many updates
+            doc.clear();
             // Display the packet number
             doc["Packet"]["Number"] = packetNumber;
 
