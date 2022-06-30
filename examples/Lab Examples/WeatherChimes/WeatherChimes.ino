@@ -16,7 +16,7 @@
 Manager manager("Chime", 1);
 
 // Create a new Hypnos object
-Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2);
+Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2, TIME_ZONE::PST);
 
 // Create the TSL2591 and SHT classes
 Loom_SHT31 sht(manager);

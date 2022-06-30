@@ -21,6 +21,36 @@ enum HYPNOS_VERSION{
 };
 
 /**
+ * Time zone abbreviations that map to the hour offset from UTC
+ */ 
+enum TIME_ZONE{
+    WAT = 1,
+    AT = 2,
+    AST = 4,
+    EST = 5,
+    CST = 6,
+    MST = 7,
+    PST = 8,
+    AKST = 9,
+    HST = 9,
+    SST = 11,
+    GMT = 0,
+    BST = -1,
+    CET = -1,
+    EET = -2,
+    EEST = -3,
+    BRT = -3,
+    ZP4 = -4,
+    ZP5 = -5,
+    ZP6 = -6,
+    ZP7 = -7,
+    AWST = -8,
+    ACST = -9, // Half an hour off so its -9.5
+    AEST = -10
+
+};
+
+/**
  * All in one driver for the Hypnos board. This allows users to use the Hypnos board in a more modularized manner not requiring all the Loom stuff.
  */ 
 class Loom_Hypnos : public Module{
@@ -38,21 +68,14 @@ class Loom_Hypnos : public Module{
     public:
 
         /**
-         * Constructs a new Hypnos Instance
-         * @param version The version of the Hypnos in use, this changes which pin is used as and SD chip select
-         * @param use_custom_time Use a specific time set by the user that is different than the compile time
-         * @param useSD Whether or not SD card functionality should be enabled
-         */ 
-        Loom_Hypnos(HYPNOS_VERSION version, bool use_custom_time = false, bool useSD = false);
-
-        /**
          * Constructs a new Hypnos Instance using the manager to hold information about the device
          * @param man Reference to the manager
          * @param version The version of the Hypnos in use, this changes which pin is used as and SD chip select
+         * @param timezone The current timezone the clock was set to
          * @param use_custom_time Use a specific time set by the user that is different than the compile time
          * @param useSD Whether or not SD card functionality should be enabled
          */ 
-        Loom_Hypnos(Manager& man, HYPNOS_VERSION version, bool use_custom_time = false, bool useSD = true);
+        Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time = false, bool useSD = true);
 
         /**
          *  Cleanup any dynamically allocated pointers
@@ -143,6 +166,11 @@ class Loom_Hypnos : public Module{
 
         void set_custom_time();                                             // Set a custom time on startup for the RTC to use
         void initializeRTC();                                               // Initialize RTC
+
+        DateTime get_utc_time();                                            // Convert the local time to UTC, accounts for daylight savings zones
+        TIME_ZONE timezone;                                                 // Timezone the RTC was set to
+
+        String dateTime_toString(DateTime time);                            // Convert a DateTime object to our desired format
 
         /* Sleep functionality */
 

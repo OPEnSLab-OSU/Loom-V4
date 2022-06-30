@@ -34,6 +34,9 @@ bool SDManager::writeLineToFile(String filename, String content){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void SDManager::createHeaders(){
 
+    // Append the serial number to the top of the CSV file
+    headers[0] = manInst->get_serial_num() + "\n";
+
     // Constants not pulled from the JSON
     headers[0] += "ID,,";
     headers[1] += "name,instance,";

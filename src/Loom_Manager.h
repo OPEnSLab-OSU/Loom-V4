@@ -29,13 +29,13 @@ class Manager{
          * @param devName Device name to provided for logging purposes
          * @param instanceNum Instance number for logging purposes
          */ 
-        Manager(String devName, uint32_t instanceNum) : deviceName(devName), instanceNumber(instanceNum) {};
+        Manager(String devName, uint32_t instanceNum);
 
         /**
          * Get a reference to the JSON document that sensor data is stored in
          * @return reference to the main JSON document
          */ 
-        StaticJsonDocument<2000>& getDocument() {return doc;}; // Returns a reference to the main JSON document storing 
+        StaticJsonDocument<2000>& getDocument(); // Returns a reference to the main JSON document storing 
 
         /**
          * Add a random piece of data to the overall JSON package in the given module name with a name for the data
@@ -48,97 +48,43 @@ class Manager{
         /**
          *  Start the Serial interface with some parameters, should we wait up to 20 seconds for the serial interface to open before continuing 
          */ 
-        void beginSerial(bool waitForSerial = true){
-            long startMillis = millis();
-
-            Serial.begin(BAUD_RATE);
-            // Pause if the Serial is not open and we want to wait
-            while(!Serial && waitForSerial){
-
-                // If it has been 20 seconds break out of the loop
-                if(millis() >= (startMillis+WAIT_TIME_MS)){
-                    break;
-                }
-            }
-        }
+        void beginSerial(bool waitForSerial = true);
 
         /** 
          * Calls the initialization function on all added modules 
          */
-        void initialize() {
-            Serial.println("[Manager] Initializing Modules...");
-            for(int i = 0; i < modules.size(); i++){
-                modules[i]->initialize();
-            }
-            hasInitialized = true;
-        };
+        void initialize();
 
         /**
          *  Calls the measure function to pull data from the sensors on all added modules
          */
-        void measure() {
-            if(hasInitialized){
-                for(int i = 0; i < modules.size(); i++){
-                    modules[i]->measure();
-                }
-            }
-            else{
-                 Serial.println("[Manager] Unable to collect data as the manager and thus all sensors connected to it have not been initialized! Call manager.initialize() to fix this.");
-            }
-        };
+        void measure();
 
         /**
          *  Calls the package function to store all data from those sensors into a nice JSON package
          */
-        void package(){
-
-            // Clear the document so that we don't get null characters after too many updates
-            doc.clear();
-            // Display the packet number
-            doc["Packet"]["Number"] = packetNumber;
-
-            for(int i = 0; i < modules.size(); i++){
-                modules[i]->package();
-            }
-            packetNumber++;
-        };
+        void package();
 
         /**
          *  Calls the power_up function on each module to re-init after sleep
          */
-        void power_up(){
-            for(int i = 0; i < modules.size(); i++){
-                modules[i]->power_up();
-            }
-        };
+        void power_up();
 
         /**
          *  Calls the power_down function on each module to safely enter sleep
          */
-        void power_down(){
-            for(int i = 0; i < modules.size(); i++){
-                modules[i]->power_down();
-            }
-        };
+        void power_down();
 
         /**
          * Prints out the current JSON Document to the Serial bus
          */ 
-        void display_data(){
-            Serial.println("\n[Manager] Data Json: ");
-            serializeJsonPretty(doc, Serial);
-            Serial.println("\n");
-        };
+        void display_data();
 
         /** 
          * Get a serialized version of the JSON packet as a string
          * @return JSON String
          */
-        String getJSONString(){
-            String jsonString ="";
-            serializeJson(doc, jsonString);
-            return jsonString;
-        };
+        String getJSONString();
     
         /**
          * Gets the current device name set by the user
@@ -150,7 +96,23 @@ class Manager{
          * Gets the current device instance number
          * @return current device instance number
          */ 
-        int get_instance_num(){ return instanceNumber; };    
+        int get_instance_num(){ return instanceNumber; };  
+        
+        /**
+         * Get the unique serial number of the Feather m0
+         * @return Unique serial number
+         */ 
+        String get_serial_num(){ return serial_num; }; 
+
+        /**
+         * Called by the Hypnos on construction to tell the manager it is in use
+         */ 
+        void useHypnos() { usingHypnos = true; };  
+
+        /**
+         * Set the current state of the hypnos enable
+         */ 
+        void setEnableState(bool state) { hypnosEnabled = state; };
 
     private:
 
@@ -158,6 +120,10 @@ class Manager{
         String deviceName;                   // Name of the device
         uint32_t instanceNumber;             // Instance number of the device
         uint32_t packetNumber = 1;           // Tracks the current packet number
+        String serial_num;
+
+        void read_serial_num();              // Read the serial number out of the feather's registers
+        
 
         /* Module Data */
         StaticJsonDocument<2000> doc;        // JSON document that will store all sensor information
@@ -165,6 +131,9 @@ class Manager{
 
         /* Validation */
         bool hasInitialized = false;         // Whether or not the initialize function has been called, if not it could be the source of hanging so we want to know
+
+        bool usingHypnos = false;            // If the setup is using a hypnos
+        bool hypnosEnabled = false;          // If the power rails on the hypnos are enabled this means we should be able to initalize
 
        
 };

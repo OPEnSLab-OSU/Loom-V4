@@ -1,17 +1,7 @@
 #include "../../Loom_Hypnos.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Hypnos::Loom_Hypnos(HYPNOS_VERSION version, bool use_custom_time, bool useSD) : Module("Hypnos"), custom_time(use_custom_time), sd_chip_select(version), enableSD(useSD){
-    // Set the pins to write mode
-    pinMode(5, OUTPUT);                     // 3.3v power rail
-    pinMode(6, OUTPUT);                     // 5v power rail
-    pinMode(LED_BUILTIN, OUTPUT);           // Status LED
-    pinMode(12, INPUT_PULLUP);              // RTC Interrupt
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, bool use_custom_time, bool useSD) : Module("Hypnos"), custom_time(use_custom_time), sd_chip_select(version), enableSD(useSD){
+Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time, bool useSD) : Module("Hypnos"), custom_time(use_custom_time), sd_chip_select(version), enableSD(useSD), timezone(zone){
     manInst = &man;
 
     // Set the pins to write mode
@@ -26,7 +16,7 @@ Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, bool use_custom_t
 
     // Add the Hypnos to the module register s
     manInst->registerModule(this);
-
+    manInst->useHypnos();   // Enable the use of the hypnos
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -39,27 +29,13 @@ Loom_Hypnos::~Loom_Hypnos(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::package(){
-    // Formatted as: YYYY-MM-DD HH:MM:SS
-    int month = getCurrentTime().month();
-    int day = getCurrentTime().day();
 
-    // Adds a trailing 0 to numbers less than 10
-    String dayString = (day < 10) ? "0" + String(day) : String(day);
-    String monthString = (month < 10) ? "0" + String(month) : String(month);
-    
-    String timeString =   String(getCurrentTime().year()) 
-                        + "-"
-                        + monthString
-                        + "-"
-                        + dayString
-                        + " "
-                        + String(getCurrentTime().hour())
-                        + ":"
-                        + String(getCurrentTime().minute())
-                        + ":"
-                        + String(getCurrentTime().second());
-
-    manInst->getDocument()["Timestamp"]["time"] = timeString;
+    // Convert the local time to UTC
+    DateTime time = get_utc_time();
+    DateTime localTime = getCurrentTime();
+   
+    manInst->getDocument()["Timestamp"]["time_utc"] = dateTime_toString(time);
+    manInst->getDocument()["Timestamp"]["time_local"] = dateTime_toString(localTime);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -85,6 +61,8 @@ void Loom_Hypnos::enable(){
     // If the RTC hasn't already been initialized then do so now
     if(!RTC_initialized)
         initializeRTC();
+
+    manInst->setEnableState(true);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -101,6 +79,8 @@ void Loom_Hypnos::disable(){
         pinMode(24, INPUT);
         pinMode(sd_chip_select, INPUT);
     }
+
+    manInst->setEnableState(false);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -198,6 +178,62 @@ void Loom_Hypnos::initializeRTC(){
     // We successfully started the RTC 
     printModuleName(); Serial.println("DS3231 Real-Time Clock Initialized Successfully!");
     RTC_initialized = true;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+DateTime Loom_Hypnos::get_utc_time(){
+    DateTime now = getCurrentTime();
+
+    // Subtract 30 minutes from this zone
+    if(timezone == TIME_ZONE::ACST)
+        return now + TimeSpan(0, timezone, -30, 0);
+
+    // If we are in a timezone that observes daylight savings
+    else if(timezone == AST || timezone == EST || timezone == CST || timezone == MST || timezone == AST || timezone == PST || timezone == AKST){
+        // If we are in the months where daylight savings is not in affect
+        if(now.month() >= 3 && now.month() <= 10){
+
+            // If in the months when it changes check if the days are correct
+            if( (now.month() == 3 && now.day() >= 13) || (now.month() == 10 && now.day() < 6)){
+                return now + TimeSpan(0, (timezone)-1, 0, 0);
+            }
+            return now + TimeSpan(0, (timezone)-1, 0, 0);
+        }
+        else{
+            return now + TimeSpan(0, (timezone), 0, 0);
+        }
+    }
+    
+    else{
+        return now + TimeSpan(0, timezone, 0, 0);
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+String Loom_Hypnos::dateTime_toString(DateTime time){
+     // Formatted as: YYYY-MM-DD HH:MM:SS
+    int month = time.month();
+    int day = time.day();
+
+    // Adds a trailing 0 to numbers less than 10
+    String dayString = (day < 10) ? "0" + String(day) : String(day);
+    String monthString = (month < 10) ? "0" + String(month) : String(month);
+    
+    String timeString =   String(time.year()) 
+                        + "-"
+                        + monthString
+                        + "-"
+                        + dayString
+                        + " "
+                        + String(time.hour())
+                        + ":"
+                        + String(time.minute())
+                        + ":"
+                        + String(time.second());
+
+    return timeString;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -319,8 +355,6 @@ void Loom_Hypnos::pre_sleep(){
     // Close the serial connection and detach
     Serial.end();
     USBDevice.detach();
-
-   
 
     attachInterrupt(digitalPinToInterrupt(12), callbackFunc, LOW);
     attachInterrupt(digitalPinToInterrupt(12), callbackFunc, LOW);

@@ -208,26 +208,32 @@ std::vector<float> Loom_SDI12::getData(char addr){
     // Request a measurement from the sensor at the given address
     sendCommand(addr, "M!");
     sendCommand(addr, "D0!").toCharArray(buf, sizeof(buf));
-    if(sizeof(buf)/ sizeof(buf[0]) > 3){
-        p = buf;
 
-        // If the sensor is a copy the used values an
-        if(getSensorName(addr).startsWith("GS3")){
-            // Read out the results and parse out each of the data readings and pares them to floats
-            strtok(p, "+");
+    // If the value returned was 0 we want to re-request data, TEST THIS
+    if(sizeof(buf)/ sizeof(buf[0]) < 3){
+        // Request a measurement from the sensor at the given address
+        sendCommand(addr, "M!");
+        sendCommand(addr, "D0!").toCharArray(buf, sizeof(buf));
+    }
 
-            // If we dont have data push it onto the stack if we do replace the current data  with the new info
-            if(sensorData.size() < 3){
-                // ORDER of DATA: dielectric_perm, temperature and conductivity
-                sensorData.push_back(atof(strtok(NULL, "+")));
-                sensorData.push_back(atof(strtok(NULL, "+")));
-                sensorData.push_back(atof(strtok(NULL, "+")));
-            }
-            else{
-                sensorData[0] = (atof(strtok(NULL, "+")));
-                sensorData[1] = (atof(strtok(NULL, "+")));
-                sensorData[2] = (atof(strtok(NULL, "+")));
-            }
+    p = buf;
+
+    // If the sensor is a copy the used values an
+    if(getSensorName(addr).startsWith("GS3")){
+        // Read out the results and parse out each of the data readings and pares them to floats
+        strtok(p, "+");
+
+        // If we dont have data push it onto the stack if we do replace the current data  with the new info
+        if(sensorData.size() < 3){
+            // ORDER of DATA: dielectric_perm, temperature and conductivity
+            sensorData.push_back(atof(strtok(NULL, "+")));
+            sensorData.push_back(atof(strtok(NULL, "+")));
+            sensorData.push_back(atof(strtok(NULL, "+")));
+        }
+        else{
+            sensorData[0] = (atof(strtok(NULL, "+")));
+            sensorData[1] = (atof(strtok(NULL, "+")));
+            sensorData[2] = (atof(strtok(NULL, "+")));
         }
     }
 

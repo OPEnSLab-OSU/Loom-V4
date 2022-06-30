@@ -18,7 +18,7 @@ Manager manager("Device", 1);
 Loom_SDI12 decagon(manager, 11);
 
 // Use compile time to set the RTC and disable the SD card
-Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2, false, false);
+Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2, TIME_ZONE::PST, false, false);
 
 // Called when the interrupt is triggered 
 void isrTrigger(){
