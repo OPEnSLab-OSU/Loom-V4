@@ -140,7 +140,7 @@ bool Loom_Hypnos::reattachRTCInterrupt(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::wakeup(){
     detachInterrupt(digitalPinToInterrupt(12));     // Detach the interrupt so it doesn't trigger again
-    enable();                                       // Re-enable the Hypnos power rails       
+    //enable();                                       // Re-enable the Hypnos power rails       
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -368,6 +368,7 @@ void Loom_Hypnos::pre_sleep(){
 void Loom_Hypnos::post_sleep(bool waitForSerial){
     USBDevice.attach();
     Serial.begin(115200);
+    enable();
 
     manInst->power_up();    // Re-init the modules that need it
 

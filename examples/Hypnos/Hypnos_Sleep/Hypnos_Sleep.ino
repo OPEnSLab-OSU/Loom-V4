@@ -4,10 +4,10 @@
  */
 
 #include <Loom_Hypnos.h>
-#include <Loom_Manger.h>
+#include <Loom_Manager.h>
 
 // Manager to control the device
-Manger manager("Device", 1);
+Manager manager("Device", 1);
 
 // Create a new Hypnos object setting the version to determine the SD Chip select pin, and starting without the SD card functionality
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2, TIME_ZONE::PST, false, false);
