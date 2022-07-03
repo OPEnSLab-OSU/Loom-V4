@@ -15,35 +15,39 @@ Loom_SHT31::Loom_SHT31(
 void Loom_SHT31::initialize() {
     if(!sht.begin(i2c_address)){
         printModuleName(); Serial.println("Failed to initialize SHT31! Check connections and try again...");
+        initialized = false;
     }
     else{
-        printModuleName(); Serial.println("Successfully initialized TSL2591!");
+        printModuleName(); Serial.println("Successfully initialized SHT31!");
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SHT31::measure() {
+    if(initialized){
+        // Pull the data from the sensor
+        float temp = sht.readTemperature();
+        float humid = sht.readHumidity();
 
-    // Pull the data from the sensor
-    float temp = sht.readTemperature();
-    float humid = sht.readHumidity();
-
-    // If both the temp and humidity values are valid send the data
-    if(!isnan(temp) && !isnan(humid)){
-        sensorData[0] = temp;
-        sensorData[1] = humid;
-    }
-    else{
-        printModuleName(); Serial.println("Collected information was invalid, the previous collected data will be published again.");
+        // If both the temp and humidity values are valid send the data
+        if(!isnan(temp) && !isnan(humid)){
+            sensorData[0] = temp;
+            sensorData[1] = humid;
+        }
+        else{
+            printModuleName(); Serial.println("Collected information was invalid, the previous collected data will be published again.");
+        }
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SHT31::package() {
-    manInst->getDocument()[getModuleName()]["Temperature"] = sensorData[0];
-    manInst->getDocument()[getModuleName()]["Humidity"] = sensorData[1];
+    if(initialized){
+        manInst->getDocument()[getModuleName()]["Temperature"] = sensorData[0];
+        manInst->getDocument()[getModuleName()]["Humidity"] = sensorData[1];
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

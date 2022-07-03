@@ -151,15 +151,18 @@ bool SDManager::begin(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::updateCurrentFileName(){
     uint16_t indexDir = 0;
+    char f_name[25];
 
     // What number we need to append to the file name
-    int file_count = -1;
+    int file_count = 0;
 
     // While there is a next file to open, open it
     while(scanningFile.openNext(&root)){
-
-        // Increase the file count per loop to track what the next file should be
-        file_count++;
+        scanningFile.getName(f_name, 25);
+        if(String(f_name).startsWith(device_name)){
+            // Increase the file count per loop to track what the next file should be
+            file_count++;
+        }
         scanningFile.close();
     }
 
@@ -170,5 +173,30 @@ bool SDManager::updateCurrentFileName(){
     root.close();
     printModuleName(); Serial.println("Data will be logged to " + fileName);
 
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+String SDManager::readFile(String fileName){
+    String output = "";
+    if(sdInitialized){
+        myFile = sd.open(fileName);
+        if(myFile){
+            // read from the file until there's nothing else in it:
+            while (myFile.available()) {
+                output += (char)(myFile.read());
+            }
+            // close the file:
+            myFile.close();
+            return output;
+        }
+        else{
+            printModuleName(); Serial.println("Failed to open file!");
+        }
+    }
+    else{
+        printModuleName(); Serial.println("Failed to read! SD card not Initialized!");
+    }
+    return "";
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

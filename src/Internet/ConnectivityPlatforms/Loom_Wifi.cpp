@@ -7,6 +7,12 @@ Loom_WIFI::Loom_WIFI(Manager& man, String name, String password) : Module("WiFi 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+Loom_WIFI::Loom_WIFI(Manager& man) : Module("WiFi Manager"), manInst(&man) {
+    manInst->registerModule(this);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::initialize() {
     // The pins on the feather M0 WiFi are different than most boards
     WiFi.setPins(8, 7, 4, 2);
@@ -15,6 +21,7 @@ void Loom_WIFI::initialize() {
 
     if(WiFi.status() == WL_NO_SHIELD){
         printModuleName(); Serial.println("WINC1500 not present, WiFi functionality will be disabled");
+        moduleInitialized = false;
     }
     else{
 
@@ -33,64 +40,65 @@ void Loom_WIFI::initialize() {
         printModuleName(); Serial.println("Successfully Initalized Wifi!");
         printModuleName(); Serial.print("Device IP Address: ");
         Serial.println(ip);
-
-        
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::power_up() {
-    int retry_count = 0;
-    printModuleName(); Serial.println("Attempting to connect to SSID: " + wifi_name);
+    if(moduleInitialized){
+        int retry_count = 0;
+        printModuleName(); Serial.println("Attempting to connect to SSID: " + wifi_name);
 
-    // If we are logging into a network with a password
-    if(wifi_password.length() > 0){
+        // If we are logging into a network with a password
+        if(wifi_password.length() > 0){
 
-        // While we are trying to connect to the wifi network
-        while(WiFi.begin(wifi_name.c_str(), wifi_password.c_str()) != WL_CONNECTED){
-            printModuleName(); Serial.println("Attempting to connect to AP...");
-            delay(5000);
-            retry_count++;
+            // While we are trying to connect to the wifi network
+            while(WiFi.begin(wifi_name.c_str(), wifi_password.c_str()) != WL_CONNECTED){
+                printModuleName(); Serial.println("Attempting to connect to AP...");
+                delay(5000);
+                retry_count++;
 
-            // If after 10 attempts we still can't connect to the network we need to stop and break so we don't hang the device
-            if(retry_count >= 10){
-                printModuleName(); Serial.println("Failed to connect to the access point after 10 tries! Is the network in range and are your credentials correct?");
-                return;
+                // If after 10 attempts we still can't connect to the network we need to stop and break so we don't hang the device
+                if(retry_count >= 10){
+                    printModuleName(); Serial.println("Failed to connect to the access point after 10 tries! Is the network in range and are your credentials correct?");
+                    return;
+                }
             }
         }
-    }
-    else{
-        // While we are trying to connect to the wifi network
-        while(WiFi.begin(wifi_name.c_str()) != WL_CONNECTED){
-            printModuleName(); Serial.println("Attempting to connect to AP...");
-            delay(5000);
-            retry_count++;
+        else{
+            // While we are trying to connect to the wifi network
+            while(WiFi.begin(wifi_name.c_str()) != WL_CONNECTED){
+                printModuleName(); Serial.println("Attempting to connect to AP...");
+                delay(5000);
+                retry_count++;
 
-            // If after 10 attempts we still can't connect to the network we need to stop and break so we don't hang the device
-            if(retry_count >= 10){
-                printModuleName(); Serial.println("Failed to connect to the access point after 10 tries! Is the network in range and are your credentials correct?");
-                return;
+                // If after 10 attempts we still can't connect to the network we need to stop and break so we don't hang the device
+                if(retry_count >= 10){
+                    printModuleName(); Serial.println("Failed to connect to the access point after 10 tries! Is the network in range and are your credentials correct?");
+                    return;
+                }
             }
         }
-    }
 
-    printModuleName(); Serial.println("Connected to network!");
+        printModuleName(); Serial.println("Connected to network!");
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::power_down(){
-
-    // Disconnect and end the Wifi when we power down the device
-    WiFi.disconnect();
-    WiFi.end();
+    if(moduleInitialized){
+        // Disconnect and end the Wifi when we power down the device
+        WiFi.disconnect();
+        WiFi.end();
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_WIFI::verifyConnection(){
-    if(hasInitialized){
+    if(hasInitialized && moduleInitialized){
         int pingLatency = WiFi.ping("www.google.com");
         if(pingLatency >= 0){
             printModuleName(); Serial.println("Successfully Pinged Google! Response Time: " + String(pingLatency) + "ms");
@@ -119,6 +127,24 @@ bool Loom_WIFI::verifyConnection(){
             }
             return false;
         }
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_WIFI::loadCredentialsFromString(String jsonString){
+    // Doc to store the JSON data from the SD card in
+    StaticJsonDocument<300> doc;
+    DeserializationError deserialError = deserializeJson(doc, jsonString);
+
+    // Check if an error occurred and if so print it
+    if(deserialError != DeserializationError::Ok){
+        printModuleName(); Serial.println("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
+        moduleInitialized = false;
+    }
+    else{
+        wifi_name = doc["SSID"].as<String>();
+        wifi_password = doc["password"].as<String>();
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

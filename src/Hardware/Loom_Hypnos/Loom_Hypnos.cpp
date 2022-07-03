@@ -11,8 +11,9 @@ Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, b
     pinMode(12, INPUT_PULLUP);              // RTC Interrupt
 
     // Create the SD Manager if we want to use SD
-    if(useSD)
+    if(useSD){
         sdMan = new SDManager(manInst, sd_chip_select);
+    }
 
     // Add the Hypnos to the module register s
     manInst->registerModule(this);
@@ -375,11 +376,34 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
     // Clear any pending RTC alarms
     RTC_DS.clearAlarm();
 
+    delay(1000); // Wait for modules to
+
 
     // We want to wait for the user to re-open the serial monitor before continuing to see readouts
     if(waitForSerial)
         while(!Serial);
 
     printModuleName(); Serial.println("Device has awoken from sleep!");
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+TimeSpan Loom_Hypnos::getSleepIntervalFromSD(String fileName){
+    // Doc to store the JSON data from the SD card in
+    StaticJsonDocument<500> doc;
+    DeserializationError deserialError = deserializeJson(doc, sdMan->readFile(fileName));
+
+    // Create json object to easily pull data from
+    JsonObject json = doc.as<JsonObject>();
+
+    if(deserialError != DeserializationError::Ok){
+        printModuleName(); Serial.println("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
+        return TimeSpan(0, 0, 20, 0);
+    }
+    else{
+
+        // Return the interval as set in the json
+        return TimeSpan(json["days"], json["hours"], json["minutes"], json["seconds"]);
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

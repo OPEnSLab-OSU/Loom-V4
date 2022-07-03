@@ -12,6 +12,11 @@
  * Class for managing the MAX31865 NOT TO BE CONFUSED WITH THE MAX31865
  */ 
 class Loom_MAX31865 : public Module{
+    protected:
+        void print_measurements() override {};  
+        void power_up() override {};
+        void power_down() override {}; 
+
 
     public:
         void initialize() override;

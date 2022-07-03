@@ -1,30 +1,23 @@
 /**
- * In lab use case example for the WeatherChimes project
+ * In lab use case example for the SmartRock project
  * 
- * This project uses SDI12, TSL2591 and an SHT31 sensor to log environment data and logs it to both the SD card and also MQTT/MongoDB
+ * This project uses a hypnos, an ADS1115 and a MS5803
  */
-#include "arduino_secrets.h"
-
 #include <Loom_Hypnos.h>
 #include <Loom_Manager.h>
-#include <Loom_Wifi.h>
-#include <Loom_SDI12.h>
-#include <Loom_MQTT.h>
-#include <Loom_SHT31.h>
-#include <Loom_TSL2591.h>
+#include <Loom_ADS1115.h>
+#include <Loom_MS5803.h>
 
-Manager manager("Chime", 1);
+Manager manager("Device", 1);
 
 // Create a new Hypnos object
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2, TIME_ZONE::PST);
 
-// Create the TSL2591 and SHT classes
-Loom_SHT31 sht(manager);
-Loom_TSL2591 tsl(manager);
-Loom_SDI12 sdi(manager, 11);
+// Sensors to use
+Loom_ADS1115 ads(manager);
+Loom_MS5803 ms(manager, 119);
 
-Loom_WIFI wifi(manager);
-Loom_MQTT mqtt(manager, wifi.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
+TimeSpan sleepInterval;
 
 // Called when the interrupt is triggered 
 void isrTrigger(){
@@ -38,13 +31,9 @@ void setup() {
 
   // Enable the hypnos rails
   hypnos.enable();
-
-  // Load the wifi credentials from a json file stored on the SD card, MUST BE BEFORE INITIALIZE SO THE DATA IS USED BY THE WIFI MANAGER
-  wifi.loadCredentialsFromString(hypnos.readFile("wifi_creds.json"));
-
-  // Initialize all in-use modules
   manager.initialize();
 
+  sleepInterval = hypnos.getSleepIntervalFromSD("SD_config.txt");
   // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);
 }
@@ -61,11 +50,8 @@ void loop() {
   // Log the data to the SD card              
   hypnos.logToSD();
 
-  // Publish the collected data to MQTT
-  mqtt.publish();
-
   // Set the RTC interrupt alarm to wake the device in 10 seconds
-  hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 10));
+  hypnos.setInterruptDuration(sleepInterval);
 
   // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
   hypnos.reattachRTCInterrupt();

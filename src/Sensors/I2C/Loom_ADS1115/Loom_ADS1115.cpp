@@ -14,20 +14,26 @@ void Loom_ADS1115::initialize(){
 
     if(!ads.begin()){
         printModuleName(); Serial.println("Failed to initialize ADS1115 interface! Data may be invalid");
+        initialized = false;
+    }
+    else{
+        printModuleName(); Serial.println("Successfully initialized sensor!");
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ADS1115::measure(){
-    if(enableAnalog){
-        for(int i = 0; i < 4; i++){
-            analogData[i] = ads.readADC_SingleEnded(i);
-        }
+    if(initialized){
+        if(enableAnalog){
+            for(int i = 0; i < 4; i++){
+                analogData[i] = ads.readADC_SingleEnded(i);
+            }
 
-        if(enableDiff){
-            diffData[0] = ads.readADC_Differential_0_1();
-            diffData[1] = ads.readADC_Differential_2_3();
+            if(enableDiff){
+                diffData[0] = ads.readADC_Differential_0_1();
+                diffData[1] = ads.readADC_Differential_2_3();
+            }
         }
     }
 }
@@ -35,16 +41,18 @@ void Loom_ADS1115::measure(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ADS1115::package(){
-    if(enableAnalog){
-        manInst->getDocument()[getModuleName()]["Analog 0"] = analogData[0];
-        manInst->getDocument()[getModuleName()]["Analog 1"] = analogData[1];
-        manInst->getDocument()[getModuleName()]["Analog 2"] = analogData[2];
-        manInst->getDocument()[getModuleName()]["Analog 3"] = analogData[3];
-    }
+    if(initialized){
+        if(enableAnalog){
+            manInst->getDocument()[getModuleName()]["Analog 0"] = analogData[0];
+            manInst->getDocument()[getModuleName()]["Analog 1"] = analogData[1];
+            manInst->getDocument()[getModuleName()]["Analog 2"] = analogData[2];
+            manInst->getDocument()[getModuleName()]["Analog 3"] = analogData[3];
+        }
 
-    if(enableDiff){
-        manInst->getDocument()[getModuleName()]["Differential 0"] = diffData[0];
-        manInst->getDocument()[getModuleName()]["Differential 1"] = diffData[1];
+        if(enableDiff){
+            manInst->getDocument()[getModuleName()]["Differential 0"] = diffData[0];
+            manInst->getDocument()[getModuleName()]["Differential 1"] = diffData[1];
+        }
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

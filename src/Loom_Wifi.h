@@ -36,6 +36,19 @@ class Loom_WIFI : public Module{
         Loom_WIFI(Manager& man, String name, String password = "");
 
         /**
+         * Construct a new WiFi manager, passing the credentials in as a json document
+         * @param man Reference to the manager 
+         * @param jsonString JSON string to pull the credentials from
+         */ 
+        Loom_WIFI(Manager& man);
+
+        /**
+         * Load the Wifi credentials from a JSON string, used to pull credentials from a file
+         * @param jsonString JSON formatted string containing the SSID and password 
+         */
+        void loadCredentialsFromString(String jsonString);
+
+        /**
          * Returns a reference to the WifiClient
          * @return wifiClient
          */ 
@@ -55,4 +68,6 @@ class Loom_WIFI : public Module{
 
         String wifi_name;                   // Access point to connect to
         String wifi_password;               // Password to connect to the access point
+
+        bool moduleInitialized = true;
 };

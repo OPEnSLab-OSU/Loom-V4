@@ -34,4 +34,6 @@ class Loom_SHT31 : public Module{
         int i2c_address;                            // I2C address of the device
 
         float sensorData[2] = {0, 0};               // Array of size 2 to hold the temp and humidity data
+
+        bool initialized = true;
 };

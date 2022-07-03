@@ -34,9 +34,21 @@ class SDManager : public Module{
         bool log(DateTime currentTime);
 
         /**
+         * Read the contents of a given file on the SD card and return them as a string
+         * @param fileName Name of the file to read from
+         */ 
+        String readFile(String fileName);
+
+        /**
          * Has the SD card been initialized previously
          */ 
         bool hasSDInitialized() { return sdInitialized; };
+
+        /**
+         * Checks if a file exists
+         * @param fileName The name of the file to check
+         */ 
+        bool fileExists(String fileName) { return sd.exists(fileName.c_str()); };
         
     private:
 

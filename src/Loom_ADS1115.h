@@ -9,6 +9,11 @@
  * Functionality for the ADS1115
  */  
 class Loom_ADS1115 : public Module{
+    protected:
+        void print_measurements() override {};  
+        void power_up() override {};
+        void power_down() override {}; 
+
     public:
         void initialize() override;
         void measure() override;
@@ -41,6 +46,8 @@ class Loom_ADS1115 : public Module{
 
         int16_t analogData[4];          // Stores the analog ADS1115 data
         int16_t diffData[2];            // Stores the differential data from the sensor
+
+        bool initialized = true;
 
 
 };

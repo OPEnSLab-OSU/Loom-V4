@@ -58,8 +58,9 @@ class Loom_Hypnos : public Module{
 
         /* These aren't used with the Hypnos */
         void measure() override {};                               
-        void print_measurements() override {};
-        void initialize() override {};    
+       
+        void initialize() override {};  
+        void print_measurements() override {};  
         void power_up() override {};
         void power_down() override {}; 
 
@@ -146,6 +147,21 @@ class Loom_Hypnos : public Module{
             }
         };
     
+        /**
+         * Get a custom sleep interval specified in a file on the SD card
+         * If there was an error reading the file the sleep interval will be set to 20 minutes
+         * @param fileName Name of the file to pull information from
+         * @return TimeSpan with the parsed data
+         */ 
+        TimeSpan getSleepIntervalFromSD(String fileName);
+
+        /**
+         * Read file from SD
+         * @param fileName File to read from
+         */ 
+        String readFile(String fileName) { return sdMan->readFile(fileName); };
+
+
     private:
 
         Manager* manInst = nullptr;                                         // Instance of the manager
