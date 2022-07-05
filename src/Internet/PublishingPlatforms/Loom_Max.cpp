@@ -91,12 +91,20 @@ bool Loom_Max::subscribe(){
 
                     // Loop over each actuator
                     for(int i = 0; i < actuators.size(); i++){
-
+                        
                         // If the current actuator is the one we want to control
-                        if(actuators[i]->typeToString() == type && actuators[i]->get_instance_num() == instanceNum){
+                        if(actuators[i]->typeToString() == type){
 
-                            // Pass the parameters field to the actuator
-                            actuators[i]->control(messageJson["commands"][j]["params"].as<JsonArray>());
+                            // If the type we are trying to control is a relay then don't check the instance number cause it doesn't have one
+                            if(type == "Relay"){
+                                actuators[i]->control(messageJson["commands"][j]["params"].as<JsonArray>());
+                            }
+
+                            // Stepper and Servo have an instance number as the 0th index
+                            else if(actuators[i]->get_instance_num() == instanceNum){
+                                // Pass the parameters field to the actuator
+                                actuators[i]->control(messageJson["commands"][j]["params"].as<JsonArray>());
+                            }
                         }
                     }
                 }

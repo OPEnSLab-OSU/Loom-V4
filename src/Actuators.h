@@ -4,7 +4,8 @@
 
 enum ACTUATOR_TYPE{
     SERVO,
-    STEPPER
+    STEPPER,
+    RELAY
 };
 
 /**
@@ -32,6 +33,8 @@ class Actuator{
                     return "Servo";
                 case STEPPER:
                     return "Stepper";
+                case RELAY:
+                    return "Relay";
             }
         };
 
