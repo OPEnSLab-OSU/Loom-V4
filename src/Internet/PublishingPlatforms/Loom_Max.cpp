@@ -15,6 +15,15 @@ Loom_Max::~Loom_Max() {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void Loom_Max::package(){
+    JsonArray tmp = manInst->getDocument()["id"].createNestedArray("ip");
+    IPAddress ip = wifiInst->getIPAddress();
+    tmp.add(ip[0]);
+    tmp.add(ip[1]);
+    tmp.add(ip[2]);
+    tmp.add(ip[3]);
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Max::initialize(){
 
@@ -40,7 +49,6 @@ bool Loom_Max::publish(){
     }
 
     size_t size = serializeJson(manInst->getDocument(), (*udpSend));
-    Serial.println(size);
 
     if(size <= 0){
         printModuleName(); Serial.println("An error occurred when attempting to write the JSON packet to the UDP stream");
@@ -72,15 +80,39 @@ bool Loom_Max::subscribe(){
 			return false;
 		}
 
-        printModuleName(); Serial.println("Packet received from: " + Loom_WIFI::IPtoString(udpRecv->remoteIP()));
-        printModuleName(); Serial.println("Message Json: ");
-        serializeJsonPretty(messageJson, Serial);
-        Serial.println("\n");
-        
-        // DISPATCH HERE
+        // If there are actuators supplied control those if not just print the packet
+        if(actuators.size() > 0){
+            if(messageJson["type"].as<String>() == "command"){
+                // Loop over each command being sent to the device
+                for(int j = 0; j < messageJson["commands"].as<JsonArray>().size(); j++){
+                    // Loop over each actuator to find the right one
+                    String type = messageJson["commands"][j]["module"].as<String>();
+                    int instanceNum = messageJson["commands"][j]["params"][0].as<int>();
+
+                    // Loop over each actuator
+                    for(int i = 0; i < actuators.size(); i++){
+
+                        // If the current actuator is the one we want to control
+                        if(actuators[i]->typeToString() == type && actuators[i]->get_instance_num() == instanceNum){
+
+                            // Pass the parameters field to the actuator
+                            actuators[i]->control(messageJson["commands"][j]["params"].as<JsonArray>());
+                        }
+                    }
+                }
+            }
+        }
+        else{            
+            printModuleName(); Serial.println("Packet received from: " + Loom_WIFI::IPtoString(udpRecv->remoteIP()));
+            printModuleName(); Serial.println("Message Json: ");
+            serializeJsonPretty(messageJson, Serial);
+            Serial.println("\n");
+        }
 
         return true;
     }
+
+    printModuleName(); Serial.println("No message received!");
 
     return false;
     

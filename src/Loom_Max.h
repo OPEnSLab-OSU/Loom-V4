@@ -2,7 +2,10 @@
 
 #include "Module.h"
 #include "Loom_Wifi.h"
+#include "Actuators.h"
+
 #include <Udp.h>
+#include <vector>
 #include <memory>
 
 // Base ports to send and receive on 
@@ -19,7 +22,7 @@ class Loom_Max : public Module{
         void print_measurements() override {};  
         void power_up() override {};
         void power_down() override {}; 
-        void package() override {};
+        void package() override;
 
     public:
         /// Close the socket and delete the UDP object when the unique ptr dissapears
@@ -54,6 +57,38 @@ class Loom_Max : public Module{
          */ 
         Loom_Max(Manager& man, Loom_WIFI& wifi);
 
+        /**
+         * Construct a new instance of the the Max MSP Pub/Sub protocol
+         * @param man Reference to the manager
+         * @param wifi Reference to the Wifi manager for getting UDP communication streams
+         * @param firstAct The first actuator to add to the list
+         */ 
+        template<typename T>
+        Loom_Max(Manager& man, Loom_WIFI& wifi, T firstAct) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi){
+
+            actuators.push_back(&firstAct);
+
+            udpSend = UDPPtr(wifiInst->getUDP());
+            udpRecv = UDPPtr(wifiInst->getUDP());
+            manInst->registerModule(this);
+        };
+
+        /**
+         * Construct a new instance of the the Max MSP Pub/Sub protocol
+         * @param man Reference to the manager
+         * @param wifi Reference to the Wifi manager for getting UDP communication streams
+         * @param firstAct The first actuator to add to the list
+         * @param additionalActuators This takes any number of actuators
+         */ 
+         template<typename T, typename... Args>
+        Loom_Max(Manager& man, Loom_WIFI& wifi, T firstAct, Args... additionalActuators) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi){
+            get_variadic_parameters(firstAct, additionalActuators...);
+
+            udpSend = UDPPtr(wifiInst->getUDP());
+            udpRecv = UDPPtr(wifiInst->getUDP());
+            manInst->registerModule(this);
+        };
+
         ~Loom_Max();
 
     private:
@@ -72,6 +107,26 @@ class Loom_Max : public Module{
         void setIP();           // Set the remote IP to send the packets too
 
         StaticJsonDocument<1000> messageJson; // Response packet
+
+        std::vector<Actuator*> actuators;      // List of actuators we want to control with max
+        
+
+        /* 
+         *   The following two functions are some sorcery to get the variadic parameters without the need for passing in a size variable
+         *   I don't fully understand it so don't touch it just works
+         *   Based off: https://eli.thegreenplace.net/2014/variadic-templates-in-c/
+         */
+        template<typename T>
+        T get_variadic_parameters(T v) {
+            actuators.push_back(&v);
+            return v;
+        };
+
+        template<typename T, typename... Args>
+        T get_variadic_parameters(T first, Args... args) {
+           actuators.push_back(&first);
+            return get_variadic_parameters(args...);
+        };
         
 
 };
