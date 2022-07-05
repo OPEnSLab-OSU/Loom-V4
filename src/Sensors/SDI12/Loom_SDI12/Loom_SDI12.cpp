@@ -65,11 +65,11 @@ void Loom_SDI12::print_measurements(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::package(){
-    
+    JsonObject json = manInst->get_data_object(getModuleName());
     for(int i = 0; i < inUseAddresses.size(); i++){
-        manInst->getDocument()[getSensorName(inUseAddresses[i])]["dielectric_perm"] = sensorData[0];
-        manInst->getDocument()[getSensorName(inUseAddresses[i])]["temperature"] = sensorData[1];
-        manInst->getDocument()[getSensorName(inUseAddresses[i])]["conductivity"] = sensorData[2];
+        json[getSensorName(inUseAddresses[i])]["dielectric_perm"] = sensorData[0];
+        json[getSensorName(inUseAddresses[i])]["temperature"] = sensorData[1];
+        json[getSensorName(inUseAddresses[i])]["conductivity"] = sensorData[2];
     }
     
 }

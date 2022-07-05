@@ -1,6 +1,7 @@
 #pragma once
 
 #include <WiFi101.h>
+#include <WiFiUdp.h>
 
 #include "Module.h"
 #include "Loom_Manager.h"
@@ -55,9 +56,39 @@ class Loom_WIFI : public Module{
         WiFiClient& getClient() { return wifiClient; };
 
         /**
+         * Get a reference to the UDP communication handler
+         */ 
+        WiFiUDP* getUDP() { return new WiFiUDP(); };
+
+        /**
          * Attempt to ping Google, this tests if we are truly connected to the internet
          */ 
         bool verifyConnection();
+
+        /**
+         * Get the IP address of the WiFi module
+         */ 
+        IPAddress getIPAddress();
+
+        /**
+         * Get the subnet mask of the connected network
+         */ 
+        IPAddress getSubnetMask();
+
+        /**
+         * Get the gateway IP of the network
+         */ 
+        IPAddress getGateway();
+
+        /**
+         *  Get the broadcast IP of the network
+         */ 
+        IPAddress getBroadcast();
+
+        /**
+         * Convert an IP address to a string
+         */ 
+        static String IPtoString(IPAddress ip) { return String(ip[0]) + "." + String(ip[1]) + "." + String(ip[2]) + "." + String(ip[3]); };
 
     private:
         Manager* manInst;                   // Pointer to the manager
@@ -69,5 +100,9 @@ class Loom_WIFI : public Module{
         String wifi_name;                   // Access point to connect to
         String wifi_password;               // Password to connect to the access point
 
-        bool moduleInitialized = true;
+        bool moduleInitialized = true;      // If we actually initialized the module
+
+        IPAddress remoteIP;                 // IP address to send the UDP requests to 
+
+        
 };

@@ -19,8 +19,9 @@ void Loom_Analog::measure(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Analog::package(){
+    JsonObject json = manInst->get_data_object(getModuleName());
     for ( const auto &myPair : pinToData ) {
-        manInst->getDocument()[getModuleName()][myPair.first] = pinToData[myPair.first];
+       json[myPair.first] = pinToData[myPair.first];
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

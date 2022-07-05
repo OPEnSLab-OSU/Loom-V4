@@ -114,6 +114,11 @@ class Manager{
          */ 
         void setEnableState(bool state) { hypnosEnabled = state; };
 
+        /**
+         * Get the JSON object to store the module data in
+         */ 
+        JsonObject get_data_object(String moduleName);
+
     private:
 
         /* Device Information */
@@ -127,6 +132,7 @@ class Manager{
 
         /* Module Data */
         StaticJsonDocument<2000> doc;        // JSON document that will store all sensor information
+        JsonArray contentsArray;             // Stores the contents of the modules
         std::vector<Module*> modules;        // List of modules that have been added to the stack
 
         /* Validation */

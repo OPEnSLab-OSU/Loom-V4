@@ -42,8 +42,18 @@ void Manager::package(){
 
     // Clear the document so that we don't get null characters after too many updates
     doc.clear();
-    // Display the packet number
-    doc["Packet"]["Number"] = packetNumber;
+    doc["type"] = "data";
+    doc["id"]["name"] = get_device_name();
+    doc["id"]["instance"] = get_instance_num();
+
+    // Get the contents of the JSON document
+    contentsArray = doc["contents"];
+    if(contentsArray.isNull())
+        contentsArray = doc.createNestedArray("contents");
+
+    // Add the packet number to the JSON document
+    JsonObject json = get_data_object("Packet");
+    json["Number"] = packetNumber;
 
     for(int i = 0; i < modules.size(); i++){
         modules[i]->package();
@@ -51,6 +61,12 @@ void Manager::package(){
     packetNumber++;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+JsonObject Manager::get_data_object(String moduleName){
+    JsonObject json = contentsArray.createNestedObject();
+    json["module"] = moduleName;
+    return json.createNestedObject("data");
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
  void Manager::power_up(){

@@ -42,16 +42,17 @@ void Loom_ADS1115::measure(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ADS1115::package(){
     if(initialized){
+        JsonObject json = manInst->get_data_object(getModuleName());
         if(enableAnalog){
-            manInst->getDocument()[getModuleName()]["Analog 0"] = analogData[0];
-            manInst->getDocument()[getModuleName()]["Analog 1"] = analogData[1];
-            manInst->getDocument()[getModuleName()]["Analog 2"] = analogData[2];
-            manInst->getDocument()[getModuleName()]["Analog 3"] = analogData[3];
+            json["Analog 0"] = analogData[0];
+            json["Analog 1"] = analogData[1];
+            json["Analog 2"] = analogData[2];
+            json["Analog 3"] = analogData[3];
         }
 
         if(enableDiff){
-            manInst->getDocument()[getModuleName()]["Differential 0"] = diffData[0];
-            manInst->getDocument()[getModuleName()]["Differential 1"] = diffData[1];
+            json["Differential 0"] = diffData[0];
+            json["Differential 1"] = diffData[1];
         }
     }
 }

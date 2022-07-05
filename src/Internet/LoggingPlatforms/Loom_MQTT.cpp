@@ -35,7 +35,7 @@ void Loom_MQTT::publish(){
 
     // Attempt to Connect to the MQTT client 
     if(!mqttClient.connect(address.c_str(), port)){
-        printModuleName(); Serial.print("Failed to connect to broker: " + getMQTTError());
+        printModuleName(); Serial.println("Failed to connect to broker: " + getMQTTError());
     }
     else{
         printModuleName(); Serial.println("Succsessfully connected to broker!");

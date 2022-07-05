@@ -1,5 +1,6 @@
 #pragma once
 #include "Arduino.h"
+#include <ArduinoJson.h>
 
 /**
  *  General overarching interface to provide basic unified functionality

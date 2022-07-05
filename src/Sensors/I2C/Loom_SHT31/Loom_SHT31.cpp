@@ -45,8 +45,9 @@ void Loom_SHT31::measure() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SHT31::package() {
     if(initialized){
-        manInst->getDocument()[getModuleName()]["Temperature"] = sensorData[0];
-        manInst->getDocument()[getModuleName()]["Humidity"] = sensorData[1];
+        JsonObject json = manInst->get_data_object(getModuleName());
+        json["Temperature"] = sensorData[0];
+        json["Humidity"] = sensorData[1];
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

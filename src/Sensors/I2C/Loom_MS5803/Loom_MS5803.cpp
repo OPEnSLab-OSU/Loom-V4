@@ -35,8 +35,9 @@ void Loom_MS5803::measure(){
 void Loom_MS5803::package(){
     // Make sure the sensor initialized correctly
     if(initialized){
-        manInst->getDocument()[getModuleName()]["Temperature"] = sensorData[0];
-        manInst->getDocument()[getModuleName()]["Pressure"] = sensorData[1];
+        JsonObject json = manInst->get_data_object(getModuleName());
+        json["Temperature"] = sensorData[0];
+        json["Pressure"] = sensorData[1];
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -41,9 +41,10 @@ void Loom_TSL2591::measure() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::package() {
-    manInst->getDocument()[getModuleName()]["Visible"] = lightLevels[0];
-    manInst->getDocument()[getModuleName()]["Infrared"] = lightLevels[1];
-    manInst->getDocument()[getModuleName()]["Full Spectrum"] = lightLevels[2];
+    JsonObject json = manInst->get_data_object(getModuleName());
+    json["Visible"] = lightLevels[0];
+    json["Infrared"] = lightLevels[1];
+    json["Full Spectrum"] = lightLevels[2];
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
