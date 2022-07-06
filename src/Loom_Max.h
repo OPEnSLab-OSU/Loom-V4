@@ -64,9 +64,9 @@ class Loom_Max : public Module{
          * @param firstAct The first actuator to add to the list
          */ 
         template<typename T>
-        Loom_Max(Manager& man, Loom_WIFI& wifi, T firstAct) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi){
+        Loom_Max(Manager& man, Loom_WIFI& wifi, T* firstAct) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi){
 
-            actuators.push_back(&firstAct);
+            actuators.push_back(firstAct);
 
             udpSend = UDPPtr(wifiInst->getUDP());
             udpRecv = UDPPtr(wifiInst->getUDP());
@@ -81,8 +81,8 @@ class Loom_Max : public Module{
          * @param additionalActuators This takes any number of actuators
          */ 
          template<typename T, typename... Args>
-        Loom_Max(Manager& man, Loom_WIFI& wifi, T firstAct, Args... additionalActuators) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi){
-            get_variadic_parameters(firstAct, additionalActuators...);
+        Loom_Max(Manager& man, Loom_WIFI& wifi, T* firstAct, Args*... additionalActuators) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi){
+            get_variadic_parameters((Actuator*)firstAct, (Actuator*)additionalActuators...);
 
             udpSend = UDPPtr(wifiInst->getUDP());
             udpRecv = UDPPtr(wifiInst->getUDP());
@@ -117,14 +117,14 @@ class Loom_Max : public Module{
          *   Based off: https://eli.thegreenplace.net/2014/variadic-templates-in-c/
          */
         template<typename T>
-        T get_variadic_parameters(T v) {
-            actuators.push_back(&v);
+        T* get_variadic_parameters(T* v) {
+            actuators.push_back(v);
             return v;
         };
 
         template<typename T, typename... Args>
-        T get_variadic_parameters(T first, Args... args) {
-           actuators.push_back(&first);
+        T* get_variadic_parameters(T* first, Args*... args) {
+           actuators.push_back(first);
             return get_variadic_parameters(args...);
         };
         

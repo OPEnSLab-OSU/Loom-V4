@@ -12,6 +12,11 @@ Loom_Max::Loom_Max(Manager& man, Loom_WIFI& wifi) : Module("Max Pub/Sub"), manIn
 Loom_Max::~Loom_Max() {
     if (udpSend) udpSend->stop(); 
     if (udpRecv) udpRecv->stop(); 
+
+    // Clean up the actuator instances
+    for(int i = 0; i < actuators.size(); i++){
+        delete actuators[i];
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -30,6 +35,15 @@ void Loom_Max::initialize(){
     // Set the IP and port to communicate over
     setIP();
     setUDPPort();
+
+    /**
+     * Initialize each actuator
+     */ 
+    if(actuators.size() > 0){
+        for(int i = 0; i < actuators.size(); i++){
+            actuators[i]->initialize();
+        }
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -88,10 +102,11 @@ bool Loom_Max::subscribe(){
                     // Loop over each actuator to find the right one
                     String type = messageJson["commands"][j]["module"].as<String>();
                     int instanceNum = messageJson["commands"][j]["params"][0].as<int>();
+                    Serial.println(type);
+                    Serial.println(instanceNum);
 
                     // Loop over each actuator
                     for(int i = 0; i < actuators.size(); i++){
-                        
                         // If the current actuator is the one we want to control
                         if(actuators[i]->typeToString() == type){
 
