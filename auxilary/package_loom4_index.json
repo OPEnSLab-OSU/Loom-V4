@@ -10,7 +10,7 @@
         },
         "platforms": [
           {
-            "name": "Loom SAMD Boards",
+            "name": "Loom SAMD Boards V4",
             "architecture": "samd",
             "version": "4.0",
             "category": "contributed",
