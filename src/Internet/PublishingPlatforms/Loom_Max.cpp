@@ -31,18 +31,23 @@ void Loom_Max::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Max::initialize(){
-
+    printModuleName(); Serial.println("Initializing Max Communication....");
     // Set the IP and port to communicate over
     setIP();
     setUDPPort();
 
+    printModuleName(); Serial.println("Connections Opened!");
+
+    
     /**
      * Initialize each actuator
      */ 
     if(actuators.size() > 0){
+        printModuleName(); Serial.println("Initializing desired actuators...");
         for(int i = 0; i < actuators.size(); i++){
             actuators[i]->initialize();
         }
+        printModuleName(); Serial.println("Successfully initialized actuators!");
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -96,22 +101,24 @@ bool Loom_Max::subscribe(){
 
         // If there are actuators supplied control those if not just print the packet
         if(actuators.size() > 0){
+
+            // Is the packet actually a command
             if(messageJson["type"].as<String>() == "command"){
+
                 // Loop over each command being sent to the device
                 for(int j = 0; j < messageJson["commands"].as<JsonArray>().size(); j++){
+
                     // Loop over each actuator to find the right one
                     String type = messageJson["commands"][j]["module"].as<String>();
                     int instanceNum = messageJson["commands"][j]["params"][0].as<int>();
-                    Serial.println(type);
-                    Serial.println(instanceNum);
-
+                    
                     // Loop over each actuator
                     for(int i = 0; i < actuators.size(); i++){
                         // If the current actuator is the one we want to control
                         if(actuators[i]->typeToString() == type){
 
                             // If the type we are trying to control is a relay then don't check the instance number cause it doesn't have one
-                            if(type == "Relay"){
+                            if(type.startsWith("Relay")){
                                 actuators[i]->control(messageJson["commands"][j]["params"].as<JsonArray>());
                             }
 

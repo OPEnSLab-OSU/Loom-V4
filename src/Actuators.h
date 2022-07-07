@@ -43,7 +43,7 @@ class Actuator{
          * Get the instance number of the actuator
          */ 
         int get_instance_num() { return instance_num; };
-        void printModuleName() { Serial.print("[" + (typeToString() + String(instance_num)) + "]"); };
+        void printModuleName() { Serial.print("[" + (typeToString() + String(instance_num)) + "] "); };
 
     private:
         int instance_num;                   // Instance number of the Actuator

@@ -38,6 +38,7 @@ void Loom_WIFI::initialize() {
 
 
         // Verify the wifi connection after we have connected
+        printModuleName(); Serial.println("Verifying Connection to the Internet...");
         verifyConnection();
         
         printModuleName(); Serial.println("Successfully Initalized Wifi!");
