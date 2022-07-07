@@ -31,11 +31,19 @@ void Loom_TSL2591::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::measure() {
-
     // Pull the data from the sensor
     lightLevels[0] = tsl.getLuminosity(TSL2591_VISIBLE);
     lightLevels[1] = tsl.getLuminosity(TSL2591_INFRARED);
     lightLevels[2] = tsl.getLuminosity(TSL2591_FULLSPECTRUM);
+
+    // If it is the first packet measure again to get accurate readings
+    if(manInst->get_packet_number() == 1){
+        // Pull the data from the sensor
+        lightLevels[0] = tsl.getLuminosity(TSL2591_VISIBLE);
+        lightLevels[1] = tsl.getLuminosity(TSL2591_INFRARED);
+        lightLevels[2] = tsl.getLuminosity(TSL2591_FULLSPECTRUM);
+    }
+    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

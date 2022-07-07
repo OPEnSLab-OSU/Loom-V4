@@ -119,6 +119,11 @@ class Manager{
          */ 
         JsonObject get_data_object(String moduleName);
 
+        /**
+         * Get the current packet number that will be packaged by the manager
+         */ 
+        int get_packet_number() { return packetNumber; };
+
     private:
 
         /* Device Information */
