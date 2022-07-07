@@ -5,6 +5,7 @@
  */
 #include "arduino_secrets.h"
 
+#include <Loom_Analog.h>
 #include <Loom_Hypnos.h>
 #include <Loom_Manager.h>
 #include <Loom_Wifi.h>
@@ -14,6 +15,9 @@
 #include <Loom_TSL2591.h>
 
 Manager manager("Chime", 1);
+
+// Analog for reading battery voltage
+Loom_Analog analog(manager);
 
 // Create a new Hypnos object
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2, TIME_ZONE::PST);

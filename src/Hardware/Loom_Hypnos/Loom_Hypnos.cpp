@@ -30,7 +30,7 @@ Loom_Hypnos::~Loom_Hypnos(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::package(){
-    JsonObject json = manInst->get_data_object("Timestamp");
+    JsonObject json = manInst->getDocument().createNestedObject("timestamp");
     
     // Convert the local time to UTC
     DateTime time = get_utc_time();
