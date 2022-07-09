@@ -86,9 +86,14 @@ void Manager::power_down(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::display_data(){
-    Serial.println("\n[Manager] Data Json: ");
-    serializeJsonPretty(doc, Serial);
-    Serial.println("\n");
+    if(!doc.isNull()){
+        Serial.println("\n[Manager] Data Json: ");
+        serializeJsonPretty(doc, Serial);
+        Serial.println("\n");
+    }
+    else{
+        Serial.println("[Manager] JSON Document is Null there is no data to display");
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -36,7 +36,7 @@ void setup() {
   hypnos.enable();
   manager.initialize();
 
-  sleepInterval = hypnos.getSleepIntervalFromSD("SD_config.txt");
+  sleepInterval = hypnos.getSleepIntervalFromSD("SD_config.json");
   // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);
 }

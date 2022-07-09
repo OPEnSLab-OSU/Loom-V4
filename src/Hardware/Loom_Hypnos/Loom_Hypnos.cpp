@@ -402,9 +402,9 @@ TimeSpan Loom_Hypnos::getSleepIntervalFromSD(String fileName){
         return TimeSpan(0, 0, 20, 0);
     }
     else{
-
+        printModuleName(); Serial.println("Sleep interval successfully loaded from SD!");
         // Return the interval as set in the json
-        return TimeSpan(json["days"], json["hours"], json["minutes"], json["seconds"]);
+        return TimeSpan(json["days"].as<int>(), json["hours"].as<int>(), json["minutes"].as<int>(), json["seconds"].as<int>());
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -15,7 +15,7 @@ Manager manager("Device", 1);
 // Create a new Hypnos object setting the version to determine the SD Chip select pin, and starting without the SD card functionality
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2, TIME_ZONE::PST);
 
-int testCounter = 0;
+TimeSpan sleepInterval;
 
 // Called when the interrupt is triggered 
 void isrTrigger(){
@@ -31,14 +31,13 @@ void setup() {
   // Enable the hypnos rails
   hypnos.enable();
 
+  sleepInterval = hypnos.getSleepIntervalFromSD("SD_config.json");
+
   // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);
 }
 
 void loop() {
-
-  // Add some random data to show it logging correctly 
-  manager.addData("Test", "Test1", testCounter);
   
   // Print the current JSON packet
   manager.display_data();            
@@ -47,7 +46,7 @@ void loop() {
   hypnos.logToSD();
 
   // Set the RTC interrupt alarm to wake the device in 10 seconds
-  hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 10));
+  hypnos.setInterruptDuration(sleepInterval);
 
   // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
   hypnos.reattachRTCInterrupt();
