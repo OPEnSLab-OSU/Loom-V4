@@ -19,6 +19,8 @@ class Module{
         virtual void print_measurements() = 0;
         virtual void power_up() = 0;
         virtual void power_down() = 0;
+
+        bool moduleInitialized = true;
     private:
         String moduleName;
         

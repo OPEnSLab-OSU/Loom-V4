@@ -80,6 +80,12 @@ class Manager{
          */ 
         void display_data();
 
+        /**
+         * Pause execution for a specified length of time
+         * @param ms Time to wait for in milliseconds
+         */ 
+        void pause(const uint32_t ms) const;
+
         /** 
          * Get a serialized version of the JSON packet as a string
          * @return JSON String

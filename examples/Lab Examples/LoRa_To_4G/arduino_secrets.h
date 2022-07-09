@@ -1,5 +1,6 @@
-#define SECRET_SSID ""
-#define SECRET_PASS ""
+#define NETWORK_NAME ""
+#define NETWORK_USER ""
+#define NETWORK_PASS ""
 
 #define SECRET_BROKER ""
 #define SECRET_PORT 1883

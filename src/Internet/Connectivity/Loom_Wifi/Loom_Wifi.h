@@ -100,8 +100,6 @@ class Loom_WIFI : public Module{
         String wifi_name;                   // Access point to connect to
         String wifi_password;               // Password to connect to the access point
 
-        bool moduleInitialized = true;      // If we actually initialized the module
-
         IPAddress remoteIP;                 // IP address to send the UDP requests to 
 
         

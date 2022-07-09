@@ -98,6 +98,4 @@ class Loom_LTE : public Module{
         TinyGsm modem;                      // LTE Modem
         TinyGsmClient client;               // LTE Client
 
-        bool moduleInitialized = true;      // If we actually initialized the module
-
 };
