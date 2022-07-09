@@ -3,10 +3,12 @@
  * This example increments a counter each power cycle logging the data to the SD card.
  * 
  * NOTE: THIS EXAMPLE DOESN"T WAIT FOR SERIAL AFTER SLEEPING
+ * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 
-#include <Loom_Hypnos.h>
 #include <Loom_Manager.h>
+
+#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 
 Manager manager("Chime", 1);
 

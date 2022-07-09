@@ -1,10 +1,12 @@
 /**
  * This is an example use case for using the SHT31 Sensor
+ * 
+ * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
-
-#include <Loom_Hypnos.h>
 #include <Loom_Manager.h>
-#include <Loom_SHT31.h>
+
+#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
+#include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h>
 
 Manager manager("Chime", 1);
 

@@ -2,17 +2,23 @@
  * In lab use case example for the WeatherChimes project
  * 
  * This project uses SDI12, TSL2591 and an SHT31 sensor to log environment data and logs it to both the SD card and also MQTT/MongoDB
+ * 
+ * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 #include "arduino_secrets.h"
 
-#include <Loom_Analog.h>
-#include <Loom_Hypnos.h>
 #include <Loom_Manager.h>
-#include <Loom_Wifi.h>
-#include <Loom_SDI12.h>
-#include <Loom_MQTT.h>
-#include <Loom_SHT31.h>
-#include <Loom_TSL2591.h>
+
+#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
+
+#include <Sensors/Loom_Analog/Loom_Analog.h>
+#include <Sensors/SDI12/Loom_SDI12/Loom_SDI12.h>
+#include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h>
+#include <Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h>
+
+#include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
+#include <Internet/Logging/Loom_MQTT/Loom_MQTT.h>
+
 
 Manager manager("Chime", 1);
 
@@ -44,7 +50,7 @@ void setup() {
   hypnos.enable();
 
   // Load the wifi credentials from a json file stored on the SD card, MUST BE BEFORE INITIALIZE SO THE DATA IS USED BY THE WIFI MANAGER
-  wifi.loadCredentialsFromString(hypnos.readFile("wifi_creds.json"));
+  wifi.loadCredentialsFromString(hypnos.readJSON("wifi_creds.json"));
 
   // Initialize all in-use modules
   manager.initialize();

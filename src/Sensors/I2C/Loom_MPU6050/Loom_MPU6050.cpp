@@ -1,4 +1,4 @@
-#include "../../../Loom_MPU6050.h"
+#include "Loom_MPU6050.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MPU6050::Loom_MPU6050(Manager& man, const bool autoCalibrate) : Module("MPU6050"), manInst(&man), mpu(Wire), autoCali(autoCalibrate){ manInst->registerModule(this); }

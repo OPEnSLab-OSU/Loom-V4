@@ -2,11 +2,14 @@
  * In lab use case example for the SmartRock project
  * 
  * This project uses a hypnos, an ADS1115 and a MS5803
+ * 
+ * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
-#include <Loom_Hypnos.h>
 #include <Loom_Manager.h>
-#include <Loom_ADS1115.h>
-#include <Loom_MS5803.h>
+
+#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
+#include <Sensors/I2C/Loom_ADS1115/Loom_ADS1115.h>
+#include <Sensors/I2C/Loom_MS5803/Loom_MS5803.h>
 
 Manager manager("Device", 1);
 

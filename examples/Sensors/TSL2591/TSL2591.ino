@@ -1,10 +1,13 @@
 /**
  * This is an example use case for setting a custom time on the Hypnos RTC
+ * 
+ * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 
-#include <Loom_Hypnos.h>
 #include <Loom_Manager.h>
-#include <Loom_TSL2591.h>
+
+#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
+#include <Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h>
 
 Manager manager("Chime", 1);
 

@@ -1,4 +1,4 @@
-#include "../../../Loom_Servo.h"
+#include "Loom_Servo.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Servo::Loom_Servo(int instance_num) : Actuator(ACTUATOR_TYPE::SERVO, instance_num), instance(instance_num) {}

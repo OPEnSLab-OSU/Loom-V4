@@ -1,4 +1,4 @@
-#include "../../../Loom_ADS1232.h"
+#include "Loom_ADS1232.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_ADS1232::Loom_ADS1232(Manager& man, int num_samples, long offset, float scale) : Module("ADS1232"), manInst(&man), inst(ADS1232_Lib(A2, A1, A0)) {

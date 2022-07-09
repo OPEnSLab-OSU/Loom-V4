@@ -1,4 +1,4 @@
-#include "../../../Loom_Relay.h"
+#include "Loom_Relay.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Relay::Loom_Relay(const byte controlPin) : Actuator(ACTUATOR_TYPE::RELAY, 0), pin(controlPin) {}

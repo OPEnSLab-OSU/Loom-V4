@@ -1,11 +1,14 @@
 /**
- * This is an example use case for Loomified wifi
+ * This is an example use case for publishing data to max
+ * 
+ * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 #include "arduino_secrets.h"
 
 #include <Loom_Manager.h>
-#include <Loom_Wifi.h>
-#include <Loom_Max.h>
+
+#include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
+#include <Internet/Publishing/Loom_Max.h>
 
 Manager manager("Device", 1);
 

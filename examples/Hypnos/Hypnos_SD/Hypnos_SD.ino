@@ -1,10 +1,13 @@
 /**
  * This is an example use case for the Hypnos board's SD logging functionality
  * This allows the user to log sensor and debug data to an SD card inserted into the Hypnos
+ * 
+ * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 
-#include <Loom_Hypnos.h>
 #include <Loom_Manager.h>
+
+#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 
 Manager manager("Chime", 1);
 

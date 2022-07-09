@@ -1,4 +1,4 @@
-#include "../../../Loom_MAX31865.h"
+#include "Loom_MAX31865.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MAX31865::Loom_MAX31865(Manager& man, int chip_select, int samples) : Module("MAX31865"), manInst(&man), max(chip_select), num_samples(samples) {

@@ -1,4 +1,4 @@
-#include "../../Loom_Max.h"
+#include "Loom_Max.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Max::Loom_Max(Manager& man, Loom_WIFI& wifi) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi) {

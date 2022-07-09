@@ -1,5 +1,6 @@
 #pragma once
 
+
 #include <OPEnS_RTC.h>
 #include <LowPower.h>
 
@@ -160,6 +161,12 @@ class Loom_Hypnos : public Module{
          * @param fileName File to read from
          */ 
         String readFile(String fileName) { return sdMan->readFile(fileName); };
+
+        /**
+         * Read in a file and then parse it as JSON
+         * @param fileName The json file to read
+         */ 
+        JsonObject readJson(String fileName);
 
 
     private:

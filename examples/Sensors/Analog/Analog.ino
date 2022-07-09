@@ -1,10 +1,15 @@
 /**
  * Analog pin reading and packaging example using the Manger
  * Pass in a variable number of arguments to the construct to read which pins you want
+ * 
+ * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 
-#include <Loom_Analog.h>
+
 #include <Loom_Manager.h>
+
+#include <Sensors/Loom_Analog/Loom_Analog.h>
+
 
 Manager manager("Device", 1);
 

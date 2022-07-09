@@ -1,11 +1,14 @@
 /**
  * This is an example use case for Loomified wifi and MQTT to log data remotely 
+ * 
+ * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 #include "arduino_secrets.h"
 
 #include <Loom_Manager.h>
-#include <Loom_Wifi.h>
-#include <Loom_MQTT.h>
+
+#include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
+#include <Internet/Logging/Loom_MQTT/Loom_MQTT.h>
 
 Manager manager("Device", 1);
 

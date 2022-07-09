@@ -1,4 +1,4 @@
-#include "../../../Loom_MS5803.h"
+#include "Loom_MS5803.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MS5803::Loom_MS5803(Manager& man, byte address) : Module("MS5803"), manInst(&man), inst(address, 512) {

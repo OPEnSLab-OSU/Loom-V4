@@ -1,4 +1,4 @@
-#include "../../../Loom_Stepper.h"
+#include "Loom_Stepper.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Stepper::Loom_Stepper(int instance_num) : Actuator(ACTUATOR_TYPE::STEPPER, instance_num), instance(instance_num) {}

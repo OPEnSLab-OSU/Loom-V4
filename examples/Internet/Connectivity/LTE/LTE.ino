@@ -1,5 +1,5 @@
 /**
- * This is an example use case for Loomified wifi
+ * This is an example use case for Loomified LTE
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
@@ -7,11 +7,12 @@
 
 #include <Loom_Manager.h>
 
-#include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
+// Loom Modules
+#include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
 
 Manager manager("Device", 1);
 
-Loom_WIFI wifi(manager, SECRET_SSID, SECRET_PASS);
+Loom_LTE lte(manager, NETWORK_NAME, NETWORK_USER, NETWORK_PASS);
 
 void setup() {
 
@@ -20,6 +21,6 @@ void setup() {
 }
 
 void loop() {
-  wifi.verifyConnection();
+  lte.verifyConnection();
   delay(5000);
 }

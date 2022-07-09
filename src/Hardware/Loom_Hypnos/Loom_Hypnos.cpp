@@ -1,4 +1,4 @@
-#include "../../Loom_Hypnos.h"
+#include "Loom_Hypnos.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time, bool useSD) : Module("Hypnos"), custom_time(use_custom_time), sd_chip_select(version), enableSD(useSD), timezone(zone){
@@ -406,5 +406,21 @@ TimeSpan Loom_Hypnos::getSleepIntervalFromSD(String fileName){
         // Return the interval as set in the json
         return TimeSpan(json["days"], json["hours"], json["minutes"], json["seconds"]);
     }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+JsonObject Loom_Hypnos::readJson(String fileName){
+    
+    // Doc to store the JSON data from the SD card in
+    StaticJsonDocument<300> doc;
+    DeserializationError deserialError = deserializeJson(doc, readFile(fileName));
+
+    // Check if an error occurred and if so print it
+    if(deserialError != DeserializationError::Ok){
+        printModuleName(); Serial.println("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
+    }
+
+    return doc.as<JsonObject>();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

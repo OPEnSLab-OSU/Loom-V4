@@ -1,4 +1,4 @@
-#include "../../Loom_WiFi.h"
+#include "Loom_WiFi.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_WIFI::Loom_WIFI(Manager& man, String name, String password) : Module("WiFi Manager"), manInst(&man), wifi_name(name), wifi_password(password) {
@@ -136,20 +136,9 @@ bool Loom_WIFI::verifyConnection(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_WIFI::loadCredentialsFromString(String jsonString){
-    // Doc to store the JSON data from the SD card in
-    StaticJsonDocument<300> doc;
-    DeserializationError deserialError = deserializeJson(doc, jsonString);
-
-    // Check if an error occurred and if so print it
-    if(deserialError != DeserializationError::Ok){
-        printModuleName(); Serial.println("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
-        moduleInitialized = false;
-    }
-    else{
-        wifi_name = doc["SSID"].as<String>();
-        wifi_password = doc["password"].as<String>();
-    }
+void Loom_WIFI::loadConfigFromJSON(JsonObject json){
+    wifi_name = json["SSID"].as<String>();
+    wifi_password = json["password"].as<String>();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -7,10 +7,13 @@
  *  - pinMode(6, OUTPUT);
  *  
  * This example scans the address space for devices and the requests data from the first device it finds
+ * 
+ * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 
 #include <Loom_Manager.h>
-#include <Loom_SDI12.h>
+
+#include <Sensors/SDI12/Loom_SDI12/Loom_SDI12.h>
 
 
 // Manager handles all loom simplicity 

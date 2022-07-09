@@ -1,4 +1,4 @@
-#include "../../../Loom_MAX31856.h"
+#include "Loom_MAX31856.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MAX31856::Loom_MAX31856(Manager& man, int chip_select, int samples) : Module("MAX31856"), manInst(&man), max(chip_select), num_samples(samples) {
