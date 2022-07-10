@@ -14,3 +14,6 @@ The install process is fairly simple:
 5. Next click Tools > Board > Boards Manager
 6. In the search box type Loom
 7. Install the board named "Loom SAMD Boards V4"
+
+## Resources
+ - [Doxygen](https://openslab-osu.github.io/Loom-V4/)
