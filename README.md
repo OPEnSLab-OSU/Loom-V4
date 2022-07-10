@@ -15,5 +15,12 @@ The install process is fairly simple:
 6. In the search box type Loom
 7. Install the board named "Loom SAMD Boards V4"
 
+## Example Supported Projects
+ - WeatherChimes (Fully Tested)
+ - Smart Rock (Appears Stable)
+ - Evaporometer (Untested)
+ - Dendrometer (Untested)
+
 ## Resources
  - [Doxygen](https://openslab-osu.github.io/Loom-V4/)
+
