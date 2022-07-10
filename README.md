@@ -19,7 +19,7 @@ The install process is fairly simple:
  - WeatherChimes (Fully Tested)
  - Smart Rock (Appears Stable)
  - Evaporometer (Untested)
- - Dendrometer (Untested)
+ - Dendrometer_Hub (Untested)
 
 ## Resources
  - [Doxygen](https://openslab-osu.github.io/Loom-V4/)
