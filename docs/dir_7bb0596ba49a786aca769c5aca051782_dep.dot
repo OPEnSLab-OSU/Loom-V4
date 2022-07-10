@@ -1,0 +1,17 @@
+digraph "src/Hardware/Actuators"
+{
+ // LATEX_PDF_SIZE
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  compound=true
+  subgraph clusterdir_392e5fed41b2de721750e308647dcb9c {
+    graph [ bgcolor="#edf0f7", pencolor="grey50", style="filled,dashed,", label="Hardware", fontname="Helvetica", fontsize="10", URL="dir_392e5fed41b2de721750e308647dcb9c.html"]
+  subgraph clusterdir_7bb0596ba49a786aca769c5aca051782 {
+    graph [ bgcolor="#edf0f7", pencolor="grey25", style="filled,bold,", label="", fontname="Helvetica", fontsize="10", URL="dir_7bb0596ba49a786aca769c5aca051782.html"]
+    dir_7bb0596ba49a786aca769c5aca051782 [shape=plaintext, label="Actuators"];
+  dir_0b7e566c2d3dbcba9d3707cee202e5a0 [shape=box, label="Loom_Relay", style="filled,", fillcolor="#a2b4d6", color="grey25", URL="dir_0b7e566c2d3dbcba9d3707cee202e5a0.html"];
+  dir_6ff3638b1f52db2c790b71e615884909 [shape=box, label="Loom_Servo", style="filled,", fillcolor="#a2b4d6", color="grey25", URL="dir_6ff3638b1f52db2c790b71e615884909.html"];
+  dir_abfa649b071710b47dd838d8942a7ebc [shape=box, label="Loom_Stepper", style="filled,", fillcolor="#a2b4d6", color="grey25", URL="dir_abfa649b071710b47dd838d8942a7ebc.html"];
+  }
+  }
+}

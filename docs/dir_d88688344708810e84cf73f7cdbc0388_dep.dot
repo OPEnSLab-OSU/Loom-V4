@@ -1,0 +1,11 @@
+digraph "src/Sensors/I2C/Loom_ADS1115"
+{
+ // LATEX_PDF_SIZE
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  compound=true
+  subgraph clusterdir_abc44327bd9a62eb36f446d48ca760f8 {
+    graph [ bgcolor="#edf0f7", pencolor="grey50", style="filled,dashed,", label="I2C", fontname="Helvetica", fontsize="10", URL="dir_abc44327bd9a62eb36f446d48ca760f8.html"]
+  dir_d88688344708810e84cf73f7cdbc0388 [shape=box, label="Loom_ADS1115", style="filled,bold,", fillcolor="#edf0f7", color="grey25", URL="dir_d88688344708810e84cf73f7cdbc0388.html"];
+  }
+}

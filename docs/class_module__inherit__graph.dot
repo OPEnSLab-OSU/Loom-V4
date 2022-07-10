@@ -1,0 +1,48 @@
+digraph "Module"
+{
+ // LATEX_PDF_SIZE
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  rankdir="LR";
+  Node1 [label="Module",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black",tooltip="General overarching interface to provide basic unified functionality."];
+  Node1 -> Node2 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node2 [label="Loom_ADS1115",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_loom___a_d_s1115.html",tooltip="Functionality for the ADS1115."];
+  Node1 -> Node3 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node3 [label="Loom_ADS1232",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled",URL="$class_loom___a_d_s1232.html",tooltip=" "];
+  Node1 -> Node4 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node4 [label="Loom_Analog",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_loom___analog.html",tooltip="Used to read Analog voltages from the analog pins on the feather M0."];
+  Node1 -> Node5 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node5 [label="Loom_Ethernet",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_loom___ethernet.html",tooltip="WiFi 101 library integrated with the manager to allow for easy sleep."];
+  Node1 -> Node6 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node6 [label="Loom_Hypnos",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_loom___hypnos.html",tooltip="All in one driver for the Hypnos board."];
+  Node1 -> Node7 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node7 [label="Loom_LTE",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled",URL="$class_loom___l_t_e.html",tooltip=" "];
+  Node1 -> Node8 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node8 [label="Loom_MAX31856",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_loom___m_a_x31856.html",tooltip="Class for managing the MAX31865 NOT TO BE CONFUSED WITH THE MAX31865."];
+  Node1 -> Node9 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node9 [label="Loom_MAX31865",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_loom___m_a_x31865.html",tooltip="Class for managing the MAX31865 NOT TO BE CONFUSED WITH THE MAX31865."];
+  Node1 -> Node10 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node10 [label="Loom_MPU6050",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled",URL="$class_loom___m_p_u6050.html",tooltip=" "];
+  Node1 -> Node11 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node11 [label="Loom_MQTT",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_loom___m_q_t_t.html",tooltip="Platform for logging data to MQTT for logging to a remote database."];
+  Node1 -> Node12 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node12 [label="Loom_MS5803",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_loom___m_s5803.html",tooltip="Interface for the MS5803 Atmospheric Pressure / Temperature sensor module."];
+  Node1 -> Node13 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node13 [label="Loom_Max",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_loom___max.html",tooltip="Class used to handle communication with Max MSP to control devices remotely."];
+  Node1 -> Node14 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node14 [label="Loom_SDI12",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_loom___s_d_i12.html",tooltip="Provides both a loomified in addition to a standard reliable library implementation."];
+  Node1 -> Node15 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node15 [label="Loom_SHT31",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled",URL="$class_loom___s_h_t31.html",tooltip=" "];
+  Node1 -> Node16 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node16 [label="Loom_TSL2591",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled",URL="$class_loom___t_s_l2591.html",tooltip=" "];
+  Node1 -> Node17 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node17 [label="Loom_WIFI",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_loom___w_i_f_i.html",tooltip="WiFi 101 library integrated with the manager to allow for easy sleep."];
+  Node1 -> Node18 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node18 [label="Radio",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled",URL="$class_radio.html",tooltip=" "];
+  Node18 -> Node19 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node19 [label="Loom_Freewave",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_loom___freewave.html",tooltip="Used to communicate with LoRa type radios."];
+  Node18 -> Node20 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node20 [label="Loom_LoRa",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_loom___lo_ra.html",tooltip="Used to communicate with LoRa type radios."];
+  Node1 -> Node21 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node21 [label="SDManager",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_s_d_manager.html",tooltip="Class used to manage interaction with the SD card read/writer on the Hypnos board."];
+}

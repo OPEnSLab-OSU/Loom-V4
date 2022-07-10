@@ -1,0 +1,11 @@
+digraph "src/Sensors/Loom_Analog"
+{
+ // LATEX_PDF_SIZE
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  compound=true
+  subgraph clusterdir_afe58f6d0ef7eec69c2706509daaefe7 {
+    graph [ bgcolor="#edf0f7", pencolor="grey50", style="filled,dashed,", label="Sensors", fontname="Helvetica", fontsize="10", URL="dir_afe58f6d0ef7eec69c2706509daaefe7.html"]
+  dir_a0b6e2c5b16e123449bc545f2b01a23a [shape=box, label="Loom_Analog", style="filled,bold,", fillcolor="#edf0f7", color="grey25", URL="dir_a0b6e2c5b16e123449bc545f2b01a23a.html"];
+  }
+}

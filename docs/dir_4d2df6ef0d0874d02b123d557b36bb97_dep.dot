@@ -1,0 +1,11 @@
+digraph "src/Sensors/I2C/Loom_TSL2591"
+{
+ // LATEX_PDF_SIZE
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  compound=true
+  subgraph clusterdir_abc44327bd9a62eb36f446d48ca760f8 {
+    graph [ bgcolor="#edf0f7", pencolor="grey50", style="filled,dashed,", label="I2C", fontname="Helvetica", fontsize="10", URL="dir_abc44327bd9a62eb36f446d48ca760f8.html"]
+  dir_4d2df6ef0d0874d02b123d557b36bb97 [shape=box, label="Loom_TSL2591", style="filled,bold,", fillcolor="#edf0f7", color="grey25", URL="dir_4d2df6ef0d0874d02b123d557b36bb97.html"];
+  }
+}
