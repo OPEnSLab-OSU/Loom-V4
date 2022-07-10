@@ -70,11 +70,24 @@ void Manager::package(){
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 JsonObject Manager::get_data_object(String moduleName){
+
+    // Check if the key already exists in the array
+    for(JsonVariant value : contentsArray){
+
+        // If the data already exists
+        if(value.as<JsonObject>()["module"].as<String>() == moduleName){
+            return value.as<JsonObject>()["data"];
+        }
+    }
+
+    // If it doesn't already exist create a new object
     JsonObject json = contentsArray.createNestedObject();
     json["module"] = moduleName;
     return json.createNestedObject("data");
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::power_up(){
@@ -164,11 +177,15 @@ void Manager::read_serial_num(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::pause(const uint32_t ms) const {
+
+    // If longer than 7.5 seconds we want to use the millis() command and delay for only a second per
     if (ms > 7500) {
 		unsigned long start = millis();
 		while( (millis() - start) < ms) {
 			delay(1000);
 		}
+
+    // If not just delay for the set length of time
 	} else {
 		delay(ms);
 	}

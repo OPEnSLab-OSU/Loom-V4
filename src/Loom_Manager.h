@@ -39,14 +39,19 @@ class Manager{
 
         /**
          * Add a random piece of data to the overall JSON package in the given module name with a name for the data
+         * @param moduleName Module name to store the data under
+         * @param dataName Key name of the data we are inserting
+         * @param data The data itself
          */ 
         template <typename T>
         void addData(String moduleName, String dataName, T data){
-            doc[moduleName][dataName] = data;
+            JsonObject json = get_data_object(moduleName);
+            json[dataName] = data;
         };
 
         /**
-         *  Start the Serial interface with some parameters, should we wait up to 20 seconds for the serial interface to open before continuing 
+         * Start the Serial interface with some parameters, should we wait up to 20 seconds for the serial interface to open before continuing 
+         * @param waitForSerial Whether or not we should wait 20 seconds for the user to open the serial monitor before continuing 
          */ 
         void beginSerial(bool waitForSerial = true);
 
@@ -117,11 +122,13 @@ class Manager{
 
         /**
          * Set the current state of the hypnos enable
+         * @param state New state of the hypnos board
          */ 
         void setEnableState(bool state) { hypnosEnabled = state; };
 
         /**
          * Get the JSON object to store the module data in
+         * @param moduleName Name of the module we are trying to store data for
          */ 
         JsonObject get_data_object(String moduleName);
 
@@ -139,7 +146,6 @@ class Manager{
         String serial_num;
 
         void read_serial_num();              // Read the serial number out of the feather's registers
-        
 
         /* Module Data */
         StaticJsonDocument<2000> doc;        // JSON document that will store all sensor information
