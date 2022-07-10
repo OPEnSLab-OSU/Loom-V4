@@ -11,7 +11,7 @@
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Sensors/I2C/Loom_ADS1115/Loom_ADS1115.h>
 #include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h>
-#include <SPI/Loom_MAX318XX/Loom_MAX31865.h>
+#include <Sensors/SPI/Loom_MAX318XX/Loom_MAX31865.h>
 
 Manager manager("Device", 1);
 

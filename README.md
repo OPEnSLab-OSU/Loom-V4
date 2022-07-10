@@ -20,6 +20,7 @@ The install process is fairly simple:
  - Smart Rock (Appears Stable)
  - Evaporometer (Untested)
  - Dendrometer_Hub (Untested)
+ - Lily Pad (Untested)
 
 ## Resources
  - [Doxygen](https://openslab-osu.github.io/Loom-V4/)
