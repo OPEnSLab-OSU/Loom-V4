@@ -9,11 +9,19 @@
 #include <Loom_Manager.h>
 
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
+#include <Sensors/I2C/Loom_ADS1115/Loom_ADS1115.h>
+#include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h>
+#include <SPI/Loom_MAX318XX/Loom_MAX31865.h>
 
 Manager manager("Device", 1);
 
 // Create a new Hypnos object setting the version to determine the SD Chip select pin, and starting without the SD card functionality
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2, TIME_ZONE::PST);
+Loom_ADS1115 ads(manager);
+Loom_SHT31 sht(manager);
+
+// Set chip select to pin 9
+Loom_MAX31865 max31(manager, 1, 9);
 
 // Called when the interrupt is triggered 
 void isrTrigger(){
@@ -48,7 +56,7 @@ void loop() {
   hypnos.logToSD();
 
   // Set the RTC interrupt alarm to wake the device in 10 seconds
-  hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 10));
+  hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 5));
 
   // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
   hypnos.reattachRTCInterrupt();
