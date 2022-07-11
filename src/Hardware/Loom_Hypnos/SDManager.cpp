@@ -36,26 +36,34 @@ void SDManager::createHeaders(){
 
     // Append the serial number to the top of the CSV file
     headers[0] = manInst->get_serial_num() + "\n";
+    JsonObject document = manInst->getDocument().as<JsonObject>();
 
     // Constants not pulled from the JSON
     headers[0] += "ID,,";
     headers[1] += "name,instance,";
+    
+    // If there is a key that contains timestamp data when need to include that separately 
+    if(document.containsKey("timestamp")){
+        headers[0] += "timestamp,,";
+        headers[1] += "time_utc,time_local,";
+    }
+    
+    // Get the contents containing the reset of the sensor data
+    JsonArray contentsArray = document["contents"].as<JsonArray>();
 
-    // Get all JSON keys  
-    for(JsonPair keyValue : manInst->getDocument().as<JsonObject>()){
-        
-        headers[0] += String(keyValue.key().c_str());
+    // Loop over each 
+    for(JsonVariant v : contentsArray) {
+        // Get the module name
+        headers[0] += v.as<JsonObject>()["module"].as<String>();
 
-        // Sub sections
-        for(JsonPair value : manInst->getDocument()[keyValue.key().c_str()].as<JsonObject>()){
-            headers[1] += String(value.key().c_str()) + ",";
-
-            //data += ((manInst->getDocument().as<JsonObject>()[keyValue.key().c_str()][String(value.key().c_str())]).as<String>()) + ",";
-
+        // Get all JSON keys  
+        for(JsonPair keyValue : v.as<JsonObject>()["data"].as<JsonObject>()){
+            headers[1] += String(keyValue.key().c_str()) + ",";
             headers[0] += ",";
         }
-
     }
+
+    
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -83,13 +91,32 @@ bool SDManager::log(DateTime currentTime){
 
             // Write the Instance data that isn't included in the JSON packet
             myFile.print(device_name + "," + String(manInst->get_instance_num()) + ",");
+            JsonObject document = manInst->getDocument().as<JsonObject>();
+
+            // If there is a key that contains timestamp data when need to include that separately 
+            if(document.containsKey("timestamp")){
+                data += document["timestamp"]["time_utc"].as<String>() + ",";
+                data += document["timestamp"]["time_local"].as<String>() + ",";
+            }
+
+            // Get the contents containing the reset of the sensor data
+            JsonArray contentsArray = document["contents"].as<JsonArray>();
+
+            // Loop over each 
+            for(JsonVariant v : contentsArray) {
+
+                // Get all JSON keys  
+                for(JsonPair keyValue : v.as<JsonObject>()["data"].as<JsonObject>()){
+                    data += String(keyValue.value().as<String>()) + ",";
+                }
+            }
 
             // Create the string of Sensor data from the JSON document to be written to the file
-            for(JsonPair keyValue : manInst->getDocument().as<JsonObject>()){
+            /*for(JsonPair keyValue : manInst->getDocument().as<JsonObject>()){
                 for(JsonPair value : manInst->getDocument()[keyValue.key().c_str()].as<JsonObject>()){
                     data += ((manInst->getDocument().as<JsonObject>()[keyValue.key().c_str()][String(value.key().c_str())]).as<String>()) + ",";
                 }
-            }
+            }*/
 
             // Write the matching data into the CSV file
             myFile.println(data);

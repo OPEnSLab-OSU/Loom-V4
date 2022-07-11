@@ -154,9 +154,10 @@ void Loom_Hypnos::initializeRTC(){
         printModuleName(); Serial.println("Couldn't start RTC! Check your connections... Execution will now hang as this is likely a fatal error");
         while(1);
     }
-
-    // If the RTC was not initialized already we need to set the time
-    if(!RTC_DS.initialized()){
+    
+    // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't happen with coin cell batt backup
+	if (RTC_DS.lostPower()) {
+		printModuleName(); Serial.println("RTC lost power, lets set the time!");
 
         // If we want to set a custom time
         if(custom_time){
@@ -166,14 +167,6 @@ void Loom_Hypnos::initializeRTC(){
             // Set the RTC to the date & time this sketch was compiled
             RTC_DS.adjust(DateTime(F(__DATE__), F(__TIME__)));
         }
-    }
-
-    // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't happen with coin cell batt backup
-	if (RTC_DS.lostPower()) {
-		printModuleName(); Serial.println("RTC lost power, lets set the time!");
-
-        // Set the RTC to the date & time this sketch was compiled
-        RTC_DS.adjust(DateTime(F(__DATE__), F(__TIME__)));
 	}
 
 	// Clear any pending alarms

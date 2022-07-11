@@ -94,11 +94,11 @@ IPAddress Loom_Ethernet::getGateway(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 IPAddress Loom_Ethernet::getBroadcast(){
-    IPAddress boradcast = Ethernet.gatewayIP();
+    IPAddress broadcast = Ethernet.gatewayIP();
 
     // Set the last one to 255 for the netmask
-    boradcast[3] = 255;
+    broadcast[3] = 255;
 
-    return boradcast;
+    return broadcast;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
