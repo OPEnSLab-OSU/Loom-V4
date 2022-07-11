@@ -54,7 +54,7 @@ class Loom_LTE : public Module{
         /**
          * Load the config to connect to the LTE network from a JSON string
          */ 
-        void loadConfigFromJson(JsonObject json);
+        void loadConfigFromJSON(String json);
 
         /**
          * Connect to the cellular network

@@ -48,7 +48,7 @@ class Loom_Ethernet : public Module{
          * Load the Ethernet connection information from JSON
          * @param jsonString JSON formatted string containing the mac address and IP
          */
-        void loadConfigFromJSON(JsonObject json);
+        void loadConfigFromJSON(String json);
 
         /**
          * Attempt to connect to the configured network 

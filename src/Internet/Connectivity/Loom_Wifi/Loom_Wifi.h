@@ -47,7 +47,7 @@ class Loom_WIFI : public Module{
          * Load the Wifi credentials from a JSON string, used to pull credentials from a file
          * @param jsonString JSON formatted string containing the SSID and password 
          */
-        void loadConfigFromJSON(JsonObject json);
+        void loadConfigFromJSON(String json);
 
         /**
          * Returns a reference to the WifiClient

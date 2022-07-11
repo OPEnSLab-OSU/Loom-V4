@@ -162,12 +162,6 @@ class Loom_Hypnos : public Module{
          */ 
         String readFile(String fileName) { return sdMan->readFile(fileName); };
 
-        /**
-         * Read in a file and then parse it as JSON
-         * @param fileName The json file to read
-         */ 
-        JsonObject readJson(String fileName);
-
 
     private:
 

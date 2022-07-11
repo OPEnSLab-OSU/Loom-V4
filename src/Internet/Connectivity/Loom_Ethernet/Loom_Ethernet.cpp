@@ -58,9 +58,18 @@ void Loom_Ethernet::connect(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Ethernet::loadConfigFromJSON(JsonObject json){
-    JsonArray macJson = json["mac"].as<JsonArray>();
-    JsonArray ipJson = json["ip"].as<JsonArray>();
+void Loom_Ethernet::loadConfigFromJSON(String json){
+    // Doc to store the JSON data from the SD card in
+    StaticJsonDocument<300> doc;
+    DeserializationError deserialError = deserializeJson(doc, json);
+
+    // Check if an error occurred and if so print it
+    if(deserialError != DeserializationError::Ok){
+        printModuleName(); Serial.println("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
+    }
+
+    JsonArray macJson = doc["mac"].as<JsonArray>();
+    JsonArray ipJson = doc["ip"].as<JsonArray>();
 
     // Loop over the loaded mac address
     for(int i = 0; i < 6; i++){

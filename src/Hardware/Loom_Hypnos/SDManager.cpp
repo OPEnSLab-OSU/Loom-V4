@@ -111,13 +111,6 @@ bool SDManager::log(DateTime currentTime){
                 }
             }
 
-            // Create the string of Sensor data from the JSON document to be written to the file
-            /*for(JsonPair keyValue : manInst->getDocument().as<JsonObject>()){
-                for(JsonPair value : manInst->getDocument()[keyValue.key().c_str()].as<JsonObject>()){
-                    data += ((manInst->getDocument().as<JsonObject>()[keyValue.key().c_str()][String(value.key().c_str())]).as<String>()) + ",";
-                }
-            }*/
-
             // Write the matching data into the CSV file
             myFile.println(data);
 

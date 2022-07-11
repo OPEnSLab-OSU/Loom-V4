@@ -135,14 +135,24 @@ bool Loom_LTE::verifyConnection(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LTE::loadConfigFromJson(JsonObject json){
-    APN = json["apn"].as<String>();
-    gprsUser = json["user"].as<String>();
-    gprsPass = json["pass"].as<String>();
+void Loom_LTE::loadConfigFromJSON(String json){
+    // Doc to store the JSON data from the SD card in
+    StaticJsonDocument<300> doc;
+    DeserializationError deserialError = deserializeJson(doc, json);
+
+    // Check if an error occurred and if so print it
+    if(deserialError != DeserializationError::Ok){
+        printModuleName(); Serial.println("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
+    }
+
+
+    APN = doc["apn"].as<String>();
+    gprsUser = doc["user"].as<String>();
+    gprsPass = doc["pass"].as<String>();
 
     // If we are supplying a different power pin then use that one
-    if(json.containsKey("pin"))
-        powerPin = json["pin"].as<int>();
+    if(doc.containsKey("pin"))
+        powerPin = doc["pin"].as<int>();
 
     moduleInitialized = true;
 }
