@@ -149,33 +149,37 @@ void Loom_Hypnos::wakeup(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::initializeRTC(){
     
-
     // If the RTC failed to start inform the user and hang
     if(!RTC_DS.begin()){
         printModuleName(); Serial.println("Couldn't start RTC! Check your connections... Execution will now hang as this is likely a fatal error");
         while(1);
     }
 
-    // Set the time to the last compile time
-    RTC_DS.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    // If the RTC was not initialized already we need to set the time
+    if(!RTC_DS.initialized()){
+
+        // If we want to set a custom time
+        if(custom_time){
+            set_custom_time();
+        }
+        else{
+            // Set the RTC to the date & time this sketch was compiled
+            RTC_DS.adjust(DateTime(F(__DATE__), F(__TIME__)));
+        }
+    }
 
     // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't happen with coin cell batt backup
 	if (RTC_DS.lostPower()) {
 		printModuleName(); Serial.println("RTC lost power, lets set the time!");
-		// Set the RTC to the date & time this sketch was compiled
-		RTC_DS.adjust(DateTime(F(__DATE__), F(__TIME__)));
+
+        // Set the RTC to the date & time this sketch was compiled
+        RTC_DS.adjust(DateTime(F(__DATE__), F(__TIME__)));
 	}
 
 	// Clear any pending alarms
 	RTC_DS.clearAlarm();
 
     RTC_DS.writeSqwPinMode(DS3231_OFF);
-
-    // If we want to set a custom time
-    if(custom_time){
-        set_custom_time();
-    }
-
 
     // We successfully started the RTC 
     printModuleName(); Serial.println("DS3231 Real-Time Clock Initialized Successfully!");
