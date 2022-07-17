@@ -18,8 +18,8 @@ Loom_ADS1115 ads(manager);
 /**
  * Custom calculation for flow rate (FloDar example)
  */ 
-float calcFlowRate(int16_t analog[4] , int16_t diff[2] ){
-    return ((analog[1] / (pow(2, 15))*30*3)/2);
+void calcFlowRate(Primative& prim, int16_t analog[4] , int16_t diff[2] ){
+    prim.setData<float>((analog[1] / (pow(2, 15))*30*3)/2);
 }
 
 void setup() {
