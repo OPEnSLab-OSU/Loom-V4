@@ -49,11 +49,13 @@ void setup() {
   // Enable the hypnos rails
   hypnos.enable();
 
-  // Load the wifi credentials from a json file stored on the SD card, MUST BE BEFORE INITIALIZE SO THE DATA IS USED BY THE WIFI MANAGER
-  wifi.loadCredentialsFromString(hypnos.readJSON("wifi_creds.json"));
+  // Load the WiFi login credentials from a file on the SD card
+  wifi.loadConfigFromJSON(hypnos.readFile("wifi_creds.json"));
 
   // Initialize all in-use modules
   manager.initialize();
+
+ 
 
   // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);

@@ -54,6 +54,31 @@ void Loom_ADS1115::package(){
             json["Differential 0"] = diffData[0];
             json["Differential 1"] = diffData[1];
         }
+
+        // If we have custom calculations we want to run
+        if(customCalculations.size() > 0){
+
+            // For each pair in the map we want to set the key name to the supplied name and then run the user supplied function
+            for(const auto &mapPair : customCalculations){
+                Primative prim;
+
+                //Call the supplied function
+                (*mapPair.second)(prim, analogData, diffData);
+
+                json[mapPair.first] = prim.getData();
+               
+            }
+        }
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_ADS1115::addCustomCalculation(calcFunction func, String keyName){
+    // Add our function to the list
+    std::pair<String, calcFunction> tempPair = std::make_pair(keyName, func);
+    customCalculations.insert(tempPair);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
