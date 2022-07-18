@@ -27,6 +27,17 @@ class Loom_SHT31 : public Module{
                       int address = 0x44 
                 );
 
+
+        /**
+         * Get the humidity reading
+         */ 
+        float getHumidity() { return sensorData[1]; };
+
+        /**
+         * Get the temperature reading
+         */ 
+        float getTemperature() { return sensorData[0]; };
+
     private:
         Manager* manInst;                           // Instance of the manager
         Adafruit_SHT31 sht;                         // Adafruit TSL2591 Sensor Object

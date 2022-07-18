@@ -24,6 +24,11 @@ class Loom_ADS1232 : public Module{
          */ 
         void calibrate();
 
+        /**
+         * Get the recorded weight
+         */ 
+        float getWeight() { return weight; };
+
     private:
         Manager* manInst;       // Instance of the Manager
 

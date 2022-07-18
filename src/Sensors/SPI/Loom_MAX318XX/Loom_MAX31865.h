@@ -31,6 +31,11 @@ class Loom_MAX31865 : public Module{
          */ 
         Loom_MAX31865(Manager& man,  int samples = 1, int chip_select = 10);
 
+        /**
+         * Get the recorded temperature
+         */ 
+        float getTemperature() { return temperature; };
+
     private:
         Manager* manInst;           // Instance of the manager
 

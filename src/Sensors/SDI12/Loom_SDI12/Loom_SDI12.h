@@ -41,14 +41,18 @@ class Loom_SDI12 : public Module{
         String sendCommand(char addr, String command);          // Sends the given command to the given sensor on the bus and returns the result
         String requestSensorInfo(char addr);                    // Request Information about the connected SDI12 sensor
         std::vector<float> getData(char addr);                  // Get the data from the connected sensor
-        std::vector<char> scanAddressSpace();                   // Scans over the SDI-12 address space and returns a list of in-use adresses
+        std::vector<char> scanAddressSpace();                   // Scans over the SDI-12 address space and returns a list of in-use addresses
+
+        float getTemperature() { return sensorData[1]; };       // Temperature of the soil
+        float getConductivity() { return sensorData[2]; };      // Conductivity of the soil
+        float getDielectricPerm() { return sensorData[0]; };    // Dielectric Permittivity of the soil
 
     private:
         Manager* manInst;                                       // Instance of the Manager
 
         SDI12 sdiInterface;                                     // SDI-12 Library Interface
 
-        int sensorTracker = 0;                                  // If we have multiple SDI-12 sensors on one bus we need to distinquish them in the json so increment a counter per
+        int sensorTracker = 0;                                  // If we have multiple SDI-12 sensors on one bus we need to distinguish them in the json so increment a counter per
 
         std::vector<float> sensorData;                          // List of floats to store each value pulled from the sensors
         std::vector<char> inUseAddresses;                       // List of address that have SDI_12 sensors connected

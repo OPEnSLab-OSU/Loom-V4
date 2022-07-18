@@ -61,7 +61,7 @@ class Loom_Analog : public Module{
 
         void measure() override;                               
         void package() override;
-        
+
     private:
 
         /* 

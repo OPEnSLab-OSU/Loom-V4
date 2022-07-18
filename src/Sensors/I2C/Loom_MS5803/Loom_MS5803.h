@@ -28,6 +28,16 @@ class Loom_MS5803 : public Module{
 
         Loom_MS5803(Manager& man, byte address = 0x76);
 
+         /**
+         * Get the temperature reading
+         */ 
+        float getTemperature() { return sensorData[0]; };
+
+        /**
+         * Get the pressure reading
+         */ 
+        float getPressure() { return sensorData[1]; };
+
     private:
 
         Manager* manInst;       // Instance of the manager
