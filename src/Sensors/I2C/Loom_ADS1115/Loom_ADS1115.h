@@ -15,8 +15,6 @@
  */  
 class Loom_ADS1115 : public Module{
 
-    // Function signature to handle custom calculations for individual projects
-    typedef void (*calcFunction)(Primative& prim, int16_t analog[], int16_t diff[]);
 
     protected:
         void print_measurements() override {};  
@@ -45,16 +43,6 @@ class Loom_ADS1115 : public Module{
             );
 
         /**
-         * Pass a function in as a lambda to return the calculation we want, should be done in set
-         * The format for the function to be used for The ADS1115 is as follows 
-         * void funcName(Primative& prim, int16_t analog[4] , int16_t diff[2])
-         * @param func Function used to produce the calculated result
-         * @param keyName Name to store the custom calculation under
-         * @return This is determined at compile time
-         */ 
-        void addCustomCalculation(calcFunction func, String keyName);
-
-        /**
          * Get the value in the analog table according to analog number not INDEX
          * @param pin Pin to get data from (1-4)
          */ 
@@ -77,8 +65,6 @@ class Loom_ADS1115 : public Module{
 
         int16_t analogData[4];                                      // Stores the analog ADS1115 data
         int16_t diffData[2];                                        // Stores the differential data from the sensor
-
-        std::map<String, calcFunction> customCalculations;    // Maps a key name to a custom calculation function to run
 
         bool initialized = true;
 
