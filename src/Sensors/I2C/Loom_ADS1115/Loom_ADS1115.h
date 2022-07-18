@@ -53,6 +53,18 @@ class Loom_ADS1115 : public Module{
          * @return This is determined at compile time
          */ 
         void addCustomCalculation(calcFunction func, String keyName);
+
+        /**
+         * Get the value in the analog table according to analog number not INDEX
+         * @param pin Pin to get data from (1-4)
+         */ 
+        int16_t getAnalog(int pin) { return analogData[pin-1]; };
+
+        /**
+         * Get the value in the diff table according to diff number not INDEX
+         * @param pin Pin to get data from (1-2)
+         */ 
+        int16_t getDiff(int pin) { return analogData[pin-1]; };
     
     private:
         Manager* manInst;                                           // Instance of the manager

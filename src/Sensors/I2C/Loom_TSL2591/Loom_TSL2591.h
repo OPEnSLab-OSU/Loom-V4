@@ -32,6 +32,23 @@ class Loom_TSL2591 : public Module{
                       tsl2591IntegrationTime_t integration_time = TSL2591_INTEGRATIONTIME_100MS
                 );
 
+        /**
+         * Get recorded visible light
+         */ 
+        uint16_t getVisible() {return lightLevels[0]; };
+
+        /**
+         * Get recorded infrared light
+         */ 
+        uint16_t getInfrared() { return lightLevels[1]; };
+
+        /**
+         * Get recorded full spectrum
+         */ 
+        uint16_t getFullSpectrum() {return lightLevels[2]; };
+
+
+
     private:
         Manager* manInst;                       // Instance of the manager
         Adafruit_TSL2591 tsl;                   // Adafruit TSL2591 Sensor Object
