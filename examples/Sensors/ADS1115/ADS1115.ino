@@ -31,7 +31,7 @@ void setup() {
   manager.initialize();
 
   // Add the custom calculation to log
-  ads.addCustomCalculation(calcFlowRate, "Flow Rate");
+  ads.addCustomCalculation(&calcFlowRate, "Flow Rate");
 
   // Measure the data from the sensors
   manager.measure();
