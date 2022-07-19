@@ -6,10 +6,6 @@
 #include "Module.h"
 #include "Loom_Manager.h"
 
-#include "../../../Utilities/Primative.h"
-
-
-
 /**
  * Functionality for the ADS1115
  */  
