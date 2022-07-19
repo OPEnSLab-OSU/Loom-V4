@@ -19,7 +19,6 @@
 #include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
 #include <Internet/Logging/Loom_MQTT/Loom_MQTT.h>
 
-
 Manager manager("Chime", 1);
 
 // Analog for reading battery voltage
@@ -55,7 +54,6 @@ void setup() {
   // Initialize all in-use modules
   manager.initialize();
 
- 
 
   // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);
