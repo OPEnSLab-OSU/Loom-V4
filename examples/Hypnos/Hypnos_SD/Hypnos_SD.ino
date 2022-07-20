@@ -17,9 +17,7 @@ Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2, TIME_ZONE::PST);
 
 void setup() {
 
-   // Start and wait for the user to open the Serial monitor
-  Serial.begin(115200);
-  while(!Serial);
+  manager.beginSerial();
   
   // Enable the hypnos rails
   hypnos.enable();

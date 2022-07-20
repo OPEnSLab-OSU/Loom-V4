@@ -22,12 +22,11 @@ void isrTrigger(){
 
 void setup() {
 
+  // Start the serial interface
+  manager.beginSerial();
+
   // Enable the hypnos rails
   hypnos.enable();
-  
-  // Start and wait for the user to open the Serial monitor
-  Serial.begin(115200);
-  while(!Serial);
   
   // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);
