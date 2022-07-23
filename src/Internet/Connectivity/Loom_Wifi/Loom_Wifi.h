@@ -8,6 +8,8 @@
 
 /**
  * WiFi 101 library integrated with the manager to allow for easy sleep
+ * 
+ * @author Will Richards
  */ 
 class Loom_WIFI : public Module{
     protected:

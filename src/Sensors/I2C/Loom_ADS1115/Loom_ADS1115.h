@@ -8,6 +8,8 @@
 
 /**
  * Functionality for the ADS1115
+ * 
+ * @author Will Richards
  */  
 class Loom_ADS1115 : public Module{
 

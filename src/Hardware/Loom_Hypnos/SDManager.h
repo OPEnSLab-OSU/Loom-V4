@@ -9,6 +9,8 @@
 
 /**
  * Class used to manage interaction with the SD card read/writer on the Hypnos board
+ * 
+ * @author Will Richards
  */ 
 class SDManager : public Module{
     protected:

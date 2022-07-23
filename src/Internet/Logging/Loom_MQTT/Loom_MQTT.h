@@ -7,6 +7,8 @@
 
 /**
  * Platform for logging data to MQTT for logging to a remote database
+ * 
+ * @author Will Richards
  */ 
 class Loom_MQTT : public Module{
     protected:

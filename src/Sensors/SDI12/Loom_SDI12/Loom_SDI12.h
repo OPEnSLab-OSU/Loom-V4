@@ -13,6 +13,8 @@
 
 /**
  * Provides both a loomified in addition to a standard reliable library implementation
+ * 
+ * @author Will Richards
  */ 
 class Loom_SDI12 : public Module{
     protected:

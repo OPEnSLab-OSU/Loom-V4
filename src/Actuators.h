@@ -10,6 +10,8 @@ enum ACTUATOR_TYPE{
 
 /**
  * All actuators eg. Servos, Steppers, etc. use this to allow for max control
+ * 
+ * @author Will Richards
  */ 
 class Actuator{
     public:

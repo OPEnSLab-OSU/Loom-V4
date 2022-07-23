@@ -53,6 +53,8 @@ enum TIME_ZONE{
 
 /**
  * All in one driver for the Hypnos board. This allows users to use the Hypnos board in a more modularized manner not requiring all the Loom stuff.
+ * 
+ * @author Will Richards
  */ 
 class Loom_Hypnos : public Module{
     protected:

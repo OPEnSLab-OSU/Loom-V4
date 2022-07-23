@@ -6,6 +6,11 @@
 #include <ADS1232_Lib.h>
 
 
+/**
+ * ADS1232 Weight Sensor
+ * 
+ * @author Will Richards
+ */ 
 class Loom_ADS1232 : public Module{
     protected:
         void print_measurements() override {};  

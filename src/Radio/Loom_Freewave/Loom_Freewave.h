@@ -10,6 +10,8 @@
 
 /**
  * Used to communicate with LoRa type radios
+ * 
+ * @author Will Richards
  */ 
 class Loom_Freewave : public Radio{
     protected:

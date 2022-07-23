@@ -6,6 +6,11 @@
 #define SERVO_MIN 150   // Minimum pulse width
 #define SERVO_MAX 600   // Maximum pulse width
 
+/**
+ * Servo control with Max
+ * 
+ * @author Will Richards
+ */ 
 class Loom_Servo : public Actuator{
     public:
         Loom_Servo(int instance_num);

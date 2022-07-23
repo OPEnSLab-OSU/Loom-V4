@@ -11,6 +11,11 @@
 // Specify what serial interface we want to use
 #define SerialAT Serial1
 
+/**
+ * Loomified Control for a 4G LTE Board
+ * 
+ * @author Will Richards
+ */ 
 class Loom_LTE : public Module{
     protected:
         /* These aren't used with the Wifi manager */

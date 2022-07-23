@@ -8,6 +8,8 @@
 
 /**
  * Class for managing the MAX31865 NOT TO BE CONFUSED WITH THE MAX31865
+ * 
+ * @author Will Richards
  */ 
 class Loom_MAX31856 : public Module{
     protected:

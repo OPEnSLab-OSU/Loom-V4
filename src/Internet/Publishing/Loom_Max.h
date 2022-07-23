@@ -14,6 +14,8 @@
 
 /**
  * Class used to handle communication with Max MSP to control devices remotely
+ * 
+ * @author Will Richards
  */ 
 class Loom_Max : public Module{
     protected:

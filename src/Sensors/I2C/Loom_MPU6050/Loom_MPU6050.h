@@ -6,6 +6,11 @@
 #include <Wire.h>
 #include <MPU6050_tockn.h>
 
+/**
+ *  MPU6050 Accelerometer / IMU
+ * 
+ *  @author Will Richards
+ */ 
 class Loom_MPU6050 : public Module{
     protected:
         void print_measurements() override {};  

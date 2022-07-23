@@ -4,6 +4,11 @@
 #include "../Module.h"
 #include <ArduinoJson.h>
 
+/**
+ * Slightly abstracted Radio class to allow for all radio modules to inherit from one spot
+ * 
+ * @author Will Richards
+ */ 
 class Radio : public Module{
     protected:
         uint8_t deviceAddress;                  // Device address

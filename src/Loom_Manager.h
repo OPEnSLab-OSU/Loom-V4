@@ -11,8 +11,9 @@
 /**
  * Unifies all the various sensors to allow for collection in unison
  * This class manages the JSON document store of all sensor information 
+ * 
+ * @author Will Richards
  */
-
 class Manager{
     public:
 

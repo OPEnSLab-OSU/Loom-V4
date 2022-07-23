@@ -5,6 +5,11 @@
 #include "Module.h"
 #include "Loom_Manager.h"
 
+/**
+ *  SHT31 Temperature and Humidity Sensor
+ * 
+ *  @author Will Richards
+ */ 
 class Loom_SHT31 : public Module{
     protected:
        

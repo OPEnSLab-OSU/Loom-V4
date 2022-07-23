@@ -6,6 +6,11 @@
 #include "Module.h"
 #include "Loom_Manager.h"
 
+/**
+ * TSL2591 Light Sensor
+ * 
+ * @author Will Richards
+ */ 
 class Loom_TSL2591 : public Module{
     protected:
        

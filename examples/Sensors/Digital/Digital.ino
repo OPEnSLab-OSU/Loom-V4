@@ -1,5 +1,5 @@
 /**
- * Analog pin reading and packaging example using the Manger
+ * Digital pin reading and packaging example using the Manager
  * Pass in a variable number of arguments to the construct to read which pins you want
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
@@ -8,19 +8,12 @@
 
 #include <Loom_Manager.h>
 
-#include <Sensors/Loom_Analog/Loom_Analog.h>
-
+#include <Sensors/Loom_Digital/Loom_Digital.h>
 
 Manager manager("Device", 1);
 
 // Reads the battery voltage
-Loom_Analog analog(manager);
-
-// Read the battery voltage and A2
-//Loom_Analog analog(manager, A2);
-
-// Read the battery voltage, A2 and A4
-//Loom_Analog analog(manager, A2, A4);
+Loom_Digital digital(manager, 12, 11);
 
 void setup() {
 

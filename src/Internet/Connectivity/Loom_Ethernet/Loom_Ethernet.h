@@ -8,7 +8,9 @@
 #include "Loom_Manager.h"
 
 /**
- * WiFi 101 library integrated with the manager to allow for easy sleep
+ * Ethernet driver for loom devices
+ * 
+ * @author Will Richards
  */ 
 class Loom_Ethernet : public Module{
     protected:

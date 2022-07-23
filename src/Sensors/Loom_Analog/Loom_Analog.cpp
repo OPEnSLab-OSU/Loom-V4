@@ -9,7 +9,7 @@ void Loom_Analog::measure(){
 
     // Read the data from the given analog pin
     for(int i = 0; i < analogPins.size(); i++){
-        pinToData.insert(std::pair<String, float>(pin_number_to_name(analogPins[i]), digitalRead(analogPins[i])));
+        pinToData.insert(std::pair<String, float>(pin_number_to_name(analogPins[i]), analogRead(analogPins[i])));
     }
 
     // Pull the battery voltage and add it to the top of 

@@ -8,6 +8,11 @@
 #define SERVO_MIN 150   // Minimum pulse width
 #define SERVO_MAX 600   // Maximum pulse width
 
+/**
+ * Stepper Motor Control for Max
+ * 
+ * @author Will Richards
+ */ 
 class Loom_Stepper : public Actuator{
     public:
         Loom_Stepper(int instance_num);

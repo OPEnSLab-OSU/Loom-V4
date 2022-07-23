@@ -15,6 +15,8 @@
 
 /**
  * Used to communicate with LoRa type radios
+ * 
+ * @author Will Richards
  */ 
 class Loom_LoRa : public Radio{
     protected:
