@@ -177,17 +177,7 @@ void Manager::read_serial_num(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::pause(const uint32_t ms) const {
-
-    // If longer than 7.5 seconds we want to use the millis() command and delay for only a second per
-    if (ms > 7500) {
-		unsigned long start = millis();
-		while( (millis() - start) < ms) {
-			delay(1000);
-		}
-
-    // If not just delay for the set length of time
-	} else {
-		delay(ms);
-	}
+    int waitTime = millis() + ms;
+    while (millis() < waitTime);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

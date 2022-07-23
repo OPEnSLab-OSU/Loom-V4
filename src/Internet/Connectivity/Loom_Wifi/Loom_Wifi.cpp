@@ -144,7 +144,7 @@ void Loom_WIFI::loadConfigFromJSON(String json){
 
     // Check if an error occurred and if so print it
     if(deserialError != DeserializationError::Ok){
-        printModuleName(); Serial.println("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
+        printModuleName(); Serial.println("There was an error reading the WIFI credentials from SD: " + String(deserialError.c_str()));
     }
     
     wifi_name = doc["SSID"].as<String>();

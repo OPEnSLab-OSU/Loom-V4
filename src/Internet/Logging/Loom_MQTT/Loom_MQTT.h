@@ -31,7 +31,7 @@ class Loom_MQTT : public Module{
          * 
          * Not Required:
          * @param broker_user User name to log into the broker
-         * @param broker_pass Password to log into the borker
+         * @param broker_pass Password to log into the broker
          */ 
         Loom_MQTT(
                 Manager& man,
@@ -42,6 +42,12 @@ class Loom_MQTT : public Module{
                 String broker_user = "", 
                 String broker_pass = ""
             );
+
+        /**
+         * Construct a new MQTT interface, expects credentials to be loaded from JSON
+         * @param man Reference to the manager
+         */ 
+        Loom_MQTT(Manager& man, Client& internet_client);
         
         /**
          * Publish the current JSON data over MQTT 
@@ -53,6 +59,12 @@ class Loom_MQTT : public Module{
          * @param time Length of time in MINUTES the connection will be kept open
          */ 
         void setKeepAlive(int time) { keep_alive = time; };
+
+        /**
+         * Load the MQTT credentials from a JSON string, used to pull credentials from a file
+         * @param jsonString JSON formatted string containing the login credentials
+         */
+        void loadConfigFromJSON(String json);
     
     private:
         Manager* manInst;           // Instance of the manager
@@ -63,6 +75,7 @@ class Loom_MQTT : public Module{
         int keep_alive = 60000;     // How long the broker should keep the connection open, defaults to a minute
 
         String address;             // Domain that the broker is running on
+        String database_name;       // Database to publish the data to
         int port;                   // Port the broker is listening on
         String topic;
         String username;            // Username to log into the broker

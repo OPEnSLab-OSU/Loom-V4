@@ -160,7 +160,7 @@ void Loom_Hypnos::initializeRTC(){
 		printModuleName(); Serial.println("RTC lost power, lets set the time!");
 
         // If we want to set a custom time
-        if(custom_time){
+        if(Serial && custom_time){
             set_custom_time();
         }
         else{
