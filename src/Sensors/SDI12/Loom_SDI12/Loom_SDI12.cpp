@@ -30,11 +30,7 @@ void Loom_SDI12::initialize(){
     // Request the sensor data from all connected devices to pull the sensor name
     for(int i = 0; i < inUseAddresses.size(); i++){
         String sensorInfo = requestSensorInfo(inUseAddresses[i]);
-        int firstSpace = sensorInfo.indexOf(" ")+1;
-
-        // Pull the sensor name and add it to the map
-        String sensorName = sensorInfo.substring(firstSpace, sensorInfo.indexOf(" ", firstSpace)) + inUseAddresses[i];
-        addressToType.insert(std::pair<char, String>(inUseAddresses[i], sensorName));
+        addressToType.insert(std::pair<char, String>(inUseAddresses[i], sensorInfo));
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -56,8 +52,8 @@ void Loom_SDI12::print_measurements(){
    
     printModuleName();
 	Serial.println("Measurements:");
-	Serial.println("\tTemperature: " + String(sensorData[1]));
-	Serial.println("\tDielectric Permeability: " + String(sensorData[0]));
+	Serial.println("\tTemperature: " + String(sensorData[0]));
+	Serial.println("\tDielectric Permeability: " + String(sensorData[1]));
 	Serial.println("\tConductivity: " + String(sensorData[2]));
    
 }
@@ -66,10 +62,20 @@ void Loom_SDI12::print_measurements(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::package(){
     for(int i = 0; i < inUseAddresses.size(); i++){
-        JsonObject json = manInst->get_data_object(getSensorName(inUseAddresses[i]));
-        json["Dielectric Permittivity"] = sensorData[0];
-        json["Temperature"] = sensorData[1];
-        json["Conductivity"] = sensorData[2];
+        
+        if(getSensorInfo(inUseAddresses[i]).indexOf("GS3") != -1){
+            JsonObject json = manInst->get_data_object("GS3_" + String(i));
+            json["Temperature"] = sensorData[0];
+            json["Dielectric Permittivity"] = sensorData[1];
+            json["Conductivity"] = sensorData[2];
+        }
+        else{
+            JsonObject json = manInst->get_data_object("Terros_" + String(i));
+            json["Temperature"] = sensorData[0];
+            json["Volumetric Water Content"] = sensorData[1];
+            if(getSensorInfo(inUseAddresses[i]).indexOf("TER12") != -1)
+                json["Conductivity"] = sensorData[2];
+        }
     }
     
 }
@@ -152,7 +158,7 @@ std::vector<char> Loom_SDI12::getInUseAddresses(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-String Loom_SDI12::getSensorName(char addr){
+String Loom_SDI12::getSensorInfo(char addr){
     return addressToType[addr];
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -201,7 +207,7 @@ String Loom_SDI12::requestSensorInfo(char addr){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-std::vector<float> Loom_SDI12::getData(char addr){
+void Loom_SDI12::getData(char addr){
     char		buf[20];
 	char*		p;
 
@@ -219,24 +225,26 @@ std::vector<float> Loom_SDI12::getData(char addr){
     p = buf;
 
     // If the sensor is a copy the used values an
-    if(getSensorName(addr).startsWith("GS3")){
+    if(getSensorInfo(addr).indexOf("GS3") != -1){
         // Read out the results and parse out each of the data readings and pares them to floats
         strtok(p, "+");
-
-        // If we dont have data push it onto the stack if we do replace the current data  with the new info
-        if(sensorData.size() < 3){
-            // ORDER of DATA: dielectric_perm, temperature and conductivity
-            sensorData.push_back(atof(strtok(NULL, "+")));
-            sensorData.push_back(atof(strtok(NULL, "+")));
-            sensorData.push_back(atof(strtok(NULL, "+")));
-        }
-        else{
-            sensorData[0] = (atof(strtok(NULL, "+")));
-            sensorData[1] = (atof(strtok(NULL, "+")));
-            sensorData[2] = (atof(strtok(NULL, "+")));
-        }
+        
+        sensorData[1] = (atof(strtok(NULL, "+")));
+        sensorData[0] = (atof(strtok(NULL, "+")));
+        sensorData[2] = (atof(strtok(NULL, "+")));
     }
 
-    return sensorData;
+    // Teros
+    else if(getSensorInfo(addr).indexOf("TER") != -1){
+        // Read out the results and parse out each of the data readings and pares them to floats
+        strtok(p, "+");
+        
+        sensorData[1] = (atof(strtok(NULL, "+")));
+        sensorData[0] = (atof(strtok(NULL, "+")));
+
+        // If we are on the Teros 12
+        if(getSensorInfo(addr).indexOf("12") != -1)
+            sensorData[2] = (atof(strtok(NULL, "+")));
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

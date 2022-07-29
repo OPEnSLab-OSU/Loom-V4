@@ -220,3 +220,31 @@ String SDManager::readFile(String fileName){
     return "";
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+int SDManager::countPackets(String fileName){
+    if(sdInitialized){
+        int count = 0;
+        myFile = sd.open(fileName);
+        if(myFile){
+            // read from the file until there's nothing else in it:
+            while (myFile.available()) {
+                if((char)(myFile.read()) == '\n'){
+                    count++;
+                }
+                
+            }
+            // close the file:
+            myFile.close();
+            return count;
+        }
+        else{
+            printModuleName(); Serial.println("Failed to open file!");
+        }
+    }
+    else{
+        printModuleName(); Serial.println("Failed to read! SD card not Initialized!");
+    }
+    return -1;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -22,6 +22,13 @@ class SDManager : public Module{
         void power_up() override {};
         void power_down() override {};                        
     public:
+
+        /**
+         * SDManager Constructor
+         * 
+         * @param man Reference to the manager
+         * @param sd_chip_select Pin to control the SD card on
+         */ 
         SDManager(Manager* man, int sd_chip_select);
 
         /**
@@ -51,6 +58,13 @@ class SDManager : public Module{
          * @param fileName The name of the file to check
          */ 
         bool fileExists(String fileName) { return sd.exists(fileName.c_str()); };
+
+        /**
+         * Count the number of packets in the SD file
+         * 
+         * @param fileName File to count from
+         */
+        int countPackets(String fileName);
         
     private:
 

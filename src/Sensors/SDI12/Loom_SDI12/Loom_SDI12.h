@@ -37,17 +37,17 @@ class Loom_SDI12 : public Module{
         
         /* The following methods are intended for manual usage, outside of the Loom framework*/
 
-        String getSensorName(char addr);                        // Get the name of the connected sensor
+        String getSensorInfo(char addr);                        // Get the info of the connected sensor
         std::vector<char> getInUseAddresses();                  // Get a list of the in use addresses
 
         String sendCommand(char addr, String command);          // Sends the given command to the given sensor on the bus and returns the result
         String requestSensorInfo(char addr);                    // Request Information about the connected SDI12 sensor
-        std::vector<float> getData(char addr);                  // Get the data from the connected sensor
+        void getData(char addr);                                // Get the data from the connected sensor
         std::vector<char> scanAddressSpace();                   // Scans over the SDI-12 address space and returns a list of in-use addresses
 
-        float getTemperature() { return sensorData[1]; };       // Temperature of the soil
+        float getTemperature() { return sensorData[0]; };       // Temperature of the soil
+        float getDielectricPerm() { return sensorData[1]; };    // Dielectric Permittivity of the soil
         float getConductivity() { return sensorData[2]; };      // Conductivity of the soil
-        float getDielectricPerm() { return sensorData[0]; };    // Dielectric Permittivity of the soil
 
     private:
         Manager* manInst;                                       // Instance of the Manager
@@ -56,7 +56,7 @@ class Loom_SDI12 : public Module{
 
         int sensorTracker = 0;                                  // If we have multiple SDI-12 sensors on one bus we need to distinguish them in the json so increment a counter per
 
-        std::vector<float> sensorData;                          // List of floats to store each value pulled from the sensors
+        float sensorData[3];                                    // Array of floats to store sensor data
         std::vector<char> inUseAddresses;                       // List of address that have SDI_12 sensors connected
 
         std::map<char, String> addressToType;                   // Maps an SDI12 device address to a device type
