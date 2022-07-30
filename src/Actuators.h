@@ -5,7 +5,8 @@
 enum ACTUATOR_TYPE{
     SERVO,
     STEPPER,
-    RELAY
+    RELAY,
+    NEOPIXEL
 };
 
 /**
@@ -38,6 +39,8 @@ class Actuator{
                     return "Stepper";
                 case RELAY:
                     return "Relay";
+                case  NEOPIXEL:
+                    return "Neopixel";
             }
         };
 
