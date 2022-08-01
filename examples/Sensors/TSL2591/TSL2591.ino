@@ -18,9 +18,8 @@ Loom_TSL2591 tsl2591(manager);
 
 void setup() {
 
-   // Start and wait for the user to open the Serial monitor
-  Serial.begin(115200);
-  while(!Serial);
+  // Start the serial interface
+  manager.beginSerial();
   
   // Enable the hypnos rails
   hypnos.enable();
@@ -33,5 +32,5 @@ void loop() {
 
   manager.display_data();
 
-  delay(4000);
+  manager.package(4000);
 }
