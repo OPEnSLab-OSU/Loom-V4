@@ -31,6 +31,9 @@ class Loom_Analog : public Module{
            get_variadic_parameters(firstPin, additionalPins...);
            manInst = &man;
 
+           // Set 12-bit analog read resolution
+           analogReadResolution(12);
+
            // Register the module with the manager
            manInst->registerModule(this);
         };
@@ -45,6 +48,9 @@ class Loom_Analog : public Module{
            analogPins.push_back(firstPin);
            manInst = &man;
 
+           // Set 12-bit analog read resolution
+           analogReadResolution(12);
+
            // Register the module with the manager
            manInst->registerModule(this);
         };
@@ -55,6 +61,9 @@ class Loom_Analog : public Module{
          */ 
         Loom_Analog(Manager& man) : Module("Analog"){
            manInst = &man;
+
+           // Set 12-bit analog read resolution
+           analogReadResolution(12);
 
            // Register the module with the manager
            manInst->registerModule(this);
