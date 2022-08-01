@@ -31,6 +31,11 @@ class Loom_Digital : public Module{
            get_variadic_parameters(firstPin, additionalPins...);
            manInst = &man;
 
+           // Set pin mode on digital pins
+           for(int i = 0; i < digitalPins.size(); i++){
+                pinMode(digitalPins[i], INPUT_PULLUP);
+           }
+
            // Register the module with the manager
            manInst->registerModule(this);
         };
@@ -44,6 +49,10 @@ class Loom_Digital : public Module{
         Loom_Digital(Manager& man, T firstPin) : Module("Digital"){
            digitalPins.push_back(firstPin);
            manInst = &man;
+
+           for(int i = 0; i < digitalPins.size(); i++){
+                pinMode(digitalPins[i], INPUT_PULLUP);
+           }
 
            // Register the module with the manager
            manInst->registerModule(this);
