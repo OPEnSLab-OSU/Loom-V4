@@ -18,6 +18,7 @@ The install process is fairly simple:
 
 ## Project Examples
  - WeatherChimes (Fully Tested)
+ - FloDar (Appears Stable)
  - Smart Rock (Appears Stable)
  - Evaporometer (Untested)
  - Dendrometer_Hub (Untested)
