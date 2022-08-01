@@ -1,4 +1,4 @@
-#include "Loom_WiFi.h"
+#include "Loom_Wifi.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_WIFI::Loom_WIFI(Manager& man, String name, String password) : Module("WiFi"), manInst(&man), wifi_name(name), wifi_password(password) {
