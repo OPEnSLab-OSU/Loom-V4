@@ -1,5 +1,5 @@
 /**
- * This is an example use case for a Max controlled Servo
+ * This is an example use case for Neopixel control via Max
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
@@ -9,17 +9,16 @@
 
 #include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
 #include <Internet/Communication/Loom_Max.h>
-#include <Hardware/Actuators/Loom_Servo/Loom_Servo.h>
 
+#include <Hardware/Actuators/Loom_Neopixel/Loom_Neopixel.h>
 
 Manager manager("Device", 1);
 
 Loom_WIFI wifi(manager, SECRET_SSID, SECRET_PASS);
-Loom_Max maxMsp(manager, wifi, CommunicationMode::CLIENT, new Loom_Servo(0));
+Loom_Max maxMsp(manager, wifi, CommunicationMode::CLIENT, new Loom_Neopixel());
 
 
 void setup() {
-
   manager.beginSerial();
   manager.initialize();
 }
@@ -31,5 +30,5 @@ void loop() {
   // Send and Recieve data from Max
   maxMsp.publish();
   maxMsp.subscribe();
-  delay(1000);
+  delay(5000);
 }

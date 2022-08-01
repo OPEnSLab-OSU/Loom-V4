@@ -8,14 +8,14 @@
 #include <Loom_Manager.h>
 
 #include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
-#include <Internet/Publishing/Loom_Max.h>
+#include <Internet/Communication/Loom_Max.h>
 #include <Hardware/Actuators/Loom_Relay/Loom_Relay.h>
 
 
 Manager manager("Device", 1);
 
 Loom_WIFI wifi(manager, SECRET_SSID, SECRET_PASS);
-Loom_Max maxMsp(manager, wifi, new Loom_Relay());
+Loom_Max maxMsp(manager, wifi, CommunicationMode::CLIENT, new Loom_Relay());
 
 
 void setup() {

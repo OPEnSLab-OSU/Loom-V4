@@ -1,7 +1,7 @@
 #include "Loom_Max.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Max::Loom_Max(Manager& man, Loom_WIFI& wifi) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi) {
+Loom_Max::Loom_Max(Manager& man, Loom_WIFI& wifi, CommunicationMode mode) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi), mode(mode) {
     udpSend = UDPPtr(wifiInst->getUDP());
     udpRecv = UDPPtr(wifiInst->getUDP());
     manInst->registerModule(this);

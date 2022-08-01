@@ -13,6 +13,14 @@
 #define RECV_BASE_UDP_PORT 9000
 
 /**
+ * Communication mode for routing traffic between the feather and Max client
+ */ 
+enum CommunicationMode{
+    CLIENT,         // Connect to a remote router to handle traffic
+    AP              // Set the feather itself as an access point
+};
+
+/**
  * Class used to handle communication with Max MSP to control devices remotely
  * 
  * @author Will Richards
@@ -27,6 +35,8 @@ class Loom_Max : public Module{
         void package() override;
 
     public:
+       
+
         /// Close the socket and delete the UDP object when the unique ptr dissapears
         struct UDPDeletor {
             void operator() (UDP* p) {
@@ -56,17 +66,19 @@ class Loom_Max : public Module{
          * Construct a new instance of the the Max MSP Pub/Sub protocol
          * @param man Reference to the manager
          * @param wifi Reference to the Wifi manager for getting UDP communication streams
+         * @param mode How traffic is handled between the feather and the max client (CLIENT = Remote Router, AP = Access point on the feather)
          */ 
-        Loom_Max(Manager& man, Loom_WIFI& wifi);
+        Loom_Max(Manager& man, Loom_WIFI& wifi, CommunicationMode mode = CommunicationMode::CLIENT);
 
         /**
          * Construct a new instance of the the Max MSP Pub/Sub protocol
          * @param man Reference to the manager
          * @param wifi Reference to the Wifi manager for getting UDP communication streams
+         * @param mode How traffic is handled between the feather and the max client (CLIENT = Remote Router, AP = Access point on the feather)
          * @param firstAct The first actuator to add to the list
          */ 
         template<typename T>
-        Loom_Max(Manager& man, Loom_WIFI& wifi, T* firstAct) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi){
+        Loom_Max(Manager& man, Loom_WIFI& wifi, CommunicationMode mode, T* firstAct) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi), mode(mode){
 
             actuators.push_back(firstAct);
 
@@ -79,11 +91,12 @@ class Loom_Max : public Module{
          * Construct a new instance of the the Max MSP Pub/Sub protocol
          * @param man Reference to the manager
          * @param wifi Reference to the Wifi manager for getting UDP communication streams
+         * @param mode How traffic is handled between the feather and the max client (CLIENT = Remote Router, AP = Access point on the feather)
          * @param firstAct The first actuator to add to the list
          * @param additionalActuators This takes any number of actuators
          */ 
          template<typename T, typename... Args>
-        Loom_Max(Manager& man, Loom_WIFI& wifi, T* firstAct, Args*... additionalActuators) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi){
+        Loom_Max(Manager& man, Loom_WIFI& wifi, CommunicationMode mode, T* firstAct, Args*... additionalActuators) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi), mode(mode){
             get_variadic_parameters((Actuator*)firstAct, (Actuator*)additionalActuators...);
 
             udpSend = UDPPtr(wifiInst->getUDP());
@@ -94,23 +107,25 @@ class Loom_Max : public Module{
         ~Loom_Max();
 
     private:
-        Manager* manInst;       // Instance of the manager
-        Loom_WIFI* wifiInst;    // Instance of the WiFi Manager
+        Manager* manInst;                       // Instance of the manager
+        Loom_WIFI* wifiInst;                    // Instance of the WiFi Manager
 
-        UDPPtr udpSend;         // Instance of the UDP controller for sending
-        UDPPtr udpRecv;         // Instance of the UDP controller for recieving
+        CommunicationMode mode;                 // How we want to communicate with the Max client
 
-        uint16_t sendPort;       // Port to send the UDP packets to
-        uint16_t recvPort;       // Port to receive the packets on
+        UDPPtr udpSend;                         // Instance of the UDP controller for sending
+        UDPPtr udpRecv;                         // Instance of the UDP controller for recieving
 
-        IPAddress remoteIP;     // IP Address to send the packets to
+        uint16_t sendPort;                      // Port to send the UDP packets to
+        uint16_t recvPort;                      // Port to receive the packets on
 
-        void setUDPPort();      // Set the UDP port to the correct port number
-        void setIP();           // Set the remote IP to send the packets too
+        IPAddress remoteIP;                     // IP Address to send the packets to
 
-        StaticJsonDocument<1000> messageJson; // Response packet
+        void setUDPPort();                      // Set the UDP port to the correct port number
+        void setIP();                           // Set the remote IP to send the packets too
 
-        std::vector<Actuator*> actuators;      // List of actuators we want to control with max
+        StaticJsonDocument<1000> messageJson;   // Response packet
+
+        std::vector<Actuator*> actuators;       // List of actuators we want to control with max
         
 
         /* 
