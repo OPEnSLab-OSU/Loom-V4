@@ -14,7 +14,7 @@ class Module{
        
         void setModuleName(String moduleName) { this->moduleName = moduleName; };
 
-        virtual  String getModuleName() { return moduleName; }; // Return the name of the sensor
+        virtual String getModuleName() { return moduleName; }; // Return the name of the sensor
         virtual void printModuleName() { Serial.print("[" + String(getModuleName()) + "] "); };
 
         // Generic measure and package calls to unify some interaction with different sensor implementations
