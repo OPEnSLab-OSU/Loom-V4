@@ -112,8 +112,9 @@ class Loom_Hypnos : public Module{
         /**
          * Enables RTC based interrupts using the DS3231 on the Hypnos
          * @param isrFunc function to callback to when the interrupt is triggered
+         * @param interruptPin Defaults to RTC pin on Hypnos can be changed to reflect other interrupts
          */ 
-        bool registerInterrupt(InterruptCallbackFunction isrFunc = nullptr);
+        bool registerInterrupt(InterruptCallbackFunction isrFunc = nullptr, int interruptPin = 12);
 
         /**
          * Called when the user wants to wake the Hypnos back out of the sleep state
@@ -123,8 +124,9 @@ class Loom_Hypnos : public Module{
 
         /**
          * Called when the user wants to reattach the interrupt handler to the RTC interrupt to collect subsequent interrupts
+         * @param interruptPin Pin to reattach the interrupt to for RTC this doesn't need to be changed
          */ 
-        bool reattachRTCInterrupt();
+        bool reattachRTCInterrupt(int interruptPin = 12);
 
         /**
          * Set the next interrupt to be triggered at a set interval in the future
