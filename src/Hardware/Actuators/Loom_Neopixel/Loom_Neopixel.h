@@ -44,6 +44,7 @@ class Loom_Neopixel : public Actuator{
         
         /* Initialize the module per the manager */
         void initialize() override;
+        void package(JsonObject json) override;
 
         /* Allows for Max control of the neopixel */
         void control(JsonArray json) override;

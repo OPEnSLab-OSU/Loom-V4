@@ -17,6 +17,7 @@ class Loom_Servo : public Actuator{
 
         void control(JsonArray json) override;
         void initialize() override;
+        void package(JsonObject json) override;
 
         /**
          * Set the degrees of the servo manually
@@ -27,6 +28,8 @@ class Loom_Servo : public Actuator{
     private:
         Adafruit_PWMServoDriver servo; // Instance of the Servo driver
         int instance;                   // Instance number of the servo
+
+        int degrees;                    // The expected current degrees of the servo
 
         
 };

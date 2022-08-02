@@ -32,6 +32,14 @@ void Loom_Stepper::initialize(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Stepper::package(JsonObject json) {
+    json["Current Position"] = currentSteps;
+    json["RPM"] = rpm;
+    json["Direction"] = (clockwise ? "Clockwise" : "Counterclockwise");
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Stepper::control(JsonArray json){
     moveSteps(json[1].as<uint16_t>(), json[2].as<uint8_t>(), json[3].as<bool>());
 }
@@ -39,6 +47,16 @@ void Loom_Stepper::control(JsonArray json){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Stepper::moveSteps(const uint16_t steps, const uint8_t speed, const bool clockwise){
+
+    // Tracks the current state of the motor
+    if(clockwise)
+        currentSteps += steps;
+    else
+        currentSteps -= steps;
+    
+    rpm = speed;
+    this->clockwise = clockwise;
+
     motor->setSpeed((speed > 0) ? speed : 0);
     motor->step((steps > 1) ? steps : 0, (clockwise) ? FORWARD : BACKWARD, SINGLE);
 

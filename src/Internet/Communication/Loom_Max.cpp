@@ -67,6 +67,13 @@ bool Loom_Max::publish(){
         return false;
     }
 
+    // Package all actuators
+    if(actuators.size() > 0){
+        for(int i = 0; i < actuators.size(); i++){
+            actuators[i]->package(manInst->get_data_object(actuators[i]->getModuleName()));
+        }
+    }
+
     size_t size = serializeJson(manInst->getDocument(), (*udpSend));
 
     if(size <= 0){

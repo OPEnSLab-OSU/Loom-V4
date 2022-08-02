@@ -33,6 +33,7 @@ class Actuator : public Module{
 
         // Initializer
         virtual void initialize() = 0;
+        virtual void package(JsonObject json) = 0;
     
         /**
          * Called when a packet is received that needs to move the actuator
@@ -41,6 +42,8 @@ class Actuator : public Module{
         virtual void control(JsonArray json) = 0;
 
         void printModuleName() override { Serial.print("[" + (typeToString() + String(instance_num)) + "] "); };
+
+        String getModuleName() override { return (typeToString() + String(instance_num)); };
 
         /**
          * Convert the type of actuator to a String
