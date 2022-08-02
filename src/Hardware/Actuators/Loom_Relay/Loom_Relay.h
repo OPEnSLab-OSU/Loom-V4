@@ -14,6 +14,8 @@ class Loom_Relay : public Actuator{
         void control(JsonArray json) override;
         void initialize() override {};
 
+        void printModuleName() override { Serial.print("[" + (typeToString() + String(pin)) + "] "); };
+
     private:
         byte pin;
 };

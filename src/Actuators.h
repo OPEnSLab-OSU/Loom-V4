@@ -28,6 +28,8 @@ class Actuator{
         virtual void control(JsonArray json) = 0;
         virtual void initialize() = 0;
 
+        virtual void printModuleName() { Serial.print("[" + (typeToString() + String(instance_num)) + "] "); };
+
         /**
          * Convert the type of actuator to a String
          */ 
@@ -48,7 +50,6 @@ class Actuator{
          * Get the instance number of the actuator
          */ 
         int get_instance_num() { return instance_num; };
-        void printModuleName() { Serial.print("[" + (typeToString() + String(instance_num)) + "] "); };
 
     private:
         int instance_num;                   // Instance number of the Actuator
