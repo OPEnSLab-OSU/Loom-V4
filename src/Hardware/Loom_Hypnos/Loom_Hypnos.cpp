@@ -15,7 +15,7 @@ Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, b
         sdMan = new SDManager(manInst, sd_chip_select);
     }
 
-    // Add the Hypnos to the module register s
+    // Add the Hypnos to the module register
     manInst->registerModule(this);
     manInst->useHypnos();   // Enable the use of the hypnos
 }
@@ -90,29 +90,32 @@ void Loom_Hypnos::disable(){
 /* Interrupt Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc){
+bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin){
 
-    printModuleName(); Serial.println("Registering Real-Time Clock Interrupt...");
+    if(interruptPin == 12){
+        printModuleName(); Serial.println("Registering RTC interrupt...");
+    }
+    else{
+        printModuleName(); Serial.println("Registering interrupt on pin " + String(interruptPin) + "...");
+    }
 
-    // If the RTC hasn't already been initialized then do so now
-    if(!RTC_initialized)
+    // If the RTC hasn't already been initialized then do so now if we are trying to schedule an RTC interrupt
+    if(!RTC_initialized && interruptPin == 12)
         initializeRTC();
 
     // Make sure a callback function was supplied
     if(isrFunc != nullptr){
         
-        attachInterrupt(digitalPinToInterrupt(12), isrFunc, LOW);
-        attachInterrupt(digitalPinToInterrupt(12), isrFunc, LOW);
+        attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, LOW);
+        attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, LOW);
         printModuleName(); Serial.println("Interrupt successfully attached!");
         
-
-        // We have registered this interrupt previously
-        hasInterruptBeenRegistered = true;
-        callbackFunc = isrFunc;
+        // Add the interrupt to the list of pin to interrupts
+        pinToInterrupt.insert(std::make_pair(interruptPin, isrFunc));
         return true;
     } 
     else{
-        detachInterrupt(digitalPinToInterrupt(12));
+        detachInterrupt(digitalPinToInterrupt(interruptPin));
         printModuleName(); Serial.println("Failed to attach interrupt! Interrupt callback evaluated to a null pointer, it is possible you forgot to supply a callback function");
         return false;
     }
@@ -123,15 +126,15 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_Hypnos::reattachRTCInterrupt(){
+bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
     // If we haven't previously registered the interrupt we need to do this before we can reattach to an interrupt that doesn't exist
-    if(!hasInterruptBeenRegistered){
+    if(pinToInterrupt.count(interruptPin) <= 0){
         printModuleName(); Serial.println("Failed to reattach interrupt! Interrupt has not previously been registered...");
         return false;
     }
 
-    attachInterrupt(digitalPinToInterrupt(12), callbackFunc, LOW);
-    attachInterrupt(digitalPinToInterrupt(12), callbackFunc, LOW);
+    attachInterrupt(digitalPinToInterrupt(interruptPin), pinToInterrupt[interruptPin], LOW);
+    attachInterrupt(digitalPinToInterrupt(interruptPin), pinToInterrupt[interruptPin], LOW);
     printModuleName(); Serial.println("Interrupt successfully reattached!");
 
     return true;
@@ -141,8 +144,7 @@ bool Loom_Hypnos::reattachRTCInterrupt(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::wakeup(){
-    detachInterrupt(digitalPinToInterrupt(12));     // Detach the interrupt so it doesn't trigger again
-    //enable();                                       // Re-enable the Hypnos power rails       
+    detachInterrupt(digitalPinToInterrupt(12));     // Detach the interrupt so it doesn't trigger again    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

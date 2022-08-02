@@ -1,5 +1,5 @@
 /**
- * This is an example use case for Max controlled Relay
+ * This is an example use case for Max controlled Relay using pin 10 as the control pin
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
@@ -15,7 +15,7 @@
 Manager manager("Device", 1);
 
 Loom_WIFI wifi(manager, SECRET_SSID, SECRET_PASS);
-Loom_Max maxMsp(manager, wifi, CommunicationMode::CLIENT, new Loom_Relay());
+Loom_Max maxMsp(manager, wifi, CommunicationMode::CLIENT, new Loom_Relay(10));
 
 
 void setup() {
