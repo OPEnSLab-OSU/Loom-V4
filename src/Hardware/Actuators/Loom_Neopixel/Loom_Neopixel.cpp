@@ -11,7 +11,7 @@ Loom_Neopixel::Loom_Neopixel(Manager& man, const bool enableA0, const bool enabl
     this->enabledPins[1] = enableA1;
     this->enabledPins[2] = enableA2;
 
-	manInst->registerModule((Module*)this);
+	manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

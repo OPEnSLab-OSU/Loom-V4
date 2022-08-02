@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Actuators.h"
+#include "Loom_Manager.h"
 
 #include <Adafruit_MotorShield.h>
 #include <Adafruit_PWMServoDriver.h>
@@ -15,6 +16,12 @@
  */ 
 class Loom_Stepper : public Actuator{
     public:
+
+        /**
+         * Construct a new 
+         */ 
+        Loom_Stepper(Manager& man, int instance_num);
+
         Loom_Stepper(int instance_num);
 
         /**
@@ -31,9 +38,11 @@ class Loom_Stepper : public Actuator{
          * @param speed The speed to move steps
          * @param clockwise If we want to rotate clockwise or counter clockwise
          */ 
-        void moveSteps(const uint16_t steps, const uint8_t speed, const bool clockwise);
+        void moveSteps(const uint16_t steps, const uint8_t speed, const bool clockwise = true);
 
     private:
+        Manager* manInst = nullptr;     // Manager instance
+
         Adafruit_MotorShield*	AFMS;   // Motor Shield controller
         Adafruit_StepperMotor* motor;   // Stepper controller
 

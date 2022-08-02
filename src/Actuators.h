@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Module.h"
+
 #include <ArduinoJson.h>
 
 enum ACTUATOR_TYPE{
@@ -14,21 +16,31 @@ enum ACTUATOR_TYPE{
  * 
  * @author Will Richards
  */ 
-class Actuator{
+class Actuator : public Module{
+    protected:
+        /* Module methods that are inherited by actuator */
+        void measure() override {};
+        void print_measurements() override {};  
+        void power_up() override {};
+        void power_down() override {}; 
+        void package() override {};
+
     public:
-        Actuator(ACTUATOR_TYPE actType, int instance) { 
-            instance_num = instance; 
+        Actuator(ACTUATOR_TYPE actType, int instance) : Module("Actuator") { 
             type = actType;
+            instance_num = instance;
         };
+
+        // Initializer
+        virtual void initialize() = 0;
     
         /**
          * Called when a packet is received that needs to move the actuator
          * @param json The parameters that can change 
          */ 
         virtual void control(JsonArray json) = 0;
-        virtual void initialize() = 0;
 
-        virtual void printModuleName() { Serial.print("[" + (typeToString() + String(instance_num)) + "] "); };
+        void printModuleName() override { Serial.print("[" + (typeToString() + String(instance_num)) + "] "); };
 
         /**
          * Convert the type of actuator to a String
