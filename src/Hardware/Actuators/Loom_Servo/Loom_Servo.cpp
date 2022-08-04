@@ -16,6 +16,8 @@ void Loom_Servo::initialize(){
     /* Initialize the servo driver*/
     servo.begin();
     servo.setPWMFreq(60);
+
+    printModuleName(); Serial.println("Servo initialized!");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -28,6 +28,8 @@ void Loom_Stepper::initialize(){
 
     // Wait for move init to finish
     yield();
+
+    printModuleName(); Serial.println("Stepper Initialized!");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
