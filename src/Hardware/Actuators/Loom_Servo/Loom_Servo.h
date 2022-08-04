@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Actuators.h"
+#include "Loom_Manager.h"
+
 #include <Adafruit_PWMServoDriver.h> 
 
 #define SERVO_MIN 150   // Minimum pulse width
@@ -15,6 +17,8 @@ class Loom_Servo : public Actuator{
     public:
         Loom_Servo(int instance_num);
 
+        Loom_Servo(Manager& man, int instance_num);
+
         void control(JsonArray json) override;
         void initialize() override;
         void package(JsonObject json) override;
@@ -26,6 +30,8 @@ class Loom_Servo : public Actuator{
         void setDegrees(const int degrees);
 
     private:
+        Manager* manInst;               // Instance of the manager
+
         Adafruit_PWMServoDriver servo; // Instance of the Servo driver
         int instance;                   // Instance number of the servo
 
