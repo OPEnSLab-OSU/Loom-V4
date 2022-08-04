@@ -17,10 +17,11 @@ class Loom_WIFI : public Module{
         /* These aren't used with the Wifi manager */
         void measure() override {};                               
         void print_measurements() override {};
-        void package() override {};        
+             
 
         // Initialize the device and connect to the network
         void initialize() override;
+        void package() override;   
 
         // Reconnect to the network
         void power_up() override;
@@ -43,7 +44,7 @@ class Loom_WIFI : public Module{
          * @param man Reference to the manager 
          * @param jsonString JSON string to pull the credentials from
          */ 
-        Loom_WIFI(Manager& man);
+        Loom_WIFI(Manager& man, bool apMode = false);
 
         /**
          * Load the Wifi credentials from a JSON string, used to pull credentials from a file
@@ -66,6 +67,16 @@ class Loom_WIFI : public Module{
          * Attempt to ping Google, this tests if we are truly connected to the internet
          */ 
         bool verifyConnection();
+
+        /**
+         * Connect to an already existing access point
+         */ 
+        void connect_to_network();
+
+        /**
+         * Create our own access point
+         */ 
+        void start_ap();
 
         /**
          * Get the IP address of the WiFi module
@@ -96,11 +107,13 @@ class Loom_WIFI : public Module{
         Manager* manInst;                   // Pointer to the manager
 
         WiFiClient wifiClient;              // Wifi client that can be used with the MQTT client or other additional objects
+        WiFiServer wifiServer;              // Wifi server used to create an access point
 
         bool hasInitialized = false;        // Has the WiFi module run through the initialization process
 
         String wifi_name;                   // Access point to connect to
         String wifi_password;               // Password to connect to the access point
+        bool apMode = false;                // If we are supposed to start the device in AP mode
 
         IPAddress remoteIP;                 // IP address to send the UDP requests to 
 

@@ -33,7 +33,7 @@ void Loom_Stepper::initialize(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Stepper::package(JsonObject json) {
-    json["Current Position"] = currentSteps;
+    json["Position"] = currentSteps;
     json["RPM"] = rpm;
     json["Direction"] = (clockwise ? "Clockwise" : "Counterclockwise");
 }

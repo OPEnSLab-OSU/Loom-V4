@@ -1,13 +1,14 @@
 #include "Loom_Wifi.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_WIFI::Loom_WIFI(Manager& man, String name, String password) : Module("WiFi"), manInst(&man), wifi_name(name), wifi_password(password) {
+Loom_WIFI::Loom_WIFI(Manager& man, String name, String password) : Module("WiFi"), manInst(&man), wifi_name(name), wifi_password(password), wifiServer(80) {
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_WIFI::Loom_WIFI(Manager& man) : Module("WiFi"), manInst(&man) {
+Loom_WIFI::Loom_WIFI(Manager& man, bool apMode) : Module("WiFi"), manInst(&man), wifiServer(80) {
+    this->apMode = apMode;
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -36,10 +37,12 @@ void Loom_WIFI::initialize() {
 
         hasInitialized = true;
 
-
-        // Verify the wifi connection after we have connected
-        printModuleName(); Serial.println("Verifying Connection to the Internet...");
-        verifyConnection();
+        // Only try to verify if we have connected to a network
+        if(!apMode){
+            // Verify the wifi connection after we have connected
+            printModuleName(); Serial.println("Verifying Connection to the Internet...");
+            verifyConnection();
+        }
         
         printModuleName(); Serial.println("Successfully Initalized Wifi!");
         printModuleName(); Serial.println("Device IP Address: " + Loom_WIFI::IPtoString(getIPAddress()));
@@ -48,47 +51,77 @@ void Loom_WIFI::initialize() {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void Loom_WIFI::package(){
+    manInst->get_data_object(getModuleName());
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::power_up() {
     if(moduleInitialized){
-        int retry_count = 0;
-        printModuleName(); Serial.println("Attempting to connect to SSID: " + wifi_name);
-
-        // If we are logging into a network with a password
-        if(wifi_password.length() > 0){
-
-            // While we are trying to connect to the wifi network
-            while(WiFi.begin(wifi_name.c_str(), wifi_password.c_str()) != WL_CONNECTED){
-                printModuleName(); Serial.println("Attempting to connect to AP...");
-                delay(5000);
-                retry_count++;
-
-                // If after 10 attempts we still can't connect to the network we need to stop and break so we don't hang the device
-                if(retry_count >= 10){
-                    printModuleName(); Serial.println("Failed to connect to the access point after 10 tries! Is the network in range and are your credentials correct?");
-                    return;
-                }
-            }
-        }
-        else{
-            // While we are trying to connect to the wifi network
-            while(WiFi.begin(wifi_name.c_str()) != WL_CONNECTED){
-                printModuleName(); Serial.println("Attempting to connect to AP...");
-                delay(5000);
-                retry_count++;
-
-                // If after 10 attempts we still can't connect to the network we need to stop and break so we don't hang the device
-                if(retry_count >= 10){
-                    printModuleName(); Serial.println("Failed to connect to the access point after 10 tries! Is the network in range and are your credentials correct?");
-                    return;
-                }
-            }
-        }
-
-        printModuleName(); Serial.println("Connected to network!");
+        if(!apMode)
+            connect_to_network();
+        else
+            start_ap();
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_WIFI::connect_to_network(){
+    int retry_count = 0;
+    printModuleName(); Serial.println("Attempting to connect to SSID: " + wifi_name);
+
+    // If we are logging into a network with a password
+    if(wifi_password.length() > 0){
+
+        // While we are trying to connect to the wifi network
+        while(WiFi.begin(wifi_name.c_str(), wifi_password.c_str()) != WL_CONNECTED){
+            printModuleName(); Serial.println("Attempting to connect to AP...");
+            delay(5000);
+            retry_count++;
+
+            // If after 10 attempts we still can't connect to the network we need to stop and break so we don't hang the device
+            if(retry_count >= 10){
+                printModuleName(); Serial.println("Failed to connect to the access point after 10 tries! Is the network in range and are your credentials correct?");
+                return;
+            }
+        }
+    }
+    else{
+        // While we are trying to connect to the wifi network
+        while(WiFi.begin(wifi_name.c_str()) != WL_CONNECTED){
+            printModuleName(); Serial.println("Attempting to connect to AP...");
+            delay(5000);
+            retry_count++;
+
+            // If after 10 attempts we still can't connect to the network we need to stop and break so we don't hang the device
+            if(retry_count >= 10){
+                printModuleName(); Serial.println("Failed to connect to the access point after 10 tries! Is the network in range and are your credentials correct?");
+                return;
+            }
+        }
+    }
+
+    printModuleName(); Serial.println("Connected to network!");
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Loom_WIFI::start_ap(){
+    String apName = manInst->get_device_name() + String(manInst->get_instance_num());
+    printModuleName(); Serial.println("Starting access point on: " + apName);
+
+    auto status = WiFi.beginAP(apName.c_str());
+
+    // If the AP is not listening print an error
+    if(status != WL_AP_LISTENING){
+        printModuleName(); Serial.println("Access point creation failed!");
+        return;
+    }
+
+    // Wait 10 seconds for the AP to start up
+    delay(10000);
+    wifiServer.begin();
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::power_down(){

@@ -124,7 +124,7 @@ bool Loom_Max::subscribe(){
                         // If the current actuator is the one we want to control
                         if(actuators[i]->typeToString() == type){
 
-                            // If the type we are trying to control is a relay then don't check the instance number cause it doesn't have one
+                            // If the type we are trying to control doesn't have an instance number
                             if(type.startsWith("Relay") || type.startsWith("Neopixel")){
                                 actuators[i]->control(messageJson["commands"][j]["params"].as<JsonArray>());
                             }
