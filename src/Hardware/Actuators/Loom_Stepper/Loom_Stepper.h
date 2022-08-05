@@ -49,7 +49,7 @@ class Loom_Stepper : public Actuator{
 
         int instance;                   // Instance number of the servo
 
-        int currentSteps;               // Running step count
+        int currentSteps = 0;           // Running step count
         uint8_t rpm;                    // Current RPM of the motor
         bool clockwise;                 // If it is spinning clockwise
 

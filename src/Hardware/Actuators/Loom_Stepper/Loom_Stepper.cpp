@@ -49,13 +49,6 @@ void Loom_Stepper::control(JsonArray json){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Stepper::moveSteps(const uint16_t steps, const uint8_t speed, const bool clockwise){
-
-    // Tracks the current state of the motor
-    if(clockwise)
-        currentSteps += steps;
-    else
-        currentSteps -= steps;
-    
     rpm = speed;
     this->clockwise = clockwise;
 
@@ -64,6 +57,12 @@ void Loom_Stepper::moveSteps(const uint16_t steps, const uint8_t speed, const bo
 
     // Wait for move to finish
     yield();
+
+    // Tracks the current state of the motor
+    if(clockwise)
+        currentSteps += steps;
+    else
+        currentSteps -= steps;
 
     printModuleName(); 
     Serial.print("Stepper set to move " + String(steps));
