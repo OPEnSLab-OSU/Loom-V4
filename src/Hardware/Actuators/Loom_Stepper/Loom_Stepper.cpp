@@ -26,9 +26,6 @@ void Loom_Stepper::initialize(){
     // Start the motor controller
     AFMS->begin();
 
-    // Wait for move init to finish
-    yield();
-
     printModuleName(); Serial.println("Stepper Initialized!");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -59,12 +56,13 @@ void Loom_Stepper::moveSteps(const uint16_t steps, const uint8_t speed, const bo
     rpm = speed;
     this->clockwise = clockwise;
 
-    motor->setSpeed((speed > 0) ? speed : 0);
-    motor->step((steps > 1) ? steps : 0, (clockwise) ? FORWARD : BACKWARD, SINGLE);
+    motor->setSpeed(speed);
+    motor->step(steps, (clockwise) ? FORWARD : BACKWARD, SINGLE);
 
-    // Wait for move to finish
-    yield();
-
-    printModuleName(); Serial.println("Stepper set to move " + String(steps) + " steps at speed " + String(speed) + " going " +  (clockwise) ? "clockwise" : "counterclockwise");
+    printModuleName(); 
+    Serial.print("Stepper set to move " + String(steps));
+    Serial.print(" steps at speed " + String(speed));
+    Serial.print(" going ");
+    Serial.println((clockwise) ? "clockwise" : "counterclockwise"));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
