@@ -21,7 +21,7 @@ void Loom_Stepper::initialize(){
 
     // Get references to each motor
     AFMS = new Adafruit_MotorShield();
-    motor = AFMS->getStepper(200, instance);
+    motor = AFMS->getStepper(200, instance+1);
 
     // Start the motor controller
     AFMS->begin();

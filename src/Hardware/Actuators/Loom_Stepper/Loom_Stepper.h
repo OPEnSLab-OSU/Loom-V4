@@ -20,9 +20,9 @@ class Loom_Stepper : public Actuator{
         /**
          * Construct a new 
          */ 
-        Loom_Stepper(Manager& man, int instance_num);
+        Loom_Stepper(Manager& man, int instance_num = 0);
 
-        Loom_Stepper(int instance_num);
+        Loom_Stepper(int instance_num = 0);
 
         /**
          * Deconstructor to clean up motor controller pointers

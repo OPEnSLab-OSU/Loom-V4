@@ -30,5 +30,6 @@ void loop() {
   // Send and Recieve data from Max
   maxMsp.publish();
   maxMsp.subscribe();
-  delay(5000);
+  
+  manager.pause(5000);
 }
