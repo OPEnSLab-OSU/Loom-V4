@@ -69,6 +69,6 @@ void Loom_Stepper::moveSteps(const uint16_t steps, const uint8_t speed, const bo
     Serial.print("Stepper set to move " + String(steps));
     Serial.print(" steps at speed " + String(speed));
     Serial.print(" going ");
-    Serial.println((clockwise) ? "clockwise" : "counterclockwise"));
+    Serial.println((clockwise) ? "clockwise" : "counterclockwise");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
