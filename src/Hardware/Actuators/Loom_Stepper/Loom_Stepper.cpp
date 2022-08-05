@@ -37,7 +37,7 @@ void Loom_Stepper::initialize(){
 void Loom_Stepper::package(JsonObject json) {
     json["Position"] = currentSteps;
     json["RPM"] = rpm;
-    json["Direction"] = (clockwise ? "Clockwise" : "Counterclockwise");
+    json["Direction"] = (clockwise ? "Counterclockwise" : "Clockwise");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -52,22 +52,22 @@ void Loom_Stepper::moveSteps(const uint16_t steps, const uint8_t speed, const bo
     rpm = speed;
     this->clockwise = clockwise;
 
-    motor->setSpeed(speed);
-    motor->step(steps, (clockwise) ? FORWARD : BACKWARD, SINGLE);
+    motor->setSpeed(speed); 
+    motor->step(steps, (clockwise) ? BACKWARD : FORWARD, SINGLE);
 
     // Wait for move to finish
     yield();
 
     // Tracks the current state of the motor
     if(clockwise)
-        currentSteps += steps;
+        currentSteps =  currentSteps - steps;
     else
-        currentSteps -= steps;
+        currentSteps =  currentSteps + steps;
 
     printModuleName(); 
     Serial.print("Stepper set to move " + String(steps));
     Serial.print(" steps at speed " + String(speed));
     Serial.print(" going ");
-    Serial.println((clockwise) ? "clockwise" : "counterclockwise");
+    Serial.println((clockwise) ? "counterclockwise" : "clockwise");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
