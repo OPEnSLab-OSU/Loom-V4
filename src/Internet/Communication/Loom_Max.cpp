@@ -1,7 +1,7 @@
 #include "Loom_Max.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Max::Loom_Max(Manager& man, Loom_WIFI& wifi, CommunicationMode mode) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi), mode(mode) {
+Loom_Max::Loom_Max(Manager& man, Loom_WIFI& wifi) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi) {
     wifi.useMax();
     manInst->registerModule(this);
 };
@@ -35,8 +35,6 @@ void Loom_Max::initialize(){
     udpSend = UDPPtr(wifiInst->getUDP());
     udpRecv = UDPPtr(wifiInst->getUDP());
 
-    printModuleName(); Serial.println(wifiInst->isConnected());
-
     // Set the IP and port to communicate over
     setIP();
     setUDPPort();
@@ -58,7 +56,6 @@ void Loom_Max::initialize(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Max::publish(){
-    printModuleName(); Serial.println(wifiInst->isConnected());
     printModuleName(); Serial.println("Sending packet to " + Loom_WIFI::IPtoString(remoteIP) + ":" + String(sendPort));
 
     if(!udpSend){

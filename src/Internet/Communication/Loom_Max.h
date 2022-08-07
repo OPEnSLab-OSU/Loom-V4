@@ -60,7 +60,7 @@ class Loom_Max : public Module{
          * @param wifi Reference to the Wifi manager for getting UDP communication streams
          * @param mode How traffic is handled between the feather and the max client (CLIENT = Remote Router, AP = Access point on the feather)
          */ 
-        Loom_Max(Manager& man, Loom_WIFI& wifi, CommunicationMode mode = CommunicationMode::CLIENT);
+        Loom_Max(Manager& man, Loom_WIFI& wifi);
 
         /**
          * Construct a new instance of the the Max MSP Pub/Sub protocol
@@ -70,12 +70,9 @@ class Loom_Max : public Module{
          * @param firstAct The first actuator to add to the list
          */ 
         template<typename T>
-        Loom_Max(Manager& man, Loom_WIFI& wifi, CommunicationMode mode, T* firstAct) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi), mode(mode){
+        Loom_Max(Manager& man, Loom_WIFI& wifi, T* firstAct) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi){
 
             actuators.push_back(firstAct);
-
-            udpSend = UDPPtr(wifiInst->getUDP());
-            udpRecv = UDPPtr(wifiInst->getUDP());
             manInst->registerModule(this);
         };
 
@@ -88,11 +85,8 @@ class Loom_Max : public Module{
          * @param additionalActuators This takes any number of actuators
          */ 
          template<typename T, typename... Args>
-        Loom_Max(Manager& man, Loom_WIFI& wifi, CommunicationMode mode, T* firstAct, Args*... additionalActuators) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi), mode(mode){
+        Loom_Max(Manager& man, Loom_WIFI& wifi, T* firstAct, Args*... additionalActuators) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi){
             get_variadic_parameters((Actuator*)firstAct, (Actuator*)additionalActuators...);
-
-            udpSend = UDPPtr(wifiInst->getUDP());
-            udpRecv = UDPPtr(wifiInst->getUDP());
             manInst->registerModule(this);
         };
 
@@ -101,8 +95,6 @@ class Loom_Max : public Module{
     private:
         Manager* manInst;                       // Instance of the manager
         Loom_WIFI* wifiInst;                    // Instance of the WiFi Manager
-
-        CommunicationMode mode;                 // How we want to communicate with the Max client
 
         UDPPtr udpSend;                         // Instance of the UDP controller for sending
         UDPPtr udpRecv;                         // Instance of the UDP controller for recieving
