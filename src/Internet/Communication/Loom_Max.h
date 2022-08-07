@@ -13,14 +13,6 @@
 #define RECV_BASE_UDP_PORT 9000
 
 /**
- * Communication mode for routing traffic between the feather and Max client
- */ 
-enum CommunicationMode{
-    CLIENT,         // Connect to a remote router to handle traffic
-    AP              // Set the feather itself as an access point
-};
-
-/**
  * Class used to handle communication with Max MSP to control devices remotely
  * 
  * @author Will Richards

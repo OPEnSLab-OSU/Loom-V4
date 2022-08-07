@@ -3,7 +3,6 @@
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
-#include "arduino_secrets.h"
 
 #include <Loom_Manager.h>
 
@@ -12,13 +11,16 @@
 
 Manager manager("Device", 1);
 
-Loom_WIFI wifi(manager, SECRET_SSID, SECRET_PASS);
+Loom_WIFI wifi(manager, CommunicationMode::AP);
 Loom_Max maxMsp(manager, wifi);
 
 
 void setup() {
 
+  // Start serial interface
   manager.beginSerial();
+
+  // Init modules
   manager.initialize();
 }
 
@@ -29,5 +31,6 @@ void loop() {
   // Send and Recieve data from Max
   maxMsp.publish();
   maxMsp.subscribe();
-  delay(5000);
+  
+  manager.pause(1000);
 }

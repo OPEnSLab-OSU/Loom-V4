@@ -7,6 +7,14 @@
 #include "Loom_Manager.h"
 
 /**
+ * Communication mode for routing traffic between the feather and Max client
+ */ 
+enum CommunicationMode{
+    CLIENT,         // Connect to a remote router to handle traffic
+    AP              // Set the feather itself as an access point
+};
+
+/**
  * WiFi 101 library integrated with the manager to allow for easy sleep
  * 
  * @author Will Richards
@@ -34,17 +42,18 @@ class Loom_WIFI : public Module{
         /**
          * Construct a new WiFi Manager
          * @param man Reference to the manager to control all aspects of every module
+         * @param mode Whether or not to try to connect to an access point or create our own
          * @param name The name of the WiFi access point we are going to connect to
          * @param password The password (if applicable) to connect to the access point 
          */ 
-        Loom_WIFI(Manager& man, String name, String password = "");
+        Loom_WIFI(Manager& man, CommunicationMode mode, String name = "", String password = "");
 
         /**
          * Construct a new WiFi manager, passing the credentials in as a json document
          * @param man Reference to the manager 
          * @param jsonString JSON string to pull the credentials from
          */ 
-        Loom_WIFI(Manager& man, bool apMode = false);
+        Loom_WIFI(Manager& man);
 
         /**
          * Load the Wifi credentials from a JSON string, used to pull credentials from a file
@@ -98,6 +107,17 @@ class Loom_WIFI : public Module{
          */ 
         IPAddress getBroadcast();
 
+
+        /**
+         * Return the current connection state of the WiFi module
+         */ 
+        bool isConnected(){ return WiFi.status() == WL_CONNECTED; };
+
+        /**
+         * Called by max to ignore WiFi verification requests
+         */ 
+        void useMax() {usingMax = true; };
+
         /**
          * Convert an IP address to a string
          */ 
@@ -107,13 +127,14 @@ class Loom_WIFI : public Module{
         Manager* manInst;                   // Pointer to the manager
 
         WiFiClient wifiClient;              // Wifi client that can be used with the MQTT client or other additional objects
-        WiFiServer wifiServer;              // Wifi server used to create an access point
 
         bool hasInitialized = false;        // Has the WiFi module run through the initialization process
 
         String wifi_name;                   // Access point to connect to
         String wifi_password;               // Password to connect to the access point
-        bool apMode = false;                // If we are supposed to start the device in AP mode
+
+        bool usingMax = false;              // If we are using max
+        CommunicationMode mode;             // Current WiFi mode we are in
 
         IPAddress remoteIP;                 // IP address to send the UDP requests to 
 

@@ -1,14 +1,21 @@
 #include "Loom_Wifi.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_WIFI::Loom_WIFI(Manager& man, String name, String password) : Module("WiFi"), manInst(&man), wifi_name(name), wifi_password(password), wifiServer(80) {
+Loom_WIFI::Loom_WIFI(Manager& man, CommunicationMode mode, String name, String password) : Module("WiFi"), manInst(&man), mode(mode) {
+    if(mode == CommunicationMode::AP && name.length() <= 0){
+        wifi_name = manInst->get_device_name() + String(manInst->get_instance_num());
+        
+    }else{
+        wifi_name = name;
+    }
+
+    wifi_password = password;
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_WIFI::Loom_WIFI(Manager& man, bool apMode) : Module("WiFi"), manInst(&man), wifiServer(80) {
-    this->apMode = apMode;
+Loom_WIFI::Loom_WIFI(Manager& man) : Module("WiFi"), manInst(&man) {
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -38,7 +45,7 @@ void Loom_WIFI::initialize() {
         hasInitialized = true;
 
         // Only try to verify if we have connected to a network
-        if(!apMode){
+        if(mode != CommunicationMode::AP && !usingMax){
             // Verify the wifi connection after we have connected
             printModuleName(); Serial.println("Verifying Connection to the Internet...");
             verifyConnection();
@@ -51,14 +58,18 @@ void Loom_WIFI::initialize() {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::package(){
-    manInst->get_data_object(getModuleName());
+    JsonObject json = manInst->get_data_object(getModuleName());
+    json["SSID"] = WiFi.SSID();
+    json["RSSI"] = WiFi.RSSI();
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::power_up() {
     if(moduleInitialized){
-        if(!apMode)
+        if(mode == CommunicationMode::CLIENT)
             connect_to_network();
         else
             start_ap();
@@ -106,11 +117,11 @@ void Loom_WIFI::connect_to_network(){
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::start_ap(){
-    String apName = manInst->get_device_name() + String(manInst->get_instance_num());
-    printModuleName(); Serial.println("Starting access point on: " + apName);
+    printModuleName(); Serial.println("Starting access point on: " + wifi_name);
 
-    auto status = WiFi.beginAP(apName.c_str());
+    auto status = WiFi.beginAP(wifi_name.c_str());
 
     // If the AP is not listening print an error
     if(status != WL_AP_LISTENING){
@@ -119,9 +130,11 @@ void Loom_WIFI::start_ap(){
     }
 
     // Wait 10 seconds for the AP to start up
-    delay(10000);
-    wifiServer.begin();
+    printModuleName(); Serial.println("Waiting for a device to connect to the access point...");
+    while(WiFi.status() != WL_AP_CONNECTED);
+    printModuleName(); Serial.println("Device connected to AP!");
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::power_down(){

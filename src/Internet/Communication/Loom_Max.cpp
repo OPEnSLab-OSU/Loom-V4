@@ -2,8 +2,7 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Max::Loom_Max(Manager& man, Loom_WIFI& wifi, CommunicationMode mode) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi), mode(mode) {
-    udpSend = UDPPtr(wifiInst->getUDP());
-    udpRecv = UDPPtr(wifiInst->getUDP());
+    wifi.useMax();
     manInst->registerModule(this);
 };
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -32,13 +31,18 @@ void Loom_Max::package(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Max::initialize(){
     printModuleName(); Serial.println("Initializing Max Communication....");
+
+    udpSend = UDPPtr(wifiInst->getUDP());
+    udpRecv = UDPPtr(wifiInst->getUDP());
+
+    printModuleName(); Serial.println(wifiInst->isConnected());
+
     // Set the IP and port to communicate over
     setIP();
     setUDPPort();
 
     printModuleName(); Serial.println("Connections Opened!");
 
-    
     /**
      * Initialize each actuator
      */ 
@@ -54,6 +58,7 @@ void Loom_Max::initialize(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Max::publish(){
+    printModuleName(); Serial.println(wifiInst->isConnected());
     printModuleName(); Serial.println("Sending packet to " + Loom_WIFI::IPtoString(remoteIP) + ":" + String(sendPort));
 
     if(!udpSend){

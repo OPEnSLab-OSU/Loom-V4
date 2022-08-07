@@ -14,8 +14,8 @@
 
 Manager manager("Device", 1);
 
-Loom_WIFI wifi(manager, SECRET_SSID, SECRET_PASS);
-Loom_Max maxMsp(manager, wifi, CommunicationMode::CLIENT);
+Loom_WIFI wifi(manager, CommunicationMode::CLIENT, SECRET_SSID, SECRET_PASS);
+Loom_Max maxMsp(manager, wifi, );
 Loom_MPU6050 mpu(manager);
 
 

@@ -14,8 +14,8 @@
 
 Manager manager("Device", 1);
 
-Loom_WIFI wifi(manager, SECRET_SSID, SECRET_PASS);
-Loom_Max maxMsp(manager, wifi, CommunicationMode::CLIENT, new Loom_Relay(10));
+Loom_WIFI wifi(manager, CommunicationMode::CLIENT, SECRET_SSID, SECRET_PASS);
+Loom_Max maxMsp(manager, wifi, new Loom_Relay(10));
 
 
 void setup() {

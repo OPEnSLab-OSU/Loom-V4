@@ -15,8 +15,8 @@
 Manager manager("Device", 1);
 
 // This puts the WiFI manager into AP mode
-Loom_WIFI wifi(manager, true);
-Loom_Max maxMsp(manager, wifi, CommunicationMode::AP);
+Loom_WIFI wifi(manager, CommunicationMode::AP);
+Loom_Max maxMsp(manager, wifi);
 Loom_MPU6050 mpu(manager);
 
 
@@ -34,5 +34,5 @@ void loop() {
   // Send and Recieve data from Max
   maxMsp.publish();
   //maxMsp.subscribe();
-  delay(50);
+  manager.pause(50);
 }
