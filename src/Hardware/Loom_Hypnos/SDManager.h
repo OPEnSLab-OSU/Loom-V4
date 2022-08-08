@@ -29,7 +29,7 @@ class SDManager : public Module{
          * @param man Reference to the manager
          * @param sd_chip_select Pin to control the SD card on
          */ 
-        SDManager(Manager* man, int sd_chip_select);
+        SDManager(Manager* man, int sd_chip_select, int batch_size);
 
         /**
          * Initialize the SD card
@@ -49,6 +49,11 @@ class SDManager : public Module{
         String readFile(String fileName);
 
         /**
+         * Get the default SD card file name
+         */ 
+        String getDefaultFilename(){ return fileName; };
+
+        /**
          * Has the SD card been initialized previously
          */ 
         bool hasSDInitialized() { return sdInitialized; };
@@ -58,13 +63,6 @@ class SDManager : public Module{
          * @param fileName The name of the file to check
          */ 
         bool fileExists(String fileName) { return sd.exists(fileName.c_str()); };
-
-        /**
-         * Count the number of packets in the SD file
-         * 
-         * @param fileName File to count from
-         */
-        int countPackets(String fileName);
         
     private:
 
@@ -80,9 +78,14 @@ class SDManager : public Module{
         String device_name;                                     // Device name of the whole thing used as the starting point of the SD file name
         String fileName;                                        // Current file name that data is being logged to
 
+        int batch_size;                                         // How many packets to log per batch
+        int current_batch = 0;                                  // Current count of the batch
+
         bool sdInitialized = false;                             // If the SD card actually initialized
         String headers[2] = {"", ""};                           // Contains the main and sub headers that are added to the top of the CSV files
 
+
+        void logBatch();                                        // Log data in batch format
         bool writeLineToFile(String filename, String content);  // Write the given string to a file
         void createHeaders();                                   // Create the headers for the CSV file based off what info we are storing
         bool updateCurrentFileName();                           // Update the current file name to log to based on files already existing on the SD card

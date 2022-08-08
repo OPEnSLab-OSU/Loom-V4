@@ -1,7 +1,7 @@
 #include "SDManager.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-SDManager::SDManager(Manager* man, int sd_chip_select) : manInst(man), Module("SD Manager"), chip_select(sd_chip_select) {
+SDManager::SDManager(Manager* man, int sd_chip_select, int batch_size) : manInst(man), Module("SD Manager"), chip_select(sd_chip_select), batch_size(batch_size) {
     device_name = manInst->get_device_name();
  } // Disables Lora so we can use the SD card on hypnos 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -10,7 +10,6 @@ SDManager::SDManager(Manager* man, int sd_chip_select) : manInst(man), Module("S
 bool SDManager::writeLineToFile(String filename, String content){
 
     // Check if the SD card is actually functional
-
     if(sdInitialized){
         // Open the given file for writing
         myFile = sd.open(filename, FILE_WRITE);
@@ -126,6 +125,10 @@ bool SDManager::log(DateTime currentTime){
         else{
             printModuleName(); Serial.println("Failed to open log file!");
         }
+
+        // If we want to log batch data do so
+        if(batch_size > 0)
+            logBatch();
     }
     else{
         printModuleName(); Serial.println("Failed to log! SD card not Initialized!");
@@ -222,29 +225,25 @@ String SDManager::readFile(String fileName){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-int SDManager::countPackets(String fileName){
-    if(sdInitialized){
-        int count = 0;
-        myFile = sd.open(fileName);
-        if(myFile){
-            // read from the file until there's nothing else in it:
-            while (myFile.available()) {
-                if((char)(myFile.read()) == '\n'){
-                    count++;
-                }
-                
-            }
-            // close the file:
-            myFile.close();
-            return count;
-        }
-        else{
-            printModuleName(); Serial.println("Failed to open file!");
-        }
+void SDManager::logBatch(){
+
+    // We want to clear the file after the batch size has been exceeded
+    if(current_batch > batch_size){
+        current_batch = 0;
+        myFile = sd.open(fileName + "-Batch", O_TRUNC | O_APPEND);
     }
     else{
-        printModuleName(); Serial.println("Failed to read! SD card not Initialized!");
+        myFile = sd.open(fileName + "-Batch", O_CREAT | O_APPEND);
     }
-    return -1;
+
+
+    // Check if the file has been opened properly and write the JSON packet to one line
+    if(myFile){
+        myFile.println(manInst->getJSONString());
+        myFile.close();
+        current_batch++;
+    }else{
+        printModuleName(); Serial.println("Failed to open file!");
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
