@@ -47,6 +47,11 @@ void loop() {
   manager.measure();
   manager.package();
   
+  // Add labeled columns for turbidity and conductivity
+  // This can change between SmartRock revisions, ensure your pins are correct before field usage
+  manager.addData("Analog Values", "Conductivity", ads.getAnalog(1));
+  manager.addData("Analog Values", "Turbidity", ads.getAnalog(2));
+
   // Print the current JSON packet
   manager.display_data();            
 
