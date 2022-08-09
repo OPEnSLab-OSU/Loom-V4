@@ -15,13 +15,6 @@ Manager manager("Device", 1);
 // Reads the battery voltage
 Loom_ADS1115 ads(manager);
 
-/**
- * Custom calculation for flow rate (FloDar example)
- */ 
-void calcFlowRate(Primative& prim, int16_t analog[4] , int16_t diff[2] ){
-    prim.setData<float>((analog[1] / (pow(2, 15))*30*3)/2);
-}
-
 void setup() {
 
   // Start the serial interface and wait for the user to open the serial monitor
@@ -29,9 +22,6 @@ void setup() {
 
   // Initialize the manager
   manager.initialize();
-
-  // Add the custom calculation to log
-  ads.addCustomCalculation(&calcFlowRate, "Flow Rate");
 
   // Measure the data from the sensors
   manager.measure();
