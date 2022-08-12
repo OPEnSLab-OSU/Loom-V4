@@ -29,9 +29,9 @@ class Loom_SDI12 : public Module{
 
     public: 
         
-        Loom_SDI12(Manager& man, const int pinAddr = 11);   // Loomified Constructor
+        Loom_SDI12(Manager& man, const int pinAddr = 11);       // Loomified Constructor
 
-        Loom_SDI12(const int pinAddr = 11);                 // Standard Sensor Interaction Constructor
+        Loom_SDI12(const int pinAddr = 11);                     // Standard Sensor Interaction Constructor
 
         void initialize() override;                             // Initialize the sensor interface
         

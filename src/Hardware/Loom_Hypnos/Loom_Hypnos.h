@@ -135,7 +135,7 @@ class Loom_Hypnos : public Module{
 
         /**
          * Drops the Feather M0 and Hypnos board into a low power sleep waiting for an interrupt to wake it up and pull it out of sleep
-         * @param waitForSerial whether or not we should wait for the user to open the serial monitor before continuing execution
+         * @param waitForSerial Whether or not we should wait for the user to open the serial monitor before continuing execution
          */ 
         void sleep(bool waitForSerial = false);
 

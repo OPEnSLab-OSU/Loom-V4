@@ -172,6 +172,7 @@ Module* Loom_Multiplexer::loadSensor(const byte addr){
         case 0x77: return new Loom_MS5803(*manInst);
 
         case 0x36: return new Loom_STEMMA(*manInst);
+        case 0x70: return new Loom_MB1232(*manInst);
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -42,5 +42,5 @@ void loop() {
   hypnos.reattachRTCInterrupt();
   
   // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
-  hypnos.sleep(true);
+  hypnos.sleep();
 }

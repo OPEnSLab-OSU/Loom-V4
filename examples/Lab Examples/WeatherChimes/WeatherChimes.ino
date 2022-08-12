@@ -5,7 +5,6 @@
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
-#include "arduino_secrets.h"
 
 #include <Loom_Manager.h>
 
@@ -19,7 +18,7 @@
 #include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
 #include <Internet/Logging/Loom_MQTT/Loom_MQTT.h>
 
-Manager manager("Chime", 1);
+Manager manager("Chime", 5);
 
 // Analog for reading battery voltage
 Loom_Analog analog(manager);
@@ -33,7 +32,7 @@ Loom_TSL2591 tsl(manager);
 Loom_SDI12 sdi(manager, 11);
 
 Loom_WIFI wifi(manager);
-Loom_MQTT mqtt(manager, wifi.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
+Loom_MQTT mqtt(manager, wifi.getClient());
 
 // Called when the interrupt is triggered 
 void isrTrigger(){
@@ -50,16 +49,19 @@ void setup() {
 
   // Load the WiFi login credentials from a file on the SD card
   wifi.loadConfigFromJSON(hypnos.readFile("wifi_creds.json"));
+  mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
 
   // Initialize all in-use modules
   manager.initialize();
-
 
   // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);
 }
 
 void loop() {
+
+  // Set the RTC interrupt to trigger 10 seconds from when the device woke up
+  hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 10));
 
   // Measure and package the data
   manager.measure();
@@ -73,9 +75,6 @@ void loop() {
 
   // Publish the collected data to MQTT
   mqtt.publish();
-
-  // Set the RTC interrupt alarm to wake the device in 10 seconds
-  hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 10));
 
   // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
   hypnos.reattachRTCInterrupt();
