@@ -16,8 +16,8 @@
 #include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h>
 #include <Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h>
 
-#include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
 #include <Internet/Logging/Loom_MQTT/Loom_MQTT.h>
+#include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
 
 Manager manager("Chime", 1);
 
@@ -25,7 +25,7 @@ Manager manager("Chime", 1);
 Loom_Analog analog(manager);
 
 // Create a new Hypnos object
-Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2, TIME_ZONE::PST);
+Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 
 // Create the TSL2591 and SHT classes
 Loom_SHT31 sht(manager);
@@ -48,12 +48,8 @@ void setup() {
   // Enable the hypnos rails
   hypnos.enable();
 
-  // Load the WiFi login credentials from a file on the SD card
-  wifi.loadConfigFromJSON(hypnos.readFile("wifi_creds.json"));
-
   // Initialize all in-use modules
   manager.initialize();
-
 
   // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);
@@ -81,5 +77,5 @@ void loop() {
   hypnos.reattachRTCInterrupt();
   
   // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
-  hypnos.sleep(false);
+  hypnos.sleep();
 }
