@@ -21,5 +21,5 @@ void setup() {
 
 void loop() {
   wifi.verifyConnection();
-  delay(5000);
+  manager.pause(5000);
 }

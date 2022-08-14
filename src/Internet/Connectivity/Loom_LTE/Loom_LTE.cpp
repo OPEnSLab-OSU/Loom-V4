@@ -39,6 +39,7 @@ void Loom_LTE::initialize(){
     if(modemInfo == NULL){
         printModuleName(); Serial.println("LTE Shield not present!");
         moduleInitialized = false;
+        return;
     }
     else{
         printModuleName(); Serial.println("Modem Information: " + modemInfo);
@@ -53,6 +54,9 @@ void Loom_LTE::initialize(){
         printModuleName(); Serial.println("APN: " + APN);
         printModuleName(); Serial.println("Signal State: " + modem.getSignalQuality());
         printModuleName(); Serial.println("IP Address: " + Loom_LTE::IPtoString(modem.localIP()));
+    }
+    else{
+        printModuleName(); Serial.println("Module failed to initialize");
     }
 
 }

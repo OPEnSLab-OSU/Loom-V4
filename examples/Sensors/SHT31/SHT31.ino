@@ -17,9 +17,7 @@ Loom_SHT31 sht(manager);
 
 void setup() {
 
-   // Start and wait for the user to open the Serial monitor
-  Serial.begin(115200);
-  while(!Serial);
+  manager.beginSerial();
   
   // Enable the hypnos rails
   hypnos.enable();
@@ -32,5 +30,5 @@ void loop() {
 
   manager.display_data();
 
-  delay(4000);
+  manager.pause(4000);
 }

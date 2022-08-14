@@ -22,5 +22,5 @@ void setup() {
 
 void loop() {
   lte.verifyConnection();
-  delay(5000);
+  manager.pause(5000);
 }

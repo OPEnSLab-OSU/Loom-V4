@@ -17,7 +17,7 @@ Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2, TIME_ZONE::PST, true, false);
 
 void setup() {
 
-   manager.beginSerial();
+  manager.beginSerial();
   
   // Enable the hypnos rails
   hypnos.enable();
@@ -28,5 +28,5 @@ void loop() {
 
   manager.display_data();
 
-  delay(4000);
+  manger.pause(4000);
 }
