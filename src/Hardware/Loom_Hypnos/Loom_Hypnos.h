@@ -80,7 +80,7 @@ class Loom_Hypnos : public Module{
          * @param useSD Whether or not SD card functionality should be enabled
          * @param batch_size Size of data batch to store -1 results in no batch store
          */ 
-        Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time = false, bool useSD = true, int batch_size = -1);
+        Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time = false, bool useSD = true);
 
         /**
          *  Cleanup any dynamically allocated pointers
@@ -170,6 +170,10 @@ class Loom_Hypnos : public Module{
          */
         String getDefaultFilename(){ return sdMan->getDefaultFilename(); };
 
+        /**
+         * Get an instance of the SD manager, used for batch SD
+         */ 
+        SDManager* getSDManager() { return sdMan; };
 
     private:
 

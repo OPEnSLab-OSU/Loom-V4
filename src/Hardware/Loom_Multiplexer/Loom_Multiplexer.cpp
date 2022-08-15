@@ -165,7 +165,7 @@ Module* Loom_Multiplexer::loadSensor(const byte addr){
         case 0x48: return new Loom_ADS1115(*manInst);
 
         // MPU6050
-        case 0x68: return new Loom_MPU6050(*manInst);
+        case 0x68: return new Loom_K30(*manInst);
         case 0x69: return new Loom_MPU6050(*manInst);
 
         case 0x76: return new Loom_MS5803(*manInst);

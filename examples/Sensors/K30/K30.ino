@@ -1,5 +1,5 @@
 /**
- * MB1232 Example code
+ * K30 Example code
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
@@ -7,12 +7,13 @@
 
 #include <Loom_Manager.h>
 
-#include <Sensors/I2C/Loom_MB1232/Loom_MB1232.h>
+#include <Sensors/I2C/Loom_K30/Loom_K30.h>
 
 Manager manager("Device", 1);
 
 // Reads the battery voltage
-Loom_MB1232 mb1232(manager);
+// Manger Instance, Address Enable Warmup, Value Multiplier
+Loom_K30 k30(manager, 0x68, true, 1);
 
 void setup() {
 

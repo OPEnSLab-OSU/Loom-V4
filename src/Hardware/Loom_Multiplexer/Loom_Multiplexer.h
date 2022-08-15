@@ -15,6 +15,7 @@
 #include "../../Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h"
 #include "../../Sensors/I2C/Loom_STEMMA/Loom_STEMMA.h"
 #include "../../Sensors/I2C/Loom_MB1232/Loom_MB1232.h"
+#include "../../Sensors/I2C/Loom_K30/Loom_K30.h"
 
 /**
  * Adds Hot Swappable functionality for TCA9548 multiplexer
@@ -70,15 +71,15 @@ class Loom_Multiplexer : public Module{
 			0x10, ///< ZXGESTURESENSOR
 			0x11, ///< ZXGESTURESENSOR
 			0x19, ///< LIS3DH
-			0x1C, ///< MMA8451 / FXOS8700 
-			0x1D, ///< MMA8451 / FXOS8700
+			0x1C, ///< MMA8451
+			0x1D, ///< MMA8451
 			0x29, ///< TSL2591
 			0x36, ///< STEMMA
 			0x44, ///< SHT31D
 			0x45, ///< SHT31D
 			0x48, ///< ADS1115
 			0x49, ///< AS726X / AS7265X
-			0x68, ///< MPU6050
+			0x68, ///< K30
 			0x69, ///< MPU6050
 			0x70, ///< MB1232
 			0x76, ///< MS5803

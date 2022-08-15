@@ -46,7 +46,7 @@ void Loom_MQTT::publish(){
             printModuleName(); Serial.println("Failed to connect to broker: " + getMQTTError());
         }
         else{
-            printModuleName(); Serial.println("Succsessfully connected to broker!");
+            printModuleName(); Serial.println("Successfully connected to broker!");
             printModuleName(); Serial.println("Attempting to send data...");
 
             // Tell the broker we are still here
@@ -57,7 +57,55 @@ void Loom_MQTT::publish(){
             mqttClient.print(manInst->getJSONString());
             mqttClient.endMessage();
 
-            printModuleName(); Serial.println("Data has been succsessfully sent!");
+            printModuleName(); Serial.println("Data has been successfully sent!");
+        }
+    }
+    else{
+        printModuleName(); Serial.println("Module not initialized! If using credentials from SD make sure they are loaded first.");
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_MQTT::publish(Loom_BatchSD& batchSD){
+    if(moduleInitialized ){
+        if(batchSD.shouldPublish()){
+            // If we are logging in using credentials then supply them
+            if(username.length() > 0)
+                mqttClient.setUsernamePassword(username, password);
+
+            // Set the keepalive time
+            mqttClient.setKeepAliveInterval(keep_alive);
+
+            printModuleName(); Serial.println("Attempting to connect to broker: " + address + ":" + String(port));
+
+            // Attempt to Connect to the MQTT client 
+            if(!mqttClient.connect(address.c_str(), port)){
+                printModuleName(); Serial.println("Failed to connect to broker: " + getMQTTError());
+            }
+            else{
+                printModuleName(); Serial.println("Successfully connected to broker!");
+                printModuleName(); Serial.println("Attempting to send data...");
+
+                // Tell the broker we are still here
+                mqttClient.poll();
+                
+                std::vector<String> batch = batchSD.getBatch();
+                for(int i = 0; i < batch.size(); i++){
+                    printModuleName(); Serial.println("Publishing Packet " + String(i+1) + " of " + String(batch.size()));
+                    
+                    // Start a message write the data and close the message
+                    mqttClient.beginMessage(topic);
+                    mqttClient.print(batch[i]);
+                    mqttClient.endMessage();
+                }
+                
+                printModuleName(); Serial.println("Data has been successfully sent!");
+            }
+        }
+        else{
+            printModuleName(); Serial.println("Batch not ready to publish: " + String(batchSD.getCurrentBatch()) + "/" + String(batchSD.getBatchSize()));
         }
     }
     else{

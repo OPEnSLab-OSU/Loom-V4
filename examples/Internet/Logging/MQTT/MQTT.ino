@@ -12,17 +12,18 @@
 
 Manager manager("Device", 1);
 
-Loom_WIFI wifi(manager, SECRET_SSID, SECRET_PASS);
+Loom_WIFI wifi(manager, CommunicationMode::CLIENT, SECRET_SSID, SECRET_PASS);
 Loom_MQTT mqtt(manager, wifi.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
 
 void setup() {
-
   manager.beginSerial();
   manager.initialize();
 }
 
 void loop() {
   manager.package();
+
   mqtt.publish();
-  delay(5000);
+
+  manager.pause(5000);
 }

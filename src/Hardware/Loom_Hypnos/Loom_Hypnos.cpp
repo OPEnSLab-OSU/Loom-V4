@@ -1,7 +1,7 @@
 #include "Loom_Hypnos.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time, bool useSD, int batch_size) : Module("Hypnos"), custom_time(use_custom_time), sd_chip_select(version), enableSD(useSD), timezone(zone), batch_size(batch_size){
+Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time, bool useSD) : Module("Hypnos"), custom_time(use_custom_time), sd_chip_select(version), enableSD(useSD), timezone(zone){
     manInst = &man;
 
     // Set the pins to write mode
@@ -12,7 +12,7 @@ Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, b
 
     // Create the SD Manager if we want to use SD
     if(useSD){
-        sdMan = new SDManager(manInst, sd_chip_select, batch_size);
+        sdMan = new SDManager(manInst, sd_chip_select);
     }
 
     // Add the Hypnos to the module register s

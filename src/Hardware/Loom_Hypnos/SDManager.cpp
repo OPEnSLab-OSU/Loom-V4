@@ -1,7 +1,7 @@
 #include "SDManager.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-SDManager::SDManager(Manager* man, int sd_chip_select, int batch_size) : manInst(man), Module("SD Manager"), chip_select(sd_chip_select), batch_size(batch_size) {
+SDManager::SDManager(Manager* man, int sd_chip_select) : manInst(man), Module("SD Manager"), chip_select(sd_chip_select) {
     device_name = manInst->get_device_name();
  } // Disables Lora so we can use the SD card on hypnos 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -190,7 +190,8 @@ bool SDManager::updateCurrentFileName(){
     }
 
     // Fully piece together the file name where will write the SD data to
-    fileName = device_name + String(file_count) + ".csv";
+    fileNameNoExtension = device_name + String(file_count);
+    fileName = fileNameNoExtension + ".csv";
 
     // Close the root file after we have decided what to name the next file
     root.close();
@@ -230,10 +231,10 @@ void SDManager::logBatch(){
     // We want to clear the file after the batch size has been exceeded
     if(current_batch > batch_size){
         current_batch = 0;
-        myFile = sd.open(fileName + "-Batch", O_TRUNC | O_APPEND);
+        myFile = sd.open(fileNameNoExtension + "-Batch.txt", O_WRITE | O_TRUNC | O_APPEND);
     }
     else{
-        myFile = sd.open(fileName + "-Batch", O_CREAT | O_APPEND);
+        myFile = sd.open(fileNameNoExtension + "-Batch.txt", O_WRITE | O_CREAT | O_APPEND);
     }
 
 

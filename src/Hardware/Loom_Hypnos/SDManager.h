@@ -29,7 +29,7 @@ class SDManager : public Module{
          * @param man Reference to the manager
          * @param sd_chip_select Pin to control the SD card on
          */ 
-        SDManager(Manager* man, int sd_chip_select, int batch_size);
+        SDManager(Manager* man, int sd_chip_select);
 
         /**
          * Initialize the SD card
@@ -54,6 +54,11 @@ class SDManager : public Module{
         String getDefaultFilename(){ return fileName; };
 
         /**
+         * Get the current batch file name
+         */ 
+        String getBatchFilename(){ return (fileNameNoExtension + "-Batch.txt"); };
+
+        /**
          * Has the SD card been initialized previously
          */ 
         bool hasSDInitialized() { return sdInitialized; };
@@ -63,6 +68,17 @@ class SDManager : public Module{
          * @param fileName The name of the file to check
          */ 
         bool fileExists(String fileName) { return sd.exists(fileName.c_str()); };
+
+        /**
+         * Sets the batch size and thus enables batch loggin
+         */ 
+        void setBatchSize(int size) { batch_size = size; };
+
+        /**
+         * Get the current batch we are ons
+         */ 
+        int getCurrentBatch() { return current_batch; };
+
         
     private:
 
@@ -77,8 +93,9 @@ class SDManager : public Module{
         int chip_select;                                        // Chip select pin for the SD card
         String device_name;                                     // Device name of the whole thing used as the starting point of the SD file name
         String fileName;                                        // Current file name that data is being logged to
+        String fileNameNoExtension;                             // Current file name that data is being logged to without the file extension
 
-        int batch_size;                                         // How many packets to log per batch
+        int batch_size = -1;                                    // How many packets to log per batch
         int current_batch = 0;                                  // Current count of the batch
 
         bool sdInitialized = false;                             // If the SD card actually initialized

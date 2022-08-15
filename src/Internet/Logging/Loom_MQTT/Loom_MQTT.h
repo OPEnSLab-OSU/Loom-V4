@@ -5,6 +5,10 @@
 #include "Loom_Manager.h"
 #include "Module.h"
 
+#include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
+
+
+
 /**
  * Platform for logging data to MQTT for logging to a remote database
  * 
@@ -55,6 +59,11 @@ class Loom_MQTT : public Module{
          * Publish the current JSON data over MQTT 
          */ 
         void publish();
+
+        /**
+         * Publish the current JSON data as a batch
+         */ 
+        void publish(Loom_BatchSD& batchSD);
 
         /**
          * Length of time the broker should keep the connection open for default 
