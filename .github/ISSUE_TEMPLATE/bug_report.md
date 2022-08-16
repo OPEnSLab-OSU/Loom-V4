@@ -29,5 +29,8 @@ In the Arduino IDE while editing the main.ino, goto 'Edit' -> 'Copy for HTML' an
 **Config**
 In the Arduino IDE while editing the config.json, goto 'Edit' -> 'Copy for HTML' and paste the output of that here
 
+**Output**
+Copy and paste the serial output here if possible wrapped in \`\`\` \`\`\`
+
 **Additional context**
 Add any other context about the problem here.
