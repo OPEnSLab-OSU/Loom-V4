@@ -101,13 +101,21 @@ void Loom_WIFI::connect_to_network(){
     else{
         // While we are trying to connect to the wifi network
         while(WiFi.begin(wifi_name.c_str()) != WL_CONNECTED){
-            printModuleName(); Serial.println("Attempting to connect to AP...");
+            printModuleName(); Serial.println("Attempting to connect to AP (Attempt " + String(retry_count+1) + " of 10)...");
             delay(5000);
             retry_count++;
 
             // If after 10 attempts we still can't connect to the network we need to stop and break so we don't hang the device
             if(retry_count >= 10){
                 printModuleName(); Serial.println("Failed to connect to the access point after 10 tries! Is the network in range and are your credentials correct?");
+
+                // Switch over to AP mode if using max
+                if(usingMax){
+                    printModuleName(); Serial.println("Starting access point as backup!");
+                    mode = CommunicationMode::AP;
+                    wifi_name = manInst->get_device_name() + String(manInst->get_instance_num());
+                    start_ap();
+                }
                 return;
             }
         }

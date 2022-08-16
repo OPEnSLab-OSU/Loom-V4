@@ -189,8 +189,12 @@ bool SDManager::updateCurrentFileName(){
         scanningFile.close();
     }
 
-    // Fully piece together the file name where will write the SD data to
-    fileNameNoExtension = device_name + String(file_count);
+    // Check if we set an override name or not
+    if(overrideName.length() <= 0)
+        fileNameNoExtension = device_name + String(file_count);
+    else
+        fileNameNoExtension = overrideName + String(file_count);
+
     fileName = fileNameNoExtension + ".csv";
 
     // Close the root file after we have decided what to name the next file

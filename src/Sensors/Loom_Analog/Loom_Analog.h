@@ -69,6 +69,11 @@ class Loom_Analog : public Module{
            manInst->registerModule(this);
         };
 
+        /**
+         * Get the current voltage of the battery
+         */ 
+        float get_battery_voltage();
+
         void measure() override;                               
         void package() override;
 
@@ -91,7 +96,6 @@ class Loom_Analog : public Module{
             return get_variadic_parameters(args...);
         };
 
-        float get_battery_voltage();                // Get the current voltage of the battery
         String pin_number_to_name(int pin);         // Convert the given to a name with the style "A0"
 
 

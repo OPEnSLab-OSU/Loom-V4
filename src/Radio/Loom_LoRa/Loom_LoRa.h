@@ -30,19 +30,19 @@ class Loom_LoRa : public Radio{
         /**
          * Construct a new LoRa driver
          * @param man Reference to the manager
-         * @param max_message_len The maximum possible message length we can transmit
          * @param address This device's LoRa address
          * @param powerLevel Transmission power level, low to high
          * @param retryCount Number of attempts to make before failing
          * @param retryTimeout Length of time between retransmissions (ms)
+         * @param max_message_len The maximum possible message length we can transmit
          */ 
         Loom_LoRa(
             Manager& man,
             const uint8_t address = 0,
-            const uint16_t max_message_len = RH_RF95_MAX_MESSAGE_LEN,
             const uint8_t powerLevel = 23,
             const uint8_t retryCount = 3,
-            const uint16_t retryTimeout = 200
+            const uint16_t retryTimeout = 200,
+            const uint16_t max_message_len = RH_RF95_MAX_MESSAGE_LEN
         );
 
         /**

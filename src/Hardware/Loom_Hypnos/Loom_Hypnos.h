@@ -175,6 +175,11 @@ class Loom_Hypnos : public Module{
          */ 
         SDManager* getSDManager() { return sdMan; };
 
+        /**
+         * Set an alternative name to log data to
+         */ 
+        void setLogName(String name) { sdMan->setLogName(name); };
+
     private:
 
         Manager* manInst = nullptr;                                         // Instance of the manager

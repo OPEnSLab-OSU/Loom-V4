@@ -4,10 +4,10 @@
 Loom_LoRa::Loom_LoRa(
         Manager& man,
         const uint8_t address, 
-        const uint16_t max_message_len, 
         const uint8_t powerLevel, 
         const uint8_t retryCount, 
-        const uint16_t retryTimeout
+        const uint16_t retryTimeout,
+        const uint16_t max_message_len
     ) : Radio("LoRa"), manInst(&man), driver{RFM95_CS, RFM95_INT}, manager {driver, address}
     {
         this->deviceAddress = address;

@@ -79,6 +79,11 @@ class SDManager : public Module{
          */ 
         int getCurrentBatch() { return current_batch; };
 
+        /**
+         * Log to a different name other than one matching the device name
+         */ 
+        void setLogName(String name) { overrideName = name; };
+
         
     private:
 
@@ -92,8 +97,10 @@ class SDManager : public Module{
 
         int chip_select;                                        // Chip select pin for the SD card
         String device_name;                                     // Device name of the whole thing used as the starting point of the SD file name
+
         String fileName;                                        // Current file name that data is being logged to
         String fileNameNoExtension;                             // Current file name that data is being logged to without the file extension
+        String overrideName = "";                               // Name to use if we don't want to use the device name
 
         int batch_size = -1;                                    // How many packets to log per batch
         int current_batch = 0;                                  // Current count of the batch
