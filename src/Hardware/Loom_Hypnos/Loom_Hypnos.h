@@ -79,9 +79,9 @@ class Loom_Hypnos : public Module{
          * @param timezone The current timezone the clock was set to
          * @param use_custom_time Use a specific time set by the user that is different than the compile time
          * @param useSD Whether or not SD card functionality should be enabled
-         * @param batch_size Size of data batch to store -1 results in no batch store
+         * @param useRTC Do we actually want to initialize the real time clock
          */ 
-        Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time = false, bool useSD = true);
+        Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time = false, bool useSD = true, bool useRTC = true);
 
         /**
          *  Cleanup any dynamically allocated pointers
@@ -115,6 +115,7 @@ class Loom_Hypnos : public Module{
          * Enables RTC based interrupts using the DS3231 on the Hypnos
          * @param isrFunc function to callback to when the interrupt is triggered
          * @param interruptPin Defaults to RTC pin on Hypnos can be changed to reflect other interrupts
+         * @param triggerState When the interrupt should trigger
          */ 
         bool registerInterrupt(InterruptCallbackFunction isrFunc = nullptr, int interruptPin = 12);
 
@@ -197,6 +198,7 @@ class Loom_Hypnos : public Module{
 
         RTC_DS3231 RTC_DS;                                                  // Real time clock reference
         bool RTC_initialized = false;                                       // Did the RTC initialize correctly?
+        bool useRTC = true;                                                 // Do we actually want to enable the RTC
         
         bool custom_time = false;                                           // Set the RTC to a user specified time
 

@@ -1,14 +1,16 @@
 #include "Loom_Hypnos.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time, bool useSD) : Module("Hypnos"), custom_time(use_custom_time), sd_chip_select(version), enableSD(useSD), timezone(zone){
+Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time, bool useSD, bool useRTC) : Module("Hypnos"), custom_time(use_custom_time), sd_chip_select(version), enableSD(useSD), timezone(zone), useRTC(useRTC){
     manInst = &man;
 
     // Set the pins to write mode
     pinMode(5, OUTPUT);                     // 3.3v power rail
     pinMode(6, OUTPUT);                     // 5v power rail
     pinMode(LED_BUILTIN, OUTPUT);           // Status LED
-    pinMode(12, INPUT_PULLUP);              // RTC Interrupt
+
+    if(useRTC)
+        pinMode(12, INPUT_PULLUP);              // RTC Interrupt
 
     // Create the SD Manager if we want to use SD
     if(useSD){
@@ -30,11 +32,12 @@ Loom_Hypnos::~Loom_Hypnos(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::package(){
-    JsonObject json = manInst->getDocument().createNestedObject("timestamp");
+    if(useRTC){
+        JsonObject json = manInst->getDocument().createNestedObject("timestamp");
 
-   
-    json["time_utc"] = dateTime_toString(time);
-    json["time_local"] = dateTime_toString(localTime);
+        json["time_utc"] = dateTime_toString(time);
+        json["time_local"] = dateTime_toString(localTime);
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -58,7 +61,7 @@ void Loom_Hypnos::enable(){
     }
 
     // If the RTC hasn't already been initialized then do so now
-    if(!RTC_initialized)
+    if(!RTC_initialized && useRTC)
         initializeRTC();
 
     manInst->setEnableState(true);
@@ -89,7 +92,7 @@ void Loom_Hypnos::disable(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin){
 
-    if(interruptPin == 12){
+    if(interruptPin == 12 && useRTC){
         printModuleName(); Serial.println("Registering RTC interrupt...");
     }
     else{
@@ -97,7 +100,7 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
     }
 
     // If the RTC hasn't already been initialized then do so now if we are trying to schedule an RTC interrupt
-    if(!RTC_initialized && interruptPin == 12)
+    if(!RTC_initialized && interruptPin == 12 && useRTC)
         initializeRTC();
 
     // Make sure a callback function was supplied
@@ -377,8 +380,10 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
     if(waitForSerial)
         while(!Serial);
 
-    time = get_utc_time();
-    localTime = getCurrentTime();
+    if(useRTC){
+        time = get_utc_time();
+        localTime = getCurrentTime();
+    }
 
     printModuleName(); Serial.println("Device has awoken from sleep!");
 }
