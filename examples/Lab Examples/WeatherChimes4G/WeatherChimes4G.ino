@@ -32,7 +32,7 @@ Loom_SHT31 sht(manager);
 Loom_TSL2591 tsl(manager);
 Loom_SDI12 sdi(manager, 11);
 
-Loom_LTE lte(manager, NETWORK_NAME, NETWORK_USER, NETWORK_PASS);
+Loom_LTE lte(manager, NETWORK_APN, NETWORK_USER, NETWORK_PASS);
 Loom_MQTT mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
 
 // Called when the interrupt is triggered 

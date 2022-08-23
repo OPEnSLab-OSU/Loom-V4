@@ -1,4 +1,4 @@
-#define NETWORK_NAME ""
+#define NETWORK_APN ""
 #define NETWORK_USER ""
 #define NETWORK_PASS ""
 

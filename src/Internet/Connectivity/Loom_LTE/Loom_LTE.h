@@ -1,10 +1,11 @@
 #pragma once
 
 // GSM Model Number
+//#define TINY_GSM_MODEM_UBLOX 
 #define TINY_GSM_MODEM_SARAR4
 
 #include "Module.h"
-#include "Loom_Manager.h"
+#include "Loom_Manager.h"   
 
 #include <TinyGsmClient.h>
 
@@ -102,5 +103,7 @@ class Loom_LTE : public Module{
 
         TinyGsm modem;                      // LTE Modem
         TinyGsmClient client;               // LTE Client
+
+        bool firstInit = true;              // First time it was initialized
 
 };

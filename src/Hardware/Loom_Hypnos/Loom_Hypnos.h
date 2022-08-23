@@ -213,6 +213,9 @@ class Loom_Hypnos : public Module{
 
         String dateTime_toString(DateTime time);                            // Convert a DateTime object to our desired format
 
+        DateTime time;                                                      // UTC time
+        DateTime localTime;                                                 // Local time
+
         /* Sleep functionality */
 
         void pre_sleep();                                                   // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus

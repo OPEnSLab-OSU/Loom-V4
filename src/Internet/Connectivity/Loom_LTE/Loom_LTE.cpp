@@ -23,9 +23,6 @@ Loom_LTE::Loom_LTE(Manager& man) : Module("LTE"), manInst(&man), modem(SerialAT)
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::initialize(){
 
-    // Start the serial interface to communicate with the LTE board
-    SerialAT.begin(115200);
-
     // Set the pin to output so we can write to it
     pinMode(powerPin, OUTPUT);
 
@@ -50,14 +47,19 @@ void Loom_LTE::initialize(){
 
     // If we successfully connected to the LTE network print out some information
     if(moduleInitialized){
-        printModuleName(); Serial.println("Connected: " + (isConnected()) ? "True" : "False");
+        printModuleName(); Serial.println("Connected!");
         printModuleName(); Serial.println("APN: " + APN);
-        printModuleName(); Serial.println("Signal State: " + modem.getSignalQuality());
+        printModuleName(); Serial.print("Signal State: ");
+        Serial.println(modem.getSignalQuality());
         printModuleName(); Serial.println("IP Address: " + Loom_LTE::IPtoString(modem.localIP()));
+
+        verifyConnection();
     }
     else{
         printModuleName(); Serial.println("Module failed to initialize");
     }
+
+    firstInit = false;
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -65,14 +67,19 @@ void Loom_LTE::initialize(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::power_up(){
     // If not connected to a network we want to connect
-    if(!isConnected() && moduleInitialized){
+    if(moduleInitialized){
         printModuleName(); Serial.println("Powering up GPRS Modem. This should take about 10 seconds...");
         digitalWrite(powerPin, LOW);
-        delay(5000);
+        delay(10000);
+        SerialAT.begin(9600);
+        delay(6000);
         modem.restart();
-        delay(5000);
         printModuleName(); Serial.println("Powering up complete!");
+
+        if(!firstInit && !isConnected())
+            connect();
     }
+    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -92,8 +99,21 @@ void Loom_LTE::power_down(){
 bool Loom_LTE::connect(){
     uint8_t attemptCount = 1; // Tracks number of attempts, 10 is a fail
 
-    // While not connected to the network we want to try to connect
-    while(!isConnected()){
+    do{
+        printModuleName(); Serial.println("Waiting for network...");
+        if(!modem.waitForNetwork()){
+            printModuleName(); Serial.println("No Response from network!");
+            return false;
+        }
+
+        if(!modem.isNetworkConnected()){
+            printModuleName(); Serial.println("No connection to network!");
+            return false;
+        }
+
+        printModuleName(); Serial.println("Connected to network!");
+
+        // Connect to lte network
         printModuleName(); Serial.println("Attempting to connect to LTE Network: " + APN);
         if(modem.gprsConnect(APN.c_str(), gprsUser.c_str(), gprsPass.c_str())){
             printModuleName(); Serial.println("Successfully Connected!");
@@ -110,9 +130,7 @@ bool Loom_LTE::connect(){
             printModuleName(); Serial.println("Connection reattempts exceeded 10 tries. Connection Failed");
             return false;
         }
-    }
-
-    return false;
+    }while(!isConnected());
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -129,11 +147,27 @@ void Loom_LTE::disconnect(){
 bool Loom_LTE::verifyConnection(){
     printModuleName(); Serial.println("Attempting to verify internet connection...");
     
-    if(!client.connect("google.com", 80)){
-        printModuleName(); Serial.println("Failed to contact google your internet connection may not be completely established!");
+    if(!client.connect("vsh.pp.ua", 80)){
+        printModuleName(); Serial.println("Failed to contact TinyGSM example your internet connection may not be completely established!");
+        client.stop();
     }
     else{
-        printModuleName(); Serial.println("Successfully established connection www.google.com!");
+        client.print(String("GET ") + "/TinyGSM/logo.txt" + " HTTP/1.1\r\n");
+        client.print(String("Host: ") + "vsh.pp.ua" + "\r\n");
+        client.print("Connection: close\r\n\r\n");
+        client.println();
+
+        uint32_t timeout = millis();
+        while (client.connected() && millis() - timeout < 10000L) {
+            // Print available data
+            while (client.available()) {
+                char c = client.read();
+                Serial.print(c);
+                timeout = millis();
+            }
+        }
+        Serial.println();
+        client.stop();
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -31,10 +31,7 @@ Loom_Hypnos::~Loom_Hypnos(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::package(){
     JsonObject json = manInst->getDocument().createNestedObject("timestamp");
-    
-    // Convert the local time to UTC
-    DateTime time = get_utc_time();
-    DateTime localTime = getCurrentTime();
+
    
     json["time_utc"] = dateTime_toString(time);
     json["time_local"] = dateTime_toString(localTime);
@@ -379,6 +376,9 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
     // We want to wait for the user to re-open the serial monitor before continuing to see readouts
     if(waitForSerial)
         while(!Serial);
+
+    time = get_utc_time();
+    localTime = getCurrentTime();
 
     printModuleName(); Serial.println("Device has awoken from sleep!");
 }
