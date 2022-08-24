@@ -147,16 +147,20 @@ void Loom_LTE::disconnect(){
 bool Loom_LTE::verifyConnection(){
     printModuleName(); Serial.println("Attempting to verify internet connection...");
     
+    // Connect to TinyGSM's creator's website
     if(!client.connect("vsh.pp.ua", 80)){
         printModuleName(); Serial.println("Failed to contact TinyGSM example your internet connection may not be completely established!");
         client.stop();
     }
     else{
+
+        // Request the logo.txt to display
         client.print(String("GET ") + "/TinyGSM/logo.txt" + " HTTP/1.1\r\n");
         client.print(String("Host: ") + "vsh.pp.ua" + "\r\n");
         client.print("Connection: close\r\n\r\n");
         client.println();
 
+        // Print logo to screen
         uint32_t timeout = millis();
         while (client.connected() && millis() - timeout < 10000L) {
             // Print available data

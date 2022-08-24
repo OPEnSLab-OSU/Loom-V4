@@ -61,7 +61,7 @@ void Loom_Hypnos::enable(){
     }
 
     // If the RTC hasn't already been initialized then do so now
-    if(!RTC_initialized && useRTC)
+    if(!RTC_initialized)
         initializeRTC();
 
     manInst->setEnableState(true);
@@ -357,8 +357,10 @@ void Loom_Hypnos::pre_sleep(){
     Serial.end();
     USBDevice.detach();
 
-    attachInterrupt(digitalPinToInterrupt(12), callbackFunc, LOW);
-    attachInterrupt(digitalPinToInterrupt(12), callbackFunc, LOW);
+    if(useRTC){
+        attachInterrupt(digitalPinToInterrupt(12), callbackFunc, LOW);
+        attachInterrupt(digitalPinToInterrupt(12), callbackFunc, LOW);
+    }
 
     // Disable the power rails
     disable();
@@ -371,8 +373,9 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
     Serial.begin(115200);
     enable();
 
-    manInst->power_up();    // Re-init the modules that need it
-
+    // Re-init the modules that need it
+    manInst->power_up();  
+      
     // Clear any pending RTC alarms
     RTC_DS.clearAlarm();
 
@@ -380,10 +383,8 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
     if(waitForSerial)
         while(!Serial);
 
-    if(useRTC){
-        time = get_utc_time();
-        localTime = getCurrentTime();
-    }
+    time = get_utc_time();
+    localTime = getCurrentTime();
 
     printModuleName(); Serial.println("Device has awoken from sleep!");
 }

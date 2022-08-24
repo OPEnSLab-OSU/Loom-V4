@@ -41,6 +41,7 @@ void Loom_MQTT::publish(){
 
         int retryAttempts = 0;
 
+        // Try to connect multiple times as some may be dropped
         while(!mqttClient.connected() && retryAttempts < 5)
         {
             printModuleName(); Serial.println("Attempting to connect to broker: " + address + ":" + String(port));
@@ -48,8 +49,7 @@ void Loom_MQTT::publish(){
             // Attempt to Connect to the MQTT client 
             if(!mqttClient.connect(address.c_str(), port)){
                 printModuleName(); Serial.println("Failed to connect to broker: " + getMQTTError());
-
-                
+                delay(5000);
             }
 
             // If our retry limit has been reached we dont want to try to send data cause it wont work
@@ -103,6 +103,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
 
             int retryAttempts = 0;
 
+            // Try to connect multiple times as some may be dropped
             while(!mqttClient.connected() && retryAttempts < 5)
             {
                 printModuleName(); Serial.println("Attempting to connect to broker: " + address + ":" + String(port));
@@ -110,8 +111,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
                 // Attempt to Connect to the MQTT client 
                 if(!mqttClient.connect(address.c_str(), port)){
                     printModuleName(); Serial.println("Failed to connect to broker: " + getMQTTError());
-
-                    
+                    delay(5000);
                 }
 
                 // If our retry limit has been reached we dont want to try to send data cause it wont work
@@ -137,6 +137,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
                 mqttClient.beginMessage(topic);
                 mqttClient.print(batch[i]);
                 mqttClient.endMessage();
+                delay(500);
             }
             
             printModuleName(); Serial.println("Data has been successfully sent!");
