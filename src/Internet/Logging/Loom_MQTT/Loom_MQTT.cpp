@@ -17,9 +17,6 @@ Loom_MQTT::Loom_MQTT(
                     username(broker_user),
                     password(broker_pass) {
                         this->database_name = database_name;
-
-                        // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
-                        topic = database_name + "/" + (manInst->get_device_name() + String(manInst->get_instance_num()));
                     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -32,6 +29,9 @@ Loom_MQTT::Loom_MQTT(Manager& man, Client& internet_client) : Module("MQTT"), ma
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MQTT::publish(){
     if(moduleInitialized){
+        // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
+        topic = database_name + "/" + (manInst->get_device_name() + String(manInst->get_instance_num()));
+
         // If we are logging in using credentials then supply them
         if(username.length() > 0)
             mqttClient.setUsernamePassword(username, password);
@@ -94,6 +94,10 @@ void Loom_MQTT::publish(){
 void Loom_MQTT::publish(Loom_BatchSD& batchSD){
     if(moduleInitialized ){
         if(batchSD.shouldPublish()){
+
+            // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
+            topic = database_name + "/" + (manInst->get_device_name() + String(manInst->get_instance_num()));
+            
             // If we are logging in using credentials then supply them
             if(username.length() > 0)
                 mqttClient.setUsernamePassword(username, password);

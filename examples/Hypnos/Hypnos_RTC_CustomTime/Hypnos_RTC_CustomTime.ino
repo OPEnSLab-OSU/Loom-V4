@@ -28,5 +28,5 @@ void loop() {
 
   manager.display_data();
 
-  manger.pause(4000);
+  manager.pause(4000);
 }

@@ -213,38 +213,48 @@ void Loom_SDI12::getData(char addr){
 
     // Request a measurement from the sensor at the given address
     sendCommand(addr, "M!");
-    sendCommand(addr, "D0!").toCharArray(buf, sizeof(buf));
+    sendCommand(addr, "D0!").toCharArray(buf, 20);
+    
 
-    // If the value returned was 0 we want to re-request data, TEST THIS
-    if(sizeof(buf)/ sizeof(buf[0]) < 3){
+    printModuleName(); Serial.println("Invalid data received! Retrying...");
+    // If the value returned was 0 we want to re-request data
+    if(sizeof(buf)/ sizeof(buf[0]) < 4){
+        delay(1000);
+
         // Request a measurement from the sensor at the given address
         sendCommand(addr, "M!");
-        sendCommand(addr, "D0!").toCharArray(buf, sizeof(buf));
+        sendCommand(addr, "D0!").toCharArray(buf, 20);
     }
 
-    p = buf;
+    // Check if there is actually data to store in the variables
+    if(sizeof(buf)/ sizeof(buf[0]) > 4){
+        p = buf;
 
-    // If the sensor is a copy the used values an
-    if(getSensorInfo(addr).indexOf("GS3") != -1){
-        // Read out the results and parse out each of the data readings and pares them to floats
-        strtok(p, "+");
-        
-        sensorData[1] = (atof(strtok(NULL, "+")));
-        sensorData[0] = (atof(strtok(NULL, "+")));
-        sensorData[2] = (atof(strtok(NULL, "+")));
-    }
-
-    // Teros
-    else if(getSensorInfo(addr).indexOf("TER") != -1){
-        // Read out the results and parse out each of the data readings and pares them to floats
-        strtok(p, "+");
-        
-        sensorData[1] = (atof(strtok(NULL, "+")));
-        sensorData[0] = (atof(strtok(NULL, "+")));
-
-        // If we are on the Teros 12
-        if(getSensorInfo(addr).indexOf("12") != -1)
+        // If the sensor is a copy the used values an
+        if(getSensorInfo(addr).indexOf("GS3") != -1){
+            // Read out the results and parse out each of the data readings and pares them to floats
+            strtok(p, "+");
+            
+            sensorData[1] = (atof(strtok(NULL, "+")));
+            sensorData[0] = (atof(strtok(NULL, "+")));
             sensorData[2] = (atof(strtok(NULL, "+")));
+        }
+
+        // Teros
+        else if(getSensorInfo(addr).indexOf("TER") != -1){
+            // Read out the results and parse out each of the data readings and pares them to floats
+            strtok(p, "+");
+            
+            sensorData[1] = (atof(strtok(NULL, "+")));
+            sensorData[0] = (atof(strtok(NULL, "+")));
+
+            // If we are on the Teros 12
+            if(getSensorInfo(addr).indexOf("12") != -1)
+                sensorData[2] = (atof(strtok(NULL, "+")));
+        }
+    }
+    else{
+        printModuleName(); Serial.println("Failed to record new data! Using previous valid information!");
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -79,9 +79,8 @@ class Loom_Hypnos : public Module{
          * @param timezone The current timezone the clock was set to
          * @param use_custom_time Use a specific time set by the user that is different than the compile time
          * @param useSD Whether or not SD card functionality should be enabled
-         * @param useRTC Do we actually want to initialize the real time clock
          */ 
-        Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time = false, bool useSD = true, bool useRTC = true);
+        Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time = false, bool useSD = true);
 
         /**
          *  Cleanup any dynamically allocated pointers
@@ -198,7 +197,6 @@ class Loom_Hypnos : public Module{
 
         RTC_DS3231 RTC_DS;                                                  // Real time clock reference
         bool RTC_initialized = false;                                       // Did the RTC initialize correctly?
-        bool useRTC = true;                                                 // Do we actually want to enable the RTC
         
         bool custom_time = false;                                           // Set the RTC to a user specified time
 

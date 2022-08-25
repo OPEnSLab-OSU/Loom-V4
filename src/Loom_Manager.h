@@ -105,10 +105,22 @@ class Manager{
         String get_device_name(){ return deviceName; };
 
         /**
+         * Set the device name at runtime
+         * @param name New name of the device
+         */ 
+        void set_device_name(String name) { deviceName = name; };
+
+        /**
          * Gets the current device instance number
          * @return current device instance number
          */ 
         int get_instance_num(){ return instanceNumber; };  
+
+        /**
+         * Set the instance number at runtime
+         * @param num New instance number of the device
+         */ 
+        void set_instance_num(int num) { instanceNumber = num; };
         
         /**
          * Get the unique serial number of the Feather m0

@@ -7,7 +7,7 @@
 
 #include <Radio/Loom_LoRa/Loom_LoRa.h>
 
-Manager manager("Device", 1);
+Manager manager("Device", 0);
 
 // Do we want to use the instance number as the LoRa address
 Loom_LoRa lora(manager);

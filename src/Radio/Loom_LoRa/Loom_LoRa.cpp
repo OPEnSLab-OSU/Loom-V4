@@ -101,7 +101,7 @@ bool Loom_LoRa::receive(uint maxWaitTime){
         if(recvStatus){
             printModuleName(); Serial.println("Packet Received!");
             signalStrength = driver.lastRssi();
-            recvStatus = bufferToJson(buffer, manInst->getDocument().as<JsonObject>());
+            recvStatus = bufferToJson(buffer, manInst->getDocument());
         }
         else{
             printModuleName(); Serial.println("No Packet Received");
@@ -132,7 +132,7 @@ bool Loom_LoRa::send(const uint8_t destinationAddress){
             return false;
         }
 
-        printModuleName(); Serial.println("Succsessfully transmit packet!");
+        printModuleName(); Serial.println("Successfully transmitted packet!");
         signalStrength = driver.lastRssi();
         driver.sleep();
         return true;

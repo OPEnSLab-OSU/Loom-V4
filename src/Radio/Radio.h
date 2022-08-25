@@ -46,7 +46,7 @@ class Radio : public Module{
         /**
          * Convert the message pack to json
          */ 
-        bool bufferToJson(char* buffer, JsonObject json){
+        bool bufferToJson(char* buffer, JsonDocument& json){
 
             // Clear the json to store new data
             messageJson.clear();
