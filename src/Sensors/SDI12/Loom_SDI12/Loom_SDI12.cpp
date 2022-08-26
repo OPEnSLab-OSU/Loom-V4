@@ -215,10 +215,9 @@ void Loom_SDI12::getData(char addr){
     sendCommand(addr, "M!");
     sendCommand(addr, "D0!").toCharArray(buf, 20);
     
-
-    printModuleName(); Serial.println("Invalid data received! Retrying...");
     // If the value returned was 0 we want to re-request data
     if(sizeof(buf)/ sizeof(buf[0]) < 4){
+        printModuleName(); Serial.println("Invalid data received! Retrying...");
         delay(1000);
 
         // Request a measurement from the sensor at the given address

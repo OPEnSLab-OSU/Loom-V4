@@ -75,7 +75,7 @@ bool Loom_Freewave::receive(uint maxWaitTime){
     if(recvStatus){
         printModuleName(); Serial.println("Packet Received!");
         signalStrength = driver.lastRssi();
-        recvStatus = bufferToJson(buffer, manInst->getDocument());
+        recvStatus = bufferToJson(buffer, manInst->getDocument().to<JsonObject>());
     }
     else{
         printModuleName(); Serial.println("No Packet Received");

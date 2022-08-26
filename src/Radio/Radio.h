@@ -19,7 +19,7 @@ class Radio : public Module{
         uint8_t retryCount;                     // Number transmission retries allowed
         uint16_t retryTimeout;                  // Delay between retries (MS)
         
-        StaticJsonDocument<1500> messageJson;   // Where to store the received message
+        StaticJsonDocument<2000> messageJson;   // Where to store the received message
 
         /**
          * Get this device's address
@@ -46,7 +46,7 @@ class Radio : public Module{
         /**
          * Convert the message pack to json
          */ 
-        bool bufferToJson(char* buffer, JsonDocument& json){
+        bool bufferToJson(char* buffer, JsonObject json){
 
             // Clear the json to store new data
             messageJson.clear();
