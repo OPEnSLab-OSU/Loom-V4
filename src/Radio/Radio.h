@@ -46,22 +46,14 @@ class Radio : public Module{
         /**
          * Convert the message pack to json
          */ 
-        bool bufferToJson(char* buffer, JsonObject json){
+        bool bufferToJson(char* buffer, JsonDocument& json){
 
-            // Clear the json to store new data
-            messageJson.clear();
-            DeserializationError error = deserializeMsgPack(messageJson, buffer);
+            // Serialize the radio data into the JsonDocument
+            DeserializationError error = deserializeMsgPack(json, buffer);
 
             // Check if an error occurred 
             if(error != DeserializationError::Ok){
                 printModuleName(); Serial.println("Error occurred parsing MsgPack: " + String(error.c_str()));
-                return false;
-            }
-
-
-            // Set the contents of the main json object to the received message
-            if(!json.set(messageJson.as<JsonObject>())){
-                printModuleName(); Serial.println("An error occurred inserting received message into document!");
                 return false;
             }
 
