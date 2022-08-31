@@ -54,6 +54,8 @@ void Loom_LTE::initialize(){
         printModuleName(); Serial.println("IP Address: " + Loom_LTE::IPtoString(modem.localIP()));
 
         verifyConnection();
+
+        printModuleName(); Serial.println("Module successfully initialized!");
     }
     else{
         printModuleName(); Serial.println("Module failed to initialize");

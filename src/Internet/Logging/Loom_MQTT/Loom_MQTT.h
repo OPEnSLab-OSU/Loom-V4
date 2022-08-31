@@ -54,6 +54,11 @@ class Loom_MQTT : public Module{
          * @param man Reference to the manager
          */ 
         Loom_MQTT(Manager& man, Client& internet_client);
+
+        /**
+         * Deconstructor for MQTT interface 
+         */
+        ~Loom_MQTT();
         
         /**
          * Publish the current JSON data over MQTT 
@@ -78,19 +83,21 @@ class Loom_MQTT : public Module{
         void loadConfigFromJSON(String json);
     
     private:
-        Manager* manInst;           // Instance of the manager
-        MqttClient mqttClient;      // MQTT Client to manage interactions with the MQTT broker
+        Manager* manInst;                       // Instance of the manager
 
-        String getMQTTError();      // Get the string representation of the MQTT error codes
+        Client* internetClient;                  // Client to supply to the MQTT client to handle internet communication
+        MqttClient* mqttClient = nullptr;       // MQTT Client to manage interactions with the MQTT broker
 
-        int keep_alive = 60000;     // How long the broker should keep the connection open, defaults to a minute
+        String getMQTTError();                  // Get the string representation of the MQTT error codes
 
-        String address;             // Domain that the broker is running on
-        String database_name;       // Database to publish the data to
-        int port;                   // Port the broker is listening on
-        String topic;
-        String username;            // Username to log into the broker
-        String password;            // Password to log into the broker
+        int keep_alive = 60000;                 // How long the broker should keep the connection open, defaults to a minute
+
+        String address;                         // Domain that the broker is running on
+        String database_name;                   // Database to publish the data to
+        int port;                               // Port the broker is listening on
+        String topic;                           // Where to publish the data to
+        String username;                        // Username to log into the broker
+        String password;                        // Password to log into the broker
 
         
 

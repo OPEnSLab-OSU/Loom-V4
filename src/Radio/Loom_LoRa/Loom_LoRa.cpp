@@ -102,6 +102,10 @@ bool Loom_LoRa::receive(uint maxWaitTime){
             printModuleName(); Serial.println("Packet Received!");
             signalStrength = driver.lastRssi();
             recvStatus = bufferToJson(buffer, manInst->getDocument());
+
+            // Update device details
+            manInst->set_device_name(manInst->getDocument()["id"]["name"].as<String>());
+            manInst->set_instance_num(manInst->getDocument()["id"]["instance"].as<int>());
         }
         else{
             printModuleName(); Serial.println("No Packet Received");
