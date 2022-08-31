@@ -89,7 +89,7 @@ bool SDManager::log(DateTime currentTime){
             }    
 
             // Write the Instance data that isn't included in the JSON packet
-            myFile.print(device_name + "," + String(manInst->get_instance_num()) + ",");
+            myFile.print(manInst->get_device_name() + "," + String(manInst->get_instance_num()) + ",");
             JsonObject document = manInst->getDocument().as<JsonObject>();
 
             // If there is a key that contains timestamp data when need to include that separately 
