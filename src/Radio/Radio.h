@@ -63,13 +63,6 @@ class Radio : public Module{
             serializeJson(messageJson, jsonStr);
             deserializeJson(json, jsonStr);
 
-            /*
-            // Set the contents of the main json object to the received message
-            if(!json.set(messageJson.as<JsonObject>())){
-                printModuleName(); Serial.println("An error occurred inserting received message into document!");
-                return false;
-            }*/
-
             // Print out the received packet
             printModuleName(); Serial.println("\nMessage Received: ");
             serializeJsonPretty(messageJson, Serial);

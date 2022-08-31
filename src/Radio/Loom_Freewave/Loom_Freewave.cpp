@@ -10,6 +10,11 @@ Loom_Freewave::Loom_Freewave(
     ) : Radio("Freewave"), manInst(&man), serial1(Serial1), driver(serial1), manager(driver, address)
     {
         this->deviceAddress = address;
+
+        // Set the address of the LoRa to match the instance number
+        if(address == 0)
+            setAddress(manInst->get_instance_num());
+
         this->retryCount = retryCount;
         this->retryTimeout = retryTimeout;
         this->maxMessageLength = max_message_len;

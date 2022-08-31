@@ -19,7 +19,8 @@ using InterruptCallbackFunction = void (*)();
  */ 
 enum HYPNOS_VERSION{
     V3_2 = 10,
-    V3_3 = 11
+    V3_3 = 11,
+    ADALOGGER = 5
 };
 
 /**

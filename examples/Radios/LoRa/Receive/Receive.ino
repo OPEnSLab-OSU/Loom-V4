@@ -9,11 +9,10 @@
 
 Manager manager("Device", 0);
 
-// Do we want to use the instance number as the LoRa address
+// Create a new lora instance using the instance number as the address
 Loom_LoRa lora(manager);
 
 void setup() {
-
   manager.beginSerial();
   manager.initialize();
 }
