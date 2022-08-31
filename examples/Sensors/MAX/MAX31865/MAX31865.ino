@@ -14,7 +14,7 @@
 Manager manager("Device", 1);
 
 // Reads the temperature
-Loom_MAX31865 max(manager);
+Loom_MAX31865 max65(manager);
 
 void setup() {
 
