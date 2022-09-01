@@ -33,7 +33,7 @@ class Loom_Freewave : public Radio{
          */ 
         Loom_Freewave(
             Manager& man,
-            const uint8_t address = -1,
+            const uint8_t address,
             const uint16_t max_message_len = RH_SERIAL_MAX_MESSAGE_LEN,
             const uint8_t retryCount = 3,
             const uint16_t retryTimeout = 200

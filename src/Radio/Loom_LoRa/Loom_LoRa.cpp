@@ -60,10 +60,6 @@ void Loom_LoRa::initialize(){
     printModuleName(); Serial.println("Retry count set to: " + String(retryCount));
     manager.setRetries(retryCount);
 
-    // Set the address of the LoRa to match the instance number
-    if(deviceAddress == -1)
-        setAddress(manInst->get_instance_num());
-
     // Set bandwidth
     driver.setSignalBandwidth(125000);
     driver.setSpreadingFactor(10); 
@@ -136,11 +132,11 @@ bool Loom_LoRa::send(const uint8_t destinationAddress){
         }
 
         if(!manager.sendtoWait((uint8_t*)buffer, measureMsgPack(manInst->getDocument()), destinationAddress)){
-            printModuleName(); Serial.println("Failed to send packet to specified address!");
-            return false;
+            printModuleName(); Serial.println("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
+        }else{
+            printModuleName(); Serial.println("Successfully transmitted packet!");
         }
 
-        printModuleName(); Serial.println("Successfully transmitted packet!");
         signalStrength = driver.lastRssi();
         driver.sleep();
         return true;

@@ -38,7 +38,7 @@ class Loom_LoRa : public Radio{
          */ 
         Loom_LoRa(
             Manager& man,
-            const uint8_t address = -1,
+            const uint8_t address,
             const uint8_t powerLevel = 23,
             const uint8_t retryCount = 3,
             const uint16_t retryTimeout = 200,

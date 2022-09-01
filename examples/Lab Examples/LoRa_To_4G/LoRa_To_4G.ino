@@ -10,10 +10,10 @@
 #include <Radio/Loom_LoRa/Loom_LoRa.h>
 #include <Internet/Logging/Loom_MQTT/Loom_MQTT.h>
 
-Manager manager("Device", 1);
+Manager manager("Device", 0);
 
 // Do we want to use the instance number as the LoRa address
-Loom_LoRa loRa(manager);
+Loom_LoRa loRa(manager, 0);
 Loom_LTE lte(manager, NETWORK_NAME, NETWORK_USER, NETWORK_PASS);
 Loom_MQTT mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
 

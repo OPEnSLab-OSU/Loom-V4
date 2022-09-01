@@ -40,10 +40,6 @@ void Loom_Freewave::initialize(){
         moduleInitialized = false;
         return;
     }
-
-    // Set the address of the LoRa to match the instance number
-    if(deviceAddress == -1)
-        setAddress(manInst->get_instance_num());
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
