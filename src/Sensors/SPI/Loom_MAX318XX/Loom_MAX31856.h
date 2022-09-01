@@ -28,7 +28,7 @@ class Loom_MAX31856 : public Module{
          * @param chip_select What pin SPI pin to use
          * @param num_samples The number of samples to collect and average
          */ 
-        Loom_MAX31856(Manager& man, int chip_select = 10, int samples = 1,);
+        Loom_MAX31856(Manager& man, int chip_select = 10, int samples = 1);
 
         /**
          * Get the recorded temperature
