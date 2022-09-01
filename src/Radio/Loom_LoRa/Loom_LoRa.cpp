@@ -11,11 +11,6 @@ Loom_LoRa::Loom_LoRa(
     ) : Radio("LoRa"), manInst(&man), driver{RFM95_CS, RFM95_INT}, manager {driver, address}
     {
         this->deviceAddress = address;
-
-        // Set the address of the LoRa to match the instance number
-        if(address == 0)
-            setAddress(manInst->get_instance_num());
-        
         this->powerLevel = powerLevel;
         this->retryCount = retryCount;
         this->retryTimeout = retryTimeout;
@@ -64,6 +59,10 @@ void Loom_LoRa::initialize(){
     // Set retry attempts
     printModuleName(); Serial.println("Retry count set to: " + String(retryCount));
     manager.setRetries(retryCount);
+
+    // Set the address of the LoRa to match the instance number
+    if(address == -1)
+        setAddress(manInst->get_instance_num());
 
     // Set bandwidth
     driver.setSignalBandwidth(125000);
