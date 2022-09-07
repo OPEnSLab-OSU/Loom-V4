@@ -35,8 +35,11 @@ void Loom_TSL2591::measure() {
 
     uint16_t visible = tsl.getLuminosity(TSL2591_VISIBLE);
 
-    if(visible != 65535)
-        lightLevels[0] = tsl.getLuminosity(TSL2591_VISIBLE);
+    // Make sure the value is actually valid
+    if(visible > 65533)
+        lightLevels[0] = 0;
+    else
+        lightLevels[0] = visible;
     
     lightLevels[1] = tsl.getLuminosity(TSL2591_INFRARED);
     lightLevels[2] = tsl.getLuminosity(TSL2591_FULLSPECTRUM);
