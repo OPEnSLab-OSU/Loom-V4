@@ -15,6 +15,9 @@ Manager manager("Device", 1);
 // Manger Instance, Address Enable Warmup, Value Multiplier
 Loom_K30 k30(manager, 0x68, true, 1);
 
+// Serial Interface for the K30
+//Loom_K30 k30(manager, 12, 11, true, 1);
+
 void setup() {
 
   // Start the serial interface and wait for the user to open the serial monitor
