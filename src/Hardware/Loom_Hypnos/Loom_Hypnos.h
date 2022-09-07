@@ -174,6 +174,12 @@ class Loom_Hypnos : public Module{
         TimeSpan getSleepIntervalFromSD(String fileName);
 
         /**
+         * Get and set the timezone for the Hypnos from the SD card
+         * @param fileName Name of the file to pull information from
+         */ 
+        void getTimeZoneFromSD(String fileName);
+
+        /**
          * Read file from SD
          * @param fileName File to read from
          */ 
@@ -211,17 +217,21 @@ class Loom_Hypnos : public Module{
         
         bool custom_time = false;                                                           // Set the RTC to a user specified time
 
-        std::map<int, std::tuple<InterruptCallbackFunction, int, InterruptType>> pinToInterrupt;            // Map the given pin to an interrupt call back
-        
-        bool hasInterruptBeenRegistered = false;                                            // If we have actually registered and interrupt previously or not
-        InterruptCallbackFunction callbackFunc;                                             // Function to be called when an interrupt is triggered
+        // Map the given pin to an interrupt call back
+        // 0th - ISR
+        // 1st - Interrupt Trigger
+        // 2nd - Interrupt Type (SLEEP or OTHER)
+        std::map<int, std::tuple<InterruptCallbackFunction, int, InterruptType>> pinToInterrupt;            
 
         void set_custom_time();                                                             // Set a custom time on startup for the RTC to use
         void initializeRTC();                                                               // Initialize RTC
 
+        void createTimezoneMap();                                                           // Map Timezone Strings to Timezone enum
+        std::map<String, TIME_ZONE> timezoneMap;                                            // String to Timezone enum
+
         DateTime get_utc_time();                                                            // Convert the local time to UTC, accounts for daylight savings zones
         TIME_ZONE timezone;                                                                 // Timezone the RTC was set to
-
+       
         String dateTime_toString(DateTime time);                                            // Convert a DateTime object to our desired format
 
         DateTime time;                                                                      // UTC time

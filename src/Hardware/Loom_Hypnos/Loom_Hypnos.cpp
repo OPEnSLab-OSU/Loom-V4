@@ -14,6 +14,9 @@ Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, b
         sdMan = new SDManager(manInst, sd_chip_select);
     }
 
+    // Create the map of timezone strings to actual timezones
+    createTimezoneMap();
+
     // Add the Hypnos to the module register
     manInst->registerModule(this);
     manInst->useHypnos();   // Enable the use of the hypnos
@@ -414,5 +417,52 @@ TimeSpan Loom_Hypnos::getSleepIntervalFromSD(String fileName){
         // Return the interval as set in the json
         return TimeSpan(json["days"].as<int>(), json["hours"].as<int>(), json["minutes"].as<int>(), json["seconds"].as<int>());
     }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::getTimeZoneFromSD(String fileName){
+    // Doc to store the JSON data from the SD card in
+    StaticJsonDocument<500> doc;
+    DeserializationError deserialError = deserializeJson(doc, sdMan->readFile(fileName));
+
+    // Create json object to easily pull data from
+    JsonObject json = doc.as<JsonObject>();
+
+    if(deserialError != DeserializationError::Ok){
+        printModuleName(); Serial.println("There was an error reading the timezone defaulting to programmed timezone");
+    }
+    else{
+        printModuleName(); Serial.println("Timezone successfully loaded!");
+        timezone = timezoneMap[json["timezone"].as<String>()];
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::createTimezoneMap(){
+    timezoneMap.insert(std::make_pair("WAT", TIME_ZONE::WAT));
+    timezoneMap.insert(std::make_pair("AT", TIME_ZONE::AT));
+    timezoneMap.insert(std::make_pair("AST", TIME_ZONE::AST));
+    timezoneMap.insert(std::make_pair("EST", TIME_ZONE::EST));
+    timezoneMap.insert(std::make_pair("CST", TIME_ZONE::CST));
+    timezoneMap.insert(std::make_pair("MST", TIME_ZONE::MST));
+    timezoneMap.insert(std::make_pair("PST", TIME_ZONE::PST));
+    timezoneMap.insert(std::make_pair("AKST", TIME_ZONE::AKST));
+    timezoneMap.insert(std::make_pair("HST", TIME_ZONE::HST));
+    timezoneMap.insert(std::make_pair("SST", TIME_ZONE::SST));
+    timezoneMap.insert(std::make_pair("GMT", TIME_ZONE::GMT));
+    timezoneMap.insert(std::make_pair("BST", TIME_ZONE::BST));
+    timezoneMap.insert(std::make_pair("CET", TIME_ZONE::CET));
+    timezoneMap.insert(std::make_pair("EET", TIME_ZONE::EET));
+    timezoneMap.insert(std::make_pair("EEST", TIME_ZONE::EEST));
+    timezoneMap.insert(std::make_pair("BRT", TIME_ZONE::BRT));
+    timezoneMap.insert(std::make_pair("ZP4", TIME_ZONE::ZP4));
+    timezoneMap.insert(std::make_pair("ZP5", TIME_ZONE::ZP5));
+    timezoneMap.insert(std::make_pair("ZP6", TIME_ZONE::ZP6));
+    timezoneMap.insert(std::make_pair("ZP7", TIME_ZONE::ZP7));
+    timezoneMap.insert(std::make_pair("AWST", TIME_ZONE::AWST));
+    timezoneMap.insert(std::make_pair("ACST", TIME_ZONE::ACST));
+    timezoneMap.insert(std::make_pair("AEST", TIME_ZONE::AEST));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
