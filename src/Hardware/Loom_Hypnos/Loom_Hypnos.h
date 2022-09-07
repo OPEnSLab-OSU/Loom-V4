@@ -2,8 +2,9 @@
 
 
 #include <OPEnS_RTC.h>
-#include <LowPower.h>
+#include <ArduinoLowPower.h>
 #include <map>
+#include <tuple>
 
 #include "Arduino.h"
 #include "Module.h"
@@ -20,7 +21,7 @@ using InterruptCallbackFunction = void (*)();
 enum HYPNOS_VERSION{
     V3_2 = 10,
     V3_3 = 11,
-    ADALOGGER = 5
+    ADALOGGER = 4
 };
 
 /**
@@ -51,6 +52,14 @@ enum TIME_ZONE{
     ACST = -9, // Half an hour off so its -9.5
     AEST = -10
 
+};
+
+/**
+ * Type of interrupt to register 
+ */ 
+enum InterruptType{
+    SLEEP,
+    OTHER
 };
 
 /**
@@ -116,8 +125,9 @@ class Loom_Hypnos : public Module{
          * @param isrFunc function to callback to when the interrupt is triggered
          * @param interruptPin Defaults to RTC pin on Hypnos can be changed to reflect other interrupts
          * @param triggerState When the interrupt should trigger
+         * @param interruptType Type of the interrupt to register (SLEEP or OTHER)
          */ 
-        bool registerInterrupt(InterruptCallbackFunction isrFunc = nullptr, int interruptPin = 12);
+        bool registerInterrupt(InterruptCallbackFunction isrFunc = nullptr, int interruptPin = 12, InterruptType interruptType = SLEEP, int triggerState = LOW);
 
         /**
          * Called when the user wants to wake the Hypnos back out of the sleep state
@@ -186,41 +196,41 @@ class Loom_Hypnos : public Module{
 
     private:
 
-        Manager* manInst = nullptr;                                         // Instance of the manager
-        SDManager* sdMan = nullptr;                                         // SD Manager
+        Manager* manInst = nullptr;                                                         // Instance of the manager
+        SDManager* sdMan = nullptr;                                                         // SD Manager
 
-        int sd_chip_select;                                                 // Pin that the SD card will use to communicate with the Hypnos
-        bool enableSD;                                                      // Specifies whether or not the SD card should be enabled on the Hypnos
+        int sd_chip_select;                                                                 // Pin that the SD card will use to communicate with the Hypnos
+        bool enableSD;                                                                      // Specifies whether or not the SD card should be enabled on the Hypnos
 
         int batch_size;
 
         /* Real-Time Clock Settings */
 
-        RTC_DS3231 RTC_DS;                                                  // Real time clock reference
-        bool RTC_initialized = false;                                       // Did the RTC initialize correctly?
+        RTC_DS3231 RTC_DS;                                                                  // Real time clock reference
+        bool RTC_initialized = false;                                                       // Did the RTC initialize correctly?
         
-        bool custom_time = false;                                           // Set the RTC to a user specified time
+        bool custom_time = false;                                                           // Set the RTC to a user specified time
 
-        std::map<int, InterruptCallbackFunction> pinToInterrupt;            // Map the given pin to an interrupt call back
+        std::map<int, std::tuple<InterruptCallbackFunction, int, InterruptType>> pinToInterrupt;            // Map the given pin to an interrupt call back
         
-        bool hasInterruptBeenRegistered = false;                            // If we have actually registered and interrupt previously or not
-        InterruptCallbackFunction callbackFunc;                             // Function to be called when an interrupt is triggered
+        bool hasInterruptBeenRegistered = false;                                            // If we have actually registered and interrupt previously or not
+        InterruptCallbackFunction callbackFunc;                                             // Function to be called when an interrupt is triggered
 
-        void set_custom_time();                                             // Set a custom time on startup for the RTC to use
-        void initializeRTC();                                               // Initialize RTC
+        void set_custom_time();                                                             // Set a custom time on startup for the RTC to use
+        void initializeRTC();                                                               // Initialize RTC
 
-        DateTime get_utc_time();                                            // Convert the local time to UTC, accounts for daylight savings zones
-        TIME_ZONE timezone;                                                 // Timezone the RTC was set to
+        DateTime get_utc_time();                                                            // Convert the local time to UTC, accounts for daylight savings zones
+        TIME_ZONE timezone;                                                                 // Timezone the RTC was set to
 
-        String dateTime_toString(DateTime time);                            // Convert a DateTime object to our desired format
+        String dateTime_toString(DateTime time);                                            // Convert a DateTime object to our desired format
 
-        DateTime time;                                                      // UTC time
-        DateTime localTime;                                                 // Local time
+        DateTime time;                                                                      // UTC time
+        DateTime localTime;                                                                 // Local time
 
         /* Sleep functionality */
 
-        void pre_sleep();                                                   // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
-        void post_sleep(bool waitForSerial);                                // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
+        void pre_sleep();                                                                   // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
+        void post_sleep(bool waitForSerial);                                                // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
 
         
 

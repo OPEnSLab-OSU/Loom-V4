@@ -102,8 +102,8 @@ void Loom_ZXGesture::package() {
     JsonObject json = manInst->get_data_object(getModuleName());
     switch(mode){
         case POS:
-            json["Position X"] = pos.x;
-            json["Position Z"] = pos.z;
+            json["Position_X"] = pos.x;
+            json["Position_Z"] = pos.z;
             break;
         case GEST:
             json["Gesture"] = gestureString;

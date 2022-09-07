@@ -66,13 +66,13 @@ void Loom_SDI12::package(){
         if(getSensorInfo(inUseAddresses[i]).indexOf("GS3") != -1){
             JsonObject json = manInst->get_data_object("GS3_" + String(i));
             json["Temperature"] = sensorData[0];
-            json["Dielectric Permittivity"] = sensorData[1];
+            json["Dielectric_Permittivity"] = sensorData[1];
             json["Conductivity"] = sensorData[2];
         }
         else{
             JsonObject json = manInst->get_data_object("Terros_" + String(i));
             json["Temperature"] = sensorData[0];
-            json["Volumetric Water Content"] = sensorData[1];
+            json["Volumetric_Water_Content"] = sensorData[1];
             if(getSensorInfo(inUseAddresses[i]).indexOf("TER12") != -1)
                 json["Conductivity"] = sensorData[2];
         }

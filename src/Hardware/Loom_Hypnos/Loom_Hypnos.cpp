@@ -8,8 +8,7 @@ Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, b
     pinMode(5, OUTPUT);                     // 3.3v power rail
     pinMode(6, OUTPUT);                     // 5v power rail
     pinMode(LED_BUILTIN, OUTPUT);           // Status LED
-    pinMode(12, INPUT_PULLUP);              // RTC Interrupt
-
+    
     // Create the SD Manager if we want to use SD
     if(useSD){
         sdMan = new SDManager(manInst, sd_chip_select);
@@ -90,7 +89,8 @@ void Loom_Hypnos::disable(){
 /* Interrupt Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin){
+bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin, InterruptType interruptType, int triggerState){
+    pinMode(interruptPin, INPUT_PULLUP);  //  Set interrupt pin input mode
 
     if(interruptPin == 12){
         printModuleName(); Serial.println("Registering RTC interrupt...");
@@ -105,13 +105,17 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
 
     // Make sure a callback function was supplied
     if(isrFunc != nullptr){
-        
-        attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, LOW);
-        attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, LOW);
-        printModuleName(); Serial.println("Interrupt successfully attached!");
-        
+         // If the interrupt we registered is for sleep we should set the interrupt to wake the device from sleep
+        if(interruptType == SLEEP){
+            LowPower.attachInterruptWakeup(interruptPin, isrFunc, triggerState);
+        }
+        else{
+            attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
+            attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
+            printModuleName(); Serial.println("Interrupt successfully attached!");
+        }
         // Add the interrupt to the list of pin to interrupts
-        pinToInterrupt.insert(std::make_pair(interruptPin, isrFunc));
+        pinToInterrupt.insert(std::make_pair(interruptPin, std::make_tuple(isrFunc, triggerState, interruptType)));
         return true;
     } 
     else{
@@ -127,15 +131,21 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
-    // If we haven't previously registered the interrupt we need to do this before we can reattach to an interrupt that doesn't exist
-    if(pinToInterrupt.count(interruptPin) <= 0){
-        printModuleName(); Serial.println("Failed to reattach interrupt! Interrupt has not previously been registered...");
-        return false;
-    }
+    if(std::get<2>(pinToInterrupt[interruptPin]) != SLEEP){
 
-    attachInterrupt(digitalPinToInterrupt(interruptPin), pinToInterrupt[interruptPin], LOW);
-    attachInterrupt(digitalPinToInterrupt(interruptPin), pinToInterrupt[interruptPin], LOW);
-    printModuleName(); Serial.println("Interrupt successfully reattached!");
+        // If we haven't previously registered the interrupt we need to do this before we can reattach to an interrupt that doesn't exist
+        if(pinToInterrupt.count(interruptPin) <= 0){
+            printModuleName(); Serial.println("Failed to reattach interrupt! Interrupt has not previously been registered...");
+            return false;
+        }
+
+        attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
+        attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
+        printModuleName(); Serial.println("Interrupt successfully reattached!");
+    }
+    else{
+        printModuleName(); Serial.println("No need to reattach a sleep interrupt!");
+    }
 
     return true;
 
@@ -144,7 +154,7 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::wakeup(){
-    detachInterrupt(digitalPinToInterrupt(12));     // Detach the interrupt so it doesn't trigger again    
+    detachInterrupt(pinToInterrupt.begin()->first);     // Detach the interrupt so it doesn't trigger again    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -341,7 +351,7 @@ void Loom_Hypnos::sleep(bool waitForSerial){
     
     disable();                      // Disable the power rails before sleeping
     pre_sleep();                    // Pre-sleep cleanup
-    LowPower.standby();             // Go to sleep and hang
+    LowPower.sleep();               // Go to sleep and hang
     post_sleep(waitForSerial);      // Wake up
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -357,10 +367,7 @@ void Loom_Hypnos::pre_sleep(){
     Serial.end();
     USBDevice.detach();
 
-
-    attachInterrupt(digitalPinToInterrupt(12), callbackFunc, LOW);
-    attachInterrupt(digitalPinToInterrupt(12), callbackFunc, LOW);
-
+    attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
 
     // Disable the power rails
     disable();

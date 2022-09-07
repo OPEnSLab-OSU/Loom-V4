@@ -22,7 +22,7 @@ class Loom_LTE : public Module{
         /* These aren't used with the Wifi manager */
         void measure() override {};                               
         void print_measurements() override {};
-        void package() override {};        
+           
 
     public:
 
@@ -56,6 +56,10 @@ class Loom_LTE : public Module{
 
         // Disconnect from the network
         void power_down() override;
+
+
+        // Signal Strength
+        void package() override;
 
         /**
          * Load the config to connect to the LTE network from a JSON string

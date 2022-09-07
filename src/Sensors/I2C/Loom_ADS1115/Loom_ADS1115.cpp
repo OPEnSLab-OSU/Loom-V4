@@ -27,12 +27,12 @@ void Loom_ADS1115::measure(){
     if(initialized){
         if(enableAnalog){
             for(int i = 0; i < 4; i++){
-                analogData[i] = ads.readADC_SingleEnded(i);
+                analogData[i] = (int)ads.readADC_SingleEnded(i);
             }
 
             if(enableDiff){
-                diffData[0] = ads.readADC_Differential_0_1();
-                diffData[1] = ads.readADC_Differential_2_3();
+                diffData[0] = (int)ads.readADC_Differential_0_1();
+                diffData[1] = (int)ads.readADC_Differential_2_3();
             }
         }
     }
@@ -44,15 +44,15 @@ void Loom_ADS1115::package(){
     if(initialized){
         JsonObject json = manInst->get_data_object(getModuleName());
         if(enableAnalog){
-            json["Analog 0"] = analogData[0];
-            json["Analog 1"] = analogData[1];
-            json["Analog 2"] = analogData[2];
-            json["Analog 3"] = analogData[3];
+            json["Analog_0"] = analogData[0];
+            json["Analog_1"] = analogData[1];
+            json["Analog_2"] = analogData[2];
+            json["Analog_3"] = analogData[3];
         }
 
         if(enableDiff){
-            json["Differential 0"] = diffData[0];
-            json["Differential 1"] = diffData[1];
+            json["Differential_0"] = diffData[0];
+            json["Differential_1"] = diffData[1];
         }
     }
 }
