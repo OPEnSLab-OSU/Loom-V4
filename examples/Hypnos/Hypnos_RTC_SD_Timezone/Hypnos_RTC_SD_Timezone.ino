@@ -1,6 +1,5 @@
 /**
- * This is an example use case for the Hypnos board's sleep functionality in addition to the SD logging
- * This example increments a counter each power cycle logging the data to the SD card.
+ * This is an example use case for the Hypnos board's SD functionality to load a timezone from the SD card
  * 
  * NOTE: THIS EXAMPLE DOESN"T WAIT FOR SERIAL AFTER SLEEPING
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
@@ -16,8 +15,6 @@ Manager manager("Device", 1);
 //Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time = false, bool useSD = true)
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2, TIME_ZONE::PST);
 
-TimeSpan sleepInterval;
-
 // Called when the interrupt is triggered 
 void isrTrigger(){
   hypnos.wakeup();
@@ -29,13 +26,11 @@ void setup() {
   Serial.begin(115200);
   while(!Serial);
 
+  // Load the Timezone before we enable the hypnos
+  hypnos.getTimeZoneFromSD("Timezone.json");
+
   // Enable the hypnos rails
   hypnos.enable();
-
-  sleepInterval = hypnos.getSleepIntervalFromSD("SD_config.json");
-
-  // Register the ISR and attach to the interrupt
-  hypnos.registerInterrupt(isrTrigger);
 }
 
 void loop() {
@@ -45,13 +40,4 @@ void loop() {
 
   // Log the data to the SD card              
   hypnos.logToSD();
-
-  // Set the RTC interrupt alarm to wake the device in 10 seconds
-  hypnos.setInterruptDuration(sleepInterval);
-
-  // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
-  hypnos.reattachRTCInterrupt();
-  
-  // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
-  hypnos.sleep();
 }

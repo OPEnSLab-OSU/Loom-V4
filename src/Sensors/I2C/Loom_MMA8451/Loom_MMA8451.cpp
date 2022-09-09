@@ -51,21 +51,21 @@ void Loom_MMA8451::measure() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MMA8451::package() {
     JsonObject json = manInst->get_data_object(getModuleName());
-    json["X Acceleration"] = accel[0];
-    json["Y Acceleration"] = accel[1];
-    json["Z Acceleration"] = accel[2];
+    json["X_Acceleration"] = accel[0];
+    json["Y_Acceleration"] = accel[1];
+    json["Z_Acceleration"] = accel[2];
 
     // Convert the orientation to a string
     String orientationString = "";
     switch (orientation) {
-        case MMA8451_PL_PUF: orientationString = "Portrait Up Front";       break;
-        case MMA8451_PL_PUB: orientationString = "Portrait Up Back";		break;
-        case MMA8451_PL_PDF: orientationString = "Portrait Down Front";	    break;
-        case MMA8451_PL_PDB: orientationString = "Portrait Down Back";		break;
-        case MMA8451_PL_LRF: orientationString = "Landscape Right Front";	break;
-        case MMA8451_PL_LRB: orientationString = "Landscape Right Back";	break;
-        case MMA8451_PL_LLF: orientationString = "Landscape Left Front";	break;
-        case MMA8451_PL_LLB: orientationString = "Landscape Left Back";	    break;
+        case MMA8451_PL_PUF: orientationString = "Portrait_Up_Front";       break;
+        case MMA8451_PL_PUB: orientationString = "Portrait_Up_Back";		break;
+        case MMA8451_PL_PDF: orientationString = "Portrait_Down_Front";	    break;
+        case MMA8451_PL_PDB: orientationString = "Portrait_Down_Back";		break;
+        case MMA8451_PL_LRF: orientationString = "Landscape_Right_Front";	break;
+        case MMA8451_PL_LRB: orientationString = "Landscape_Right_Back";	break;
+        case MMA8451_PL_LLF: orientationString = "Landscape_Left_Front";	break;
+        case MMA8451_PL_LLB: orientationString = "Landscape_Left_Back";	    break;
 	}
     
     // Package the orientation string

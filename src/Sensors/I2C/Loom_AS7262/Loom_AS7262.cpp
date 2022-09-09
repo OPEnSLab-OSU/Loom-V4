@@ -55,11 +55,11 @@ void Loom_AS7262::measure() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7262::package() {
     JsonObject json = manInst->get_data_object(getModuleName());
-	json["Color 1"] = color[0];
-	json["Color 2"] = color[1];
-	json["Color 3"] = color[2];
-	json["Color 4"] = color[3];
-	json["Color 5"] = color[4];
-	json["Color 6"] = color[5];
+	json["Color _1"] = color[0];
+	json["Color_2"] = color[1];
+	json["Color_3"] = color[2];
+	json["Color_4"] = color[3];
+	json["Color_5"] = color[4];
+	json["Color_6"] = color[5];
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

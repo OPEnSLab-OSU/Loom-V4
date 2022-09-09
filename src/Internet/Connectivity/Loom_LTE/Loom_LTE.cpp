@@ -98,6 +98,15 @@ void Loom_LTE::power_down(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LTE::package(){
+    if(moduleInitialized){
+        JsonObject json = manInst->get_data_object(getModuleName());
+        json["RSSI"] = modem.getSignalQuality();
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::connect(){
     uint8_t attemptCount = 1; // Tracks number of attempts, 10 is a fail
 
@@ -188,7 +197,6 @@ void Loom_LTE::loadConfigFromJSON(String json){
     if(deserialError != DeserializationError::Ok){
         printModuleName(); Serial.println("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
     }
-
 
     APN = doc["apn"].as<String>();
     gprsUser = doc["user"].as<String>();

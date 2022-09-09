@@ -8,12 +8,14 @@ Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, b
     pinMode(5, OUTPUT);                     // 3.3v power rail
     pinMode(6, OUTPUT);                     // 5v power rail
     pinMode(LED_BUILTIN, OUTPUT);           // Status LED
-    pinMode(12, INPUT_PULLUP);              // RTC Interrupt
-
+    
     // Create the SD Manager if we want to use SD
     if(useSD){
         sdMan = new SDManager(manInst, sd_chip_select);
     }
+
+    // Create the map of timezone strings to actual timezones
+    createTimezoneMap();
 
     // Add the Hypnos to the module register
     manInst->registerModule(this);
@@ -90,7 +92,8 @@ void Loom_Hypnos::disable(){
 /* Interrupt Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin){
+bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin, InterruptType interruptType, int triggerState){
+    pinMode(interruptPin, INPUT_PULLUP);  //  Set interrupt pin input mode
 
     if(interruptPin == 12){
         printModuleName(); Serial.println("Registering RTC interrupt...");
@@ -105,13 +108,17 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
 
     // Make sure a callback function was supplied
     if(isrFunc != nullptr){
-        
-        attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, LOW);
-        attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, LOW);
-        printModuleName(); Serial.println("Interrupt successfully attached!");
-        
+         // If the interrupt we registered is for sleep we should set the interrupt to wake the device from sleep
+        if(interruptType == SLEEP){
+            LowPower.attachInterruptWakeup(interruptPin, isrFunc, triggerState);
+        }
+        else{
+            attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
+            attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
+            printModuleName(); Serial.println("Interrupt successfully attached!");
+        }
         // Add the interrupt to the list of pin to interrupts
-        pinToInterrupt.insert(std::make_pair(interruptPin, isrFunc));
+        pinToInterrupt.insert(std::make_pair(interruptPin, std::make_tuple(isrFunc, triggerState, interruptType)));
         return true;
     } 
     else{
@@ -127,14 +134,21 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
-    // If we haven't previously registered the interrupt we need to do this before we can reattach to an interrupt that doesn't exist
-    if(pinToInterrupt.count(interruptPin) <= 0){
-        printModuleName(); Serial.println("Failed to reattach interrupt! Interrupt has not previously been registered...");
-        return false;
-    }
+    if(std::get<2>(pinToInterrupt[interruptPin]) != SLEEP){
 
-    attachInterrupt(digitalPinToInterrupt(interruptPin), pinToInterrupt[interruptPin], LOW);
-    attachInterrupt(digitalPinToInterrupt(interruptPin), pinToInterrupt[interruptPin], LOW);
+        // If we haven't previously registered the interrupt we need to do this before we can reattach to an interrupt that doesn't exist
+        if(pinToInterrupt.count(interruptPin) <= 0){
+            printModuleName(); Serial.println("Failed to reattach interrupt! Interrupt has not previously been registered...");
+            return false;
+        }
+
+        attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
+        attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
+        
+    }
+    else{
+        LowPower.attachInterruptWakeup(interruptPin, std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
+    }
     printModuleName(); Serial.println("Interrupt successfully reattached!");
 
     return true;
@@ -144,7 +158,7 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::wakeup(){
-    detachInterrupt(digitalPinToInterrupt(12));     // Detach the interrupt so it doesn't trigger again    
+    detachInterrupt(pinToInterrupt.begin()->first);     // Detach the interrupt so it doesn't trigger again    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -341,7 +355,7 @@ void Loom_Hypnos::sleep(bool waitForSerial){
     
     disable();                      // Disable the power rails before sleeping
     pre_sleep();                    // Pre-sleep cleanup
-    LowPower.standby();             // Go to sleep and hang
+    LowPower.sleep();               // Go to sleep and hang
     post_sleep(waitForSerial);      // Wake up
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -357,10 +371,7 @@ void Loom_Hypnos::pre_sleep(){
     Serial.end();
     USBDevice.detach();
 
-
-    attachInterrupt(digitalPinToInterrupt(12), callbackFunc, LOW);
-    attachInterrupt(digitalPinToInterrupt(12), callbackFunc, LOW);
-
+    attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
 
     // Disable the power rails
     disable();
@@ -407,5 +418,52 @@ TimeSpan Loom_Hypnos::getSleepIntervalFromSD(String fileName){
         // Return the interval as set in the json
         return TimeSpan(json["days"].as<int>(), json["hours"].as<int>(), json["minutes"].as<int>(), json["seconds"].as<int>());
     }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::getTimeZoneFromSD(String fileName){
+    // Doc to store the JSON data from the SD card in
+    StaticJsonDocument<500> doc;
+    DeserializationError deserialError = deserializeJson(doc, sdMan->readFile(fileName));
+
+    // Create json object to easily pull data from
+    JsonObject json = doc.as<JsonObject>();
+
+    if(deserialError != DeserializationError::Ok){
+        printModuleName(); Serial.println("There was an error reading the timezone defaulting to programmed timezone");
+    }
+    else{
+        printModuleName(); Serial.println("Timezone successfully loaded!");
+        timezone = timezoneMap[json["timezone"].as<String>()];
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::createTimezoneMap(){
+    timezoneMap.insert(std::make_pair("WAT", TIME_ZONE::WAT));
+    timezoneMap.insert(std::make_pair("AT", TIME_ZONE::AT));
+    timezoneMap.insert(std::make_pair("AST", TIME_ZONE::AST));
+    timezoneMap.insert(std::make_pair("EST", TIME_ZONE::EST));
+    timezoneMap.insert(std::make_pair("CST", TIME_ZONE::CST));
+    timezoneMap.insert(std::make_pair("MST", TIME_ZONE::MST));
+    timezoneMap.insert(std::make_pair("PST", TIME_ZONE::PST));
+    timezoneMap.insert(std::make_pair("AKST", TIME_ZONE::AKST));
+    timezoneMap.insert(std::make_pair("HST", TIME_ZONE::HST));
+    timezoneMap.insert(std::make_pair("SST", TIME_ZONE::SST));
+    timezoneMap.insert(std::make_pair("GMT", TIME_ZONE::GMT));
+    timezoneMap.insert(std::make_pair("BST", TIME_ZONE::BST));
+    timezoneMap.insert(std::make_pair("CET", TIME_ZONE::CET));
+    timezoneMap.insert(std::make_pair("EET", TIME_ZONE::EET));
+    timezoneMap.insert(std::make_pair("EEST", TIME_ZONE::EEST));
+    timezoneMap.insert(std::make_pair("BRT", TIME_ZONE::BRT));
+    timezoneMap.insert(std::make_pair("ZP4", TIME_ZONE::ZP4));
+    timezoneMap.insert(std::make_pair("ZP5", TIME_ZONE::ZP5));
+    timezoneMap.insert(std::make_pair("ZP6", TIME_ZONE::ZP6));
+    timezoneMap.insert(std::make_pair("ZP7", TIME_ZONE::ZP7));
+    timezoneMap.insert(std::make_pair("AWST", TIME_ZONE::AWST));
+    timezoneMap.insert(std::make_pair("ACST", TIME_ZONE::ACST));
+    timezoneMap.insert(std::make_pair("AEST", TIME_ZONE::AEST));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

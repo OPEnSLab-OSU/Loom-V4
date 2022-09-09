@@ -32,8 +32,8 @@ void Loom_ADS1115::measure(){
             }
 
             if(enableDiff){
-                diffData[0] = ads.readADC_Differential_0_1();
-                diffData[1] = ads.readADC_Differential_2_3();
+                diffData[0] = (int)ads.readADC_Differential_0_1();
+                diffData[1] = (int)ads.readADC_Differential_2_3();
             }
         }
     }
