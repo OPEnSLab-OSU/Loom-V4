@@ -28,6 +28,7 @@ void Loom_ADS1115::measure(){
         if(enableAnalog){
             for(int i = 0; i < 4; i++){
                 analogData[i] = ads.readADC_SingleEnded(i);
+		        volts[i] = ads.computeVolts(analogData[i]);
             }
 
             if(enableDiff){
@@ -48,6 +49,11 @@ void Loom_ADS1115::package(){
             json["Analog 1"] = analogData[1];
             json["Analog 2"] = analogData[2];
             json["Analog 3"] = analogData[3];
+
+            json["A0 Volts"] = volts[0];
+            json["A1 Volts"] = volts[1];
+            json["A2 Volts"] = volts[2];
+            json["A3 Volts"] = volts[3];
         }
 
         if(enableDiff){
