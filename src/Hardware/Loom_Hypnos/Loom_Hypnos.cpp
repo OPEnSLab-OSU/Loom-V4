@@ -144,11 +144,12 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
 
         attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
         attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
-        printModuleName(); Serial.println("Interrupt successfully reattached!");
+        
     }
     else{
-        printModuleName(); Serial.println("No need to reattach a sleep interrupt!");
+        LowPower.attachInterruptWakeup(interruptPin, std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
     }
+    printModuleName(); Serial.println("Interrupt successfully reattached!");
 
     return true;
 
