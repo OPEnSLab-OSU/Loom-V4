@@ -28,7 +28,8 @@ class Module{
         // Not required overrides
         virtual void display_data() {};                     // Called by the manager to allow OLED to display data at the same time as manager.display_data  
 
-        bool moduleInitialized = true;
+        bool moduleInitialized = true;                      // Whether or not the module initialized successfully true until set otherwise
+        int module_address = -1;                            // Specifically for I2C addresses, -1 means the module doesn't have an address
     private:
         String moduleName;
         

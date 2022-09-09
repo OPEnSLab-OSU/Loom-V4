@@ -1,14 +1,14 @@
 #include "Loom_ADS1115.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_ADS1115::Loom_ADS1115(Manager& man, byte address, bool enable_analog ,bool enable_diff, adsGain_t gain) : Module("ADS1115"), manInst(&man), i2c_address(address), enableAnalog(enable_analog), enableDiff(enable_diff), adc_gain(gain) {
+Loom_ADS1115::Loom_ADS1115(Manager& man, byte address, bool enable_analog, bool enable_diff, adsGain_t gain) : Module("ADS1115"), manInst(&man), i2c_address(address), enableAnalog(enable_analog), enableDiff(enable_diff), adc_gain(gain) {
+    module_address = i2c_address;
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ADS1115::initialize(){
-
     // Set the gain of the ADC
     ads.setGain(adc_gain);
 
@@ -45,20 +45,20 @@ void Loom_ADS1115::package(){
     if(initialized){
         JsonObject json = manInst->get_data_object(getModuleName());
         if(enableAnalog){
-            json["Analog 0"] = analogData[0];
-            json["Analog 1"] = analogData[1];
-            json["Analog 2"] = analogData[2];
-            json["Analog 3"] = analogData[3];
+            json["A0"] = analogData[0];
+            json["A1"] = analogData[1];
+            json["A2"] = analogData[2];
+            json["A3"] = analogData[3];
 
-            json["A0 Volts"] = volts[0];
-            json["A1 Volts"] = volts[1];
-            json["A2 Volts"] = volts[2];
-            json["A3 Volts"] = volts[3];
+            json["A0_Volts"] = volts[0];
+            json["A1_Volts"] = volts[1];
+            json["A2_Volts"] = volts[2];
+            json["A3_Volts"] = volts[3];
         }
 
         if(enableDiff){
-            json["Differential 0"] = diffData[0];
-            json["Differential 1"] = diffData[1];
+            json["Differential_0"] = diffData[0];
+            json["Differential_1"] = diffData[1];
         }
     }
 }

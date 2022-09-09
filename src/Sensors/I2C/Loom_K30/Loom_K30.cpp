@@ -2,6 +2,7 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_K30::Loom_K30(Manager& man, int addr, bool warmUp, int valMult) : Module("K30"), manInst(&man), valMult(valMult), warmUp(warmUp), addr(addr){
+    module_address = addr;
     manInst->registerModule(this);
     type = CommType::I2C;
 }

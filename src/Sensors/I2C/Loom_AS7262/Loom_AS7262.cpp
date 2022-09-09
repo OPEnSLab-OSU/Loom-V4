@@ -8,6 +8,7 @@ Loom_AS7262::Loom_AS7262(
                         uint8_t mode,
                         uint8_t integration_time 
                     ) : Module("AS7262"), manInst(&man), gain(gain), mode(mode), integration_time(integration_time) {
+                        module_address = addr;
                         // Register the module with the manager
                         manInst->registerModule(this);
                         

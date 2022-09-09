@@ -2,6 +2,7 @@
 
 #include <ArduinoJson.h>
 #include <vector>
+#include <map>
 
 #include "Module.h"
 
@@ -22,7 +23,24 @@ class Manager{
          * @param module Pointer to a class the inherits from Module that we want to add
          */ 
         void registerModule(Module* module){
-            modules.push_back(module);
+            // If there are no duplicates proceed as normal
+            if(modules.count(module->getModuleName()) <= 0){
+                modules.insert(std::make_pair(module->getModuleName(), module));
+            }else{
+                // If there is an I2C address assigned
+                if(module->module_address != -1){
+
+                    // The originally created module
+                    auto modulePair = modules.find(module->getModuleName());
+                    
+                    // Update the preexisting module information
+                    modulePair->second->setModuleName( String(modulePair->first) + String("_") + String(modulePair->second->module_address));
+
+                    // Update the new module and add it to the map
+                    module->setModuleName(module->getModuleName() + String("_") + String(module->module_address));
+                    modules.insert(std::make_pair(module->getModuleName(), module));
+                }
+            }
         }; 
 
         /**
@@ -163,13 +181,14 @@ class Manager{
         /* Module Data */
         StaticJsonDocument<2000> doc;        // JSON document that will store all sensor information
         JsonArray contentsArray;             // Stores the contents of the modules
-        std::vector<Module*> modules;        // List of modules that have been added to the stack
+        std::map<String, Module*> modules;   // Map of modules that maps the module name to the module object
+        //std::vector<Module*> modules;        // List of modules that have been added to the stack
 
         /* Validation */
         bool hasInitialized = false;         // Whether or not the initialize function has been called, if not it could be the source of hanging so we want to know
 
         bool usingHypnos = false;            // If the setup is using a hypnos
-        bool hypnosEnabled = false;          // If the power rails on the hypnos are enabled this means we should be able to initalize
+        bool hypnosEnabled = false;          // If the power rails on the hypnos are enabled this means we should be able to initialize
 
        
 };

@@ -63,6 +63,7 @@ class Loom_ADS1115 : public Module{
 
         int16_t analogData[4];                                      // Stores the analog ADS1115 data
         int16_t diffData[2];                                        // Stores the differential data from the sensor
+        float volts[4];						                        // Stores Computed Voltage Conversions
 
         bool initialized = true;
 

@@ -6,6 +6,7 @@ Loom_MMA8451::Loom_MMA8451(
                         int addr,
                         mma8451_range_t range  
                     ) : Module("MMA8451"), manInst(&man), address(addr), range(range) {
+                        module_address = addr;
                         // Register the module with the manager
                         manInst->registerModule(this);
                         
