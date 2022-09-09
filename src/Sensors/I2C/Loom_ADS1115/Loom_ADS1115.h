@@ -37,7 +37,7 @@ class Loom_ADS1115 : public Module{
                 byte address            = ADS1X15_ADDRESS,
                 bool enable_analog      = true,
                 bool enable_diff        = false,
-                adsGain_t gain          = adsGain_t::GAIN_TWOTHIRDS
+                adsGain_t gain          = adsGain_t::GAIN_ONE
             );
 
         /**
