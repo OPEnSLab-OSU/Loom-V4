@@ -24,9 +24,9 @@ class Loom_AS7265X : public Module{
 
     public:
         /**
-         * Constructs a new TSL2591 sensor
+         * Constructs a new AS7265X sensor
          * @param man Reference to the manager that is used to universally package all data
-         * @param address I2C address that is assigned to the sensor
+         * @param addr I2C address that is assigned to the sensor
          * @param use_bulb Enable the light bulb
          * @param gain Gain level
          * @param mode Read Mode: 0("4 channels out of 6"), 1("Different 4 channels out of 6"), 2("All 6 channels continuously"), 3("One-shot reading of all channels") 

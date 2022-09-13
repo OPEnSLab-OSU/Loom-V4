@@ -1,12 +1,20 @@
 var searchData=
 [
-  ['sdmanager_0',['SDManager',['../class_s_d_manager.html',1,'']]],
+  ['sdmanager_0',['SDManager',['../class_s_d_manager.html',1,'SDManager'],['../class_s_d_manager.html#a497896877c26e11886f272f04efa9768',1,'SDManager::SDManager()']]],
   ['send_1',['send',['../class_loom___freewave.html#a6bc0804fe61b8d968f6c7a7c3e4c400f',1,'Loom_Freewave::send()'],['../class_loom___lo_ra.html#aca61400243bed5a522efb91feaa494d5',1,'Loom_LoRa::send()'],['../class_radio.html#ad23303c5cc1d65127314466aa9a03fdb',1,'Radio::send()']]],
-  ['setaddress_2',['setAddress',['../class_loom___freewave.html#a6a2972c783950014b16ecdafd04f97cd',1,'Loom_Freewave::setAddress()'],['../class_loom___lo_ra.html#a16a18868025eddb5329f9f67df8b5181',1,'Loom_LoRa::setAddress()']]],
-  ['setdegrees_3',['setDegrees',['../class_loom___servo.html#aa2315c1f4bd95564e469ba25ea069f5a',1,'Loom_Servo']]],
-  ['setenablestate_4',['setEnableState',['../class_manager.html#ae921bcc7cd32a4df86476a1845bc5d21',1,'Manager']]],
-  ['setinterruptduration_5',['setInterruptDuration',['../class_loom___hypnos.html#a2df0dfe98163cfeccfdf5ffd4a378dd0',1,'Loom_Hypnos']]],
-  ['setkeepalive_6',['setKeepAlive',['../class_loom___m_q_t_t.html#a2d5628eed583d94d94d81dedefb9f3fb',1,'Loom_MQTT']]],
-  ['sleep_7',['sleep',['../class_loom___hypnos.html#af9c2045089782188f81d4e52d0a67a23',1,'Loom_Hypnos']]],
-  ['subscribe_8',['subscribe',['../class_loom___max.html#aa2508c7d63c31fc7b801532b441db4a1',1,'Loom_Max']]]
+  ['set_5fcolor_2',['set_color',['../class_loom___neopixel.html#a5e5009a63413482de5b5baa54603da65',1,'Loom_Neopixel']]],
+  ['set_5fdevice_5fname_3',['set_device_name',['../class_manager.html#ad676866c1e5cf5487b69998ae770418b',1,'Manager']]],
+  ['set_5finstance_5fnum_4',['set_instance_num',['../class_manager.html#a855c3b4519b01616001604ad8ca2931b',1,'Manager']]],
+  ['setaddress_5',['setAddress',['../class_loom___freewave.html#a6a2972c783950014b16ecdafd04f97cd',1,'Loom_Freewave::setAddress()'],['../class_loom___lo_ra.html#a16a18868025eddb5329f9f67df8b5181',1,'Loom_LoRa::setAddress()']]],
+  ['setbatchsize_6',['setBatchSize',['../class_s_d_manager.html#a4566c222dcb930ac1faed072fd258271',1,'SDManager']]],
+  ['setdegrees_7',['setDegrees',['../class_loom___servo.html#aa2315c1f4bd95564e469ba25ea069f5a',1,'Loom_Servo']]],
+  ['setenablestate_8',['setEnableState',['../class_manager.html#ae921bcc7cd32a4df86476a1845bc5d21',1,'Manager']]],
+  ['setinterruptduration_9',['setInterruptDuration',['../class_loom___hypnos.html#a2df0dfe98163cfeccfdf5ffd4a378dd0',1,'Loom_Hypnos']]],
+  ['setkeepalive_10',['setKeepAlive',['../class_loom___m_q_t_t.html#a2d5628eed583d94d94d81dedefb9f3fb',1,'Loom_MQTT']]],
+  ['setlogname_11',['setLogName',['../class_loom___hypnos.html#a074f8dcc9e24bd1bf40c3380504ac0d4',1,'Loom_Hypnos::setLogName()'],['../class_s_d_manager.html#a71bbde7e944ccf1197cf052deb9138f2',1,'SDManager::setLogName()']]],
+  ['setstate_12',['setState',['../class_loom___relay.html#a566809d15bc9ab2605bb3e2a04b0430c',1,'Loom_Relay']]],
+  ['shouldpublish_13',['shouldPublish',['../class_loom___batch_s_d.html#ad5e5cd28f1ea97a70157b30f6de665dc',1,'Loom_BatchSD']]],
+  ['sleep_14',['sleep',['../class_loom___hypnos.html#af9c2045089782188f81d4e52d0a67a23',1,'Loom_Hypnos']]],
+  ['start_5fap_15',['start_ap',['../class_loom___w_i_f_i.html#a8b8ddc5a47b4c93ab8ff9079f5b97780',1,'Loom_WIFI']]],
+  ['subscribe_16',['subscribe',['../class_loom___max.html#aa2508c7d63c31fc7b801532b441db4a1',1,'Loom_Max']]]
 ];

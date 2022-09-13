@@ -9,6 +9,8 @@ Loom_MS5803::Loom_MS5803(Manager& man, byte address) : Module("MS5803"), manInst
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MS5803::initialize(){
+    Wire.begin();
+    delay(50);
 
     // Setup is backwards apparently
     if(inst.initializeMS_5803()){

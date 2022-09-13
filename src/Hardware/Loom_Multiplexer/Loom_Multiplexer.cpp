@@ -31,6 +31,7 @@ void Loom_Multiplexer::initialize(){
             // Load the sensors for the first time
             for(int i = 0; i < numPorts; i++){
                 selectPin(i);
+                delay(50);
 
                 // Loop over address that we know to speed up refreshing
                 for(byte addr : known_addresses){
@@ -62,6 +63,7 @@ void Loom_Multiplexer::refreshSensors(){
     // Cycle through the mux ports
     for(int i = 0; i < numPorts; i++){
         selectPin(i);
+        delay(50);
        
         // Loop over address that we know to speed up refreshing
         for(byte addr : known_addresses){
@@ -95,6 +97,7 @@ void Loom_Multiplexer::measure(){
 
     for(int i = 0; i < sensors.size(); i++){
         selectPin(i);
+        delay(50);
         sensors[i].second->measure();
     }
 }
@@ -112,6 +115,7 @@ void Loom_Multiplexer::package(){
 void Loom_Multiplexer::power_up(){
     for(int i = 0; i < sensors.size(); i++){
         selectPin(i);
+        delay(50);
         sensors[i].second->power_up();
     }
 }
@@ -121,6 +125,7 @@ void Loom_Multiplexer::power_up(){
 void Loom_Multiplexer::power_down(){
     for(int i = 0; i < sensors.size(); i++){
         selectPin(i);
+        delay(50);
         sensors[i].second->power_up();
     }
 }

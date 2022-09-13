@@ -13,6 +13,8 @@ Loom_MB1232::Loom_MB1232(
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MB1232::initialize() {
+    // Start wire interface
+    Wire.begin();
 
     // Start the I2C transmission
     Wire.beginTransmission(address);

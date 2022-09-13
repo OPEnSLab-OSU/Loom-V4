@@ -9,5 +9,5 @@ var class_loom___ethernet =
     [ "getIPAddress", "class_loom___ethernet.html#a0adabf9cabbea97de4e66d209d7bd4b9", null ],
     [ "getSubnetMask", "class_loom___ethernet.html#a861b82abe965770fa38c3b5bef154051", null ],
     [ "getUDP", "class_loom___ethernet.html#a1583772f77bbfb8edb08a46ea6fd9e53", null ],
-    [ "loadConfigFromJSON", "class_loom___ethernet.html#a392d01b887948b1f7db0826c73bcb9fb", null ]
+    [ "loadConfigFromJSON", "class_loom___ethernet.html#ae12ec112c7607c72f647c03975db6be3", null ]
 ];
