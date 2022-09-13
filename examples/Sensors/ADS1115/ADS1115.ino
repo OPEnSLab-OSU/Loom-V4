@@ -11,7 +11,7 @@
 
 Manager manager("Device", 1);
 
-// Reads the battery voltage
+// Manger Instance, Enable Analog, Enable DIfferential, Gain
 Loom_ADS1115 ads(manager);
 
 void setup() {
