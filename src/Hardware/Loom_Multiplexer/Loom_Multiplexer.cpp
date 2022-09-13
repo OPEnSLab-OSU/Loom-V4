@@ -3,6 +3,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Multiplexer::Loom_Multiplexer(Manager& man) : Module("Multiplexer"), manInst(&man) {
     moduleInitialized = false;
+    manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -36,10 +37,11 @@ void Loom_Multiplexer::initialize(){
 
                     // Is there any device at this address
                     if(isDeviceConnected(addr)){
+                        printModuleName(); Serial.println("Found I2C Device on Pin " + String(i) + " at address " + String(addr));
                         sensors.push_back(std::make_pair(addr, loadSensor(addr)));
 
                         // Initialize connected sensor
-                        sensors[i].second->setModuleName(sensors[i].second->getModuleName() + String(i));
+                        sensors[i].second->setModuleName(sensors[i].second->getModuleName() + "_" + String(i));
                         sensors[i].second->initialize();
                         printModuleName(); Serial.println("Loaded sensor " + sensors[i].second->getModuleName() + " on port " + String(i));
                     }
@@ -75,7 +77,7 @@ void Loom_Multiplexer::refreshSensors(){
                     printModuleName(); Serial.println("New sensor detected on port " + String(i) + " at I2C address " + String(addr) + " of type " + sensors[i].second->getModuleName());
                     
                     // Update name for unique instances in the Mux
-                    sensors[i].second->setModuleName(sensors[i].second->getModuleName() + String(i));
+                    sensors[i].second->setModuleName(sensors[i].second->getModuleName() + "_" + String(i));
                     sensors[i].second->initialize();
                 }
             }
@@ -92,6 +94,7 @@ void Loom_Multiplexer::measure(){
     refreshSensors();
 
     for(int i = 0; i < sensors.size(); i++){
+        selectPin(i);
         sensors[i].second->measure();
     }
 }
@@ -108,6 +111,7 @@ void Loom_Multiplexer::package(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::power_up(){
     for(int i = 0; i < sensors.size(); i++){
+        selectPin(i);
         sensors[i].second->power_up();
     }
 }
@@ -116,6 +120,7 @@ void Loom_Multiplexer::power_up(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::power_down(){
     for(int i = 0; i < sensors.size(); i++){
+        selectPin(i);
         sensors[i].second->power_up();
     }
 }
@@ -159,7 +164,7 @@ Module* Loom_Multiplexer::loadSensor(const byte addr){
 
         // SHT31
         case 0x44: return new Loom_SHT31(*manInst);
-        case 0x45: return new Loom_SHT31(*manInst);
+        case 0x45: return new Loom_SHT31(*manInst, 69);
 
         // ADS1115  
         case 0x48: return new Loom_ADS1115(*manInst);
@@ -170,7 +175,7 @@ Module* Loom_Multiplexer::loadSensor(const byte addr){
         // MPU6050
         case 0x69: return new Loom_MPU6050(*manInst);
 
-        case 0x76: return new Loom_MS5803(*manInst);
+        case 0x76: return new Loom_MS5803(*manInst, 118);
         case 0x77: return new Loom_MS5803(*manInst);
 
         case 0x36: return new Loom_STEMMA(*manInst);

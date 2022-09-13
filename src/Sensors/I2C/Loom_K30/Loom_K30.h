@@ -66,6 +66,10 @@ class Loom_K30 : public Module{
          */ 
         int getCO2() { return CO2Levels; };
 
+        void setSerial(Uart& serial){
+            K30_Serial = &serial;
+        };
+
     private:
         Manager* manInst;                                               // Instance of the manager
 

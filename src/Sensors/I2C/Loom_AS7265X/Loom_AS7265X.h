@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SparkFun_AS7265X.h>
+#include <Wire.h>
 
 #include "Module.h"
 #include "Loom_Manager.h"

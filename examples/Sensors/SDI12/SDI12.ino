@@ -26,7 +26,7 @@ void loop() {
 
   manager.measure();        // Pull the sensors for measurements
   manager.package();        // Package the data into JSON
-  manager.display_data();      // Print the current packaged json packet out
+  manager.display_data();   // Print the current packaged json packet out
 
-  manager.pause(4000)              // Wait 4 seconds before pulling data again
+  manager.pause(4000);      // Wait 4 seconds before pulling data again
 }

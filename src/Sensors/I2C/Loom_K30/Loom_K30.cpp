@@ -12,11 +12,9 @@ Loom_K30::Loom_K30(Manager& man, int addr, bool warmUp, int valMult) : Module("K
 Loom_K30::Loom_K30(Manager& man, int rx, int tx, bool warmUp, int valMult) : Module("K30"), manInst(&man), valMult(valMult), warmUp(warmUp){
     manInst->registerModule(this);
     type = CommType::SERIAL_MODE;
-    K30_Serial = new Uart(&sercom1, rx, tx, SERCOM_RX_PAD_3, UART_TX_PAD_0);
+    
 
-    //Assign pins 10 & 11 SERCOM functionality
-    pinPeripheral(tx, PIO_SERCOM);
-    pinPeripheral(rx, PIO_SERCOM);
+    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -85,7 +83,7 @@ void Loom_K30::getCO2Level() {
         delay(100);
         while (!K30_Serial->available()) //keep sending request until we start to get a response
         {
-            printModuleName(); Serial.println("Sensor_Serial Available, Retrieving Response");  // TODO:This doesn't make sense: in line 41 and line 49
+            printModuleName(); Serial.println("Sensor_Serial Not available, Retrieving Response");  // TODO:This doesn't make sense: in line 41 and line 49
             K30_Serial->write(read_CO2, 7);
             delay(50);
         }

@@ -10,6 +10,7 @@ Loom_AS7265X::Loom_AS7265X(
                         uint8_t integration_time 
                     ) : Module("AS7265X"), manInst(&man), use_bulb(use_bulb), gain(gain), mode(mode), integration_time(integration_time) {
 						module_address = addr;
+
                         // Register the module with the manager
                         manInst->registerModule(this);
                         
@@ -61,6 +62,7 @@ void Loom_AS7265X::measure() {
 	color[5] = asInst.getCalibratedL();
 
 	// NIR
+	
 	nir[0] = asInst.getCalibratedR();
 	nir[1] = asInst.getCalibratedS();
 	nir[2] = asInst.getCalibratedT();

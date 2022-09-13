@@ -13,7 +13,7 @@ void Loom_MS5803::initialize(){
     // Setup is backwards apparently
     if(inst.initializeMS_5803()){
         printModuleName(); Serial.println("Failed to initialize sensor!");
-        initialized = false;
+        moduleInitialized = false;
     }
     else{
         printModuleName(); Serial.println("Successfully Initialized!");
@@ -24,7 +24,7 @@ void Loom_MS5803::initialize(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MS5803::measure(){
     // Make sure the sensor initialized correctly
-    if(initialized){
+    if(moduleInitialized){
         inst.readSensor();
         sensorData[0] = inst.temperature();
         sensorData[1] = inst.pressure();
@@ -35,7 +35,7 @@ void Loom_MS5803::measure(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MS5803::package(){
     // Make sure the sensor initialized correctly
-    if(initialized){
+    if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
         json["Temperature"] = sensorData[0];
         json["Pressure"] = sensorData[1];
