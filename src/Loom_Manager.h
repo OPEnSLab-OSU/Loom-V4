@@ -2,7 +2,7 @@
 
 #include <ArduinoJson.h>
 #include <vector>
-#include <map>
+#include <unordered_map>
 
 #include "Module.h"
 
@@ -24,23 +24,16 @@ class Manager{
          */ 
         void registerModule(Module* module){
             // If there are no duplicates proceed as normal
-            if(modules.count(module->getModuleName()) <= 0){
-                modules.insert(std::make_pair(module->getModuleName(), module));
-            }else{
-                // If there is an I2C address assigned
-                if(module->module_address != -1){
+            for(int i = 0; i < modules.size(); i++){
 
-                    // The originally created module
-                    auto modulePair = modules.find(module->getModuleName());
-                    
-                    // Update the preexisting module information
-                    modulePair->second->setModuleName( String(modulePair->first) + String("_") + String(modulePair->second->module_address));
-
-                    // Update the new module and add it to the map
+                // If the current module name is equal to the newly added module
+                if(modules[i].first == module->getModuleName()){
+                    modules[i].second->setModuleName(modules[i].second->getModuleName() + String("_") + String(modules[i].second->module_address));
                     module->setModuleName(module->getModuleName() + String("_") + String(module->module_address));
-                    modules.insert(std::make_pair(module->getModuleName(), module));
                 }
             }
+
+            modules.push_back(std::make_pair(module->getModuleName(), module));
         }; 
 
         /**
@@ -181,8 +174,8 @@ class Manager{
         /* Module Data */
         StaticJsonDocument<2000> doc;        // JSON document that will store all sensor information
         JsonArray contentsArray;             // Stores the contents of the modules
-        std::map<String, Module*> modules;   // Map of modules that maps the module name to the module object
-        //std::vector<Module*> modules;        // List of modules that have been added to the stack
+        //std::unordered_map<String, Module*> modules;   // Map of modules that maps the module name to the module object
+        std::vector<std::pair<String, Module*>> modules;        // List of modules that have been added to the stack
 
         /* Validation */
         bool hasInitialized = false;         // Whether or not the initialize function has been called, if not it could be the source of hanging so we want to know

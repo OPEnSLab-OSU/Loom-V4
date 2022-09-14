@@ -27,11 +27,11 @@ void Manager::beginSerial(bool waitForSerial){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::measure() {
     if(hasInitialized){
-        for(auto const& mod : modules){
-            if(mod.second->moduleInitialized)
-                mod.second->measure();
+       for(int i = 0; i < modules.size(); i++){
+            if(modules[i].second->moduleInitialized)
+                modules[i].second->measure();
             else{
-                mod.second->printModuleName(); Serial.println("Not initialized!");
+                modules[i].second->printModuleName(); Serial.println("Not initialized!");
             }
         }
     }
@@ -59,11 +59,11 @@ void Manager::package(){
     JsonObject json = get_data_object("Packet");
     json["Number"] = packetNumber;
 
-    for(auto const& mod : modules){
-        if(mod.second->moduleInitialized)
-            mod.second->package();
+    for(int i = 0; i < modules.size(); i++){
+        if(modules[i].second->moduleInitialized)
+            modules[i].second->package();
         else{
-            mod.second->printModuleName(); Serial.println("Not initialized!");
+            modules[i].second->printModuleName(); Serial.println("Not initialized!");
         }
     }
     packetNumber++;
@@ -91,11 +91,11 @@ JsonObject Manager::get_data_object(String moduleName){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::power_up(){
-    for(auto const& mod : modules){
-        if(mod.second->moduleInitialized)
-            mod.second->power_up();
+    for(int i = 0; i < modules.size(); i++){
+        if(modules[i].second->moduleInitialized)
+            modules[i].second->power_up();
         else{
-            mod.second->printModuleName(); Serial.println("Not initialized!");
+            modules[i].second->printModuleName(); Serial.println("Not initialized!");
         }
     }
 }
@@ -103,11 +103,11 @@ void Manager::power_up(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::power_down(){
-    for(auto const& mod : modules){
-        if(mod.second->moduleInitialized)
-            mod.second->power_down();
+   for(int i = 0; i < modules.size(); i++){
+        if(modules[i].second->moduleInitialized)
+            modules[i].second->power_down();
         else{
-            mod.second->printModuleName(); Serial.println("Not initialized!");
+            modules[i].second->printModuleName(); Serial.println("Not initialized!");
         }
     }
 }
@@ -137,8 +137,8 @@ void Manager::initialize() {
 
     Serial.println("[Manager] Initializing Modules...");
     read_serial_num();
-    for(auto const& mod : modules){
-        mod.second->initialize();
+    for(int i = 0; i < modules.size(); i++){
+        modules[i].second->initialize();
     }
     hasInitialized = true;
     Serial.println("[Manager] ** Setup Complete ** ");

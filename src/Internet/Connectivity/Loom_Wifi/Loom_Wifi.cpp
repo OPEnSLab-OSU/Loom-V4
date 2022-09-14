@@ -229,11 +229,11 @@ IPAddress Loom_WIFI::getGateway(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 IPAddress Loom_WIFI::getBroadcast(){
-    IPAddress boradcast = WiFi.gatewayIP();
+    IPAddress broadcast = WiFi.gatewayIP();
 
     // Set the last one to 255 for the netmask
-    boradcast[3] = 255;
+    broadcast[3] = 255;
 
-    return boradcast;
+    return broadcast;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
