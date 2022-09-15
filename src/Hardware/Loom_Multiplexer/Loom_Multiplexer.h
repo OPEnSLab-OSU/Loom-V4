@@ -18,6 +18,7 @@
 #include "../../Sensors/I2C/Loom_MB1232/Loom_MB1232.h"
 #include "../../Sensors/I2C/Loom_K30/Loom_K30.h"
 #include "../../Sensors/I2C/Loom_MMA8451/Loom_MMA8451.h"
+#include "../../Sensors/I2C/Loom_ZXGesture/Loom_ZXGesture.h"
 
 /**
  * Adds Hot Swappable functionality for TCA9548 multiplexer

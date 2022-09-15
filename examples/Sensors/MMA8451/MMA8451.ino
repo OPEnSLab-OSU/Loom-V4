@@ -13,15 +13,19 @@ Manager manager("Device", 1);
 
 // Reads the battery voltage
 // Manger Instance, Address, Range
-Loom_MMA8451 mma(manager, 0x1D, MMA8451_RANGE_2_G);
+Loom_MMA8451 mma(manager, false, 0x1D, MMA8451_RANGE_2_G);
 
 void setup() {
 
-  // Start the serial interface and wait for the user to open the serial monitor
+  // Start the serial interface
   manager.beginSerial();
 
   // Initialize the manager
   manager.initialize();
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
 
   // Measure the data from the sensors
   manager.measure();
@@ -32,9 +36,6 @@ void setup() {
   // Print the JSON document to the Serial monitor
   manager.display_data();
 
-}
-
-void loop() {
-  // put your main code here, to run repeatedly:
-
+  // Wait for 5 seconds
+  manager.pause(5000);
 }

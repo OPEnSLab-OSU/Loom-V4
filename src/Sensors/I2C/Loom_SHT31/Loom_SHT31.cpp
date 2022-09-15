@@ -3,12 +3,14 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_SHT31::Loom_SHT31(
                         Manager& man, 
+                        bool useMux,
                         int address  
                     ) : Module("SHT31"), manInst(&man), i2c_address(address){
                         module_address = address;
                         
                         // Register the module with the manager
-                        manInst->registerModule(this);
+                        if(!useMux)
+                            manInst->registerModule(this);
                     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

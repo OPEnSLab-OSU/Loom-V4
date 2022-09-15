@@ -3,11 +3,14 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_STEMMA::Loom_STEMMA(
                         Manager& man, 
+                        bool useMux,
                         int addr  
                     ) : Module("STEMMA"), manInst(&man), address(addr) {
                         module_address = addr;
+
                         // Register the module with the manager
-                        manInst->registerModule(this);
+                        if(!useMux)
+                            manInst->registerModule(this);
                     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

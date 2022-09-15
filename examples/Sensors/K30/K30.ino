@@ -13,7 +13,7 @@ Manager manager("Device", 1);
 
 // Reads the battery voltage
 // Manger Instance, Address Enable Warmup, Value Multiplier
-//Loom_K30 k30(manager, 0x68, true, 1);
+//Loom_K30 k30(manager, false, 0x68, true, 1);
 Uart kSerial(&sercom1, 12, 11, SERCOM_RX_PAD_3, UART_TX_PAD_0);
 
 // Serial Interface for the K30

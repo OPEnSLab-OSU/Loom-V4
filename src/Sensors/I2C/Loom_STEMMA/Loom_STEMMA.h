@@ -28,7 +28,8 @@ class Loom_STEMMA : public Module{
          * @param address I2C address that is assigned to the sensor
          */ 
         Loom_STEMMA(
-                    Manager& man, 
+                    Manager& man,
+                    bool useMux = false, 
                     int addr = 0x36
                 );
 

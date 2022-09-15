@@ -27,18 +27,21 @@ class Loom_ADS1115 : public Module{
         /**
          *  Construct a new ADS1115
          *  @param man Reference to the manager
+         *  @param useMux Whether or not to use the mux
          *  @param address I2C address to communicate over
          *  @param enable_analog If we want to read the analog data from the ADS1115
          *  @param enable_diff If we want to read the differential data from the sensor
          *  @param gain How much gain to apply to the readings.
          */ 
         Loom_ADS1115(
-                Manager& man, 
+                Manager& man,
+                bool useMux             = false, 
                 byte address            = ADS1X15_ADDRESS,
                 bool enable_analog      = true,
                 bool enable_diff        = false,
                 adsGain_t gain          = adsGain_t::GAIN_ONE
             );
+
 
         /**
          * Get the value in the analog table according to analog number not INDEX

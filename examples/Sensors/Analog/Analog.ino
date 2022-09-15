@@ -29,6 +29,10 @@ void setup() {
 
   // Initialize the manager
   manager.initialize();
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
 
   // Measure the data from the sensors
   manager.measure();
@@ -39,9 +43,6 @@ void setup() {
   // Print the JSON document to the Serial monitor
   manager.display_data();
 
-}
-
-void loop() {
-  // put your main code here, to run repeatedly:
-
+  // Wait for 5 seconds
+  manager.pause(5000);
 }

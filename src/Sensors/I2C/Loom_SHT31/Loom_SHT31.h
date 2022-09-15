@@ -29,6 +29,7 @@ class Loom_SHT31 : public Module{
          */ 
         Loom_SHT31(
                       Manager& man, 
+                      bool useMux = false,
                       int address = 0x44 
                 );
 

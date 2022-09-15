@@ -31,7 +31,8 @@ class Loom_TSL2591 : public Module{
          * @param integration_time How long we want to integrate the data, longer time results in dimmer values
          */ 
         Loom_TSL2591(
-                      Manager& man, 
+                      Manager& man,
+                      bool useMux = false, 
                       int address = 0x29, 
                       tsl2591Gain_t light_gain = TSL2591_GAIN_MED, 
                       tsl2591IntegrationTime_t integration_time = TSL2591_INTEGRATIONTIME_100MS

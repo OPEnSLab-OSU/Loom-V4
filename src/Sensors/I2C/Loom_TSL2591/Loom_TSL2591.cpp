@@ -2,7 +2,8 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_TSL2591::Loom_TSL2591(
-                            Manager& man, 
+                            Manager& man,
+                            bool useMux, 
                             int address,  
                             tsl2591Gain_t light_gain, 
                             tsl2591IntegrationTime_t integration_time
@@ -10,7 +11,8 @@ Loom_TSL2591::Loom_TSL2591(
                         module_address = address;
 
                         // Register the module with the manager
-                        manInst->registerModule(this);
+                        if(!useMux)
+                            manInst->registerModule(this);
                     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -26,6 +26,7 @@ class Loom_AS7263 : public Module{
         /**
          * Constructs a new TSL2591 sensor
          * @param man Reference to the manager that is used to universally package all data
+         * @param useMux If this module will be using the mux
          * @param address I2C address that is assigned to the sensor
          * @param gain Gain level
          * @param mode Read Mode: 0("4 channels out of 6"), 1("Different 4 channels out of 6"), 2("All 6 channels continuously"), 3("One-shot reading of all channels") 
@@ -33,6 +34,7 @@ class Loom_AS7263 : public Module{
          */ 
         Loom_AS7263(
                     Manager& man, 
+                    bool useMux = false,
                     int addr = 0x49,
                     uint8_t gain = 1,
                     uint8_t mode = 3,
