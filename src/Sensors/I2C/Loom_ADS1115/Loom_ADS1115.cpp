@@ -14,7 +14,7 @@ void Loom_ADS1115::initialize(){
     // Set the gain of the ADC
     ads.setGain(adc_gain);
 
-    if(!ads.begin()){
+    if(!ads.begin(i2c_address)){
         printModuleName(); Serial.println("Failed to initialize ADS1115 interface! Data may be invalid");
         initialized = false;
     }
