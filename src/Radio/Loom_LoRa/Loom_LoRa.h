@@ -23,7 +23,7 @@ class Loom_LoRa : public Radio{
         /* These aren't used with this module */
         void measure() override {};                               
         void print_measurements() override {};  
-        void package() override {};        
+             
 
     public:
 
@@ -71,6 +71,11 @@ class Loom_LoRa : public Radio{
          * Power down the module
          */ 
         void power_down() override; 
+
+        /**
+         * Package basic data about the device
+         */ 
+        void package() override;
 
         /**
          * Set the address of the device
