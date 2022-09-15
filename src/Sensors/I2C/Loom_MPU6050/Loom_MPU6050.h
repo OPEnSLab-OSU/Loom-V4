@@ -18,7 +18,7 @@ class Loom_MPU6050 : public Module{
         void power_down() override {}; 
 
     public:
-        Loom_MPU6050(Manager& man, const bool autoCalibrate = true);
+        Loom_MPU6050(Manager& man, bool useMux = false, const bool autoCalibrate = true);
 
         void initialize() override;
         void measure() override;

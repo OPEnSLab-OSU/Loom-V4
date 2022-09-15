@@ -32,7 +32,8 @@ class Loom_MB1232 : public Module{
          * @param address I2C address that is assigned to the sensor
          */ 
         Loom_MB1232(
-                    Manager& man, 
+                    Manager& man,
+                    bool useMux = false, 
                     int addr = 0x70
                 );
 

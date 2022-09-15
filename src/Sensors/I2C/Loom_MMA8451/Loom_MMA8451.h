@@ -30,7 +30,8 @@ class Loom_MMA8451 : public Module{
          * @param range Range of the MMA sensor
          */ 
         Loom_MMA8451(
-                    Manager& man, 
+                    Manager& man,
+                    bool useMux = false, 
                     int addr = 0x1D,
                     mma8451_range_t range = MMA8451_RANGE_2_G
                 );

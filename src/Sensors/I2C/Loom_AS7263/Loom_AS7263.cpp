@@ -2,7 +2,8 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_AS7263::Loom_AS7263(
-                        Manager& man, 
+                        Manager& man,
+                        bool useMux,
                         int addr,
                         uint8_t gain,
                         uint8_t mode,
@@ -11,7 +12,8 @@ Loom_AS7263::Loom_AS7263(
                         module_address = addr;
 
                         // Register the module with the manager
-                        manInst->registerModule(this);
+                        if(!useMux)
+                            manInst->registerModule(this);
                         
                     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

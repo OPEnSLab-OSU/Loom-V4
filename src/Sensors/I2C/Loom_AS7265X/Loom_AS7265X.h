@@ -26,6 +26,7 @@ class Loom_AS7265X : public Module{
         /**
          * Constructs a new AS7265X sensor
          * @param man Reference to the manager that is used to universally package all data
+         * @param useMux If this module will be using the mux
          * @param addr I2C address that is assigned to the sensor
          * @param use_bulb Enable the light bulb
          * @param gain Gain level
@@ -33,7 +34,8 @@ class Loom_AS7265X : public Module{
          * @param integration_time Integration time (time will be 2.8ms * [integration value])
          */ 
         Loom_AS7265X(
-                    Manager& man, 
+                    Manager& man,
+                    bool useMux = false, 
                     int addr = 0x49,
                     bool use_bulb = false,
                     uint8_t gain = 64,

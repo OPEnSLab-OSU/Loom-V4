@@ -2,12 +2,15 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MB1232::Loom_MB1232(
-                        Manager& man, 
+                        Manager& man,
+                        bool useMux, 
                         int addr  
                     ) : Module("MB1232"), manInst(&man), address(addr) {
                         module_address = addr;
                         // Register the module with the manager
-                        manInst->registerModule(this);
+                        
+                        if(!useMux)
+                            manInst->registerModule(this);
                     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

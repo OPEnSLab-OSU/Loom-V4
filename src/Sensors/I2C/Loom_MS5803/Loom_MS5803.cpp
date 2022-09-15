@@ -1,26 +1,29 @@
 #include "Loom_MS5803.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_MS5803::Loom_MS5803(Manager& man, byte address) : Module("MS5803"), manInst(&man), inst(address, 512) {
+Loom_MS5803::Loom_MS5803(Manager& man, bool useMux, byte address) : Module("MS5803"), manInst(&man), inst(address, 512) {
     module_address = address;
-    manInst->registerModule(this);
+
+    if(!useMux)
+        manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MS5803::initialize(){
-    printModuleName(); Serial.println("Initializing sensor...");
-    Wire.begin();
-    delay(50);
-
     // Setup is backwards apparently
-    if(inst.initializeMS_5803()){
+    if(inst.initializeMS_5803(false)){
         printModuleName(); Serial.println("Failed to initialize sensor!");
         moduleInitialized = false;
     }
     else{
         printModuleName(); Serial.println("Successfully Initialized!");
+        
+        // Wait 3 seconds after initializing
+        delay(3000);
     }
+
+    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -1,8 +1,9 @@
 #include "Loom_MPU6050.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_MPU6050::Loom_MPU6050(Manager& man, const bool autoCalibrate) : Module("MPU6050"), manInst(&man), mpu(Wire), autoCali(autoCalibrate){ 
-    manInst->registerModule(this); 
+Loom_MPU6050::Loom_MPU6050(Manager& man, bool useMux, const bool autoCalibrate) : Module("MPU6050"), manInst(&man), mpu(Wire), autoCali(autoCalibrate){ 
+    if(!useMux)
+        manInst->registerModule(this); 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

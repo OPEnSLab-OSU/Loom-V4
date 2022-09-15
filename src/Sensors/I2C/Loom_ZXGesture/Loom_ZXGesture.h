@@ -47,7 +47,8 @@ class Loom_ZXGesture : public Module{
          * @param mode Measuring mode we want to interpret data using
          */ 
         Loom_ZXGesture(
-                      Manager& man, 
+                      Manager& man,
+                      bool useMux = false, 
                       int address = 0x10, 
                       Mode mode = Mode::POS
                 );

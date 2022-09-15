@@ -32,12 +32,14 @@ class Loom_K30 : public Module{
         /**
          * Construct a new K30 sensor using I2C to communicate
          * @param man Reference to the manager
+         * @param useMux If this module will be using the mux
          * @param addr I2C address
          * @param warmUp If we should wait 6 minutes before collecting data to allow the sensor to warm up
          * @param valMult How much to multiply the recorded output by
          */ 
         Loom_K30(
-            Manager& man, 
+            Manager& man,
+            bool useMux = false, 
             int addr = 0x68,  
             bool warmUp = true, 
             int valMult = 1

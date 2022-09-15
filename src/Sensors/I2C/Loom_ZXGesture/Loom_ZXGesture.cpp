@@ -3,12 +3,14 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_ZXGesture::Loom_ZXGesture(
                             Manager& man, 
+                            bool useMux,
                             int address,  
                             Mode mode
                     ) : Module("ZX Gesture"), manInst(&man), zx( ZX_Sensor(address)), mode(mode) {
 
                         // Register the module with the manager
-                        manInst->registerModule(this);
+                        if(!useMux)
+                            manInst->registerModule(this);
                     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
