@@ -9,6 +9,7 @@ Loom_MS5803::Loom_MS5803(Manager& man, byte address) : Module("MS5803"), manInst
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MS5803::initialize(){
+    printModuleName(); Serial.println("Initializing sensor...");
     Wire.begin();
     delay(50);
 

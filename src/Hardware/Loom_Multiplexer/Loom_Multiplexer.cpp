@@ -10,7 +10,7 @@ Loom_Multiplexer::Loom_Multiplexer(Manager& man) : Module("Multiplexer"), manIns
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Multiplexer::~Loom_Multiplexer()  {
     for(int i = 0; i < sensors.size(); i++){
-        delete sensors[i].second;
+        delete std::get<1>(sensors[i]);
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -18,7 +18,7 @@ Loom_Multiplexer::~Loom_Multiplexer()  {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::initialize(){
     Wire.begin();
-    
+    int moduleIndex = 0;
     // Find the multiplexer at the possible addresses
     for(byte addr : alt_addresses){
 
@@ -28,25 +28,33 @@ void Loom_Multiplexer::initialize(){
             activeMuxAddr = addr;
             moduleInitialized = true;
 
+            moduleIndex = 0;
             // Load the sensors for the first time
             for(int i = 0; i < numPorts; i++){
                 selectPin(i);
-                delay(50);
 
                 // Loop over address that we know to speed up refreshing
                 for(byte addr : known_addresses){
+                    if(addr > 0){
+                        // Is there any device at this address
+                        if(isDeviceConnected(addr)){
+                            printModuleName(); Serial.println("Found I2C Device on Pin " + String(i) + " at address " + String(addr));
 
-                    // Is there any device at this address
-                    if(isDeviceConnected(addr)){
-                        printModuleName(); Serial.println("Found I2C Device on Pin " + String(i) + " at address " + String(addr));
-                        sensors.push_back(std::make_pair(addr, loadSensor(addr)));
+                            sensors.push_back(std::make_tuple(addr, loadSensor(addr), i));
 
-                        // Initialize connected sensor
-                        sensors[i].second->setModuleName(sensors[i].second->getModuleName() + "_" + String(i));
-                        sensors[i].second->initialize();
-                        printModuleName(); Serial.println("Loaded sensor " + sensors[i].second->getModuleName() + " on port " + String(i));
+                            // Initialize connected sensor
+                            std::get<1>(sensors[moduleIndex])->setModuleName(std::get<1>(sensors[moduleIndex])->getModuleName() + "_" + String(i));
+                            std::get<1>(sensors[moduleIndex])->initialize();
+
+                            printModuleName(); Serial.println("Loaded sensor " + std::get<1>(sensors[moduleIndex])->getModuleName() + " on port " + String(i));
+                            moduleIndex++;
+                        }
                     }
                 }
+            }
+
+            if(sensors.size() <= 0){
+                printModuleName(); Serial.println("No sensors found!");
             }
             return;
         }
@@ -59,6 +67,7 @@ void Loom_Multiplexer::initialize(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::refreshSensors(){
+    int moduleIndex = 0;
 
     // Cycle through the mux ports
     for(int i = 0; i < numPorts; i++){
@@ -68,20 +77,21 @@ void Loom_Multiplexer::refreshSensors(){
         // Loop over address that we know to speed up refreshing
         for(byte addr : known_addresses){
             // Is there any device at this address
-            if(isDeviceConnected(addr)){
+            if(isDeviceConnected(addr) && addr > 0){
 
                 // If it was a new sensor plugged in then load a new sensor over top
-                if(sensors[i].first != addr){
-                    delete sensors[i].second;
-                    sensors[i] = std::make_pair(addr, loadSensor(addr));
+                if(std::get<1>(sensors[moduleIndex])->module_address != addr){
+                    delete std::get<1>(sensors[moduleIndex]);
+                    sensors[moduleIndex] = std::make_tuple(addr, loadSensor(addr), i);
 
                     // Initialize the new sensor
-                    printModuleName(); Serial.println("New sensor detected on port " + String(i) + " at I2C address " + String(addr) + " of type " + sensors[i].second->getModuleName());
+                    printModuleName(); Serial.println("New sensor detected on port " + String(i) + " at I2C address " + String(addr) + " of type " + std::get<1>(sensors[moduleIndex])->getModuleName());
                     
                     // Update name for unique instances in the Mux
-                    sensors[i].second->setModuleName(sensors[i].second->getModuleName() + "_" + String(i));
-                    sensors[i].second->initialize();
+                    std::get<1>(sensors[moduleIndex])->setModuleName(std::get<1>(sensors[moduleIndex])->getModuleName() + "_" + String(i));
+                    std::get<1>(sensors[moduleIndex])->initialize();
                 }
+                moduleIndex++;
             }
         }
         
@@ -96,9 +106,9 @@ void Loom_Multiplexer::measure(){
     refreshSensors();
 
     for(int i = 0; i < sensors.size(); i++){
-        selectPin(i);
+        selectPin(std::get<2>(sensors[i]));
         delay(50);
-        sensors[i].second->measure();
+        std::get<1>(sensors[i])->measure();
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,7 +116,7 @@ void Loom_Multiplexer::measure(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::package(){
     for(int i = 0; i < sensors.size(); i++){
-        sensors[i].second->package();
+        std::get<1>(sensors[i])->package();
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -114,9 +124,9 @@ void Loom_Multiplexer::package(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::power_up(){
     for(int i = 0; i < sensors.size(); i++){
-        selectPin(i);
+        selectPin(std::get<2>(sensors[i]));
         delay(50);
-        sensors[i].second->power_up();
+        std::get<1>(sensors[i])->power_up();
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -124,9 +134,9 @@ void Loom_Multiplexer::power_up(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::power_down(){
     for(int i = 0; i < sensors.size(); i++){
-        selectPin(i);
+        selectPin(std::get<2>(sensors[i]));
         delay(50);
-        sensors[i].second->power_up();
+        std::get<1>(sensors[i])->power_up();
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -176,6 +186,9 @@ Module* Loom_Multiplexer::loadSensor(const byte addr){
 
         // K30
         case 0x68: return new Loom_K30(*manInst, 0x68, true);
+
+        //MMA8451
+        case 0x1D: return new Loom_MMA8451(*manInst);
 
         // MPU6050
         case 0x69: return new Loom_MPU6050(*manInst);

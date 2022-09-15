@@ -4,6 +4,7 @@
 #include "../../Module.h"
 
 #include <vector>
+#include <tuple>
 #include <algorithm>
 #include "Wire.h"
 
@@ -16,6 +17,7 @@
 #include "../../Sensors/I2C/Loom_STEMMA/Loom_STEMMA.h"
 #include "../../Sensors/I2C/Loom_MB1232/Loom_MB1232.h"
 #include "../../Sensors/I2C/Loom_K30/Loom_K30.h"
+#include "../../Sensors/I2C/Loom_MMA8451/Loom_MMA8451.h"
 
 /**
  * Adds Hot Swappable functionality for TCA9548 multiplexer
@@ -55,7 +57,7 @@ class Loom_Multiplexer : public Module{
 		byte activeMuxAddr;										// The port which we want to try to communicate over
 		const uint8_t numPorts = 8;								// Number of ports on the multiplexer
 
-		std::vector<std::pair<byte, Module*>> sensors;			// List of sensors
+		std::vector<std::tuple<byte, Module*, int>> sensors;			// List of sensors
 
         void selectPin(uint8_t pin);                            // Select which pin of the multiplexer to transmit to
 		void disableChannels();									// Disables all channels on the Multiplexer

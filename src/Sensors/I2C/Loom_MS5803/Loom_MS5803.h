@@ -2,6 +2,7 @@
 
 #include "Module.h"
 #include "Loom_Manager.h"
+#include <Wire.h>
 
 #include <MS5803_02.h>
 

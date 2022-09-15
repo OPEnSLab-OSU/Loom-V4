@@ -9,6 +9,8 @@
 
 #include <TinyGsmClient.h>
 
+#include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
+
 // Specify what serial interface we want to use
 #define SerialAT Serial1
 
