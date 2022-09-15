@@ -9,11 +9,12 @@ void Loom_Analog::measure(){
 
     // Read the data from the given analog pin
     for(int i = 0; i < analogPins.size(); i++){
-        pinToData.insert(std::pair<String, float>(pin_number_to_name(analogPins[i]), analogRead(analogPins[i])));
+        int analogData = analogRead(analogPins[i]);
+        pinToData.insert(std::make_pair(pin_number_to_name(analogPins[i]), std::make_pair(analogData, analogToMV(analogData))));
     }
 
     // Pull the battery voltage and add it to the top of 
-    pinToData.insert(std::pair<String, float>("Vbat", get_battery_voltage()));
+    pinToData.insert(std::make_pair("Vbat", std::make_pair(get_battery_voltage(), get_battery_voltage() * 1000)));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -21,7 +22,8 @@ void Loom_Analog::measure(){
 void Loom_Analog::package(){
     JsonObject json = manInst->get_data_object(getModuleName());
     for ( const auto &myPair : pinToData ) {
-       json[myPair.first] = pinToData[myPair.first];
+       json[myPair.first] = pinToData[myPair.first].first;
+       json[String(myPair.first) + "_MV"] = pinToData[myPair.first].second;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -39,5 +41,13 @@ float Loom_Analog::get_battery_voltage(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 String Loom_Analog::pin_number_to_name(int pin){
     return "A" + String((pin - 14));
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+float Loom_Analog::analogToMV(int analog){
+    float analogRes = 4095.0;
+    float voltage = analog / (analogRes / 3.3);
+    return voltage * 1000;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
