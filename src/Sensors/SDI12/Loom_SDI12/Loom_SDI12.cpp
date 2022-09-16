@@ -4,7 +4,9 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_SDI12::Loom_SDI12(Manager& man, const int pinNumber): Module("SDI12"), sdiInterface(pinNumber) { 
     manInst = &man;
+    pinMode(pinNumber, OUTPUT);
     manInst->registerModule(this); 
+    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -16,9 +18,6 @@ Loom_SDI12::Loom_SDI12(const int pinNumber) : Module("SDI12"), sdiInterface(pinN
 void Loom_SDI12::initialize(){
 
     printModuleName(); Serial.println("Initializing SDI-12 Sensors...");
-
-    // On init we set the SDI pin to OUTPUT so we can request data
-    pinMode(sdiInterface.getDataPin(), OUTPUT);
 
     // Start the interface and then wait for 100ms to allow things to settle and startup correctly
     sdiInterface.begin();
