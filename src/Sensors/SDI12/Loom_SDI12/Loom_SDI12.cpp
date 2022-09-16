@@ -83,6 +83,7 @@ void Loom_SDI12::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::power_up(){
+   pinMode(sdiInterface.getDataPin(), OUTPUT);
    sdiInterface.begin();
    delay(100);
 }
