@@ -38,6 +38,9 @@ void Loom_SDI12::initialize(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::measure(){
    
+    // On measure we also want to reset the mode to output in case the 4G board has messed with it
+    pinMode(sdiInterface.getDataPin(), OUTPUT);
+    delay(30);
 
     // Populate the variables that will be used to package data
     for(int i = 0; i < inUseAddresses.size(); i++){
