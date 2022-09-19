@@ -15,7 +15,6 @@
 class Loom_MS5803 : public Module{
     protected:
         void print_measurements() override {};  
-        void power_up() override {};
         void power_down() override {};
          
     public:
@@ -26,6 +25,8 @@ class Loom_MS5803 : public Module{
         void initialize() override;
         void measure() override;
         void package() override;
+
+        void power_up() override;
 
         Loom_MS5803(Manager& man, bool useMux = false, byte address = 0x77);
 
