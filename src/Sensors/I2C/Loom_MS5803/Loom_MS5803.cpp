@@ -29,12 +29,13 @@ void Loom_MS5803::initialize(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MS5803::measure(){
+    initialize();
     // Make sure the sensor initialized correctly
-    if(moduleInitialized){
+    //if(moduleInitialized){
         inst.readSensor();
         sensorData[0] = inst.temperature();
         sensorData[1] = inst.pressure();
-    }
+    //}
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
