@@ -3,8 +3,8 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_ZXGesture::Loom_ZXGesture(
                             Manager& man, 
+                            int address, 
                             bool useMux,
-                            int address,  
                             Mode mode
                     ) : Module("ZX Gesture"), manInst(&man), zx( ZX_Sensor(address)), mode(mode) {
 

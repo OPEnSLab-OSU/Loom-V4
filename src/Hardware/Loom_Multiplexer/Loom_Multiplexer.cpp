@@ -175,37 +175,37 @@ Module* Loom_Multiplexer::loadSensor(const byte addr){
     // Select the correct sensor to load based on the address
     switch (addr){
         //TSL2591
-        case 0x29: return new Loom_TSL2591(*manInst, true);
+        case 0x29: return new Loom_TSL2591(*manInst, 0x29, true);
 
         // ZX Gesture
-        case 0x10: return new Loom_ZXGesture(*manInst, true);
-        case 0x11: return new Loom_ZXGesture(*manInst, true, 0x11);
+        case 0x10: return new Loom_ZXGesture(*manInst, 0x10, true);
+        case 0x11: return new Loom_ZXGesture(*manInst, 0x11, true);
 
         // SHT31
-        case 0x44: return new Loom_SHT31(*manInst, true);
-        case 0x45: return new Loom_SHT31(*manInst, true, 0x45);
+        case 0x44: return new Loom_SHT31(*manInst, 0x44, true);
+        case 0x45: return new Loom_SHT31(*manInst, 0x45, true);
 
         // ADS1115  
-        case 0x48: return new Loom_ADS1115(*manInst, true);
+        case 0x48: return new Loom_ADS1115(*manInst, 0x48, true);
 
         // K30
         case 0x68: return new Loom_K30(*manInst, true, 0x68, true);
 
         //MMA8451
-        case 0x1D: return new Loom_MMA8451(*manInst, true);
+        case 0x1D: return new Loom_MMA8451(*manInst, 0x1D, true);
 
         // MPU6050
         case 0x69: return new Loom_MPU6050(*manInst, true);
 
         // MS5803
-        case 0x76: return new Loom_MS5803(*manInst, true, 0x76);
-        case 0x77: return new Loom_MS5803(*manInst, true);
+        case 0x76: return new Loom_MS5803(*manInst, 0x76, true);
+        case 0x77: return new Loom_MS5803(*manInst, 0x77, true);
 
         // STEMMA
-        case 0x36: return new Loom_STEMMA(*manInst, true);
+        case 0x36: return new Loom_STEMMA(*manInst, 0x36, true);
 
         /// MB1232
-        case 0x70: return new Loom_MB1232(*manInst, true);
+        case 0x70: return new Loom_MB1232(*manInst, 0x70, true);
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

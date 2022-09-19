@@ -28,7 +28,7 @@ class Loom_MS5803 : public Module{
 
         void power_up() override;
 
-        Loom_MS5803(Manager& man, bool useMux = false, byte address = 0x77);
+        Loom_MS5803(Manager& man, byte address = 0x77, bool useMux = false);
 
          /**
          * Get the temperature reading

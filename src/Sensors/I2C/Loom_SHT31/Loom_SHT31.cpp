@@ -3,8 +3,8 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_SHT31::Loom_SHT31(
                         Manager& man, 
-                        bool useMux,
-                        int address  
+                        int address,
+                        bool useMux
                     ) : Module("SHT31"), manInst(&man), i2c_address(address){
                         module_address = address;
                         

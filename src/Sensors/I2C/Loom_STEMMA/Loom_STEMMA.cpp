@@ -2,9 +2,10 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_STEMMA::Loom_STEMMA(
-                        Manager& man, 
-                        bool useMux,
-                        int addr  
+                        Manager& man,
+                        int addr, 
+                        bool useMux
+                        
                     ) : Module("STEMMA"), manInst(&man), address(addr) {
                         module_address = addr;
 
