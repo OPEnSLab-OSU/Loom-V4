@@ -32,7 +32,7 @@ void Loom_MS5803::measure(){
     // Make sure the sensor initialized correctly
     if(moduleInitialized){
         // Reinit the module every measure
-        inst.initializeMS_5803(false)
+        inst.initializeMS_5803(false);
         delay(1000);
 
         inst.readSensor();
