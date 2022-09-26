@@ -9,15 +9,16 @@ Loom_Teros10::Loom_Teros10(Manager& man, int port) : Module("Teros 10"), manInst
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Teros10::measure(){
-    float mV = analogToMV(analogRead(analogPort));
-    volumetricWater = computeVWC(mV);
-    dielecPerm = computeDP(mV);
+    milliVolt = analogToMV(analogRead(analogPort));
+    volumetricWater = computeVWC(milliVolt);
+    dielecPerm = computeDP(milliVolt);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Teros10::package(){
     JsonObject json = manInst->get_data_object(getModuleName());
+    json["Millivolt_Reading"] = milliVolt;
     json["Dielectric_Permittivity"] = dielecPerm;
     json["Volumetric_Water_Content"] = volumetricWater;
 }
