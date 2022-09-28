@@ -5,6 +5,25 @@ Manager::Manager(String devName, uint32_t instanceNum) : deviceName(devName), in
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+ void Manager::registerModule(Module* module){
+    // If there are no duplicates proceed as normal
+    for(int i = 0; i < modules.size(); i++){
+
+        // Check if the module name contains the base string to make sure this works past 2 modules of the same type
+        if(modules[i].first.indexOf(module->getModuleName()) > 0){
+            modules[i].second->setModuleName(modules[i].second->getModuleName() + String("_") + String(modules[i].second->module_address));
+            module->setModuleName(module->getModuleName() + String("_") + String(module->module_address));
+
+            // Once we find a module of this type we want to break out to avoid redundant name changes
+            break;
+        }
+    }
+
+    modules.push_back(std::make_pair(module->getModuleName(), module));
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 StaticJsonDocument<2000>& Manager::getDocument() {return doc;}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

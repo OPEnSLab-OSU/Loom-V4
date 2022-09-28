@@ -5,7 +5,7 @@ Loom_MB1232::Loom_MB1232(
                         Manager& man,
                         bool useMux, 
                         int addr  
-                    ) : Module("MB1232"), manInst(&man), address(addr) {
+                    ) : I2CSensor("MB1232"), manInst(&man), address(addr) {
                         module_address = addr;
                         // Register the module with the manager
                         
@@ -42,6 +42,11 @@ void Loom_MB1232::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MB1232::measure() {
+    if(checkDeviceConnection()){
+        printModuleName(); Serial.println("No acknowledge received from the device");
+        return;
+    }
+
     Wire.beginTransmission(address);
 
     Wire.write(RangeCommand);

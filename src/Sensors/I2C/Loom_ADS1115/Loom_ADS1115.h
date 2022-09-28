@@ -3,7 +3,7 @@
 #include <Adafruit_ADS1X15.h>
 #include <map>
 
-#include "Module.h"
+#include "../I2CSensor.h"
 #include "Loom_Manager.h"
 
 /**
@@ -11,7 +11,7 @@
  * 
  * @author Will Richards
  */  
-class Loom_ADS1115 : public Module{
+class Loom_ADS1115 : public I2CSensor{
 
 
     protected:
@@ -67,7 +67,4 @@ class Loom_ADS1115 : public Module{
         int16_t analogData[4];                                      // Stores the analog ADS1115 data
         int16_t diffData[2];                                        // Stores the differential data from the sensor
         float volts[4];						                        // Stores Computed Voltage Conversions
-
-        bool initialized = true;
-
 };

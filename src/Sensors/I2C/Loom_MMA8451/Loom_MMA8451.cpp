@@ -6,7 +6,7 @@ Loom_MMA8451::Loom_MMA8451(
                         bool useMux,
                         int addr,
                         mma8451_range_t range  
-                    ) : Module("MMA8451"), manInst(&man), address(addr), range(range) {
+                    ) : I2CSensor("MMA8451"), manInst(&man), address(addr), range(range) {
                         module_address = addr;
                         
                         // Register the module with the manager
@@ -34,6 +34,11 @@ void Loom_MMA8451::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MMA8451::measure() {
+    if(checkDeviceConnection()){
+        printModuleName(); Serial.println("No acknowledge received from the device");
+        return;
+    }
+    
     // Update the sensor
     mma.read();
 

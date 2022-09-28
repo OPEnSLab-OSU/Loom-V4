@@ -7,7 +7,7 @@ Loom_TSL2591::Loom_TSL2591(
                             int address,  
                             tsl2591Gain_t light_gain, 
                             tsl2591IntegrationTime_t integration_time
-                    ) : Module("TSL2591"), manInst(&man), tsl(address), gain(light_gain), intTime(integration_time) {
+                    ) : I2CSensor("TSL2591"), manInst(&man), tsl(address), gain(light_gain), intTime(integration_time) {
                         module_address = address;
 
                         // Register the module with the manager
@@ -34,8 +34,12 @@ void Loom_TSL2591::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::measure() {
-    // Pull the data from the sensor
+    if(checkDeviceConnection()){
+        printModuleName(); Serial.println("No acknowledge received from the device");
+        return;
+    }
 
+    // Pull the data from the sensor
     uint16_t visible = tsl.getLuminosity(TSL2591_VISIBLE);
 
     // Make sure the value is actually valid

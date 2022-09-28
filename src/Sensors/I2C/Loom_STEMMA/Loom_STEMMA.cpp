@@ -5,7 +5,7 @@ Loom_STEMMA::Loom_STEMMA(
                         Manager& man, 
                         bool useMux,
                         int addr  
-                    ) : Module("STEMMA"), manInst(&man), address(addr) {
+                    ) : I2CSensor("STEMMA"), manInst(&man), address(addr) {
                         module_address = addr;
 
                         // Register the module with the manager
@@ -27,6 +27,11 @@ void Loom_STEMMA::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::measure() {
+    if(checkDeviceConnection()){
+        printModuleName(); Serial.println("No acknowledge received from the device");
+        return;
+    }
+    
     // Pull the data from the sensor
     temperature = stemma.getTemp();
     cap = stemma.touchRead(0);

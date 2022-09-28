@@ -3,6 +3,10 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Teros10::Loom_Teros10(Manager& man, int port) : Module("Teros 10"), manInst(&man), analogPort(port){
     analogReadResolution(12);
+
+    // Set the module address in-case we have more than one Teros 10 on a single device
+    module_address = port;
+    
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

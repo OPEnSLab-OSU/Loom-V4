@@ -6,7 +6,7 @@ Loom_ZXGesture::Loom_ZXGesture(
                             bool useMux,
                             int address,  
                             Mode mode
-                    ) : Module("ZX Gesture"), manInst(&man), zx( ZX_Sensor(address)), mode(mode) {
+                    ) : I2CSensor("ZX Gesture"), manInst(&man), zx( ZX_Sensor(address)), mode(mode) {
 
                         // Register the module with the manager
                         if(!useMux)
@@ -50,6 +50,10 @@ void Loom_ZXGesture::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ZXGesture::measure() {
+    if(checkDeviceConnection()){
+        printModuleName(); Serial.println("No acknowledge received from the device");
+        return;
+    }
 
     // Check if we are in position detection mode or in gesture detection mode
     if(mode == Mode::POS){

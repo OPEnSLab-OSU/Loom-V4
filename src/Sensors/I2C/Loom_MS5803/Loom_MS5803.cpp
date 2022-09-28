@@ -1,7 +1,7 @@
 #include "Loom_MS5803.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_MS5803::Loom_MS5803(Manager& man, bool useMux, byte address) : Module("MS5803"), manInst(&man), inst(address, 512) {
+Loom_MS5803::Loom_MS5803(Manager& man, bool useMux, byte address) : I2CSensor("MS5803"), manInst(&man), inst(address, 512) {
     module_address = address;
 
     if(!useMux)
@@ -29,6 +29,11 @@ void Loom_MS5803::initialize(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MS5803::measure(){
+    if(checkDeviceConnection()){
+        printModuleName(); Serial.println("No acknowledge received from the device");
+        return;
+    }
+
     // Make sure the sensor initialized correctly
     if(moduleInitialized){
         inst.readSensor();

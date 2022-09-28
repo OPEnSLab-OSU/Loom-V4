@@ -8,7 +8,7 @@ Loom_AS7263::Loom_AS7263(
                         uint8_t gain,
                         uint8_t mode,
                         uint8_t integration_time 
-                    ) : Module("AS7263"), manInst(&man), gain(gain), mode(mode), integration_time(integration_time) {
+                    ) : I2CSensor("AS7263"), manInst(&man), gain(gain), mode(mode), integration_time(integration_time) {
                         module_address = addr;
 
                         // Register the module with the manager
@@ -38,31 +38,39 @@ void Loom_AS7263::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7263::measure() {
-    
-	// Take a measurement and wait for it to be ready
-    asInst.takeMeasurements();
-	while(!asInst.dataAvailable()){
-		delay(5);
-	}
+    if(checkDeviceConnection()){
+        printModuleName(); Serial.println("No acknowledge received from the device");
+        return;
+    }
 
-	// NIR
-	nir[0] = asInst.getCalibratedR();
-	nir[1] = asInst.getCalibratedS();
-	nir[2] = asInst.getCalibratedT();
-	nir[3] = asInst.getCalibratedU();
-	nir[4] = asInst.getCalibratedV();
-	nir[5] = asInst.getCalibratedW();
+    if(moduleInitialized){
+        // Take a measurement and wait for it to be ready
+        asInst.takeMeasurements();
+        while(!asInst.dataAvailable()){
+            delay(5);
+        }
+
+        // NIR
+        nir[0] = asInst.getCalibratedR();
+        nir[1] = asInst.getCalibratedS();
+        nir[2] = asInst.getCalibratedT();
+        nir[3] = asInst.getCalibratedU();
+        nir[4] = asInst.getCalibratedV();
+        nir[5] = asInst.getCalibratedW();
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7263::package() {
-    JsonObject json = manInst->get_data_object(getModuleName());
-	json["NIR_1"] = nir[0];
-	json["NIR_2"] = nir[1];
-	json["NIR_3"] = nir[2];
-	json["NIR_4"] = nir[3];
-	json["NIR_5"] = nir[4];
-	json["NIR_6"] = nir[5];
+    if(moduleInitialized){
+        JsonObject json = manInst->get_data_object(getModuleName());
+        json["NIR_1"] = nir[0];
+        json["NIR_2"] = nir[1];
+        json["NIR_3"] = nir[2];
+        json["NIR_4"] = nir[3];
+        json["NIR_5"] = nir[4];
+        json["NIR_6"] = nir[5];
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

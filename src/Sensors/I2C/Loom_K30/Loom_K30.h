@@ -4,7 +4,7 @@
 #include "wiring_private.h"
 
 #include "Loom_Manager.h"
-#include "Module.h"
+#include "../I2CSensor.h"
 
 enum CommType{
     I2C,
@@ -18,7 +18,7 @@ enum CommType{
  * Product Page: https://www.co2meter.com/products/k-30-co2-sensor-module?variant=8463942
  * @author Will Richards
  */ 
-class Loom_K30 : public Module{
+class Loom_K30 : public I2CSensor{
     protected:
         void power_up() override {};
         void power_down() override {}; 

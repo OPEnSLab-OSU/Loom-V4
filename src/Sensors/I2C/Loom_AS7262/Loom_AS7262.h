@@ -3,7 +3,7 @@
 #include <AS726X.h>
 #include <Wire.h>
 
-#include "Module.h"
+#include "../I2CSensor.h"
 #include "Loom_Manager.h"
 
 /**
@@ -11,7 +11,7 @@
  * 
  * @author Will Richards
  */ 
-class Loom_AS7262 : public Module{
+class Loom_AS7262 : public I2CSensor{
     protected:
         void power_up() override {};
         void power_down() override {}; 
