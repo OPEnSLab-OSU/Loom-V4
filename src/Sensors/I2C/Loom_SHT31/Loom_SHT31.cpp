@@ -2,9 +2,9 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_SHT31::Loom_SHT31(
-                        Manager& man, 
-                        bool useMux,
-                        int address  
+                        Manager& man,
+                        int address, 
+                        bool useMux
                     ) : I2CSensor("SHT31"), manInst(&man), i2c_address(address){
                         module_address = address;
                         

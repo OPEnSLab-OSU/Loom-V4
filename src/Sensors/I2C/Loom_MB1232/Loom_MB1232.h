@@ -33,8 +33,8 @@ class Loom_MB1232 : public I2CSensor{
          */ 
         Loom_MB1232(
                     Manager& man,
-                    bool useMux = false, 
-                    int addr = 0x70
+                    int addr = 0x70,
+                    bool useMux = false
                 );
 
         /**

@@ -32,8 +32,8 @@ class Loom_TSL2591 : public I2CSensor{
          */ 
         Loom_TSL2591(
                       Manager& man,
-                      bool useMux = false, 
                       int address = 0x29, 
+                      bool useMux = false, 
                       tsl2591Gain_t light_gain = TSL2591_GAIN_MED, 
                       tsl2591IntegrationTime_t integration_time = TSL2591_INTEGRATIONTIME_100MS
                 );

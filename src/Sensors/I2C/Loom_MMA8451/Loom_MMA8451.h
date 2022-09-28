@@ -31,8 +31,8 @@ class Loom_MMA8451 : public I2CSensor{
          */ 
         Loom_MMA8451(
                     Manager& man,
-                    bool useMux = false, 
                     int addr = 0x1D,
+                    bool useMux = false, 
                     mma8451_range_t range = MMA8451_RANGE_2_G
                 );
 

@@ -29,8 +29,8 @@ class Loom_STEMMA : public I2CSensor{
          */ 
         Loom_STEMMA(
                     Manager& man,
-                    bool useMux = false, 
-                    int addr = 0x36
+                    int addr = 0x36,
+                    bool useMux = false
                 );
 
         /**

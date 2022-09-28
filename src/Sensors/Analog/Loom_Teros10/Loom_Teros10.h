@@ -50,6 +50,7 @@ class Loom_Teros10 : public Module{
         Manager* manInst;                                           // Instance of the manager
         int analogPort = A0;                                        // Where the analog sensor is hooked up 
         
+        float milliVolt;                                            // Millivolt output reading
         float volumetricWater;                                      // Volumetric water content
         float dielecPerm;                                           // Dielectric permittivity
 

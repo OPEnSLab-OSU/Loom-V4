@@ -29,8 +29,8 @@ class Loom_SHT31 : public I2CSensor{
          */ 
         Loom_SHT31(
                       Manager& man, 
-                      bool useMux = false,
-                      int address = 0x44 
+                      int address = 0x44,
+                      bool useMux = false
                 );
 
 

@@ -11,8 +11,8 @@
 
 Manager manager("Device", 1);
 
-// Manger Instance,      useMux Address, Gain, Mode, Integration Time
-Loom_AwS7262 as(manager, false, 0x49,    1,    3,    50);
+// Manger Instance,     useMux, Address, Gain, Mode, Integration Time
+Loom_AS7262 as(manager, false, 0x49,    1,    3,    50);
 
 void setup() {
 

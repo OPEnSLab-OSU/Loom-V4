@@ -3,8 +3,8 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MB1232::Loom_MB1232(
                         Manager& man,
-                        bool useMux, 
-                        int addr  
+                        int addr
+                        bool useMux 
                     ) : I2CSensor("MB1232"), manInst(&man), address(addr) {
                         module_address = addr;
                         // Register the module with the manager

@@ -2,9 +2,9 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MMA8451::Loom_MMA8451(
-                        Manager& man, 
-                        bool useMux,
+                        Manager& man,
                         int addr,
+                        bool useMux,
                         mma8451_range_t range  
                     ) : I2CSensor("MMA8451"), manInst(&man), address(addr), range(range) {
                         module_address = addr;

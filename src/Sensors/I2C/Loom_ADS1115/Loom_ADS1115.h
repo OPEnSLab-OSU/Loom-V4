@@ -35,8 +35,8 @@ class Loom_ADS1115 : public I2CSensor{
          */ 
         Loom_ADS1115(
                 Manager& man,
-                bool useMux             = false, 
                 byte address            = ADS1X15_ADDRESS,
+                bool useMux             = false, 
                 bool enable_analog      = true,
                 bool enable_diff        = false,
                 adsGain_t gain          = adsGain_t::GAIN_ONE

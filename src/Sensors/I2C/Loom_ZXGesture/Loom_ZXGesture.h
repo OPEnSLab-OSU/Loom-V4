@@ -48,8 +48,8 @@ class Loom_ZXGesture : public I2CSensor{
          */ 
         Loom_ZXGesture(
                       Manager& man,
-                      bool useMux = false, 
-                      int address = 0x10, 
+                      int address = 0x10,
+                      bool useMux = false,  
                       Mode mode = Mode::POS
                 );
 
