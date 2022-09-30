@@ -29,7 +29,7 @@ void Loom_MS5803::initialize(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MS5803::measure(){
-    if(checkDeviceConnection()){
+    if(!checkDeviceConnection()){
         printModuleName(); Serial.println("No acknowledge received from the device");
         return;
     }

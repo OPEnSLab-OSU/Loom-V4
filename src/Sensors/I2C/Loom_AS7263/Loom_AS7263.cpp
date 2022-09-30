@@ -38,7 +38,7 @@ void Loom_AS7263::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7263::measure() {
-    if(checkDeviceConnection()){
+    if(!checkDeviceConnection()){
         printModuleName(); Serial.println("No acknowledge received from the device");
         return;
     }

@@ -42,7 +42,7 @@ void Loom_MB1232::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MB1232::measure() {
-    if(checkDeviceConnection()){
+    if(!checkDeviceConnection()){
         printModuleName(); Serial.println("No acknowledge received from the device");
         return;
     }

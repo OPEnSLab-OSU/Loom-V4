@@ -50,7 +50,7 @@ void Loom_ZXGesture::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ZXGesture::measure() {
-    if(checkDeviceConnection()){
+    if(!checkDeviceConnection()){
         printModuleName(); Serial.println("No acknowledge received from the device");
         return;
     }

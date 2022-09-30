@@ -26,7 +26,7 @@ void Loom_ADS1115::initialize(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ADS1115::measure(){
-    if(checkDeviceConnection()){
+    if(!checkDeviceConnection()){
         printModuleName(); Serial.println("No acknowledge received from the device");
         return;
     }

@@ -27,7 +27,7 @@ void Loom_STEMMA::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::measure() {
-    if(checkDeviceConnection()){
+    if(!checkDeviceConnection()){
         printModuleName(); Serial.println("No acknowledge received from the device");
         return;
     }

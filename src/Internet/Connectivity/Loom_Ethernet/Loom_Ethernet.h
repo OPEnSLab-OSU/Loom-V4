@@ -7,12 +7,14 @@
 #include "Module.h"
 #include "Loom_Manager.h"
 
+
 /**
  * Ethernet driver for loom devices
  * 
  * @author Will Richards
  */ 
 class Loom_Ethernet : public Module{
+
     protected:
 
         /* These aren't used with the Wifi manager */

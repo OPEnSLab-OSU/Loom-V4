@@ -28,7 +28,7 @@ void Loom_SHT31::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SHT31::measure() {
-    if(checkDeviceConnection()){
+    if(!checkDeviceConnection()){
         printModuleName(); Serial.println("No acknowledge received from the device");
         return;
     }

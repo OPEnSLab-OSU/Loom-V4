@@ -34,7 +34,7 @@ void Loom_MMA8451::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MMA8451::measure() {
-    if(checkDeviceConnection()){
+    if(!checkDeviceConnection()){
         printModuleName(); Serial.println("No acknowledge received from the device");
         return;
     }
