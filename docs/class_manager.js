@@ -18,6 +18,8 @@ var class_manager =
     [ "power_down", "class_manager.html#a855325a3bd12d5d1275397c82cc497b7", null ],
     [ "power_up", "class_manager.html#a8781f33a0c9f2483c6ce877b145cce8f", null ],
     [ "registerModule", "class_manager.html#a8e30cad0de6e3c83eb61e60859583679", null ],
+    [ "set_device_name", "class_manager.html#ad676866c1e5cf5487b69998ae770418b", null ],
+    [ "set_instance_num", "class_manager.html#a855c3b4519b01616001604ad8ca2931b", null ],
     [ "setEnableState", "class_manager.html#ae921bcc7cd32a4df86476a1845bc5d21", null ],
     [ "useHypnos", "class_manager.html#a4acd1774a87a7c4e7fc42af969fde001", null ]
 ];

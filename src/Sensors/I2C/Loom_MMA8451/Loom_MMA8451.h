@@ -3,7 +3,7 @@
 #include <Wire.h>
 #include <Adafruit_MMA8451.h>
 
-#include "Module.h"
+#include "../I2CSensor.h"
 #include "Loom_Manager.h"
 
 /**
@@ -11,7 +11,7 @@
  * 
  * @author Will Richards
  */ 
-class Loom_MMA8451 : public Module{
+class Loom_MMA8451 : public I2CSensor{
     protected:
         void power_up() override {};
         void power_down() override {}; 
@@ -30,8 +30,9 @@ class Loom_MMA8451 : public Module{
          * @param range Range of the MMA sensor
          */ 
         Loom_MMA8451(
-                    Manager& man, 
+                    Manager& man,
                     int addr = 0x1D,
+                    bool useMux = false, 
                     mma8451_range_t range = MMA8451_RANGE_2_G
                 );
 

@@ -9,6 +9,8 @@
 
 #include <TinyGsmClient.h>
 
+#include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
+
 // Specify what serial interface we want to use
 #define SerialAT Serial1
 
@@ -67,6 +69,12 @@ class Loom_LTE : public Module{
         void loadConfigFromJSON(String json);
 
         /**
+         * Turn on batch upload for the lte which means it will only initialize the module when we need to upload
+         * @param batch BatchSD module
+         */ 
+        void enableBatch(Loom_BatchSD& batch) { batch_sd = &batch; };
+
+        /**
          * Connect to the cellular network
          */ 
         bool connect();
@@ -109,5 +117,6 @@ class Loom_LTE : public Module{
         TinyGsmClient client;               // LTE Client
 
         bool firstInit = true;              // First time it was initialized
+        Loom_BatchSD* batch_sd = nullptr;   // If we are using batch publish
 
 };

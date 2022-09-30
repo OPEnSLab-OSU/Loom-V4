@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['sdmanager_0',['SDManager',['../class_s_d_manager.html',1,'']]]
+  ['radio_0',['Radio',['../class_radio.html',1,'']]]
 ];

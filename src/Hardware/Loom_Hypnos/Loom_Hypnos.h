@@ -55,7 +55,7 @@ enum TIME_ZONE{
 };
 
 /**
- * Type of interrupt to register 
+ * Type of interrupt to register
  */ 
 enum InterruptType{
     SLEEP,
@@ -124,8 +124,8 @@ class Loom_Hypnos : public Module{
          * Enables RTC based interrupts using the DS3231 on the Hypnos
          * @param isrFunc function to callback to when the interrupt is triggered
          * @param interruptPin Defaults to RTC pin on Hypnos can be changed to reflect other interrupts
-         * @param triggerState When the interrupt should trigger
          * @param interruptType Type of the interrupt to register (SLEEP or OTHER)
+         * @param triggerState When the interrupt should trigger
          */ 
         bool registerInterrupt(InterruptCallbackFunction isrFunc = nullptr, int interruptPin = 12, InterruptType interruptType = SLEEP, int triggerState = LOW);
 

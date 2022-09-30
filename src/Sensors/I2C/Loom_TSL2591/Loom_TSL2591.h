@@ -3,7 +3,7 @@
 #include <Adafruit_TSL2591.h>
 #include <Adafruit_Sensor.h>
 
-#include "Module.h"
+#include "../I2CSensor.h"
 #include "Loom_Manager.h"
 
 /**
@@ -11,7 +11,7 @@
  * 
  * @author Will Richards
  */ 
-class Loom_TSL2591 : public Module{
+class Loom_TSL2591 : public I2CSensor{
     protected:
        
        // Manager controlled functions
@@ -31,8 +31,9 @@ class Loom_TSL2591 : public Module{
          * @param integration_time How long we want to integrate the data, longer time results in dimmer values
          */ 
         Loom_TSL2591(
-                      Manager& man, 
+                      Manager& man,
                       int address = 0x29, 
+                      bool useMux = false, 
                       tsl2591Gain_t light_gain = TSL2591_GAIN_MED, 
                       tsl2591IntegrationTime_t integration_time = TSL2591_INTEGRATIONTIME_100MS
                 );

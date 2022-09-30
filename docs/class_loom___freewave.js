@@ -1,6 +1,6 @@
 var class_loom___freewave =
 [
-    [ "Loom_Freewave", "class_loom___freewave.html#a5716c7d413956367a79d31d2796c2bf6", null ],
+    [ "Loom_Freewave", "class_loom___freewave.html#a350059f017b5b9e95b5d8c47ae14cc35", null ],
     [ "initialize", "class_loom___freewave.html#a408baa2ce54674452b899fc474868727", null ],
     [ "power_down", "class_loom___freewave.html#ac069ad4c8e7d7e464d7d9437173c327a", null ],
     [ "power_up", "class_loom___freewave.html#a68c3761c526eb1222ba966a8c26bec6c", null ],

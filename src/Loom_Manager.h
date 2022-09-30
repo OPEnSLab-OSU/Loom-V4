@@ -19,29 +19,17 @@ class Manager{
     public:
 
         /**
-         * Registers a new sub-module to be controlled by the manager (Used on sensors so measure and package calls can all be called at once)
-         * @param module Pointer to a class the inherits from Module that we want to add
-         */ 
-        void registerModule(Module* module){
-            // If there are no duplicates proceed as normal
-            for(int i = 0; i < modules.size(); i++){
-
-                // If the current module name is equal to the newly added module
-                if(modules[i].first == module->getModuleName()){
-                    modules[i].second->setModuleName(modules[i].second->getModuleName() + String("_") + String(modules[i].second->module_address));
-                    module->setModuleName(module->getModuleName() + String("_") + String(module->module_address));
-                }
-            }
-
-            modules.push_back(std::make_pair(module->getModuleName(), module));
-        }; 
-
-        /**
          * Constructs a new Manager
          * @param devName Device name to provided for logging purposes
          * @param instanceNum Instance number for logging purposes
          */ 
         Manager(String devName, uint32_t instanceNum);
+
+        /**
+         * Registers a new sub-module to be controlled by the manager (Used on sensors so measure and package calls can all be called at once)
+         * @param module Pointer to a class the inherits from Module that we want to add
+         */ 
+        void registerModule(Module* module); 
 
         /**
          * Get a reference to the JSON document that sensor data is stored in

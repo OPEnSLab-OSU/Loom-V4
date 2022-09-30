@@ -2,17 +2,22 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MB1232::Loom_MB1232(
-                        Manager& man, 
-                        int addr  
-                    ) : Module("MB1232"), manInst(&man), address(addr) {
+                        Manager& man,
+                        int addr,
+                        bool useMux 
+                    ) : I2CSensor("MB1232"), manInst(&man), address(addr) {
                         module_address = addr;
                         // Register the module with the manager
-                        manInst->registerModule(this);
+                        
+                        if(!useMux)
+                            manInst->registerModule(this);
                     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MB1232::initialize() {
+    // Start wire interface
+    Wire.begin();
 
     // Start the I2C transmission
     Wire.beginTransmission(address);
@@ -37,6 +42,11 @@ void Loom_MB1232::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MB1232::measure() {
+    if(checkDeviceConnection()){
+        printModuleName(); Serial.println("No acknowledge received from the device");
+        return;
+    }
+
     Wire.beginTransmission(address);
 
     Wire.write(RangeCommand);

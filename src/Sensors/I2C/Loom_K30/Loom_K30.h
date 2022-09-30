@@ -4,7 +4,7 @@
 #include "wiring_private.h"
 
 #include "Loom_Manager.h"
-#include "Module.h"
+#include "../I2CSensor.h"
 
 enum CommType{
     I2C,
@@ -18,7 +18,7 @@ enum CommType{
  * Product Page: https://www.co2meter.com/products/k-30-co2-sensor-module?variant=8463942
  * @author Will Richards
  */ 
-class Loom_K30 : public Module{
+class Loom_K30 : public I2CSensor{
     protected:
         void power_up() override {};
         void power_down() override {}; 
@@ -32,12 +32,14 @@ class Loom_K30 : public Module{
         /**
          * Construct a new K30 sensor using I2C to communicate
          * @param man Reference to the manager
+         * @param useMux If this module will be using the mux
          * @param addr I2C address
          * @param warmUp If we should wait 6 minutes before collecting data to allow the sensor to warm up
          * @param valMult How much to multiply the recorded output by
          */ 
         Loom_K30(
-            Manager& man, 
+            Manager& man,
+            bool useMux = false, 
             int addr = 0x68,  
             bool warmUp = true, 
             int valMult = 1
@@ -65,6 +67,10 @@ class Loom_K30 : public Module{
          * Get the current CO2 levels collected by the sensor
          */ 
         int getCO2() { return CO2Levels; };
+
+        void setSerial(Uart& serial){
+            K30_Serial = &serial;
+        };
 
     private:
         Manager* manInst;                                               // Instance of the manager

@@ -3,7 +3,7 @@
 #include <Adafruit_ADS1X15.h>
 #include <map>
 
-#include "Module.h"
+#include "../I2CSensor.h"
 #include "Loom_Manager.h"
 
 /**
@@ -11,7 +11,7 @@
  * 
  * @author Will Richards
  */  
-class Loom_ADS1115 : public Module{
+class Loom_ADS1115 : public I2CSensor{
 
 
     protected:
@@ -27,18 +27,21 @@ class Loom_ADS1115 : public Module{
         /**
          *  Construct a new ADS1115
          *  @param man Reference to the manager
+         *  @param useMux Whether or not to use the mux
          *  @param address I2C address to communicate over
          *  @param enable_analog If we want to read the analog data from the ADS1115
          *  @param enable_diff If we want to read the differential data from the sensor
          *  @param gain How much gain to apply to the readings.
          */ 
         Loom_ADS1115(
-                Manager& man, 
+                Manager& man,
                 byte address            = ADS1X15_ADDRESS,
+                bool useMux             = false, 
                 bool enable_analog      = true,
                 bool enable_diff        = false,
                 adsGain_t gain          = adsGain_t::GAIN_ONE
             );
+
 
         /**
          * Get the value in the analog table according to analog number not INDEX
@@ -64,7 +67,4 @@ class Loom_ADS1115 : public Module{
         int16_t analogData[4];                                      // Stores the analog ADS1115 data
         int16_t diffData[2];                                        // Stores the differential data from the sensor
         float volts[4];						                        // Stores Computed Voltage Conversions
-
-        bool initialized = true;
-
 };

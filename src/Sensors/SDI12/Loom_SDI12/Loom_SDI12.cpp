@@ -38,6 +38,9 @@ void Loom_SDI12::initialize(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::measure(){
    
+    // On measure we also want to reset the mode to output in case the 4G board has messed with it
+    pinMode(sdiInterface.getDataPin(), OUTPUT);
+    delay(30);
 
     // Populate the variables that will be used to package data
     for(int i = 0; i < inUseAddresses.size(); i++){
@@ -190,9 +193,11 @@ String Loom_SDI12::readResponse(){
         delay(20); // SDI-12 is slow so we need to wait after each character
     }
 
+    
     if(response[response.length()-1] == '\r'){
 		response[response.length()-1] = '\0'; // Replace carriage return with null terminator byte
 	}
+	response.replace("0013", "");
 
     return response;
 }
@@ -216,17 +221,29 @@ void Loom_SDI12::getData(char addr){
     sendCommand(addr, "D0!").toCharArray(buf, 20);
     
     // If the value returned was 0 we want to re-request data
-    if(sizeof(buf)/ sizeof(buf[0]) < 4){
+    if(String(buf).length() == 1){
         printModuleName(); Serial.println("Invalid data received! Retrying...");
-        delay(1000);
+        delay(3000);
 
         // Request a measurement from the sensor at the given address
         sendCommand(addr, "M!");
         sendCommand(addr, "D0!").toCharArray(buf, 20);
+
+	
+
+	if(String(buf).length() == 1){
+
+	printModuleName(); Serial.println("Retrying for a second time...");
+        delay(3000);
+
+        // Request a measurement from the sensor at the given address
+        sendCommand(addr, "M!");
+        sendCommand(addr, "D0!").toCharArray(buf, 20);
+	}
     }
 
     // Check if there is actually data to store in the variables
-    if(sizeof(buf)/ sizeof(buf[0]) > 4){
+    if(String(buf).length() > 1){
         p = buf;
 
         // If the sensor is a copy the used values an

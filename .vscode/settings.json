@@ -1,7 +1,6 @@
 {
     "files.associations": {
-        "map": "cpp",
-        "utility": "cpp",
-        "unordered_map": "cpp"
+        "*.tpp": "cpp",
+        "cstddef": "cpp"
     }
 }

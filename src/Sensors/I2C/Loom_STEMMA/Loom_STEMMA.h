@@ -2,7 +2,7 @@
 
 #include <Adafruit_seesaw.h>
 
-#include "Module.h"
+#include "../I2CSensor.h"
 #include "Loom_Manager.h"
 
 /**
@@ -10,7 +10,7 @@
  * 
  * @author Will Richards
  */ 
-class Loom_STEMMA : public Module{
+class Loom_STEMMA : public I2CSensor{
     protected:
        
         // Manager controlled functions
@@ -28,8 +28,9 @@ class Loom_STEMMA : public Module{
          * @param address I2C address that is assigned to the sensor
          */ 
         Loom_STEMMA(
-                    Manager& man, 
-                    int addr = 0x36
+                    Manager& man,
+                    int addr = 0x36,
+                    bool useMux = false
                 );
 
         /**

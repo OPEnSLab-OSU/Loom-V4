@@ -17,16 +17,25 @@ Loom_SDI12 sdi(manager, 11);
 
 void setup() {
 
-  manager.beginSerial();    // Open a serial connection and by default wait 20 seconds before printing if the Serial monitor isnt open.
-  manager.initialize();     // Initialize in-use modules
-  
+  // Start the serial interface
+  manager.beginSerial();
+
+  // Initialize the manager
+  manager.initialize();
 }
 
 void loop() {
+  // put your main code here, to run repeatedly:
 
-  manager.measure();        // Pull the sensors for measurements
-  manager.package();        // Package the data into JSON
-  manager.display_data();      // Print the current packaged json packet out
+  // Measure the data from the sensors
+  manager.measure();
 
-  manager.pause(4000)              // Wait 4 seconds before pulling data again
+  // Package the data into JSON
+  manager.package();
+
+  // Print the JSON document to the Serial monitor
+  manager.display_data();
+
+  // Wait for 5 seconds
+  manager.pause(5000);
 }

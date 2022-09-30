@@ -1,7 +1,8 @@
 #pragma once
 
-#include "Module.h"
+#include "../I2CSensor.h"
 #include "Loom_Manager.h"
+#include <Wire.h>
 
 #include <MS5803_02.h>
 
@@ -11,10 +12,9 @@
  * @author Will Richards
  */ 
 
-class Loom_MS5803 : public Module{
+class Loom_MS5803 : public I2CSensor{
     protected:
         void print_measurements() override {};  
-        void power_up() override {};
         void power_down() override {};
          
     public:
@@ -26,7 +26,9 @@ class Loom_MS5803 : public Module{
         void measure() override;
         void package() override;
 
-        Loom_MS5803(Manager& man, byte address = 0x76);
+        void power_up() override;
+
+        Loom_MS5803(Manager& man, byte address = 0x77, bool useMux = false);
 
          /**
          * Get the temperature reading

@@ -13,15 +13,19 @@ Manager manager("Device", 1);
 
 // Reads the battery voltage
 // Manger Instance, Address, Use Bulb, Gain, Mode, Integration Time
-Loom_AS7265X as(manager, 0x49, false, 64, AS7265X_MEASUREMENT_MODE_6CHAN_ONE_SHOT, 50);
+Loom_AS7265X as(manager, false, 0x49, false, 64, AS7265X_MEASUREMENT_MODE_6CHAN_ONE_SHOT, 50);
 
 void setup() {
 
-  // Start the serial interface and wait for the user to open the serial monitor
+  // Start the serial interface
   manager.beginSerial();
 
   // Initialize the manager
   manager.initialize();
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
 
   // Measure the data from the sensors
   manager.measure();
@@ -32,9 +36,6 @@ void setup() {
   // Print the JSON document to the Serial monitor
   manager.display_data();
 
-}
-
-void loop() {
-  // put your main code here, to run repeatedly:
-
+  // Wait for 5 seconds
+  manager.pause(5000);
 }

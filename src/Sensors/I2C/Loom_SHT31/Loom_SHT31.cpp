@@ -2,13 +2,15 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_SHT31::Loom_SHT31(
-                        Manager& man, 
-                        int address  
-                    ) : Module("SHT31"), manInst(&man), i2c_address(address){
+                        Manager& man,
+                        int address, 
+                        bool useMux
+                    ) : I2CSensor("SHT31"), manInst(&man), i2c_address(address){
                         module_address = address;
                         
                         // Register the module with the manager
-                        manInst->registerModule(this);
+                        if(!useMux)
+                            manInst->registerModule(this);
                     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -16,7 +18,7 @@ Loom_SHT31::Loom_SHT31(
 void Loom_SHT31::initialize() {
     if(!sht.begin(i2c_address)){
         printModuleName(); Serial.println("Failed to initialize SHT31! Check connections and try again...");
-        initialized = false;
+        moduleInitialized = false;
     }
     else{
         printModuleName(); Serial.println("Successfully initialized SHT31!");
@@ -26,7 +28,12 @@ void Loom_SHT31::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SHT31::measure() {
-    if(initialized){
+    if(checkDeviceConnection()){
+        printModuleName(); Serial.println("No acknowledge received from the device");
+        return;
+    }
+
+    if(moduleInitialized){
         // Pull the data from the sensor
         float temp = sht.readTemperature();
         float humid = sht.readHumidity();
@@ -45,7 +52,7 @@ void Loom_SHT31::measure() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SHT31::package() {
-    if(initialized){
+    if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
         json["Temperature"] = sensorData[0];
         json["Humidity"] = sensorData[1];

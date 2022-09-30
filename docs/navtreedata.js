@@ -24,14 +24,15 @@
 */
 var NAVTREE =
 [
-  [ "Loom", "index.html", [
+  [ "Loom 4", "index.html", [
     [ "Classes", "annotated.html", [
       [ "Class List", "annotated.html", "annotated_dup" ],
       [ "Class Index", "classes.html", null ],
       [ "Class Hierarchy", "hierarchy.html", "hierarchy" ],
       [ "Class Members", "functions.html", [
         [ "All", "functions.html", null ],
-        [ "Functions", "functions_func.html", null ]
+        [ "Functions", "functions_func.html", null ],
+        [ "Enumerations", "functions_enum.html", null ]
       ] ]
     ] ],
     [ "Files", "files.html", [
@@ -42,7 +43,8 @@ var NAVTREE =
 
 var NAVTREEINDEX =
 [
-"_actuators_8h_source.html"
+"_actuators_8h_source.html",
+"class_manager.html#a8f308e7b5f444867df8a9474fe2cbf7f"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';
