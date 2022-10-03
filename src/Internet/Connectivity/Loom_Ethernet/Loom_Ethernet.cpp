@@ -26,7 +26,7 @@ void Loom_Ethernet::initialize() {
     // Give a bit more time to initialize the module
     delay(1000);
 
-    hasInitialized = true;
+    moduleInitialized = true;
     
     printModuleName(); Serial.println("Successfully Initalized Ethernet!");
     printModuleName(); Serial.println("Device IP Address: " + Loom_Ethernet::IPtoString(getIPAddress()));

@@ -9,8 +9,7 @@
 
 Manager manager("Device", 1);
 
-JsonArray mac;
-mac.add("AA", "AA", "AA" "AA", "AA", "AA");
+uint8_t mac[6] = {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA};
 Loom_Ethernet ethernet(manager, mac, IPAddress(192,168,1,200));
 
 void setup() {
