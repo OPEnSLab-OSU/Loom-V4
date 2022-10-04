@@ -1,7 +1,7 @@
 #include "Loom_ADS1115.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_ADS1115::Loom_ADS1115(Manager& man, byte address, bool useMux,  bool enable_analog, bool enable_diff, adsGain_t gain) : I2CSensor("ADS1115"), manInst(&man), i2c_address(address), enableAnalog(enable_analog), enableDiff(enable_diff), adc_gain(gain) {
+Loom_ADS1115::Loom_ADS1115(Manager& man, byte address, bool useMux,  bool enable_analog, bool enable_diff, adsGain_t gain) : Module("ADS1115"), manInst(&man), i2c_address(address), enableAnalog(enable_analog), enableDiff(enable_diff), adc_gain(gain) {
     module_address = i2c_address;
 
     if(!useMux)

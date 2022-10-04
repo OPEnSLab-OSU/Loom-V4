@@ -1,5 +1,6 @@
 #pragma once
 #include "Arduino.h"
+#include <Wire.h>
 #include <ArduinoJson.h>
 
 /**
@@ -16,6 +17,14 @@ class Module{
 
         virtual String getModuleName() { return moduleName; }; // Return the name of the sensor
         virtual void printModuleName() { Serial.print("[" + String(getModuleName()) + "] "); };
+
+        /* Checks if the given I2C device is currently connected*/
+        bool checkDeviceConnection() {
+            if(module_address != -1){
+                Wire.beginTransmission(module_address);
+                return Wire.endTransmission() == 0;
+            }
+        };
 
         // Generic measure and package calls to unify some interaction with different sensor implementations
         virtual void initialize() = 0;                      // Initialize all functionality of the sensor

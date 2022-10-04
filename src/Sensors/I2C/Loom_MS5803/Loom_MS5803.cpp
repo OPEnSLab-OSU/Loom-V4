@@ -1,7 +1,7 @@
 #include "Loom_MS5803.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_MS5803::Loom_MS5803(Manager& man, byte address, bool useMux) : I2CSensor("MS5803"), manInst(&man), inst(address, 512) {
+Loom_MS5803::Loom_MS5803(Manager& man, byte address, bool useMux) : Module("MS5803"), manInst(&man), inst(address, 512) {
     module_address = address;
 
     if(!useMux)

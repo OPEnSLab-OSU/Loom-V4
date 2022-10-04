@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../I2CSensor.h"
+#include "Module.h"
 #include "Loom_Manager.h"
 
 #include <Wire.h>
@@ -11,7 +11,7 @@
  * 
  *  @author Will Richards
  */ 
-class Loom_MPU6050 : public I2CSensor{
+class Loom_MPU6050 : public Module{
     protected:
         void print_measurements() override {};  
         void power_up() override {};

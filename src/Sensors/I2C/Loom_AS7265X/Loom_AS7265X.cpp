@@ -9,7 +9,7 @@ Loom_AS7265X::Loom_AS7265X(
                         uint8_t gain,
                         uint8_t mode,
                         uint8_t integration_time 
-                    ) : I2CSensor("AS7265X"), manInst(&man), use_bulb(use_bulb), gain(gain), mode(mode), integration_time(integration_time) {
+                    ) : Module("AS7265X"), manInst(&man), use_bulb(use_bulb), gain(gain), mode(mode), integration_time(integration_time) {
 						module_address = addr;
 
                         // Register the module with the manager

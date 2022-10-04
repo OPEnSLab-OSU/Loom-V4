@@ -7,7 +7,7 @@ Loom_TSL2591::Loom_TSL2591(
                             bool useMux,   
                             tsl2591Gain_t light_gain, 
                             tsl2591IntegrationTime_t integration_time
-                    ) : I2CSensor("TSL2591"), manInst(&man), tsl(address), gain(light_gain), intTime(integration_time) {
+                    ) : Module("TSL2591"), manInst(&man), tsl(address), gain(light_gain), intTime(integration_time) {
                         module_address = address;
 
                         // Register the module with the manager

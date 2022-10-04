@@ -6,7 +6,7 @@ Loom_ZXGesture::Loom_ZXGesture(
                             int address, 
                             bool useMux,
                             Mode mode
-                    ) : I2CSensor("ZX Gesture"), manInst(&man), zx( ZX_Sensor(address)), mode(mode) {
+                    ) : Module("ZX Gesture"), manInst(&man), zx( ZX_Sensor(address)), mode(mode) {
 
                         // Register the module with the manager
                         if(!useMux)

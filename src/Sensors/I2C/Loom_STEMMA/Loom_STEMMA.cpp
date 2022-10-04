@@ -5,7 +5,7 @@ Loom_STEMMA::Loom_STEMMA(
                         Manager& man, 
                         int addr,
                         bool useMux  
-                    ) : I2CSensor("STEMMA"), manInst(&man), address(addr) {
+                    ) : Module("STEMMA"), manInst(&man), address(addr) {
                         module_address = addr;
 
                         // Register the module with the manager

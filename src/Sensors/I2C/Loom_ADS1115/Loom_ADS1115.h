@@ -3,7 +3,7 @@
 #include <Adafruit_ADS1X15.h>
 #include <map>
 
-#include "../I2CSensor.h"
+#include "Module.h"
 #include "Loom_Manager.h"
 
 /**
@@ -11,7 +11,7 @@
  * 
  * @author Will Richards
  */  
-class Loom_ADS1115 : public I2CSensor{
+class Loom_ADS1115 : public Module{
 
 
     protected:
