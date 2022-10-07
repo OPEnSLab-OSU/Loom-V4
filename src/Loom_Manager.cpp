@@ -8,9 +8,11 @@ Manager::Manager(String devName, uint32_t instanceNum) : deviceName(devName), in
  void Manager::registerModule(Module* module){
     // If there are no duplicates proceed as normal
     for(int i = 0; i < modules.size(); i++){
-
+        
         // Check if the module name contains the base string to make sure this works past 2 modules of the same type
-        if(modules[i].first.indexOf(module->getModuleName()) > 0){
+        if(modules[i].first.startsWith(module->getModuleName())){
+            
+            // Append the address to the name
             modules[i].second->setModuleName(modules[i].second->getModuleName() + String("_") + String(modules[i].second->module_address));
             module->setModuleName(module->getModuleName() + String("_") + String(module->module_address));
 
@@ -19,6 +21,7 @@ Manager::Manager(String devName, uint32_t instanceNum) : deviceName(devName), in
         }
     }
 
+    
     modules.push_back(std::make_pair(module->getModuleName(), module));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -12,7 +12,6 @@ class Module{
     public:
         Module(String modName) {moduleName = modName;};
 
-       
         void setModuleName(String moduleName) { this->moduleName = moduleName; };
 
         virtual String getModuleName() { return moduleName; }; // Return the name of the sensor

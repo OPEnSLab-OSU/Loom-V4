@@ -48,7 +48,7 @@ void Loom_MQTT::publish(){
         if(username.length() > 0)
             mqttClient->setUsernamePassword(username, password);
 
-        // Set the keepalive timeard
+        // Set the keepalive timer
         mqttClient->setKeepAliveInterval(keep_alive);
 
         int retryAttempts = 0;

@@ -20,6 +20,7 @@ Loom_TSL2591::Loom_TSL2591(
 void Loom_TSL2591::initialize() {
     if(!tsl.begin()){
         printModuleName(); Serial.println("Failed to initialize TSL2591! Check connections and try again...");
+        moduleInitialized = false;
     }
     else{
 
@@ -34,40 +35,43 @@ void Loom_TSL2591::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::measure() {
-    if(!checkDeviceConnection()){
-        printModuleName(); Serial.println("No acknowledge received from the device");
-        return;
-    }
+    if(moduleInitialized){
+        if(!checkDeviceConnection()){
+            printModuleName(); Serial.println("No acknowledge received from the device");
+            return;
+        }
 
-    // Pull the data from the sensor
-    uint16_t visible = tsl.getLuminosity(TSL2591_VISIBLE);
-
-    // Make sure the value is actually valid
-    if(visible > 65533)
-        lightLevels[0] = 0;
-    else
-        lightLevels[0] = visible;
-    
-    lightLevels[1] = tsl.getLuminosity(TSL2591_INFRARED);
-    lightLevels[2] = tsl.getLuminosity(TSL2591_FULLSPECTRUM);
-
-    // If it is the first packet measure again to get accurate readings
-    if(manInst->get_packet_number() == 1){
         // Pull the data from the sensor
-        lightLevels[0] = tsl.getLuminosity(TSL2591_VISIBLE);
+        uint16_t visible = tsl.getLuminosity(TSL2591_VISIBLE);
+
+        // Make sure the value is actually valid
+        if(visible > 65533)
+            lightLevels[0] = 0;
+        else
+            lightLevels[0] = visible;
+        
         lightLevels[1] = tsl.getLuminosity(TSL2591_INFRARED);
         lightLevels[2] = tsl.getLuminosity(TSL2591_FULLSPECTRUM);
+
+        // If it is the first packet measure again to get accurate readings
+        if(manInst->get_packet_number() == 1){
+            // Pull the data from the sensor
+            lightLevels[0] = tsl.getLuminosity(TSL2591_VISIBLE);
+            lightLevels[1] = tsl.getLuminosity(TSL2591_INFRARED);
+            lightLevels[2] = tsl.getLuminosity(TSL2591_FULLSPECTRUM);
+        }
     }
-    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::package() {
-    JsonObject json = manInst->get_data_object(getModuleName());
-    json["Visible"] = lightLevels[0];
-    json["Infrared"] = lightLevels[1];
-    json["Full_Spectrum"] = lightLevels[2];
+    if(moduleInitialized){
+        JsonObject json = manInst->get_data_object(getModuleName());
+        json["Visible"] = lightLevels[0];
+        json["Infrared"] = lightLevels[1];
+        json["Full_Spectrum"] = lightLevels[2];
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

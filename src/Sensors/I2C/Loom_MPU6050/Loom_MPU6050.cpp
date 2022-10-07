@@ -63,8 +63,8 @@ void Loom_MPU6050::package(){
     json["gz"] = rate[2];
 
     // Angle
-    json["roll"] = angle[0];
-    json["pitch"] = angle[1];
+    json["pitch"] = angle[0];
+    json["roll"] = angle[1];
     json["yaw"] = angle[2];
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
