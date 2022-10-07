@@ -13,7 +13,7 @@ Manager manager("Device", 1);
 
 // Reads the battery voltage
 // Manger Instance, Address, Use Bulb, Gain, Mode, Integration Time
-Loom_AS7265X as(manager, false, 0x49, false, 64, AS7265X_MEASUREMENT_MODE_6CHAN_ONE_SHOT, 50);
+Loom_AS7265X as65X(manager, false, 0x49, false, 64, AS7265X_MEASUREMENT_MODE_6CHAN_ONE_SHOT, 50);
 
 void setup() {
 
