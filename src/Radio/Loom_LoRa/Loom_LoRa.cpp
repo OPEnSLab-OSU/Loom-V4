@@ -8,9 +8,15 @@ Loom_LoRa::Loom_LoRa(
         const uint8_t retryCount, 
         const uint16_t retryTimeout,
         const uint16_t max_message_len
-    ) : Radio("LoRa"), manInst(&man), driver{RFM95_CS, RFM95_INT}, manager {driver, address}
+    ) : Radio("LoRa"), manInst(&man), driver{RFM95_CS, RFM95_INT}
     {
-        this->deviceAddress = address;
+        // Pull the instance number from the manager
+        if(address == -1)
+            this->deviceAddress = manInst->get_instance_num();
+        else
+            this->deviceAddress = address;
+    
+        manager = new RHReliableDatagram(driver, this->deviceAddress);
         this->powerLevel = powerLevel;
         this->retryCount = retryCount;
         this->retryTimeout = retryTimeout;
@@ -29,7 +35,7 @@ void Loom_LoRa::initialize(){
     digitalWrite(RFM95_RST, HIGH);
 
     // Initialize the radio manager
-    if(manager.init()){
+    if(manager->init()){
         printModuleName(); Serial.println("Radio manager successfully initialized!");
     }
     else{
@@ -54,11 +60,11 @@ void Loom_LoRa::initialize(){
 
     // Set timeout time
     printModuleName(); Serial.println("Timeout time set to: " + String(retryTimeout));
-    manager.setTimeout(retryTimeout);
+    manager->setTimeout(retryTimeout);
 
     // Set retry attempts
     printModuleName(); Serial.println("Retry count set to: " + String(retryCount));
-    manager.setRetries(retryCount);
+    manager->setRetries(retryCount);
 
     // Set bandwidth
     driver.setSignalBandwidth(125000);
@@ -80,7 +86,7 @@ void Loom_LoRa::package(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LoRa::setAddress(uint8_t addr){
     deviceAddress = addr;
-    manager.setThisAddress(addr);
+    manager->setThisAddress(addr);
     driver.sleep();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -100,10 +106,10 @@ bool Loom_LoRa::receive(uint maxWaitTime){
 
         // Non-blocking receive if time is set to 0
         if(maxWaitTime == 0){
-            recvStatus = manager.recvfromAck((uint8_t*)buffer, &len, &fromAddress);
+            recvStatus = manager->recvfromAck((uint8_t*)buffer, &len, &fromAddress);
         }
         else{
-            recvStatus = manager.recvfromAckTimeout((uint8_t*)buffer, &len, maxWaitTime, &fromAddress);
+            recvStatus = manager->recvfromAckTimeout((uint8_t*)buffer, &len, maxWaitTime, &fromAddress);
         }
 
         // If a packet was received 
@@ -140,7 +146,7 @@ bool Loom_LoRa::send(const uint8_t destinationAddress){
             return false;
         }
 
-        if(!manager.sendtoWait((uint8_t*)buffer, measureMsgPack(manInst->getDocument()), destinationAddress)){
+        if(!manager->sendtoWait((uint8_t*)buffer, measureMsgPack(manInst->getDocument()), destinationAddress)){
             printModuleName(); Serial.println("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
         }else{
             printModuleName(); Serial.println("Successfully transmitted packet!");

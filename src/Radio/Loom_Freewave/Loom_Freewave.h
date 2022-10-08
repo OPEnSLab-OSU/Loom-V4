@@ -33,11 +33,15 @@ class Loom_Freewave : public Radio{
          */ 
         Loom_Freewave(
             Manager& man,
-            const uint8_t address,
+            const uint8_t address = -1,
             const uint16_t max_message_len = RH_SERIAL_MAX_MESSAGE_LEN,
             const uint8_t retryCount = 3,
             const uint16_t retryTimeout = 200
         );
+
+        ~Loom_Freewave(){
+            delete manager;
+        }
 
         /**
          * Receive a JSON packet from another radio, blocking until the wait time expires or a packet is received
@@ -81,7 +85,7 @@ class Loom_Freewave : public Radio{
 
         HardwareSerial& serial1;                // Serial reference
         RH_Serial driver;                       // Freewave Driver
-        RHReliableDatagram manager;             // Manager for driver
+        RHReliableDatagram* manager;             // Manager for driver
 
         
 };

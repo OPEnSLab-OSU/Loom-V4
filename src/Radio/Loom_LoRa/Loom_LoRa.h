@@ -38,12 +38,17 @@ class Loom_LoRa : public Radio{
          */ 
         Loom_LoRa(
             Manager& man,
-            const uint8_t address,
+            const uint8_t address = -1,
             const uint8_t powerLevel = 23,
             const uint8_t retryCount = 3,
             const uint16_t retryTimeout = 200,
             const uint16_t max_message_len = RH_RF95_MAX_MESSAGE_LEN
         );
+
+        /* Destructor for the manager to prevent memory leaks */
+        ~Loom_LoRa(){
+            delete manager;
+        };
 
         /**
          * Receive a JSON packet from another radio, blocking until the wait time expires or a packet is received
@@ -86,7 +91,7 @@ class Loom_LoRa : public Radio{
         Manager* manInst;                       // Instance of the manager
 
         RH_RF95 driver;                         // Underlying radio driver
-        RHReliableDatagram manager;             // Manager for driver
+        RHReliableDatagram* manager;            // Manager for driver
 
         
 };

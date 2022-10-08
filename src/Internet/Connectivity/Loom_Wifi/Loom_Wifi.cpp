@@ -102,6 +102,7 @@ void Loom_WIFI::connect_to_network(){
                     wifi_name = manInst->get_device_name() + String(manInst->get_instance_num());
                     start_ap();
                 }
+                return;
             }
         }
     }

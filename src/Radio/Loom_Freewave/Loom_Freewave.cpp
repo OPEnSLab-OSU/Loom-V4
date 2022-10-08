@@ -7,9 +7,14 @@ Loom_Freewave::Loom_Freewave(
         const uint16_t max_message_len, 
         const uint8_t retryCount, 
         const uint16_t retryTimeout
-    ) : Radio("Freewave"), manInst(&man), serial1(Serial1), driver(serial1), manager(driver, address)
+    ) : Radio("Freewave"), manInst(&man), serial1(Serial1), driver(serial1)
     {
-        this->deviceAddress = address;
+        if(address == -1)
+            this->deviceAddress = manInst->get_instance_num();
+        else
+            this->deviceAddress = address;
+
+        manager = new RHReliableDatagram(driver, this->deviceAddress);
         this->retryCount = retryCount;
         this->retryTimeout = retryTimeout;
         this->maxMessageLength = max_message_len;
@@ -25,14 +30,14 @@ void Loom_Freewave::initialize(){
 
     // Set timeout time
     printModuleName(); Serial.println("Timeout time set to: " + String(retryTimeout));
-    manager.setTimeout(retryTimeout);
+    manager->setTimeout(retryTimeout);
 
     // Set retry attempts
     printModuleName(); Serial.println("Retry count set to: " + String(retryCount));
-    manager.setRetries(retryCount);
+    manager->setRetries(retryCount);
 
     // Initialize the radio manager
-    if(manager.init()){
+    if(manager->init()){
         printModuleName(); Serial.println("Radio manager successfully initialized!");
     }
     else{
@@ -55,7 +60,7 @@ void Loom_Freewave::package(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Freewave::setAddress(uint8_t addr){
     deviceAddress = addr;
-    manager.setThisAddress(addr);
+    manager->setThisAddress(addr);
     driver.sleep();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -74,10 +79,10 @@ bool Loom_Freewave::receive(uint maxWaitTime){
 
     // Non-blocking receive if time is set to 0
     if(maxWaitTime == 0){
-        recvStatus = manager.recvfromAck((uint8_t*)buffer, &len, &fromAddress);
+        recvStatus = manager->recvfromAck((uint8_t*)buffer, &len, &fromAddress);
     }
     else{
-        recvStatus = manager.recvfromAckTimeout((uint8_t*)buffer, &len, maxWaitTime, &fromAddress);
+        recvStatus = manager->recvfromAckTimeout((uint8_t*)buffer, &len, maxWaitTime, &fromAddress);
     }
 
     // If a packet was received 
@@ -109,7 +114,7 @@ bool Loom_Freewave::send(const uint8_t destinationAddress){
         return false;
     }
 
-    if(!manager.sendtoWait((uint8_t*)buffer, measureMsgPack(manInst->getDocument()), destinationAddress)){
+    if(!manager->sendtoWait((uint8_t*)buffer, measureMsgPack(manInst->getDocument()), destinationAddress)){
         printModuleName(); Serial.println("Failed to send packet to specified address!");
         return false;
     }

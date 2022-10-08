@@ -10,7 +10,7 @@
 Manager manager("Device", 0);
 
 // Do we want to use the instance number as the LoRa address
-Loom_Freewave fw(manager, 0);
+Loom_Freewave fw(manager);
 
 void setup() {
 

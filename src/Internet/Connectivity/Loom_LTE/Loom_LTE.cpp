@@ -69,12 +69,10 @@ void Loom_LTE::initialize(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::power_up(){
     // If the batch_sd is initialized and the current batch is one less than the maximum so we turn on the device before the last batch
-    if(batch_sd != nullptr && (batch_sd->getCurrentBatch() != batch_sd->getBatchSize()-1)){
+    if((batch_sd != nullptr && (batch_sd->getCurrentBatch() != batch_sd->getBatchSize()-1)) && !firstInit){
        return;
     }
         
-
-
     // If not connected to a network we want to connect
     if(moduleInitialized){
         printModuleName(); Serial.println("Powering up GPRS Modem. This should take about 10 seconds...");
