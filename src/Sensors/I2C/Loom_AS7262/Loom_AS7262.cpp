@@ -37,12 +37,12 @@ void Loom_AS7262::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7262::measure() {
-   if(!checkDeviceConnection()){
-        printModuleName(); Serial.println("No acknowledge received from the device");
-        return;
-    }
-
     if(moduleInitialized){
+        if(!AS72DeviceCheck()){
+            printModuleName(); Serial.println("No acknowledge received from the device");
+            return;
+        }
+
         // Take a measurement and wait for it to be ready
         asInst.takeMeasurements();
         while(!asInst.dataAvailable()){
@@ -71,5 +71,24 @@ void Loom_AS7262::package() {
         json["Color_5"] = color[4];
         json["Color_6"] = color[5];
     }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_AS7262::AS72DeviceCheck() {
+    // Ask the device for data to read
+    Wire.beginTransmission(AS726X_ADDR);
+	Wire.write(AS72XX_SLAVE_STATUS_REG);
+	if(Wire.endTransmission() != 0)
+        return false;
+    
+    // If we get the requested data then we are okay but if not then we should not try to read more
+    Wire.requestFrom(AS726X_ADDR, 1);
+	if (Wire.available()) {
+		return true;
+	}
+	else {
+		return false;
+	}
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "*.tpp": "cpp",
-        "cstddef": "cpp"
+        "cstddef": "cpp",
+        "ostream": "cpp"
     }
 }
