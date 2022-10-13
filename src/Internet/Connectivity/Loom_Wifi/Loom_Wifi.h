@@ -2,6 +2,7 @@
 
 #include <WiFi101.h>
 #include <WiFiUdp.h>
+#include <FlashStorage.h>
 
 #include "Module.h"
 #include "Loom_Manager.h"
@@ -13,6 +14,13 @@ enum CommunicationMode{
     CLIENT,         // Connect to a remote router to handle traffic
     AP              // Set the feather itself as an access point
 };
+
+/* WiFi info struct that will be used to store the WiFi data on flash */
+typedef struct {
+    bool is_valid;
+    char name[100];
+    char password[100];
+} WifiInfo;
 
 /**
  * WiFi 101 library integrated with the manager to allow for easy sleep
@@ -86,6 +94,9 @@ class Loom_WIFI : public Module{
          * Create our own access point
          */ 
         void start_ap();
+
+        /* Take in new WiFi information store it to flash and restart the WiFi chip to put the new credentials into effect*/
+        void storeNewWiFiCreds(String name, String password);
 
         /**
          * Get the IP address of the WiFi module

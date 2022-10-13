@@ -1,5 +1,8 @@
 #include "Loom_Wifi.h"
 
+// Reserve a section of memory called WiFi config
+FlashStorage(WiFiConfig, WifiInfo);
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_WIFI::Loom_WIFI(Manager& man, CommunicationMode mode, String name, String password) : Module("WiFi"), manInst(&man), mode(mode) {
     if(mode == CommunicationMode::AP && name.length() <= 0){
@@ -69,6 +72,20 @@ void Loom_WIFI::package(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::power_up() {
     if(moduleInitialized){
+
+        // Check if we are going through our power up and are using max
+        if(usingMax){
+            // If so we want to read the flash memory to see if we have set data yet
+            WifiInfo info = WiFiConfig.read();
+
+            // Read the data in if we have set it before
+            if(info.is_valid != false){
+                wifi_name = String(info.name);
+                wifi_password = String(info.password);
+            }
+        }
+
+        // Initialize the access point mode or connect to a router 
         if(mode == CommunicationMode::CLIENT)
             connect_to_network();
         else
@@ -211,6 +228,26 @@ void Loom_WIFI::loadConfigFromJSON(String json){
     
     wifi_name = doc["SSID"].as<String>();
     wifi_password = doc["password"].as<String>();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_WIFI::storeNewWiFiCreds(String name, String password){
+    // Write the new info to the flash memory
+    printModuleName(); Serial.println("Writing new WiFi credentials to flash...");
+    WifiInfo info;
+    info.is_valid = true;
+    name.toCharArray(info.name, 100);
+    password.toCharArray(info.password, 100);
+    WiFiConfig.write(info);
+    printModuleName(); Serial.println("Information written to flash!");
+
+    // Power cycle the board
+    printModuleName(); Serial.println("Power cycling the WiFi chip...");
+    mode = CLIENT;
+    power_down();
+    delay(1000);
+    power_up();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
