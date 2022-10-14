@@ -49,6 +49,4 @@ class Loom_AS7262 : public Module{
         uint8_t		gain;				        // Gain setting
         uint8_t		mode;				        // Sensor mode
         uint8_t		integration_time;	        // Integration time setting
-
-        bool AS72DeviceCheck();           // Custom device connection check for the AS726X sensors
 };
