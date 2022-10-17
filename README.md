@@ -7,12 +7,22 @@ or simply use the reliable software written for these sensors without the loom o
 ## Install
 
 The install process is fairly simple:
+
+## Install Arduino
+
+- Download and install the latest version of the [Arduino IDE](https://www.arduino.cc/en/Main/Software)
+
+- NOTE: If installing on Windows, download the Windows Installer
+ 
+- NOTE: If installing on Linux, see the official [Linux install guide](https://www.arduino.cc/en/Guide/Linux) 
+
+## Install Board Profiles
 1. Open Arduino IDE 
 2. Once Open Click File > Preferences or Ctrl + ,
 3. In the text box labeled "Additional Boards Manager URLs" paste this text into the box `https://adafruit.github.io/arduino-board-index/package_adafruit_index.json,https://raw.githubusercontent.com/OPEnSLab-OSU/Loom-V4/main/auxilary/package_loom4_index.json`
 4. Press Ok
 5. Next click Tools > Board > Boards Manager
-6. Search and install the following Boards
+6. Search and install the following Board Profiles
    - Arduino SAMD Boards
    - Adafruit SAMD Boards
    - Loom SAMD Boards V4
