@@ -12,9 +12,11 @@ The install process is fairly simple:
 3. In the text box labeled "Additional Boards Manager URLs" paste this text into the box `https://adafruit.github.io/arduino-board-index/package_adafruit_index.json,https://raw.githubusercontent.com/OPEnSLab-OSU/Loom-V4/main/auxilary/package_loom4_index.json`
 4. Press Ok
 5. Next click Tools > Board > Boards Manager
-6. In the search box type "Adafruit SAMD Boards"
+6. Search and install the following Boards
+   - Arduino SAMD Boards
+   - Adafruit SAMD Boards
+   - Loom SAMD Boards V4
 7. Install the latest version of all three boards as they appear
-
 
 ## Project Examples
  - WeatherChimes (Fully Tested)
