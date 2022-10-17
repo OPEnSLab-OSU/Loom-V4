@@ -33,6 +33,29 @@ Give Arduino IDE Full Disk Access:
 System Preferences->Security & Privacy->"Privacy" tab->Full Disk Access->+ plus button to add Arduino
 You will also need to install Developet Tools, which requires Admin access.
 
+## Run an Example
+
+### Select Board
+
+- Make sure in the Tools > Board menu, that "Loomified Feather M0" is selected
+  - If that board is not present, make sure you followed all the instructions above in Installation
+  - Plug in your Feather board and then make sure in the Tools > Port menu that you select the device with "Adafruit Feather M0" in the name.
+  
+### Compile
+
+- Start by compiling our Basic Loom examples (File > Examples > Loom > Sensors > **Analog**) to ensure that it compiles. If not, review the previous steps.
+  - Once the Basic example is open, click the checkbox icon "Verify" in the top. (This may take several minutes to compile, this is to be expected) 
+  - You should get white-color font text readout mentioning a successful compilation and x% memory used.
+![Successful compilation message](https://i.ibb.co/kS8jFbj/Arduino.png)
+  - *Note: may disregard orange-color warning text regarding nRF*
+
+## Troubleshooting
+If you get permissions error accessing the library folder, abnd are using a Mac, see note in the installation section above.
+If you are updating from an old version of Loom, you may need to do a "clean install" by removing the Arduino15 folder, and starting the process from the begining to install again.
+
+## Issues
+If you are experiencing issues, please click the "Issues" tab on this repo and choose the template that best fits your needs. Please supply as much information as possible.
+
 ## Project Examples
  - WeatherChimes (Fully Tested)
  - FloDar (Appears Stable)
