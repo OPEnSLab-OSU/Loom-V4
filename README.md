@@ -18,6 +18,10 @@ The install process is fairly simple:
    - Loom SAMD Boards V4
 7. Install the latest version of all three boards as they appear
 
+## If you use Mac:
+Give Arduino IDE Full Disk Access:
+System Preferences->Security & Privacy->"Privacy" tab->Full Disk Access->+ plus button to add Arduino
+
 ## Project Examples
  - WeatherChimes (Fully Tested)
  - FloDar (Appears Stable)
