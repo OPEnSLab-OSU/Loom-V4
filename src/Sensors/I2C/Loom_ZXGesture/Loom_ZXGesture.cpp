@@ -50,15 +50,16 @@ void Loom_ZXGesture::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ZXGesture::measure() {
-    if(needsReinit){
-        initialize();
-    }
-    else if(!checkDeviceConnection()){
-        printModuleName(); Serial.println("No acknowledge received from the device");
-        return;
-    }
-
     if(moduleInitialized){
+        if(needsReinit){
+            initialize();
+        }
+        else if(!checkDeviceConnection()){
+            printModuleName(); Serial.println("No acknowledge received from the device");
+            return;
+        }
+
+    
         // Check if we are in position detection mode or in gesture detection mode
         if(mode == Mode::POS){
             uint8_t x, z;
@@ -110,16 +111,18 @@ void Loom_ZXGesture::measure() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ZXGesture::package() {
-    JsonObject json = manInst->get_data_object(getModuleName());
-    switch(mode){
-        case POS:
-            json["Position_X"] = pos.x;
-            json["Position_Z"] = pos.z;
-            break;
-        case GEST:
-            json["Gesture"] = gestureString;
-            json["Speed"] = gestureSpeed;
-            break;
+    if(moduleInitialized){
+        JsonObject json = manInst->get_data_object(getModuleName());
+        switch(mode){
+            case POS:
+                json["Position_X"] = pos.x;
+                json["Position_Z"] = pos.z;
+                break;
+            case GEST:
+                json["Gesture"] = gestureString;
+                json["Speed"] = gestureSpeed;
+                break;
+        }
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
