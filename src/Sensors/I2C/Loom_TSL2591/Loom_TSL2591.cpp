@@ -38,9 +38,11 @@ void Loom_TSL2591::measure() {
     if(moduleInitialized){
         if(needsReinit){
             initialize();
+            needsReinit = false;
         }
         else if(!checkDeviceConnection()){
             printModuleName(); Serial.println("No acknowledge received from the device");
+            
             return;
         }
    
