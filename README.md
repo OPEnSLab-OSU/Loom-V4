@@ -21,6 +21,7 @@ The install process is fairly simple:
 ## If you use Mac:
 Give Arduino IDE Full Disk Access:
 System Preferences->Security & Privacy->"Privacy" tab->Full Disk Access->+ plus button to add Arduino
+You will also need to install Developet Tools, which requires Admin access.
 
 ## Project Examples
  - WeatherChimes (Fully Tested)
