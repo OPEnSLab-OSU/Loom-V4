@@ -39,10 +39,17 @@ void Loom_AS7263::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7263::measure() {
     if(moduleInitialized){
-        if(needsReinit){
+        // Get the current connection status
+        bool connectionStatus = checkDeviceConnection();
+
+        // If we are connected and we need to reinit
+        if(connectionStatus && needsReinit){
             initialize();
+            needsReinit = false;
         }
-        else if(!checkDeviceConnection()){
+
+        // If we are not connected
+        else if(!connectionStatus){
             printModuleName(); Serial.println("No acknowledge received from the device");
             return;
         }
