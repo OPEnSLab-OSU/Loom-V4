@@ -14,8 +14,8 @@
 
 Manager manager("Device", 1);
 
-// Manager Instance,      Address, useMux
-Loom_MS5803 ms03(manager, 0x77, false); // MS5803 CSB pin tied to VCC i2c addr 0x76
+Loom_MS5803 ms03(manager, 0x77, false); // MS5803 CSB pin tied to VCC i2c addr 0x77
+Loom_MS5803 ms03_two(manager, 0x76, false); // MS5803 CSB pin tied to VCC i2c addr 0x76
 
 void setup() {
 
@@ -28,8 +28,6 @@ void setup() {
 }
 
 void loop() {
-  // Put your main code here, to run repeatedly:
-
   // Measure and package the data from the sensors
   manager.measure();
   

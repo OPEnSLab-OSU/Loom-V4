@@ -29,13 +29,16 @@ void Loom_MS5803::initialize(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MS5803::measure(){
-    if(!checkDeviceConnection()){
-        printModuleName(); Serial.println("No acknowledge received from the device");
-        return;
-    }
-
     // Make sure the sensor initialized correctly
     if(moduleInitialized){
+        if(needsReinit){
+            initialize();
+        }
+        else if(!checkDeviceConnection()){
+            printModuleName(); Serial.println("No acknowledge received from the device");
+            return;
+        }
+    
         // Reinit the module every measure
         inst.initializeMS_5803(false);
         delay(1000);

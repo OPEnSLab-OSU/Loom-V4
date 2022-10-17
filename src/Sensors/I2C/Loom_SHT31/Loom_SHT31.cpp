@@ -28,12 +28,14 @@ void Loom_SHT31::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SHT31::measure() {
-    if(!checkDeviceConnection()){
-        printModuleName(); Serial.println("No acknowledge received from the device");
-        return;
-    }
-
     if(moduleInitialized){
+        if(needsReinit){
+            initialize();
+        }
+        else if(!checkDeviceConnection()){
+            printModuleName(); Serial.println("No acknowledge received from the device");
+            return;
+        }
         // Pull the data from the sensor
         float temp = sht.readTemperature();
         float humid = sht.readHumidity();

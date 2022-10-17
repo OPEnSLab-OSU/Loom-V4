@@ -39,13 +39,15 @@ void Loom_AS7265X::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7265X::measure() {
-	if(!checkDeviceConnection()){
-        printModuleName(); Serial.println("No acknowledge received from the device");
-        return;
-    }
-
 	if(moduleInitialized){
-
+		if(needsReinit){
+			initialize();
+		}
+		else if(!checkDeviceConnection()){
+			printModuleName(); Serial.println("No acknowledge received from the device");
+			return;
+		}
+	
 		// Whether or not to take the measurements with the bulb or not
 		if(use_bulb){
 			asInst.takeMeasurementsWithBulb();
@@ -105,6 +107,16 @@ void Loom_AS7265X::package() {
 		json["NIR_4"] = nir[3];
 		json["NIR_5"] = nir[4];
 		json["NIR_6"] = nir[5];
+	}
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_AS7265X::power_up() {
+	if(moduleInitialized){
+		asInst.setGain(gain);
+		asInst.setMeasurementMode(mode);
+        asInst.setIntegrationCycles(integration_time);
 	}
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

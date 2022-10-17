@@ -21,7 +21,13 @@ class Module{
         bool checkDeviceConnection() {
             if(module_address != -1){
                 Wire.beginTransmission(module_address);
-                return Wire.endTransmission() == 0;
+                if(Wire.endTransmission() == 0){
+                    return true;
+                }
+                else{
+                    needsReinit = true;
+                    return false;
+                }
             }
         };
 
@@ -37,6 +43,7 @@ class Module{
         virtual void display_data() {};                     // Called by the manager to allow OLED to display data at the same time as manager.display_data  
 
         bool moduleInitialized = true;                      // Whether or not the module initialized successfully true until set otherwise
+        bool needsReinit = false;                           // Whether or not the device needs to be reinitialized
         int module_address = -1;                            // Specifically for I2C addresses, -1 means the module doesn't have an address
     private:
         String moduleName;

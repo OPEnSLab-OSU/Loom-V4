@@ -11,8 +11,6 @@ Loom_ADS1115::Loom_ADS1115(Manager& man, byte address, bool useMux,  bool enable
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ADS1115::initialize(){
-    // Set the gain of the ADC
-    ads.setGain(adc_gain);
 
     if(!ads.begin(i2c_address)){
         printModuleName(); Serial.println("Failed to initialize ADS1115 interface! Data may be invalid");
@@ -21,17 +19,24 @@ void Loom_ADS1115::initialize(){
     else{
         printModuleName(); Serial.println("Successfully initialized sensor!");
     }
+
+    // Set the gain of the ADC
+    ads.setGain(adc_gain);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ADS1115::measure(){
-    if(!checkDeviceConnection()){
-        printModuleName(); Serial.println("No acknowledge received from the device");
-        return;
-    }
-
     if(moduleInitialized){
+        if(needsReinit){
+            initialize();
+        }
+        else if(!checkDeviceConnection()){
+            printModuleName(); Serial.println("No acknowledge received from the device");
+            return;
+        }
+
+    
         if(enableAnalog){
             for(int i = 0; i < 4; i++){
                 analogData[i] = ads.readADC_SingleEnded(i);
@@ -67,6 +72,17 @@ void Loom_ADS1115::package(){
             json["Differential_0"] = diffData[0];
             json["Differential_1"] = diffData[1];
         }
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_ADS1115::power_up(){
+
+    // Reinitialize the gain
+    if(moduleInitialized){
+        ads.setGain(adc_gain);
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

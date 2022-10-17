@@ -36,11 +36,14 @@ void Loom_TSL2591::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::measure() {
     if(moduleInitialized){
-        if(!checkDeviceConnection()){
+        if(needsReinit){
+            initialize();
+        }
+        else if(!checkDeviceConnection()){
             printModuleName(); Serial.println("No acknowledge received from the device");
             return;
         }
-
+   
         // Pull the data from the sensor
         uint16_t visible = tsl.getLuminosity(TSL2591_VISIBLE);
 
@@ -83,5 +86,15 @@ void Loom_TSL2591::print_measurements() {
 	Serial.println("\tVisible: " + String(lightLevels[0]));
 	Serial.println("\tIR: " + String(lightLevels[1]));
 	Serial.println("\tFull: " + String(lightLevels[2]));
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_TSL2591::power_up() {
+    if(moduleInitialized){
+        // Set the gain and integration time of the sensor
+        tsl.setGain(gain);
+        tsl.setTiming(intTime);
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -33,49 +33,59 @@ void Loom_MB1232::initialize() {
     // If we have less than 2 bytes of data from the sensor
     if(Wire.available() < 2){
         printModuleName(); Serial.println("Failed to initialize MB1232! Check connections and try again...");
+        moduleInitialized = false;
     }
     else{
-        printModuleName(); Serial.println("Successfully initialized MB1232 Version");
+        printModuleName(); Serial.println("Successfully initialized MB1232!");
+
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MB1232::measure() {
-    if(!checkDeviceConnection()){
-        printModuleName(); Serial.println("No acknowledge received from the device");
-        return;
+    if(moduleInitialized){
+        if(needsReinit){
+            initialize();
+        }
+        else if(!checkDeviceConnection()){
+            printModuleName(); Serial.println("No acknowledge received from the device");
+            return;
+        }
+    
+    
+        Wire.beginTransmission(address);
+
+        Wire.write(RangeCommand);
+        Wire.endTransmission();
+        delay(100);
+
+        // Send a request containing the number two to get the range from the sensor
+        Wire.requestFrom(address, byte(2));
+
+        if (Wire.available() >= 2) {
+            // The sensor communicates two bytes, each a range. The
+            // high byte is typically zero, in which case the low
+            // byte is equal to the range, so only the range is transmitted.
+            // The low byte will not be less than 20.
+            byte high = Wire.read();
+            byte low  = Wire.read();
+            byte tmp  = Wire.read();
+
+            range = (high * 256) + low;
+        } else {
+            printModuleName(); Serial.println("Error reading from MB1232");
+        }
     }
-
-    Wire.beginTransmission(address);
-
-    Wire.write(RangeCommand);
-    Wire.endTransmission();
-	delay(100);
-
-    // Send a request containing the number two to get the range from the sensor
-    Wire.requestFrom(address, byte(2));
-
-    if (Wire.available() >= 2) {
-		// The sensor communicates two bytes, each a range. The
-		// high byte is typically zero, in which case the low
-		// byte is equal to the range, so only the range is transmitted.
-		// The low byte will not be less than 20.
-		byte high = Wire.read();
-		byte low  = Wire.read();
-		byte tmp  = Wire.read();
-
-		range = (high * 256) + low;
-	} else {
-		printModuleName(); Serial.println("Error reading from MB1232");
-	}
     
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MB1232::package() {
-    JsonObject json = manInst->get_data_object(getModuleName());
-    json["Range"] = range;
+    if(moduleInitialized){
+        JsonObject json = manInst->get_data_object(getModuleName());
+        json["Range"] = range;
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

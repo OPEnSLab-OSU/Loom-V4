@@ -18,7 +18,7 @@ class Loom_TSL2591 : public Module{
         void measure() override;                               
         void print_measurements() override;
         void initialize() override;    
-        void power_up() override {};
+        void power_up() override;
         void power_down() override {}; 
         void package() override;   
 

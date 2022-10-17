@@ -18,32 +18,42 @@ Loom_STEMMA::Loom_STEMMA(
 void Loom_STEMMA::initialize() {
     if(!stemma.begin(address)){
         printModuleName(); Serial.println("Failed to initialize STEMMA! Check connections and try again...");
+        moduleInitialized = false;
     }
     else{
         printModuleName(); Serial.println("Successfully initialized STEMMA Version: " + String(stemma.getVersion()));
+        
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::measure() {
-    if(!checkDeviceConnection()){
-        printModuleName(); Serial.println("No acknowledge received from the device");
-        return;
-    }
+    if(moduleInitialized){
+        if(needsReinit){
+            initialize();
+        }
+        else if(!checkDeviceConnection()){
+            printModuleName(); Serial.println("No acknowledge received from the device");
+            return;
+        }
+        
 
-    // Pull the data from the sensor
-    temperature = stemma.getTemp();
-    cap = stemma.touchRead(0);
+        // Pull the data from the sensor
+        temperature = stemma.getTemp();
+        cap = stemma.touchRead(0);
+    }
     
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::package() {
-    JsonObject json = manInst->get_data_object(getModuleName());
-    json["Temperature"] = temperature;
-    json["Capacitive"] = cap;
+    if(moduleInitialized){
+        JsonObject json = manInst->get_data_object(getModuleName());
+        json["Temperature"] = temperature;
+        json["Capacitive"] = cap;
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

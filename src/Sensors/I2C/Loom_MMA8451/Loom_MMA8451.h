@@ -13,14 +13,14 @@
  */ 
 class Loom_MMA8451 : public Module{
     protected:
-        void power_up() override {};
         void power_down() override {}; 
         void print_measurements() override {};
        
         // Manager controlled functions
         void measure() override;                               
         void initialize() override;    
-        void package() override;   
+        void package() override;  
+        void power_up() override; 
 
     public:
         /**

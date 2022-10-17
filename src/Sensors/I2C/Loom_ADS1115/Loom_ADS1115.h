@@ -16,13 +16,13 @@ class Loom_ADS1115 : public Module{
 
     protected:
         void print_measurements() override {};  
-        void power_up() override {};
         void power_down() override {}; 
 
     public:
         void initialize() override;
         void measure() override;
         void package() override;
+        void power_up() override;
 
         /**
          *  Construct a new ADS1115

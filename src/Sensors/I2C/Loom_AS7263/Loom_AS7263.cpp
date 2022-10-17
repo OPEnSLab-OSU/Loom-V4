@@ -38,12 +38,15 @@ void Loom_AS7263::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7263::measure() {
-    if(!checkDeviceConnection()){
-        printModuleName(); Serial.println("No acknowledge received from the device");
-        return;
-    }
-
     if(moduleInitialized){
+        if(needsReinit){
+            initialize();
+        }
+        else if(!checkDeviceConnection()){
+            printModuleName(); Serial.println("No acknowledge received from the device");
+            return;
+        }
+    
         // Take a measurement and wait for it to be ready
         asInst.takeMeasurements();
         while(!asInst.dataAvailable()){
@@ -71,6 +74,16 @@ void Loom_AS7263::package() {
         json["NIR_4"] = nir[3];
         json["NIR_5"] = nir[4];
         json["NIR_6"] = nir[5];
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_AS7263::power_up() {
+    if(moduleInitialized){
+        asInst.setGain(gain);
+		asInst.setMeasurementMode(mode);
+        asInst.setIntegrationTime(integration_time);
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

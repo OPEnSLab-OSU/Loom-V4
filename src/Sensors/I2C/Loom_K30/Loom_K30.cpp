@@ -58,10 +58,13 @@ void Loom_K30::initialize(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_K30::measure(){
     if(type == I2C){
-        if(!checkDeviceConnection()){
-        printModuleName(); Serial.println("No acknowledge received from the device");
-        return;
-    }
+        if(needsReinit){
+            initialize();
+        }
+        else if(!checkDeviceConnection()){
+            printModuleName(); Serial.println("No acknowledge received from the device");
+            return;
+        }
     }
     getCO2Level();
 }

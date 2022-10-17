@@ -13,7 +13,7 @@
  */ 
 class Loom_AS7265X : public Module{
     protected:
-        void power_up() override {};
+        
         void power_down() override {}; 
         void print_measurements() override {};
        
@@ -21,6 +21,7 @@ class Loom_AS7265X : public Module{
         void measure() override;                               
         void initialize() override;    
         void package() override;   
+        void power_up() override;
 
     public:
         /**
