@@ -36,13 +36,18 @@ void Loom_TSL2591::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::measure() {
     if(moduleInitialized){
-        if(needsReinit){
+        // Get the current connection status
+        bool connectionStatus = checkDeviceConnection();
+
+        // If we are connected and we need to reinit
+        if(connectionStatus && needsReinit){
             initialize();
             needsReinit = false;
         }
-        else if(!checkDeviceConnection()){
+
+        // If we are not connected
+        else if(!connectionStatus){
             printModuleName(); Serial.println("No acknowledge received from the device");
-            
             return;
         }
    
