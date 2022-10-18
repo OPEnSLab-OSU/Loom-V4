@@ -108,20 +108,6 @@ bool Loom_Max::subscribe(){
 			return false;
 		}
 
-        // If we are receiving a command for the MaxSub module
-        if(messageJson["commands"][0]["module"].as<String>().startsWith("MaxSub")){
-
-            // Then we are trying to set the WiFi credentials
-            if(messageJson["commands"][0]["func"].as<int>() == 99){
-
-                // Get the name and password out of the parameters and then power cycle the board
-                String name = messageJson["commands"][0]["params"][0].as<String>();
-                String password = messageJson["commands"][0]["params"][1].as<String>();
-                wifiInst->storeNewWiFiCreds(name, password);
-                return true;
-            }
-        }
-
 
         // If there are actuators supplied control those if not just print the packet
         if(actuators.size() > 0){
@@ -161,6 +147,20 @@ bool Loom_Max::subscribe(){
             printModuleName(); Serial.println("Message Json: ");
             serializeJsonPretty(messageJson, Serial);
             Serial.println("\n");
+
+            // If we are receiving a command for the MaxSub module
+            if(messageJson["commands"][0]["module"].as<String>().startsWith("MaxSub")){
+
+                // Then we are trying to set the WiFi credentials
+                if(messageJson["commands"][0]["func"].as<int>() == 99){
+
+                    // Get the name and password out of the parameters and then power cycle the board
+                    String name = messageJson["commands"][0]["params"][0].as<String>();
+                    String password = messageJson["commands"][0]["params"][1].as<String>();
+                    wifiInst->storeNewWiFiCreds(name, password);
+                    return true;
+                }
+            }
         }
 
        
