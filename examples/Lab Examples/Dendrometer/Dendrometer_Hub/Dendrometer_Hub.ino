@@ -12,9 +12,8 @@
 #include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
 #include <Internet/Logging/Loom_MQTT/Loom_MQTT.h>
 
-Manager manager("Hub", 1);
+Manager manager("Hub", 0);
 
-// Do we want to use the instance number as the LoRa address
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 Loom_LoRa lora(manager);
 Loom_LTE lte(manager, "hologram", "", "", A5);
@@ -33,7 +32,6 @@ void setup(){
 
 void loop()
 {
-
     // Wait 5 seconds for a message
     if (lora.receive(5000))
     {
