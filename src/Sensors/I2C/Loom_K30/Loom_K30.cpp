@@ -65,13 +65,15 @@ void Loom_K30::measure(){
         if(connectionStatus && needsReinit){
             initialize();
             needsReinit = false;
+            //Serial.println("pee");
         }
 
         // If we are not connected
         else if(!connectionStatus){
             printModuleName(); Serial.println("No acknowledge received from the device");
             return;
-        }
+        } 
+        delay(1);
     }
     getCO2Level();
 }
