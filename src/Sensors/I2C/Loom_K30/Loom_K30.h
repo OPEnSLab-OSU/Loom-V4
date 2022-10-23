@@ -6,11 +6,6 @@
 #include "Loom_Manager.h"
 #include "Module.h"
 
-enum CommType{
-    I2C,
-    SERIAL_MODE
-};
-
 
 /**
  * Handles communication with the K30 sensor
@@ -44,46 +39,22 @@ class Loom_K30 : public Module{
             bool warmUp = true, 
             int valMult = 1
         );
-
-        /**
-         * Construct a new K30 sensor using serial
-         * @param man Reference to the manager
-         * @param rx RX address
-         * @param tx TX address
-         * @param warmUp If we should wait 6 minutes before collecting data to allow the sensor to warm up
-         * @param valMult How much to multiply the recorded output by
-         */ 
-        Loom_K30(
-            Manager& man, 
-            int rx = 12,
-            int tx = 11,  
-            bool warmUp = true, 
-            int valMult = 1
-        );
-
-        ~Loom_K30();
-
+        
         /**
          * Get the current CO2 levels collected by the sensor
          */ 
         int getCO2() { return CO2Levels; };
 
-        void setSerial(Uart& serial){
-            K30_Serial = &serial;
-        };
-
     private:
         Manager* manInst;                                               // Instance of the manager
 
-        Uart* K30_Serial = nullptr;
         int addr;                                                       // Address of the I2C sensor
-
-        CommType type;                                                  // Type of communication to use
 
         int CO2Levels;                                                  // Current CO2 levels of the sensor
 
         int valMult;                                                    // Return value multiplier
         bool warmUp;                                                    // Should we wait 6 mins for warm up to get accurate results
+        bool hasWarmedUp = false;
 
         byte buffer[4] = {0, 0, 0, 0};                                  // Buffer to store data read from the sensor
 
