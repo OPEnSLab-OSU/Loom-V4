@@ -1,4 +1,35 @@
-# Loom - Version 4
+<p align="center">
+    <img src="https://github.com/OPEnSLab-OSU/Loom/blob/gh-pages/Aux/OPEnSLogo.png" alt="logo" width="100" height="100">
+  </a>
+</p>
+
+<h3 align="center">Loom Version 4</h3>
+<p align="center">
+  An Internet of Things Rapid Prototyping System for applications in environmental sensing
+  <br>
+  <a href="https://openslab-osu.github.io/Loom-V4">Documentation</a>
+  ·
+  <a href="#">Lab Wiki</a>
+  ·
+  <a href="#">Quick Start</a>
+</p>
+
+## Table of Contents
+
+- [Table of Contents](#table-of-contents)
+- [Introduction](#introduction)
+- [Installation](#Install)
+    - [Arduino Install](#install-arduino)
+    - [Board Profile Install](#install-board-profiles)
+    - [If Using Mac](#if-you-use-mac)
+- [Using Examples](#run-an-example)
+- [Troubleshooting](#troubleshooting)
+- [Opening Issues](#issues)
+- [Supported Projects](#opens-supported-projects)
+
+<br>
+
+## Introduction
 
 This version takes a step back and removes a lot of the aspects that make Loom 3 very hard to work with. 
 This results in a more open and easy to work with framework that allows user to choose to use Loom and its features,
@@ -54,16 +85,13 @@ If you get permissions error accessing the library folder, abnd are using a Mac,
 If you are updating from an old version of Loom, you may need to do a "clean install" by removing the Arduino15 folder, and starting the process from the begining to install again.
 
 ## Issues
-If you are experiencing issues, please click the "Issues" tab on this repo and choose the template that best fits your needs. Please supply as much information as possible.
+If you are experiencing issues, please click the "Issues" tab on this repo and choose the template that best fits your needs. Please supply as much information as possible. This helps us to better understand a fix issues quickly
 
-## Project Examples
+## OPEnS Supported Projects
  - WeatherChimes (Fully Tested)
  - FloDar (Appears Stable)
  - Smart Rock (Appears Stable)
  - Evaporometer (Untested)
  - Dendrometer_Hub (Untested)
  - Lily Pad (Untested)
-
-## Resources
- - [Doxygen](https://openslab-osu.github.io/Loom-V4/)
 
