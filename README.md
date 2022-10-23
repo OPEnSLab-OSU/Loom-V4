@@ -9,7 +9,7 @@
   <br>
   <a href="https://openslab-osu.github.io/Loom-V4">Documentation</a>
   ·
-  <a href="#">Lab Wiki</a>
+  <a href="https://github.com/OPEnSLab-OSU/Loom-V4/wiki">Project Wiki</a>
   ·
   <a href="#">Quick Start</a>
 </p>
