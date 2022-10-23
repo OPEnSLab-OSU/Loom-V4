@@ -93,8 +93,6 @@ void Loom_Hypnos::disable(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin, InterruptType interruptType, int triggerState){
-    pinMode(interruptPin, INPUT_PULLUP);  //  Set interrupt pin input mode
-
     if(interruptPin == 12){
         printModuleName(); Serial.println("Registering RTC interrupt...");
     }
@@ -108,16 +106,11 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
 
     // Make sure a callback function was supplied
     if(isrFunc != nullptr){
-         // If the interrupt we registered is for sleep we should set the interrupt to wake the device from sleep
-        if(interruptType == SLEEP){
-            LowPower.attachInterruptWakeup(interruptPin, isrFunc, triggerState);
-            printModuleName(); Serial.println("Interrupt successfully attached!");
-        }
-        else{
-            attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
-            attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
-            printModuleName(); Serial.println("Interrupt successfully attached!");
-        }
+
+        // Attach the wake interrupt to a pin
+        LowPower.attachInterruptWakeup(interruptPin, isrFunc, triggerState);
+        printModuleName(); Serial.println("Interrupt successfully attached!");
+
         // Add the interrupt to the list of pin to interrupts
         pinToInterrupt.insert(std::make_pair(interruptPin, std::make_tuple(isrFunc, triggerState, interruptType)));
         return true;
@@ -153,13 +146,15 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
     printModuleName(); Serial.println("Interrupt successfully reattached!");
 
     return true;
-
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::wakeup(){
-    detachInterrupt(pinToInterrupt.begin()->first);     // Detach the interrupt so it doesn't trigger again    
+    // Detach all interrupts on wakeup
+    for (const auto &myPair : pinToInterrupt) {
+        detachInterrupt(myPair.first);
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -242,12 +237,13 @@ String Loom_Hypnos::dateTime_toString(DateTime time){
                         + monthString
                         + "-"
                         + dayString
-                        + " "
+                        + "T"
                         + String(time.hour())
                         + ":"
                         + String(time.minute())
                         + ":"
-                        + String(time.second());
+                        + String(time.second())
+                        + "Z";
 
     return timeString;
 }

@@ -14,8 +14,15 @@
 
 Manager manager("Device", 1);
 
-Loom_MS5803 ms03(manager, 0x77, false); // MS5803 CSB pin tied to VCC i2c addr 0x77
-Loom_MS5803 ms03_two(manager, 0x76, false); // MS5803 CSB pin tied to VCC i2c addr 0x76
+Loom_MS5803 ms_water(manager, 0x77, false); // MS5803 CSB pin tied to VCC i2c addr 0x77
+Loom_MS5803 ms_air(manager, 0x76, false); // MS5803 CSB pin tied to VCC i2c addr 0x76
+
+
+/* Calculate the water height based on the difference of pressures*/
+float calculateWaterHeight(){
+  // ((Water Pressure - Air Pressure) * 100 (conversion to pascals)) / (Water Density * Gravity)
+  return (((ms_water.getPressure()-ms_air.getPressure()) * 100) / (997.77 * 9.81));
+}
 
 void setup() {
 
@@ -33,6 +40,9 @@ void loop() {
   
   // Package the data into JSON
   manager.package();
+
+  // Add the water height calculation to the data
+  manager.addData("Water", "Height_(m)", calculateWaterHeight());
 
   // Print the current JSON document to the Serial monitor
   manager.display_data();  

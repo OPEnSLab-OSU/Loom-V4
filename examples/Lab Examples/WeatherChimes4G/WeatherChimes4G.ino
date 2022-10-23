@@ -12,28 +12,47 @@
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 
 #include <Sensors/Loom_Analog/Loom_Analog.h>
-#include <Sensors/SDI12/Loom_SDI12/Loom_SDI12.h>
 #include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h>
 #include <Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h>
+#include <Sensors/I2C/Loom_MS5803/Loom_MS5803.h>
+// If using Teros 10, Uncoment this line
+#include <Sensors/Analog/Loom_Teros10/Loom_Teros10.h>
+
+// If using SDI12, GS3 or Teros 11 or 12 uncoment this line
+//#include <Sensors/SDI12/Loom_SDI12/Loom_SDI12.h>
 
 #include <Internet/Logging/Loom_MQTT/Loom_MQTT.h>
 #include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
 
-Manager manager("Chime", 1);
+Manager manager("Chime", 0);
+
+// Create a new Hypnos object
+Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, true);
 
 // Analog for reading battery voltage
 Loom_Analog analog(manager);
 
-// Create a new Hypnos object
-Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
-
-// Create the TSL2591 and SHT classes
+// Create sensor classes
 Loom_SHT31 sht(manager);
 Loom_TSL2591 tsl(manager);
-Loom_SDI12 sdi(manager, 11);
+Loom_MS5803 ms_water(manager, 119); // 119(0x77) if CSB=LOW external, 118(0x76) if CSB=HIGH on WC PCB
+Loom_MS5803 ms_air(manager, 118); // 118(0x76) if CSB=HIGH on WC PCB
+
 
 Loom_LTE lte(manager, NETWORK_APN, NETWORK_USER, NETWORK_PASS);
 Loom_MQTT mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
+
+// If using Teros 10, Uncoment this line
+Loom_Teros10 t10(manager, A0);
+
+// If using SDI12, GS3 or Teros 11 or 12 uncoment this line
+//Loom_SDI12 sdi(manager, A0);
+
+/* Calculate the water height based on the difference of pressures*/
+float calculateWaterHeight(){
+  // ((Water Pressure - Air Pressure) * 100 (conversion to pascals)) / (Water Density * Gravity)
+  return (((ms_water.getPressure()-ms_air.getPressure()) * 100) / (997.77 * 9.81));
+}
 
 // Called when the interrupt is triggered 
 void isrTrigger(){
@@ -60,6 +79,9 @@ void loop() {
   // Measure and package the data
   manager.measure();
   manager.package();
+
+  // Add the water height calculation to the data
+  manager.addData("Water", "Height_(m)", calculateWaterHeight());
   
   // Print the current JSON packet
   manager.display_data();            
@@ -70,12 +92,13 @@ void loop() {
   // Publish the collected data to MQTT
   mqtt.publish();
 
-  // Set the RTC interrupt alarm to wake the device in 10 seconds
-  hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 10));
+  // Set the RTC interrupt alarm to wake the device in 15 min
+  hypnos.setInterruptDuration(TimeSpan(0, 0, 15, 0));
 
   // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
   hypnos.reattachRTCInterrupt();
   
   // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
   hypnos.sleep();
+  
 }
