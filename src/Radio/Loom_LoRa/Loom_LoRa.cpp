@@ -11,10 +11,7 @@ Loom_LoRa::Loom_LoRa(
     ) : Radio("LoRa"), manInst(&man), driver{RFM95_CS, RFM95_INT}
     {
         // Pull the instance number from the manager
-        if(address == -1)
-            this->deviceAddress = manInst->get_instance_num();
-        else
-            this->deviceAddress = address;
+        this->deviceAddress = address;
     
         manager = new RHReliableDatagram(driver, this->deviceAddress);
         this->powerLevel = powerLevel;

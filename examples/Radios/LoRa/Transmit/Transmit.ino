@@ -21,7 +21,7 @@ void loop() {
   manager.package();
   manager.display_data();
 
-  // Send the current JSON document to address 1
+  // Send the current JSON document to address 0
   lora.send(0);
 
   // Wait 5 seconds between transmits
