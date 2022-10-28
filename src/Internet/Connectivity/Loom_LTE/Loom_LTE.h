@@ -99,6 +99,9 @@ class Loom_LTE : public Module{
          */ 
         bool isConnected();
 
+        /* Restart the modem */
+        void restartModem() { modem.restart(); };
+
         /**
          * Convert an IP address to a string
          */ 
