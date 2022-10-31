@@ -100,7 +100,12 @@ class Loom_LTE : public Module{
         bool isConnected();
 
         /* Restart the modem */
-        void restartModem() { modem.restart(); };
+        void restartModem() { 
+            modem.poweroff();
+            delay(3000);
+            modem.restart(); 
+            delay(1000);
+        };
 
         /**
          * Convert an IP address to a string
