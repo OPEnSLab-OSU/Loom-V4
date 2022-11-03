@@ -118,7 +118,7 @@ void Loom_LTE::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::connect(){
-    uint8_t attemptCount = 1; // Tracks number of attempts, 10 is a fail
+    uint8_t attemptCount = 1; // Tracks number of attempts, 5 is a fail
 
     do{
         printModuleName(); Serial.println("Waiting for network...");
@@ -146,8 +146,8 @@ bool Loom_LTE::connect(){
             attemptCount++;
         }
 
-        // If the last attempt was the 10th attempt then stop
-        if(attemptCount > 10){
+        // If the last attempt was the 5th attempt then stop
+        if(attemptCount > 5){
             printModuleName(); Serial.println("Connection reattempts exceeded 10 tries. Connection Failed");
             return false;
         }

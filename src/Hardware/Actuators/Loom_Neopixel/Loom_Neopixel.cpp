@@ -73,11 +73,13 @@ void Loom_Neopixel::set_color(const uint8_t port, const uint8_t chain_num, const
 		// Update colors displayed by Neopixel
 		pixels[port].show();
 		
+		/*
         printModuleName();
         Serial.print("Set Neopixel on Port: " + String(port) + ", Chain #: " + String(chain_num));
         Serial.print(" to R: " + String(colorVals[port][0]));
         Serial.print(  ", G: " + String(colorVals[port][1]));
         Serial.println(", B: " + String(colorVals[port][2]));
+		*/
 		
 	} else {
 		printModuleName(); Serial.println("Neopixel not enabled on port " + String(port));

@@ -72,7 +72,7 @@ class Loom_MQTT : public Module{
 
         /**
          * Length of time the broker should keep the connection open for default 
-         * @param time Length of time in MINUTES the connection will be kept open
+         * @param time Length of time in MILLISECONDS the connection will be kept open
          */ 
         void setKeepAlive(int time) { keep_alive = time; };
 
