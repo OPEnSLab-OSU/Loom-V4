@@ -34,7 +34,7 @@ void Loom_LTE::initialize(){
 
     // If no LTE shield is found we should not initialize the module
     if(modemInfo == NULL){
-        printModuleName(); Serial.println("LTE Shield not present!");
+        printModuleName(); Serial.println("LTE shield not detected! This can also be triggered if there isn't a SIM card in the board");
         moduleInitialized = false;
         return;
     }

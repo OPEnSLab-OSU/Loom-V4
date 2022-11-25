@@ -88,10 +88,17 @@ class Loom_LoRa : public Radio{
         void setAddress(const uint8_t addr);
 
     private:
-        Manager* manInst;                       // Instance of the manager
+        Manager* manInst;                                   // Instance of the manager
 
-        RH_RF95 driver;                         // Underlying radio driver
-        RHReliableDatagram* manager;            // Manager for driver
+        RH_RF95 driver;                                     // Underlying radio driver
+        RHReliableDatagram* manager;                        // Manager for driver
 
+        StaticJsonDocument<2048> tempDoc;                   // Temporary document to help reconstruct the fragmented packets
+
+        bool sendFull(const uint8_t destinationAddress);                                    // Send the full packet with no fragmentation
+        bool sendPartial(const uint8_t destinationAddress);                                 // Fragment the packet when needed
+        bool sendModules(JsonObject json, const uint8_t destinationAddress);                // Send one module to the hub to allow for fragmented sending
+
+        bool receivePartial(uint waitTime);
         
 };

@@ -51,6 +51,7 @@ class Radio : public Module{
             // Clear the json to store new data
             messageJson.clear();
             String jsonStr = "";
+            
             DeserializationError error = deserializeMsgPack(messageJson, buffer);
 
             // Check if an error occurred 

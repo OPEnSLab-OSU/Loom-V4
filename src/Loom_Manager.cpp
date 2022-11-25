@@ -153,11 +153,10 @@ void Manager::initialize() {
 
     // If you are using a hypnos board that has not been enabled, this needs to occur before initializing sensors
     if(usingHypnos && !hypnosEnabled){
-        Serial.println("[Manager] Your sketch is set to use a Hypnos board which has not been enabled before attempting to initialize sensors. \nThis will causing hanging please enable the board before initialization. The sketch will now hang here!"); 
-        while(1);
+        Serial.println("[Manager] Your sketch is set to use a Hypnos board which has not been enabled before attempting to initialize sensors. \nThis will causing hanging please enable the board before initialization. Continuing but know this may cause issues!"); 
     }
 
-    Serial.println("[Manager] Initializing Modules...");
+    Serial.println("[Manager] ** Initializing Modules **");
     read_serial_num();
     for(int i = 0; i < modules.size(); i++){
         modules[i].second->initialize();

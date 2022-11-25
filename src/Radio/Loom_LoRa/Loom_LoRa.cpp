@@ -115,9 +115,18 @@ bool Loom_LoRa::receive(uint maxWaitTime){
             signalStrength = driver.lastRssi();
             recvStatus = bufferToJson(buffer, manInst->getDocument());
 
+            
+
             // Update device details
-            manInst->set_device_name(manInst->getDocument()["id"]["name"].as<String>());
-            manInst->set_instance_num(manInst->getDocument()["id"]["instance"].as<int>());
+            if(recvStatus){
+                manInst->set_device_name(manInst->getDocument()["id"]["name"].as<String>());
+                manInst->set_instance_num(manInst->getDocument()["id"]["instance"].as<int>());
+            }
+
+            // Check if we have a numPackets field which tells us we should expect more packets
+            if(!manInst->getDocument()["numPackets"].isNull()){
+                receivePartial(maxWaitTime);
+            }
         }
         else{
             printModuleName(); Serial.println("No Packet Received");
@@ -133,30 +142,179 @@ bool Loom_LoRa::receive(uint maxWaitTime){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::receivePartial(uint waitTime){
+    if(moduleInitialized){
+        tempDoc.clear();
+        bool recvStatus = false;
+        uint8_t fromAddress;
+        uint8_t len = maxMessageLength;
+
+        // Write all null bytes to the buffer
+        char buffer[maxMessageLength];
+       
+        // Contents array to store each module in
+        JsonArray contents = manInst->getDocument().createNestedArray("contents");
+        
+        // Gets the number of additional packets the hub should expect
+        int numPackets = manInst->getDocument()["numPackets"].as<int>();
+
+        // Loop for the given number of packets we are expecting
+        for(int i = 0; i < numPackets; i++){
+            printModuleName(); Serial.println("Waiting for packet...");
+            memset(buffer, '\0', maxMessageLength);
+
+            // Non-blocking receive if time is set to 0
+            if(waitTime == 0){
+                recvStatus = manager->recvfromAck((uint8_t*)buffer, &len, &fromAddress);
+            }
+            else{
+                recvStatus = manager->recvfromAckTimeout((uint8_t*)buffer, &len, waitTime, &fromAddress);
+            }
+
+            // If a packet was received 
+            if(recvStatus){
+                printModuleName(); Serial.println("Packet Received!");
+                signalStrength = driver.lastRssi();
+                recvStatus = bufferToJson(buffer, tempDoc);
+
+                // Add the current module to the overall contents array
+                contents.add(tempDoc["contents"][0].as<JsonObject>());
+            }
+            else{
+                printModuleName(); Serial.println("No Packet Received");
+            }
+        }
+
+        driver.sleep();
+        return recvStatus;
+    }else{
+        printModuleName(); Serial.println("Module not initialized!");
+        return false;
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::send(const uint8_t destinationAddress){
     if(moduleInitialized){
-        char buffer[maxMessageLength];
 
-        // Try to write the JSON to the buffer
-        if(!jsonToBuffer(buffer, manInst->getDocument().as<JsonObject>())){
-            printModuleName(); Serial.println("Failed to convert JSON to MsgPack");
-            return false;
-        }
-
-        if(!manager->sendtoWait((uint8_t*)buffer, measureMsgPack(manInst->getDocument()), destinationAddress)){
-            printModuleName(); Serial.println("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
+        // If the message we are trying to send is greater than the max size we need to fragment the packet
+        if(measureMsgPack(manInst->getDocument()) > maxMessageLength){
+            return sendPartial(destinationAddress);
         }else{
-            printModuleName(); Serial.println("Successfully transmitted packet!");
+            return sendFull(destinationAddress);
         }
-
-        signalStrength = driver.lastRssi();
-        driver.sleep();
-        return true;
     }
     else{
         printModuleName(); Serial.println("Module not initialized!");
         return false;
     }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::sendFull(const uint8_t destinationAddress){
+    char buffer[maxMessageLength];
+
+    // Try to write the JSON to the buffer
+    if(!jsonToBuffer(buffer, manInst->getDocument().as<JsonObject>())){
+        printModuleName(); Serial.println("Failed to convert JSON to MsgPack");
+        return false;
+    }
+
+    if(!manager->sendtoWait((uint8_t*)buffer, measureMsgPack(manInst->getDocument()), destinationAddress)){
+        printModuleName(); Serial.println("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
+    }else{
+        printModuleName(); Serial.println("Successfully transmitted packet!");
+    }
+
+    signalStrength = driver.lastRssi();
+    driver.sleep();
+    return true;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
+    printModuleName(); Serial.println("Packet was greater than the maximum packet length the packet will be fragmented");
+
+    char buffer[maxMessageLength];  
+    JsonObject obj = tempDoc.to<JsonObject>();
+    JsonObject objID = obj.createNestedObject("id");
+
+    // Gets the number of additional packets the hub should expect
+    int numPackets = manInst->getDocument()["contents"].size();
+
+    // Re-construct the packet header including the number of packets to expect after this initial one
+    obj["type"] = manInst->getDocument()["type"].as<String>();
+    objID["name"] = manInst->getDocument()["id"]["name"].as<String>();   
+    objID["instance"] = manInst->getDocument()["id"]["instance"].as<int>();  
+    obj["numPackets"] = numPackets;
+
+    // If we have a timestamp we also need to copy this across to the new one
+    if(!manInst->getDocument()["timestamp"].isNull()){
+        JsonObject objTS = obj.createNestedObject("timestamp");
+        objTS["time_utc"] = manInst->getDocument()["timestamp"]["time_utc"].as<String>();
+        objTS["time_local"] = manInst->getDocument()["timestamp"]["time_local"].as<String>();
+    }
+    
+    // Try to write the JSON to the buffer
+    if(!jsonToBuffer(buffer, obj)){
+        printModuleName(); Serial.println("Failed to convert JSON to MsgPack");
+        return false;
+    }
+
+    // Send the packet off
+    if(!manager->sendtoWait((uint8_t*)buffer, measureMsgPack(obj), destinationAddress)){
+        printModuleName(); Serial.println("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
+        return false;
+    }else{
+        printModuleName(); Serial.println("Successfully transmitted packet!");
+    }
+
+    // Send all modules by themselves to allow for larger amounts of data to be sent over radio
+    sendModules(manInst->getDocument().as<JsonObject>(), destinationAddress);
+
+    signalStrength = driver.lastRssi();
+    driver.sleep();
+    return true;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::sendModules(JsonObject json, const uint8_t destinationAddress){
+    char buffer[maxMessageLength];  
+    JsonObject obj = tempDoc.to<JsonObject>();
+    int numPackets = manInst->getDocument()["contents"].size();
+
+    // Loop through the number of packets we need to send
+    for(int i = 0; i < numPackets; i++){
+        obj.clear();
+        JsonArray objContents = obj.createNestedArray("contents");
+        objContents[0]["module"] = manInst->getDocument()["contents"][i]["module"];
+        
+        // Get each piece of data that the module had
+        JsonObject old_data = manInst->getDocument()["contents"][i]["data"];
+	    for (JsonPair kv : old_data){
+		    objContents[0]["data"][kv.key()] = kv.value();
+	    }
+
+        // Try to write the JSON to the buffer
+        if(!jsonToBuffer(buffer, obj)){
+            printModuleName(); Serial.println("Failed to convert JSON to MsgPack");
+            return false;
+        }
+
+        // Send the packet off
+        if(!manager->sendtoWait((uint8_t*)buffer, measureMsgPack(obj), destinationAddress)){
+            printModuleName(); Serial.println("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
+            return false;
+        }else{
+            printModuleName(); Serial.println("Successfully transmitted packet!");
+        }
+        delay(500);
+    }
+    return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
