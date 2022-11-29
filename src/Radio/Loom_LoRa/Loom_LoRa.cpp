@@ -241,6 +241,7 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
     char buffer[maxMessageLength];  
     JsonObject obj = tempDoc.to<JsonObject>();
     JsonObject objID = obj.createNestedObject("id");
+    
 
     // Gets the number of additional packets the hub should expect
     int numPackets = manInst->getDocument()["contents"].size();
@@ -250,6 +251,8 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
     objID["name"] = manInst->getDocument()["id"]["name"].as<String>();   
     objID["instance"] = manInst->getDocument()["id"]["instance"].as<int>();  
     obj["numPackets"] = numPackets;
+
+    JsonObject objContents = obj.createNestedArray("contents");
 
     // If we have a timestamp we also need to copy this across to the new one
     if(!manInst->getDocument()["timestamp"].isNull()){
@@ -267,7 +270,6 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
     // Send the packet off
     if(!manager->sendtoWait((uint8_t*)buffer, measureMsgPack(obj), destinationAddress)){
         printModuleName(); Serial.println("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
-        return false;
     }else{
         printModuleName(); Serial.println("Successfully transmitted packet!");
     }
@@ -285,16 +287,16 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
 bool Loom_LoRa::sendModules(JsonObject json, const uint8_t destinationAddress){
     char buffer[maxMessageLength];  
     JsonObject obj = tempDoc.to<JsonObject>();
-    int numPackets = manInst->getDocument()["contents"].size();
+    int numPackets = json["contents"].size();
 
     // Loop through the number of packets we need to send
     for(int i = 0; i < numPackets; i++){
         obj.clear();
         JsonArray objContents = obj.createNestedArray("contents");
-        objContents[0]["module"] = manInst->getDocument()["contents"][i]["module"];
+        objContents[0]["module"] = json["contents"][i]["module"];
         
         // Get each piece of data that the module had
-        JsonObject old_data = manInst->getDocument()["contents"][i]["data"];
+        JsonObject old_data = json["contents"][i]["data"];
 	    for (JsonPair kv : old_data){
 		    objContents[0]["data"][kv.key()] = kv.value();
 	    }
@@ -308,7 +310,6 @@ bool Loom_LoRa::sendModules(JsonObject json, const uint8_t destinationAddress){
         // Send the packet off
         if(!manager->sendtoWait((uint8_t*)buffer, measureMsgPack(obj), destinationAddress)){
             printModuleName(); Serial.println("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
-            return false;
         }else{
             printModuleName(); Serial.println("Successfully transmitted packet!");
         }
