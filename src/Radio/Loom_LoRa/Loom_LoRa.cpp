@@ -115,8 +115,6 @@ bool Loom_LoRa::receive(uint maxWaitTime){
             signalStrength = driver.lastRssi();
             recvStatus = bufferToJson(buffer, manInst->getDocument());
 
-            
-
             // Update device details
             if(recvStatus){
                 manInst->set_device_name(manInst->getDocument()["id"]["name"].as<String>());
@@ -251,8 +249,6 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
     objID["name"] = manInst->getDocument()["id"]["name"].as<String>();   
     objID["instance"] = manInst->getDocument()["id"]["instance"].as<int>();  
     obj["numPackets"] = numPackets;
-
-    JsonObject objContents = obj.createNestedArray("contents");
 
     // If we have a timestamp we also need to copy this across to the new one
     if(!manInst->getDocument()["timestamp"].isNull()){
