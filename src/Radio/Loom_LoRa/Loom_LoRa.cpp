@@ -142,7 +142,6 @@ bool Loom_LoRa::receive(uint maxWaitTime){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::receivePartial(uint waitTime){
     if(moduleInitialized){
-        tempDoc.clear();
         bool recvStatus = false;
         uint8_t fromAddress;
         uint8_t len = maxMessageLength;
@@ -159,7 +158,7 @@ bool Loom_LoRa::receivePartial(uint waitTime){
         // Loop for the given number of packets we are expecting
         for(int i = 0; i < numPackets; i++){
             tempDoc.clear();
-            printModuleName(); Serial.println("Waiting for packet...");
+            printModuleName(); Serial.println("Waiting for packet " + String(i+1) + " / " + String(numPackets));
             memset(buffer, '\0', maxMessageLength);
 
             // Non-blocking receive if time is set to 0
@@ -290,12 +289,15 @@ bool Loom_LoRa::sendModules(JsonObject json, const uint8_t destinationAddress){
     for(int i = 0; i < numPackets; i++){
         obj.clear();
         JsonArray objContents = obj.createNestedArray("contents");
+
+        // Create a data object for each content
+        JsonObject objData = objContents.createNestedObject("data");
         objContents[0]["module"] = json["contents"][i]["module"];
         
         // Get each piece of data that the module had
         JsonObject old_data = json["contents"][i]["data"];
 	    for (JsonPair kv : old_data){
-		    objContents[0]["data"][kv.key()] = kv.value();
+		    objData[kv.key()] = kv.value();
 	    }
 
         // Try to write the JSON to the buffer
