@@ -158,6 +158,7 @@ bool Loom_LoRa::receivePartial(uint waitTime){
 
         // Loop for the given number of packets we are expecting
         for(int i = 0; i < numPackets; i++){
+            tempDoc.clear();
             printModuleName(); Serial.println("Waiting for packet...");
             memset(buffer, '\0', maxMessageLength);
 
@@ -171,12 +172,12 @@ bool Loom_LoRa::receivePartial(uint waitTime){
 
             // If a packet was received 
             if(recvStatus){
-                printModuleName(); Serial.println("Packet Received!");
+                printModuleName(); Serial.println("Fragment received " + String(i+1) + " / " + String(numPackets));
                 signalStrength = driver.lastRssi();
                 recvStatus = bufferToJson(buffer, tempDoc);
 
                 // Add the current module to the overall contents array
-                contents.add(tempDoc["contents"][i].as<JsonObject>());
+                contents.add(tempDoc["contents"][0].as<JsonObject>());
             }
             else{
                 printModuleName(); Serial.println("No Packet Received");
