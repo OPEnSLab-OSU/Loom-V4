@@ -176,7 +176,7 @@ bool Loom_LoRa::receivePartial(uint waitTime){
                 recvStatus = bufferToJson(buffer, tempDoc);
 
                 // Add the current module to the overall contents array
-                contents.add(tempDoc["contents"][0].as<JsonObject>());
+                contents.add(tempDoc["contents"][i].as<JsonObject>());
             }
             else{
                 printModuleName(); Serial.println("No Packet Received");
