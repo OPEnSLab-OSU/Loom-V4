@@ -291,13 +291,13 @@ bool Loom_LoRa::sendModules(JsonObject json, const uint8_t destinationAddress){
         JsonArray objContents = obj.createNestedArray("contents");
 
         // Create a data object for each content
-        JsonObject objData = objContents.createNestedObject("data");
+        //JsonObject objData = objContents.createNestedObject("data");
         objContents[0]["module"] = json["contents"][i]["module"];
         
         // Get each piece of data that the module had
         JsonObject old_data = json["contents"][i]["data"];
 	    for (JsonPair kv : old_data){
-		    objData[kv.key()] = kv.value();
+		     objContents[0]["data"][kv.key()] = kv.value();
 	    }
 
         // Try to write the JSON to the buffer

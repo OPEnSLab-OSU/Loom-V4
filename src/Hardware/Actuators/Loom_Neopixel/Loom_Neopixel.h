@@ -74,5 +74,4 @@ class Loom_Neopixel : public Actuator{
         Adafruit_NeoPixel pixels[3];             // Allows users to control up to 3 different LED strips at once
 
         bool enabledPins[3];                    // Which of the three control pins is enabled
-        uint8_t colorVals[3][3];                // RGB colors for each of the led strips
 };

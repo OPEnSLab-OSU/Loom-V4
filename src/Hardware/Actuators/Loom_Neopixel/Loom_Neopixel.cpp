@@ -1,12 +1,14 @@
 #include "Loom_Neopixel.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Neopixel::Loom_Neopixel(Manager& man, const bool enableA0, const bool enableA1, const bool enableA2) : Actuator(ACTUATOR_TYPE::NEOPIXEL, 0), manInst(&man), enabledPins( {enableA0, enableA1, enableA2} )
-	, pixels( { Adafruit_NeoPixel(1, 14, NEO_GRB + NEO_KHZ800),
-				Adafruit_NeoPixel(1, 15, NEO_GRB + NEO_KHZ800),
-				Adafruit_NeoPixel(1, 16, NEO_GRB + NEO_KHZ800)
-			} )
-	, colorVals{}{
+Loom_Neopixel::Loom_Neopixel(Manager& man, const bool enableA0, const bool enableA1, const bool enableA2) : 
+    Actuator(ACTUATOR_TYPE::NEOPIXEL, 0), 
+    manInst(&man), 
+    enabledPins{ enableA0, enableA1, enableA2 },
+	pixels{ Adafruit_NeoPixel(1, 14, NEO_GRB + NEO_KHZ800),
+            Adafruit_NeoPixel(1, 15, NEO_GRB + NEO_KHZ800),
+            Adafruit_NeoPixel(1, 16, NEO_GRB + NEO_KHZ800) }
+{
     this->enabledPins[0] = enableA0;
     this->enabledPins[1] = enableA1;
     this->enabledPins[2] = enableA2;
@@ -16,12 +18,13 @@ Loom_Neopixel::Loom_Neopixel(Manager& man, const bool enableA0, const bool enabl
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Neopixel::Loom_Neopixel(const bool enableA0, const bool enableA1, const bool enableA2) : Actuator(ACTUATOR_TYPE::NEOPIXEL, 0), enabledPins( {enableA0, enableA1, enableA2} )
-	, pixels( { Adafruit_NeoPixel(1, 14, NEO_GRB + NEO_KHZ800),
-				Adafruit_NeoPixel(1, 15, NEO_GRB + NEO_KHZ800),
-				Adafruit_NeoPixel(1, 16, NEO_GRB + NEO_KHZ800)
-			} )
-	, colorVals{}{
+Loom_Neopixel::Loom_Neopixel(const bool enableA0, const bool enableA1, const bool enableA2) : 
+    Actuator(ACTUATOR_TYPE::NEOPIXEL, 0), 
+    enabledPins{ enableA0, enableA1, enableA2 },
+	pixels{ Adafruit_NeoPixel(1, 14, NEO_GRB + NEO_KHZ800),
+            Adafruit_NeoPixel(1, 15, NEO_GRB + NEO_KHZ800),
+            Adafruit_NeoPixel(1, 16, NEO_GRB + NEO_KHZ800) }
+{
     this->enabledPins[0] = enableA0;
     this->enabledPins[1] = enableA1;
     this->enabledPins[2] = enableA2;
@@ -61,14 +64,8 @@ void Loom_Neopixel::control(JsonArray json){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Neopixel::set_color(const uint8_t port, const uint8_t chain_num, const uint8_t red, const uint8_t green, const uint8_t blue){
     if ( enabledPins[port] ) {
-
-		// Update color vars
-		colorVals[port][0] = (red > 0)   ? ( (red < 255)   ? red   : 255 ) : 0;
-		colorVals[port][1] = (green > 0) ? ( (green < 255) ? green : 255 ) : 0;
-		colorVals[port][2] = (blue > 0)  ? ( (blue < 255)  ? blue  : 255 ) : 0;
-
 		// Apply color
-		pixels[port].setPixelColor(chain_num, pixels[port].Color(colorVals[port][0], colorVals[port][1], colorVals[port][2]));
+		pixels[port].setPixelColor(chain_num, pixels[port].Color(red, green, blue));
 
 		// Update colors displayed by Neopixel
 		pixels[port].show();
@@ -76,9 +73,9 @@ void Loom_Neopixel::set_color(const uint8_t port, const uint8_t chain_num, const
 		/*
         printModuleName();
         Serial.print("Set Neopixel on Port: " + String(port) + ", Chain #: " + String(chain_num));
-        Serial.print(" to R: " + String(colorVals[port][0]));
-        Serial.print(  ", G: " + String(colorVals[port][1]));
-        Serial.println(", B: " + String(colorVals[port][2]));
+        Serial.print(" to R: " + String(red));
+        Serial.print(  ", G: " + String(green));
+        Serial.println(", B: " + String(blue));
 		*/
 		
 	} else {
