@@ -94,8 +94,19 @@ bool SDManager::log(DateTime currentTime){
 
             // If there is a key that contains timestamp data when need to include that separately 
             if(document.containsKey("timestamp")){
-                data += document["timestamp"]["time_utc"].as<String>() + ",";
-                data += document["timestamp"]["time_local"].as<String>() + ",";
+                String utc = document["timestamp"]["time_utc"].as<String>();
+                String local = document["timestamp"]["time_local"].as<String>();
+
+                // Format date with spaces when logging to SD
+                utc.replace("T", " ");
+                utc.replace("Z", "");
+
+                // Format date with spaces when logging to SD
+                local.replace("T", " ");
+                local.replace("Z", "");
+
+                data += utc + ",";
+                data += local + ",";
             }
 
             // Get the contents containing the reset of the sensor data
