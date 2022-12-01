@@ -238,6 +238,7 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
 
     char buffer[maxMessageLength];  
     JsonObject obj = tempDoc.to<JsonObject>();
+    obj["type"] = manInst->getDocument()["type"].as<String>();
     JsonObject objID = obj.createNestedObject("id");
     
 
@@ -245,17 +246,9 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
     int numPackets = manInst->getDocument()["contents"].size();
 
     // Re-construct the packet header including the number of packets to expect after this initial one
-    obj["type"] = manInst->getDocument()["type"].as<String>();
     objID["name"] = manInst->getDocument()["id"]["name"].as<String>();   
     objID["instance"] = manInst->getDocument()["id"]["instance"].as<int>();  
     obj["numPackets"] = numPackets;
-
-    // If we have a timestamp we also need to copy this across to the new one
-    if(!manInst->getDocument()["timestamp"].isNull()){
-        JsonObject objTS = obj.createNestedObject("timestamp");
-        objTS["time_utc"] = manInst->getDocument()["timestamp"]["time_utc"].as<String>();
-        objTS["time_local"] = manInst->getDocument()["timestamp"]["time_local"].as<String>();
-    }
     
     // Try to write the JSON to the buffer
     if(!jsonToBuffer(buffer, obj)){
@@ -272,6 +265,13 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
 
     // Send all modules by themselves to allow for larger amounts of data to be sent over radio
     sendModules(manInst->getDocument().as<JsonObject>(), destinationAddress);
+
+     // If we have a timestamp we also need to copy this across to the new one
+    if(!manInst->getDocument()["timestamp"].isNull()){
+        JsonObject objTS = obj.createNestedObject("timestamp");
+        objTS["time_utc"] = manInst->getDocument()["timestamp"]["time_utc"].as<String>();
+        objTS["time_local"] = manInst->getDocument()["timestamp"]["time_local"].as<String>();
+    }
 
     signalStrength = driver.lastRssi();
     driver.sleep();
@@ -291,13 +291,13 @@ bool Loom_LoRa::sendModules(JsonObject json, const uint8_t destinationAddress){
         JsonArray objContents = obj.createNestedArray("contents");
 
         // Create a data object for each content
-        //JsonObject objData = objContents.createNestedObject("data");
+        JsonObject objData = objContents[0].createNestedObject("data");
         objContents[0]["module"] = json["contents"][i]["module"];
         
         // Get each piece of data that the module had
         JsonObject old_data = json["contents"][i]["data"];
 	    for (JsonPair kv : old_data){
-		     objContents[0]["data"][kv.key()] = kv.value();
+		    objData[kv.key()] = kv.value();
 	    }
 
         // Try to write the JSON to the buffer
