@@ -9,10 +9,6 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
-<link href="navtree.css" rel="stylesheet" type="text/css"/>
-<script type="text/javascript" src="resize.js"></script>
-<script type="text/javascript" src="navtreedata.js"></script>
-<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -26,7 +22,7 @@
  <tr id="projectrow">
   <td id="projectlogo"><img alt="Logo" src="OPEnSLogo.png"/></td>
   <td id="projectalign">
-   <div id="projectname">Loom 4<span id="projectnumber">&#160;V4.0.6</span>
+   <div id="projectname">Loom 4<span id="projectnumber">&#160;V4.0.7</span>
    </div>
    <div id="projectbrief">Arduino library for Internet of Things Rapid Prototyping in environmental sensing</div>
   </td>
@@ -52,23 +48,6 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
-</div><!-- top -->
-<div id="side-nav" class="ui-resizable side-nav-resizable">
-  <div id="nav-tree">
-    <div id="nav-tree-contents">
-      <div id="nav-sync" class="sync"></div>
-    </div>
-  </div>
-  <div id="splitbar" style="-moz-user-select:none;" 
-       class="ui-resizable-handle">
-  </div>
-</div>
-<script type="text/javascript">
-/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
-$(document).ready(function(){initNavTree('class_module.html',''); initResizable(); });
-/* @license-end */
-</script>
-<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -90,6 +69,7 @@ $(document).ready(function(){initNavTree('class_module.html',''); initResizable(
 </div>
 </div>
 
+</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
@@ -104,7 +84,48 @@ $(document).ready(function(){initNavTree('class_module.html',''); initResizable(
 Inheritance diagram for Module:</div>
 <div class="dyncontent">
 <div class="center"><img src="class_module__inherit__graph.png" border="0" usemap="#a_module_inherit__map" alt="Inheritance graph"/></div>
-<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
+<map name="a_module_inherit__map" id="a_module_inherit__map">
+<area shape="rect" title=" " alt="" coords="5,868,69,893"/>
+<area shape="rect" href="class_actuator.html" title=" " alt="" coords="144,104,215,129"/>
+<area shape="rect" href="class_i2_c_device.html" title=" " alt="" coords="140,473,219,499"/>
+<area shape="rect" href="class_loom___a_d_s1232.html" title=" " alt="" coords="121,523,237,548"/>
+<area shape="rect" href="class_loom___analog.html" title=" " alt="" coords="129,572,230,597"/>
+<area shape="rect" href="class_loom___digital.html" title=" " alt="" coords="131,621,228,647"/>
+<area shape="rect" href="class_loom___ethernet.html" title=" " alt="" coords="124,671,235,696"/>
+<area shape="rect" href="class_loom___hypnos.html" title=" " alt="" coords="127,720,232,745"/>
+<area shape="rect" href="class_loom___l_t_e.html" title=" " alt="" coords="137,769,221,795"/>
+<area shape="rect" href="class_loom___m_a_x31856.html" title=" " alt="" coords="118,819,241,844"/>
+<area shape="rect" href="class_loom___m_a_x31865.html" title=" " alt="" coords="118,868,241,893"/>
+<area shape="rect" href="class_loom___m_q_t_t.html" title=" " alt="" coords="131,917,227,943"/>
+<area shape="rect" href="class_loom___max.html" title=" " alt="" coords="136,967,223,992"/>
+<area shape="rect" href="class_loom___multiplexer.html" title=" " alt="" coords="117,1016,241,1041"/>
+<area shape="rect" href="class_loom___o_l_e_d.html" title=" " alt="" coords="131,1065,227,1091"/>
+<area shape="rect" href="class_loom___s_d_i12.html" title=" " alt="" coords="131,1115,227,1140"/>
+<area shape="rect" href="class_loom___teros10.html" title=" " alt="" coords="126,1164,233,1189"/>
+<area shape="rect" href="class_loom___w_i_f_i.html" title=" " alt="" coords="135,1213,223,1239"/>
+<area shape="rect" href="class_radio.html" title=" " alt="" coords="152,1263,207,1288"/>
+<area shape="rect" href="class_s_d_manager.html" title=" " alt="" coords="134,1312,225,1337"/>
+<area shape="rect" href="class_loom___neopixel.html" title=" " alt="" coords="295,5,405,31"/>
+<area shape="rect" href="class_loom___relay.html" title=" " alt="" coords="303,55,397,80"/>
+<area shape="rect" href="class_loom___servo.html" title=" " alt="" coords="303,104,397,129"/>
+<area shape="rect" href="class_loom___stepper.html" title=" " alt="" coords="297,153,403,179"/>
+<area shape="rect" href="class_loom___a_d_s1115.html" title=" " alt="" coords="292,203,408,228"/>
+<area shape="rect" href="class_loom___a_s7262.html" title=" " alt="" coords="297,252,403,277"/>
+<area shape="rect" href="class_loom___a_s7263.html" title=" " alt="" coords="297,301,403,327"/>
+<area shape="rect" href="class_loom___a_s7265_x.html" title=" " alt="" coords="293,351,407,376"/>
+<area shape="rect" href="class_loom___k30.html" title=" " alt="" coords="308,400,392,425"/>
+<area shape="rect" href="class_loom___m_b1232.html" title=" " alt="" coords="295,449,405,475"/>
+<area shape="rect" href="class_loom___m_m_a8451.html" title=" " alt="" coords="290,499,410,524"/>
+<area shape="rect" href="class_loom___m_p_u6050.html" title=" " alt="" coords="291,548,409,573"/>
+<area shape="rect" href="class_loom___m_s5803.html" title=" " alt="" coords="295,597,405,623"/>
+<area shape="rect" href="class_loom___s_h_t31.html" title=" " alt="" coords="300,647,400,672"/>
+<area shape="rect" href="class_loom___s_t_e_m_m_a.html" title=" " alt="" coords="291,696,409,721"/>
+<area shape="rect" href="class_loom___t_s_l2591.html" title=" " alt="" coords="294,745,406,771"/>
+<area shape="rect" href="class_loom___z_x_gesture.html" title=" " alt="" coords="289,795,411,820"/>
+<area shape="rect" href="class_loom___freewave.html" title=" " alt="" coords="293,1239,407,1264"/>
+<area shape="rect" href="class_loom___lo_ra.html" title=" " alt="" coords="305,1288,395,1313"/>
+</map>
+<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
@@ -125,8 +146,7 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>printModuleNa
 <tr class="memitem:a6ef908c6e3d41c2bdc9fed98f115fa0b"><td class="memItemLeft" align="right" valign="top"><a id="a6ef908c6e3d41c2bdc9fed98f115fa0b" name="a6ef908c6e3d41c2bdc9fed98f115fa0b"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>measure</b> ()=0</td></tr>
 <tr class="separator:a6ef908c6e3d41c2bdc9fed98f115fa0b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab9563ea7f7074a5db2a9aa2fce5bf743"><td class="memItemLeft" align="right" valign="top"><a id="ab9563ea7f7074a5db2a9aa2fce5bf743" name="ab9563ea7f7074a5db2a9aa2fce5bf743"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>package</b> ()=0</td></tr>
+<tr class="memitem:ab9563ea7f7074a5db2a9aa2fce5bf743"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_module.html#ab9563ea7f7074a5db2a9aa2fce5bf743">package</a> ()=0</td></tr>
 <tr class="separator:ab9563ea7f7074a5db2a9aa2fce5bf743"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7c67f11abf3eff144e3b0aaf693c18eb"><td class="memItemLeft" align="right" valign="top"><a id="a7c67f11abf3eff144e3b0aaf693c18eb" name="a7c67f11abf3eff144e3b0aaf693c18eb"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>print_measurements</b> ()=0</td></tr>
@@ -176,6 +196,33 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>module_address</b> = -
 </div><div class="memdoc">
 
 <p>Implemented in <a class="el" href="class_loom___max.html#a02e0462b11b3f4c3a91fd7714948897e">Loom_Max</a>, <a class="el" href="class_loom___freewave.html#a408baa2ce54674452b899fc474868727">Loom_Freewave</a>, <a class="el" href="class_loom___lo_ra.html#a2bcd5e3e9830d8b0c17cca75439b60f3">Loom_LoRa</a>, and <a class="el" href="class_loom___m_s5803.html#a5ecc8f5f3fe0c1dd505cb29c27406114">Loom_MS5803</a>.</p>
+
+</div>
+</div>
+<a id="ab9563ea7f7074a5db2a9aa2fce5bf743" name="ab9563ea7f7074a5db2a9aa2fce5bf743"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab9563ea7f7074a5db2a9aa2fce5bf743">&#9670;&#160;</a></span>package()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void Module::package </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">pure virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Implemented in <a class="el" href="class_loom___freewave.html#a3e19b0017e74d4804eba7a268dd8456e">Loom_Freewave</a>, and <a class="el" href="class_loom___lo_ra.html#ac4058e32c1c1c292b87253b75dfa0a54">Loom_LoRa</a>.</p>
 
 </div>
 </div>
@@ -234,16 +281,12 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>module_address</b> = -
 </div>
 </div>
 <hr/>The documentation for this class was generated from the following file:<ul>
-<li>C:/Users/Will/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.0.6/libraries/Loom/src/<a class="el" href="_module_8h_source.html">Module.h</a></li>
+<li>C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.1/libraries/Loom/src/<a class="el" href="_module_8h_source.html">Module.h</a></li>
 </ul>
 </div><!-- contents -->
-</div><!-- doc-content -->
 <!-- start footer part -->
-<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
-  <ul>
-    <li class="navelem"><a class="el" href="class_module.html">Module</a></li>
-    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.5 </li>
-  </ul>
-</div>
+<hr class="footer"/><address class="footer"><small>
+Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.5
+</small></address>
 </body>
 </html>

@@ -9,10 +9,6 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
-<link href="navtree.css" rel="stylesheet" type="text/css"/>
-<script type="text/javascript" src="resize.js"></script>
-<script type="text/javascript" src="navtreedata.js"></script>
-<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -26,7 +22,7 @@
  <tr id="projectrow">
   <td id="projectlogo"><img alt="Logo" src="OPEnSLogo.png"/></td>
   <td id="projectalign">
-   <div id="projectname">Loom 4<span id="projectnumber">&#160;V4.0.6</span>
+   <div id="projectname">Loom 4<span id="projectnumber">&#160;V4.0.7</span>
    </div>
    <div id="projectbrief">Arduino library for Internet of Things Rapid Prototyping in environmental sensing</div>
   </td>
@@ -52,23 +48,6 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
-</div><!-- top -->
-<div id="side-nav" class="ui-resizable side-nav-resizable">
-  <div id="nav-tree">
-    <div id="nav-tree-contents">
-      <div id="nav-sync" class="sync"></div>
-    </div>
-  </div>
-  <div id="splitbar" style="-moz-user-select:none;" 
-       class="ui-resizable-handle">
-  </div>
-</div>
-<script type="text/javascript">
-/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
-$(document).ready(function(){initNavTree('class_loom___m_s5803.html',''); initResizable(); });
-/* @license-end */
-</script>
-<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -90,6 +69,7 @@ $(document).ready(function(){initNavTree('class_loom___m_s5803.html',''); initRe
 </div>
 </div>
 
+</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
@@ -104,12 +84,22 @@ $(document).ready(function(){initNavTree('class_loom___m_s5803.html',''); initRe
 Inheritance diagram for Loom_MS5803:</div>
 <div class="dyncontent">
 <div class="center"><img src="class_loom___m_s5803__inherit__graph.png" border="0" usemap="#a_loom___m_s5803_inherit__map" alt="Inheritance graph"/></div>
-<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
+<map name="a_loom___m_s5803_inherit__map" id="a_loom___m_s5803_inherit__map">
+<area shape="rect" title=" " alt="" coords="5,152,115,177"/>
+<area shape="rect" href="class_i2_c_device.html" title=" " alt="" coords="21,79,99,104"/>
+<area shape="rect" href="class_module.html" title=" " alt="" coords="28,5,92,31"/>
+</map>
+<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
 <div class="dynheader">
 Collaboration diagram for Loom_MS5803:</div>
 <div class="dyncontent">
 <div class="center"><img src="class_loom___m_s5803__coll__graph.png" border="0" usemap="#a_loom___m_s5803_coll__map" alt="Collaboration graph"/></div>
-<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
+<map name="a_loom___m_s5803_coll__map" id="a_loom___m_s5803_coll__map">
+<area shape="rect" title=" " alt="" coords="5,152,115,177"/>
+<area shape="rect" href="class_i2_c_device.html" title=" " alt="" coords="21,79,99,104"/>
+<area shape="rect" href="class_module.html" title=" " alt="" coords="28,5,92,31"/>
+</map>
+<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
@@ -119,13 +109,22 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a6c776fb6cb23d626cf5d6e3094c443a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6ed46a7a9c73ba7b3c2b1b34ad2c27fb"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___m_s5803.html#a6ed46a7a9c73ba7b3c2b1b34ad2c27fb">package</a> () override</td></tr>
 <tr class="separator:a6ed46a7a9c73ba7b3c2b1b34ad2c27fb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa1df3cbb64bfed954066b9f34467d2c1"><td class="memItemLeft" align="right" valign="top"><a id="aa1df3cbb64bfed954066b9f34467d2c1" name="aa1df3cbb64bfed954066b9f34467d2c1"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>Loom_MS5803</b> (<a class="el" href="class_manager.html">Manager</a> &amp;man, byte address=0x77)</td></tr>
-<tr class="separator:aa1df3cbb64bfed954066b9f34467d2c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a93db9fa7fd093d1108c3b883acdcabaf"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___m_s5803.html#a93db9fa7fd093d1108c3b883acdcabaf">power_up</a> () override</td></tr>
+<tr class="separator:a93db9fa7fd093d1108c3b883acdcabaf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af301f12c68862ab6b573e14ccf4959ca"><td class="memItemLeft" align="right" valign="top"><a id="af301f12c68862ab6b573e14ccf4959ca" name="af301f12c68862ab6b573e14ccf4959ca"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>Loom_MS5803</b> (<a class="el" href="class_manager.html">Manager</a> &amp;man, byte address=0x77, bool useMux=false)</td></tr>
+<tr class="separator:af301f12c68862ab6b573e14ccf4959ca"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a265b0029066085434d563d6f9a2ba197"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___m_s5803.html#a265b0029066085434d563d6f9a2ba197">getTemperature</a> ()</td></tr>
 <tr class="separator:a265b0029066085434d563d6f9a2ba197"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad87d57d41fc67a0f747b5c9e97254df8"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___m_s5803.html#ad87d57d41fc67a0f747b5c9e97254df8">getPressure</a> ()</td></tr>
 <tr class="separator:ad87d57d41fc67a0f747b5c9e97254df8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header pub_methods_class_i2_c_device"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_class_i2_c_device')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="class_i2_c_device.html">I2CDevice</a></td></tr>
+<tr class="memitem:ae08f9b6bee522a60f8c0fb07ef164111 inherit pub_methods_class_i2_c_device"><td class="memItemLeft" align="right" valign="top"><a id="ae08f9b6bee522a60f8c0fb07ef164111" name="ae08f9b6bee522a60f8c0fb07ef164111"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>I2CDevice</b> (String modName)</td></tr>
+<tr class="separator:ae08f9b6bee522a60f8c0fb07ef164111 inherit pub_methods_class_i2_c_device"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae262758360dfe17fd69edc07191f00fa inherit pub_methods_class_i2_c_device"><td class="memItemLeft" align="right" valign="top"><a id="ae262758360dfe17fd69edc07191f00fa" name="ae262758360dfe17fd69edc07191f00fa"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>checkDeviceConnection</b> ()</td></tr>
+<tr class="separator:ae262758360dfe17fd69edc07191f00fa inherit pub_methods_class_i2_c_device"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_class_module"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_class_module')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="class_module.html">Module</a></td></tr>
 <tr class="memitem:ac8de3716f32f910381f03d2a681a7110 inherit pub_methods_class_module"><td class="memItemLeft" align="right" valign="top"><a id="ac8de3716f32f910381f03d2a681a7110" name="ac8de3716f32f910381f03d2a681a7110"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>Module</b> (String modName)</td></tr>
@@ -144,8 +143,7 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>printModuleNa
 <tr class="memitem:a6ef908c6e3d41c2bdc9fed98f115fa0b inherit pub_methods_class_module"><td class="memItemLeft" align="right" valign="top"><a id="a6ef908c6e3d41c2bdc9fed98f115fa0b" name="a6ef908c6e3d41c2bdc9fed98f115fa0b"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>measure</b> ()=0</td></tr>
 <tr class="separator:a6ef908c6e3d41c2bdc9fed98f115fa0b inherit pub_methods_class_module"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab9563ea7f7074a5db2a9aa2fce5bf743 inherit pub_methods_class_module"><td class="memItemLeft" align="right" valign="top"><a id="ab9563ea7f7074a5db2a9aa2fce5bf743" name="ab9563ea7f7074a5db2a9aa2fce5bf743"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>package</b> ()=0</td></tr>
+<tr class="memitem:ab9563ea7f7074a5db2a9aa2fce5bf743 inherit pub_methods_class_module"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_module.html#ab9563ea7f7074a5db2a9aa2fce5bf743">package</a> ()=0</td></tr>
 <tr class="separator:ab9563ea7f7074a5db2a9aa2fce5bf743 inherit pub_methods_class_module"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7c67f11abf3eff144e3b0aaf693c18eb inherit pub_methods_class_module"><td class="memItemLeft" align="right" valign="top"><a id="a7c67f11abf3eff144e3b0aaf693c18eb" name="a7c67f11abf3eff144e3b0aaf693c18eb"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>print_measurements</b> ()=0</td></tr>
@@ -162,13 +160,15 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>display_data<
 Protected Member Functions</h2></td></tr>
 <tr class="memitem:a42377c2d534e6776e53b425dcae873f2"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___m_s5803.html#a42377c2d534e6776e53b425dcae873f2">print_measurements</a> () override</td></tr>
 <tr class="separator:a42377c2d534e6776e53b425dcae873f2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a93db9fa7fd093d1108c3b883acdcabaf"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___m_s5803.html#a93db9fa7fd093d1108c3b883acdcabaf">power_up</a> () override</td></tr>
-<tr class="separator:a93db9fa7fd093d1108c3b883acdcabaf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a707ed95b4e0287d2bf96940910eedc64"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___m_s5803.html#a707ed95b4e0287d2bf96940910eedc64">power_down</a> () override</td></tr>
 <tr class="separator:a707ed95b4e0287d2bf96940910eedc64"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="inherited" name="inherited"></a>
 Additional Inherited Members</h2></td></tr>
+<tr class="inherit_header pub_attribs_class_i2_c_device"><td colspan="2" onclick="javascript:toggleInherit('pub_attribs_class_i2_c_device')"><img src="closed.png" alt="-"/>&#160;Public Attributes inherited from <a class="el" href="class_i2_c_device.html">I2CDevice</a></td></tr>
+<tr class="memitem:a24d31f0e122cf3ac73c79fa26c0319ed inherit pub_attribs_class_i2_c_device"><td class="memItemLeft" align="right" valign="top"><a id="a24d31f0e122cf3ac73c79fa26c0319ed" name="a24d31f0e122cf3ac73c79fa26c0319ed"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>needsReinit</b> = false</td></tr>
+<tr class="separator:a24d31f0e122cf3ac73c79fa26c0319ed inherit pub_attribs_class_i2_c_device"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_attribs_class_module"><td colspan="2" onclick="javascript:toggleInherit('pub_attribs_class_module')"><img src="closed.png" alt="-"/>&#160;Public Attributes inherited from <a class="el" href="class_module.html">Module</a></td></tr>
 <tr class="memitem:a4391e2c262bad52741c556d8f609cbff inherit pub_attribs_class_module"><td class="memItemLeft" align="right" valign="top"><a id="a4391e2c262bad52741c556d8f609cbff" name="a4391e2c262bad52741c556d8f609cbff"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>moduleInitialized</b> = true</td></tr>
@@ -360,7 +360,7 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>module_address</b> = -
       </table>
   </td>
   <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">override</span><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+<span class="mlabels"><span class="mlabel">override</span><span class="mlabel">virtual</span></span>  </td>
   </tr>
 </table>
 </div><div class="memdoc">
@@ -397,17 +397,13 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>module_address</b> = -
 </div>
 </div>
 <hr/>The documentation for this class was generated from the following files:<ul>
-<li>C:/Users/Will/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.0.6/libraries/Loom/src/Sensors/I2C/Loom_MS5803/<a class="el" href="_loom___m_s5803_8h_source.html">Loom_MS5803.h</a></li>
-<li>C:/Users/Will/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.0.6/libraries/Loom/src/Sensors/I2C/Loom_MS5803/Loom_MS5803.cpp</li>
+<li>C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.1/libraries/Loom/src/Sensors/I2C/Loom_MS5803/<a class="el" href="_loom___m_s5803_8h_source.html">Loom_MS5803.h</a></li>
+<li>C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.1/libraries/Loom/src/Sensors/I2C/Loom_MS5803/Loom_MS5803.cpp</li>
 </ul>
 </div><!-- contents -->
-</div><!-- doc-content -->
 <!-- start footer part -->
-<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
-  <ul>
-    <li class="navelem"><a class="el" href="class_loom___m_s5803.html">Loom_MS5803</a></li>
-    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.5 </li>
-  </ul>
-</div>
+<hr class="footer"/><address class="footer"><small>
+Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.5
+</small></address>
 </body>
 </html>

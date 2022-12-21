@@ -152,24 +152,22 @@ class Manager{
     private:
 
         /* Device Information */
-        String deviceName;                   // Name of the device
-        uint32_t instanceNumber;             // Instance number of the device
-        uint32_t packetNumber = 1;           // Tracks the current packet number
+        String deviceName;                                      // Name of the device
+        uint32_t instanceNumber;                                // Instance number of the device
+        uint32_t packetNumber = 1;                              // Tracks the current packet number
         String serial_num;
 
-        void read_serial_num();              // Read the serial number out of the feather's registers
+        void read_serial_num();                                 // Read the serial number out of the feather's registers
 
         /* Module Data */
-        StaticJsonDocument<2000> doc;        // JSON document that will store all sensor information
-        JsonArray contentsArray;             // Stores the contents of the modules
-        //std::unordered_map<String, Module*> modules;   // Map of modules that maps the module name to the module object
+        StaticJsonDocument<2000> doc;                           // JSON document that will store all sensor information
+        JsonArray contentsArray;                                // Stores the contents of the modules
         std::vector<std::pair<String, Module*>> modules;        // List of modules that have been added to the stack
 
         /* Validation */
-        bool hasInitialized = false;         // Whether or not the initialize function has been called, if not it could be the source of hanging so we want to know
-
-        bool usingHypnos = false;            // If the setup is using a hypnos
-        bool hypnosEnabled = false;          // If the power rails on the hypnos are enabled this means we should be able to initialize
+        bool hasInitialized = false;                            // Whether or not the initialize function has been called, if not it could be the source of hanging so we want to know
+        bool usingHypnos = false;                               // If the setup is using a hypnos
+        bool hypnosEnabled = false;                             // If the power rails on the hypnos are enabled this means we should be able to initialize
 
        
 };

@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['position_0',['Position',['../struct_loom___z_x_gesture_1_1_position.html',1,'Loom_ZXGesture']]]
+  ['manager_0',['Manager',['../class_manager.html',1,'']]],
+  ['module_1',['Module',['../class_module.html',1,'']]]
 ];

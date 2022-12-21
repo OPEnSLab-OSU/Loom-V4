@@ -6,7 +6,7 @@ Loom_MMA8451::Loom_MMA8451(
                         int addr,
                         bool useMux,
                         mma8451_range_t range  
-                    ) : Module("MMA8451"), manInst(&man), address(addr), range(range) {
+                    ) : I2CDevice("MMA8451"), manInst(&man), address(addr), range(range) {
                         module_address = addr;
                         
                         // Register the module with the manager

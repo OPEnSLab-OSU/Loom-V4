@@ -2,7 +2,7 @@
 
 #include <Wire.h>
 
-#include "Module.h"
+#include "../I2CDevice.h"
 #include "Loom_Manager.h"
 
 #define RangeCommand    		0x51	///< The Sensor ranging command has a value of 0x51
@@ -14,7 +14,7 @@
  * 
  * @author Will Richards
  */ 
-class Loom_MB1232 : public Module{
+class Loom_MB1232 : public I2CDevice{
     protected:
         void power_up() override {};
         void power_down() override {}; 

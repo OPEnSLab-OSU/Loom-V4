@@ -9,10 +9,6 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
-<link href="navtree.css" rel="stylesheet" type="text/css"/>
-<script type="text/javascript" src="resize.js"></script>
-<script type="text/javascript" src="navtreedata.js"></script>
-<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -26,7 +22,7 @@
  <tr id="projectrow">
   <td id="projectlogo"><img alt="Logo" src="OPEnSLogo.png"/></td>
   <td id="projectalign">
-   <div id="projectname">Loom 4<span id="projectnumber">&#160;V4.0.6</span>
+   <div id="projectname">Loom 4<span id="projectnumber">&#160;V4.0.7</span>
    </div>
    <div id="projectbrief">Arduino library for Internet of Things Rapid Prototyping in environmental sensing</div>
   </td>
@@ -53,22 +49,6 @@ $(function() {
 </script>
 <div id="main-nav"></div>
 </div><!-- top -->
-<div id="side-nav" class="ui-resizable side-nav-resizable">
-  <div id="nav-tree">
-    <div id="nav-tree-contents">
-      <div id="nav-sync" class="sync"></div>
-    </div>
-  </div>
-  <div id="splitbar" style="-moz-user-select:none;" 
-       class="ui-resizable-handle">
-  </div>
-</div>
-<script type="text/javascript">
-/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
-$(document).ready(function(){initNavTree('annotated.html',''); initResizable(); });
-/* @license-end */
-</script>
-<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -97,55 +77,55 @@ $(document).ready(function(){initNavTree('annotated.html',''); initResizable(); 
 <div class="textblock">Here are the classes, structs, unions and interfaces with brief descriptions:</div><div class="directory">
 <div class="levels">[detail level <span onclick="javascript:toggleLevel(1);">1</span><span onclick="javascript:toggleLevel(2);">2</span>]</div><table class="directory">
 <tr id="row_0_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_actuator.html" target="_self">Actuator</a></td><td class="desc"></td></tr>
-<tr id="row_1_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___a_d_s1115.html" target="_self">Loom_ADS1115</a></td><td class="desc"></td></tr>
-<tr id="row_2_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___a_d_s1232.html" target="_self">Loom_ADS1232</a></td><td class="desc"></td></tr>
-<tr id="row_3_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___analog.html" target="_self">Loom_Analog</a></td><td class="desc"></td></tr>
-<tr id="row_4_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___a_s7262.html" target="_self">Loom_AS7262</a></td><td class="desc"></td></tr>
-<tr id="row_5_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___a_s7263.html" target="_self">Loom_AS7263</a></td><td class="desc"></td></tr>
-<tr id="row_6_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___a_s7265_x.html" target="_self">Loom_AS7265X</a></td><td class="desc"></td></tr>
-<tr id="row_7_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___batch_s_d.html" target="_self">Loom_BatchSD</a></td><td class="desc"></td></tr>
-<tr id="row_8_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___digital.html" target="_self">Loom_Digital</a></td><td class="desc"></td></tr>
-<tr id="row_9_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___ethernet.html" target="_self">Loom_Ethernet</a></td><td class="desc"></td></tr>
-<tr id="row_10_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___freewave.html" target="_self">Loom_Freewave</a></td><td class="desc"></td></tr>
-<tr id="row_11_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___hypnos.html" target="_self">Loom_Hypnos</a></td><td class="desc"></td></tr>
-<tr id="row_12_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___k30.html" target="_self">Loom_K30</a></td><td class="desc"></td></tr>
-<tr id="row_13_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___lo_ra.html" target="_self">Loom_LoRa</a></td><td class="desc"></td></tr>
-<tr id="row_14_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___l_t_e.html" target="_self">Loom_LTE</a></td><td class="desc"></td></tr>
-<tr id="row_15_" class="odd"><td class="entry"><span style="width:0px;display:inline-block;">&#160;</span><span id="arr_15_" class="arrow" onclick="toggleFolder('15_')">&#9660;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___max.html" target="_self">Loom_Max</a></td><td class="desc"></td></tr>
-<tr id="row_15_0_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="struct_loom___max_1_1_u_d_p_deletor.html" target="_self">UDPDeletor</a></td><td class="desc">Close the socket and delete the UDP object when the unique ptr dissapears </td></tr>
-<tr id="row_16_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___m_a_x31856.html" target="_self">Loom_MAX31856</a></td><td class="desc"></td></tr>
-<tr id="row_17_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___m_a_x31865.html" target="_self">Loom_MAX31865</a></td><td class="desc"></td></tr>
-<tr id="row_18_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___m_b1232.html" target="_self">Loom_MB1232</a></td><td class="desc"></td></tr>
-<tr id="row_19_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___m_m_a8451.html" target="_self">Loom_MMA8451</a></td><td class="desc"></td></tr>
-<tr id="row_20_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___m_p_u6050.html" target="_self">Loom_MPU6050</a></td><td class="desc"></td></tr>
-<tr id="row_21_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___m_q_t_t.html" target="_self">Loom_MQTT</a></td><td class="desc"></td></tr>
-<tr id="row_22_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___m_s5803.html" target="_self">Loom_MS5803</a></td><td class="desc"></td></tr>
-<tr id="row_23_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___multiplexer.html" target="_self">Loom_Multiplexer</a></td><td class="desc"></td></tr>
-<tr id="row_24_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___neopixel.html" target="_self">Loom_Neopixel</a></td><td class="desc"></td></tr>
-<tr id="row_25_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___o_l_e_d.html" target="_self">Loom_OLED</a></td><td class="desc"></td></tr>
-<tr id="row_26_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___relay.html" target="_self">Loom_Relay</a></td><td class="desc"></td></tr>
-<tr id="row_27_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___s_d_i12.html" target="_self">Loom_SDI12</a></td><td class="desc"></td></tr>
-<tr id="row_28_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___servo.html" target="_self">Loom_Servo</a></td><td class="desc"></td></tr>
-<tr id="row_29_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___s_h_t31.html" target="_self">Loom_SHT31</a></td><td class="desc"></td></tr>
-<tr id="row_30_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___s_t_e_m_m_a.html" target="_self">Loom_STEMMA</a></td><td class="desc"></td></tr>
-<tr id="row_31_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___stepper.html" target="_self">Loom_Stepper</a></td><td class="desc"></td></tr>
-<tr id="row_32_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___t_s_l2591.html" target="_self">Loom_TSL2591</a></td><td class="desc"></td></tr>
-<tr id="row_33_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___w_i_f_i.html" target="_self">Loom_WIFI</a></td><td class="desc"></td></tr>
-<tr id="row_34_" class="odd"><td class="entry"><span style="width:0px;display:inline-block;">&#160;</span><span id="arr_34_" class="arrow" onclick="toggleFolder('34_')">&#9660;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___z_x_gesture.html" target="_self">Loom_ZXGesture</a></td><td class="desc"></td></tr>
-<tr id="row_34_0_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="struct_loom___z_x_gesture_1_1_position.html" target="_self">Position</a></td><td class="desc"></td></tr>
-<tr id="row_35_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_manager.html" target="_self">Manager</a></td><td class="desc"></td></tr>
-<tr id="row_36_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_module.html" target="_self">Module</a></td><td class="desc"></td></tr>
-<tr id="row_37_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_radio.html" target="_self">Radio</a></td><td class="desc"></td></tr>
-<tr id="row_38_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_s_d_manager.html" target="_self">SDManager</a></td><td class="desc"></td></tr>
+<tr id="row_1_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_i2_c_device.html" target="_self">I2CDevice</a></td><td class="desc"></td></tr>
+<tr id="row_2_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___a_d_s1115.html" target="_self">Loom_ADS1115</a></td><td class="desc"></td></tr>
+<tr id="row_3_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___a_d_s1232.html" target="_self">Loom_ADS1232</a></td><td class="desc"></td></tr>
+<tr id="row_4_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___analog.html" target="_self">Loom_Analog</a></td><td class="desc"></td></tr>
+<tr id="row_5_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___a_s7262.html" target="_self">Loom_AS7262</a></td><td class="desc"></td></tr>
+<tr id="row_6_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___a_s7263.html" target="_self">Loom_AS7263</a></td><td class="desc"></td></tr>
+<tr id="row_7_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___a_s7265_x.html" target="_self">Loom_AS7265X</a></td><td class="desc"></td></tr>
+<tr id="row_8_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___batch_s_d.html" target="_self">Loom_BatchSD</a></td><td class="desc"></td></tr>
+<tr id="row_9_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___digital.html" target="_self">Loom_Digital</a></td><td class="desc"></td></tr>
+<tr id="row_10_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___ethernet.html" target="_self">Loom_Ethernet</a></td><td class="desc"></td></tr>
+<tr id="row_11_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___freewave.html" target="_self">Loom_Freewave</a></td><td class="desc"></td></tr>
+<tr id="row_12_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___hypnos.html" target="_self">Loom_Hypnos</a></td><td class="desc"></td></tr>
+<tr id="row_13_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___k30.html" target="_self">Loom_K30</a></td><td class="desc"></td></tr>
+<tr id="row_14_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___lo_ra.html" target="_self">Loom_LoRa</a></td><td class="desc"></td></tr>
+<tr id="row_15_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___l_t_e.html" target="_self">Loom_LTE</a></td><td class="desc"></td></tr>
+<tr id="row_16_" class="even"><td class="entry"><span style="width:0px;display:inline-block;">&#160;</span><span id="arr_16_" class="arrow" onclick="toggleFolder('16_')">&#9660;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___max.html" target="_self">Loom_Max</a></td><td class="desc"></td></tr>
+<tr id="row_16_0_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="struct_loom___max_1_1_u_d_p_deletor.html" target="_self">UDPDeletor</a></td><td class="desc">Close the socket and delete the UDP object when the unique ptr dissapears </td></tr>
+<tr id="row_17_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___m_a_x31856.html" target="_self">Loom_MAX31856</a></td><td class="desc"></td></tr>
+<tr id="row_18_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___m_a_x31865.html" target="_self">Loom_MAX31865</a></td><td class="desc"></td></tr>
+<tr id="row_19_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___m_b1232.html" target="_self">Loom_MB1232</a></td><td class="desc"></td></tr>
+<tr id="row_20_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___m_m_a8451.html" target="_self">Loom_MMA8451</a></td><td class="desc"></td></tr>
+<tr id="row_21_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___m_p_u6050.html" target="_self">Loom_MPU6050</a></td><td class="desc"></td></tr>
+<tr id="row_22_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___m_q_t_t.html" target="_self">Loom_MQTT</a></td><td class="desc"></td></tr>
+<tr id="row_23_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___m_s5803.html" target="_self">Loom_MS5803</a></td><td class="desc"></td></tr>
+<tr id="row_24_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___multiplexer.html" target="_self">Loom_Multiplexer</a></td><td class="desc"></td></tr>
+<tr id="row_25_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___neopixel.html" target="_self">Loom_Neopixel</a></td><td class="desc"></td></tr>
+<tr id="row_26_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___o_l_e_d.html" target="_self">Loom_OLED</a></td><td class="desc"></td></tr>
+<tr id="row_27_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___relay.html" target="_self">Loom_Relay</a></td><td class="desc"></td></tr>
+<tr id="row_28_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___s_d_i12.html" target="_self">Loom_SDI12</a></td><td class="desc"></td></tr>
+<tr id="row_29_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___servo.html" target="_self">Loom_Servo</a></td><td class="desc"></td></tr>
+<tr id="row_30_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___s_h_t31.html" target="_self">Loom_SHT31</a></td><td class="desc"></td></tr>
+<tr id="row_31_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___s_t_e_m_m_a.html" target="_self">Loom_STEMMA</a></td><td class="desc"></td></tr>
+<tr id="row_32_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___stepper.html" target="_self">Loom_Stepper</a></td><td class="desc"></td></tr>
+<tr id="row_33_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___teros10.html" target="_self">Loom_Teros10</a></td><td class="desc"></td></tr>
+<tr id="row_34_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___t_s_l2591.html" target="_self">Loom_TSL2591</a></td><td class="desc"></td></tr>
+<tr id="row_35_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___w_i_f_i.html" target="_self">Loom_WIFI</a></td><td class="desc"></td></tr>
+<tr id="row_36_" class="odd"><td class="entry"><span style="width:0px;display:inline-block;">&#160;</span><span id="arr_36_" class="arrow" onclick="toggleFolder('36_')">&#9660;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_loom___z_x_gesture.html" target="_self">Loom_ZXGesture</a></td><td class="desc"></td></tr>
+<tr id="row_36_0_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="struct_loom___z_x_gesture_1_1_position.html" target="_self">Position</a></td><td class="desc"></td></tr>
+<tr id="row_37_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_manager.html" target="_self">Manager</a></td><td class="desc"></td></tr>
+<tr id="row_38_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_module.html" target="_self">Module</a></td><td class="desc"></td></tr>
+<tr id="row_39_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_radio.html" target="_self">Radio</a></td><td class="desc"></td></tr>
+<tr id="row_40_" class="even"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="class_s_d_manager.html" target="_self">SDManager</a></td><td class="desc"></td></tr>
+<tr id="row_41_" class="odd"><td class="entry"><span style="width:16px;display:inline-block;">&#160;</span><span class="icona"><span class="icon">C</span></span><a class="el" href="struct_wifi_info.html" target="_self">WifiInfo</a></td><td class="desc"></td></tr>
 </table>
 </div><!-- directory -->
 </div><!-- contents -->
-</div><!-- doc-content -->
 <!-- start footer part -->
-<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
-  <ul>
-    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.5 </li>
-  </ul>
-</div>
+<hr class="footer"/><address class="footer"><small>
+Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.5
+</small></address>
 </body>
 </html>

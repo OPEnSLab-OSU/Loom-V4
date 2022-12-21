@@ -3,7 +3,7 @@
 #include <Adafruit_TSL2591.h>
 #include <Adafruit_Sensor.h>
 
-#include "Module.h"
+#include "../I2CDevice.h"
 #include "Loom_Manager.h"
 
 /**
@@ -11,7 +11,7 @@
  * 
  * @author Will Richards
  */ 
-class Loom_TSL2591 : public Module{
+class Loom_TSL2591 : public I2CDevice{
     protected:
        
        // Manager controlled functions

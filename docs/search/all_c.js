@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['package_0',['package',['../class_manager.html#a78fe36ccbe1c79d37054c83e42599706',1,'Manager']]],
+  ['package_0',['package',['../class_manager.html#a78fe36ccbe1c79d37054c83e42599706',1,'Manager::package()'],['../class_loom___freewave.html#a3e19b0017e74d4804eba7a268dd8456e',1,'Loom_Freewave::package()'],['../class_loom___lo_ra.html#ac4058e32c1c1c292b87253b75dfa0a54',1,'Loom_LoRa::package()']]],
   ['pause_1',['pause',['../class_manager.html#af10eb1e6f2cc00cc9026516ed96fee02',1,'Manager']]],
   ['position_2',['Position',['../struct_loom___z_x_gesture_1_1_position.html',1,'Loom_ZXGesture']]],
   ['power_5fdown_3',['power_down',['../class_manager.html#a855325a3bd12d5d1275397c82cc497b7',1,'Manager::power_down()'],['../class_loom___freewave.html#ac069ad4c8e7d7e464d7d9437173c327a',1,'Loom_Freewave::power_down()'],['../class_loom___lo_ra.html#a28c3103ea9024475f152e7585cc462df',1,'Loom_LoRa::power_down()']]],

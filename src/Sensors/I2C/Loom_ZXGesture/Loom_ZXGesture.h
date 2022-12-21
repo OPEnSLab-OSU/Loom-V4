@@ -2,7 +2,7 @@
 
 #include <ZX_Sensor.h>
 
-#include "Module.h"
+#include "../I2CDevice.h"
 #include "Loom_Manager.h"
 
 /**
@@ -10,7 +10,7 @@
  * 
  * @author Will Richards
  */ 
-class Loom_ZXGesture : public Module{
+class Loom_ZXGesture : public I2CDevice{
     protected:
 
         void power_up() override {};

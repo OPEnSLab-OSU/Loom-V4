@@ -169,6 +169,10 @@ bool Loom_LoRa::receivePartial(uint waitTime){
                 recvStatus = manager->recvfromAckTimeout((uint8_t*)buffer, &len, waitTime, &fromAddress);
             }
 
+            for(int i = 0; i < maxMessageLength; i++){
+                Serial.print((char)buffer[i]);
+            }
+
             // If a packet was received 
             if(recvStatus){
                 printModuleName(); Serial.println("Fragment received " + String(i+1) + " / " + String(numPackets));
@@ -291,8 +295,8 @@ bool Loom_LoRa::sendModules(JsonObject json, const uint8_t destinationAddress){
         JsonArray objContents = obj.createNestedArray("contents");
 
         // Create a data object for each content
-        JsonObject objData = objContents[0].createNestedObject("data");
         objContents[0]["module"] = json["contents"][i]["module"];
+        JsonObject objData = objContents[0].createNestedObject("data");
         
         // Get each piece of data that the module had
         JsonObject old_data = json["contents"][i]["data"];

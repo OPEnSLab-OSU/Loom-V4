@@ -5,14 +5,10 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.5"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Loom 4: C:/Users/Will/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.0.6/libraries/Loom/src/Sensors/I2C/Loom_K30/Loom_K30.h Source File</title>
+<title>Loom 4: C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.1/libraries/Loom/src/Sensors/I2C/Loom_K30/Loom_K30.h Source File</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
-<link href="navtree.css" rel="stylesheet" type="text/css"/>
-<script type="text/javascript" src="resize.js"></script>
-<script type="text/javascript" src="navtreedata.js"></script>
-<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -26,7 +22,7 @@
  <tr id="projectrow">
   <td id="projectlogo"><img alt="Logo" src="OPEnSLogo.png"/></td>
   <td id="projectalign">
-   <div id="projectname">Loom 4<span id="projectnumber">&#160;V4.0.6</span>
+   <div id="projectname">Loom 4<span id="projectnumber">&#160;V4.0.7</span>
    </div>
    <div id="projectbrief">Arduino library for Internet of Things Rapid Prototyping in environmental sensing</div>
   </td>
@@ -52,23 +48,6 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
-</div><!-- top -->
-<div id="side-nav" class="ui-resizable side-nav-resizable">
-  <div id="nav-tree">
-    <div id="nav-tree-contents">
-      <div id="nav-sync" class="sync"></div>
-    </div>
-  </div>
-  <div id="splitbar" style="-moz-user-select:none;" 
-       class="ui-resizable-handle">
-  </div>
-</div>
-<script type="text/javascript">
-/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
-$(document).ready(function(){initNavTree('_loom___k30_8h_source.html',''); initResizable(); });
-/* @license-end */
-</script>
-<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -90,6 +69,11 @@ $(document).ready(function(){initNavTree('_loom___k30_8h_source.html',''); initR
 </div>
 </div>
 
+<div id="nav-path" class="navpath">
+  <ul>
+<li class="navelem"><a class="el" href="dir_6ee4b6940993f1d96fed89d0689c4fb4.html">AppData</a></li><li class="navelem"><a class="el" href="dir_f394ec1e447942e556e794b67308cbd2.html">Local</a></li><li class="navelem"><a class="el" href="dir_c11a3b8e9600d73dba24763eaf73d086.html">Arduino15</a></li><li class="navelem"><a class="el" href="dir_686e5a742523f6c2e406ce3138607834.html">packages</a></li><li class="navelem"><a class="el" href="dir_9e729aa3d3d908b6243f8ba5111e3297.html">loom4</a></li><li class="navelem"><a class="el" href="dir_8647139c151abecbbe73d291d6cda9bb.html">hardware</a></li><li class="navelem"><a class="el" href="dir_c64b423dcc94659d410f7d3eca36d7a9.html">samd</a></li><li class="navelem"><a class="el" href="dir_ae74f9d611b5b28cff189f386f984ef8.html">4.1</a></li><li class="navelem"><a class="el" href="dir_5b07f7c54480940db2a192be310fbb99.html">libraries</a></li><li class="navelem"><a class="el" href="dir_567dd0aa6b2c1a082a7de74bc3cbbd34.html">Loom</a></li><li class="navelem"><a class="el" href="dir_8dd662a0542eff3750cbe60ef91608e8.html">src</a></li><li class="navelem"><a class="el" href="dir_4004860eb1a85e8050d1e439c3966aac.html">Sensors</a></li><li class="navelem"><a class="el" href="dir_d62f84927fcac143f6b7f8042c3d7004.html">I2C</a></li><li class="navelem"><a class="el" href="dir_76deadb06eea6955b13b5c7c9ea790ee.html">Loom_K30</a></li>  </ul>
+</div>
+</div><!-- top -->
 <div class="header">
   <div class="headertitle"><div class="title">Loom_K30.h</div></div>
 </div><!--header-->
@@ -100,81 +84,57 @@ $(document).ready(function(){initNavTree('_loom___k30_8h_source.html',''); initR
 <div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span><span class="preprocessor">#include &quot;wiring_private.h&quot;</span></div>
 <div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span> </div>
 <div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span><span class="preprocessor">#include &quot;Loom_Manager.h&quot;</span></div>
-<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="preprocessor">#include &quot;Module.h&quot;</span></div>
+<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="preprocessor">#include &quot;../I2CDevice.h&quot;</span></div>
 <div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span> </div>
-<div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span><span class="keyword">enum</span> CommType{</div>
-<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span>    I2C,</div>
-<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span>    SERIAL_MODE</div>
-<div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span>};</div>
-<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span> </div>
-<div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span> </div>
-<div class="line"><a id="l00021" name="l00021"></a><span class="lineno"><a class="line" href="class_loom___k30.html">   21</a></span><span class="keyword">class </span><a class="code hl_class" href="class_loom___k30.html">Loom_K30</a> : <span class="keyword">public</span> <a class="code hl_class" href="class_module.html">Module</a>{</div>
-<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span>    <span class="keyword">protected</span>:</div>
-<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span>        <span class="keywordtype">void</span> power_up()<span class="keyword"> override </span>{};</div>
-<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span>        <span class="keywordtype">void</span> power_down()<span class="keyword"> override </span>{}; </div>
-<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span>        <span class="keywordtype">void</span> print_measurements()<span class="keyword"> override </span>{};</div>
-<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span>       </div>
-<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span>        <span class="comment">// Manager controlled functions</span></div>
-<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span>        <span class="keywordtype">void</span> measure() <span class="keyword">override</span>;                               </div>
-<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span>        <span class="keywordtype">void</span> initialize() <span class="keyword">override</span>;    </div>
-<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span>        <span class="keywordtype">void</span> package() <span class="keyword">override</span>;</div>
-<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span>    <span class="keyword">public</span>:</div>
-<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span>        <a class="code hl_class" href="class_loom___k30.html">Loom_K30</a>(</div>
-<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span>            <a class="code hl_class" href="class_manager.html">Manager</a>&amp; man, </div>
-<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span>            <span class="keywordtype">int</span> addr = 0x68,  </div>
-<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span>            <span class="keywordtype">bool</span> warmUp = <span class="keyword">true</span>, </div>
-<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span>            <span class="keywordtype">int</span> valMult = 1</div>
-<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span>        );</div>
-<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span> </div>
-<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span>        <a class="code hl_class" href="class_loom___k30.html">Loom_K30</a>(</div>
-<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>            <a class="code hl_class" href="class_manager.html">Manager</a>&amp; man, </div>
-<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span>            <span class="keywordtype">int</span> rx = 12,</div>
-<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>            <span class="keywordtype">int</span> tx = 11,  </div>
-<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>            <span class="keywordtype">bool</span> warmUp = <span class="keyword">true</span>, </div>
-<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>            <span class="keywordtype">int</span> valMult = 1</div>
-<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span>        );</div>
-<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span> </div>
-<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>        <a class="code hl_class" href="class_loom___k30.html">~Loom_K30</a>();</div>
+<div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span> </div>
+<div class="line"><a id="l00016" name="l00016"></a><span class="lineno"><a class="line" href="class_loom___k30.html">   16</a></span><span class="keyword">class </span><a class="code hl_class" href="class_loom___k30.html">Loom_K30</a> : <span class="keyword">public</span> <a class="code hl_class" href="class_i2_c_device.html">I2CDevice</a>{</div>
+<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span>    <span class="keyword">protected</span>:</div>
+<div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span>        <span class="keywordtype">void</span> power_up()<span class="keyword"> override </span>{};</div>
+<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span>        <span class="keywordtype">void</span> power_down()<span class="keyword"> override </span>{}; </div>
+<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span>        <span class="keywordtype">void</span> print_measurements()<span class="keyword"> override </span>{};</div>
+<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span>       </div>
+<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span>        <span class="comment">// Manager controlled functions</span></div>
+<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span>        <span class="keywordtype">void</span> measure() <span class="keyword">override</span>;                               </div>
+<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span>        <span class="keywordtype">void</span> initialize() <span class="keyword">override</span>;    </div>
+<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span>        <span class="keywordtype">void</span> package() <span class="keyword">override</span>;</div>
+<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span>    <span class="keyword">public</span>:</div>
+<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span>        <a class="code hl_class" href="class_loom___k30.html">Loom_K30</a>(</div>
+<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span>            <a class="code hl_class" href="class_manager.html">Manager</a>&amp; man,</div>
+<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span>            <span class="keywordtype">bool</span> useMux = <span class="keyword">false</span>, </div>
+<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span>            <span class="keywordtype">int</span> addr = 0x68,  </div>
+<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span>            <span class="keywordtype">bool</span> warmUp = <span class="keyword">true</span>, </div>
+<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span>            <span class="keywordtype">int</span> valMult = 1</div>
+<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span>        );</div>
+<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span>        </div>
+<div class="line"><a id="l00046" name="l00046"></a><span class="lineno"><a class="line" href="class_loom___k30.html#ae85e4ab9ae61612de171fcc3449da7e7">   46</a></span>        <span class="keywordtype">int</span> <a class="code hl_function" href="class_loom___k30.html#ae85e4ab9ae61612de171fcc3449da7e7">getCO2</a>() { <span class="keywordflow">return</span> CO2Levels; };</div>
+<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span> </div>
+<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span>    <span class="keyword">private</span>:</div>
+<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>        <a class="code hl_class" href="class_manager.html">Manager</a>* manInst;                                               <span class="comment">// Instance of the manager</span></div>
+<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span> </div>
+<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>        <span class="keywordtype">int</span> addr;                                                       <span class="comment">// Address of the I2C sensor</span></div>
+<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span> </div>
+<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span>        <span class="keywordtype">int</span> CO2Levels;                                                  <span class="comment">// Current CO2 levels of the sensor</span></div>
+<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span> </div>
+<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>        <span class="keywordtype">int</span> valMult;                                                    <span class="comment">// Return value multiplier</span></div>
+<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span>        <span class="keywordtype">bool</span> warmUp;                                                    <span class="comment">// Should we wait 6 mins for warm up to get accurate results</span></div>
+<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>        <span class="keywordtype">bool</span> hasWarmedUp = <span class="keyword">false</span>;</div>
+<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span> </div>
+<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>        <span class="keywordtype">byte</span> buffer[4] = {0, 0, 0, 0};                                  <span class="comment">// Buffer to store data read from the sensor</span></div>
+<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span> </div>
+<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>        <span class="keywordtype">byte</span> read_CO2[7] = {0xFE, 0X44, 0X00, 0X08, 0X02, 0X9F, 0X25};  <span class="comment">// Command packet to read Co2 (see app note)</span></div>
+<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>        <span class="keywordtype">byte</span> sensor_response[7] = {0, 0, 0, 0, 0, 0, 0};                <span class="comment">// create an array to store the response</span></div>
 <div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span> </div>
-<div class="line"><a id="l00067" name="l00067"></a><span class="lineno"><a class="line" href="class_loom___k30.html#ae85e4ab9ae61612de171fcc3449da7e7">   67</a></span>        <span class="keywordtype">int</span> <a class="code hl_function" href="class_loom___k30.html#ae85e4ab9ae61612de171fcc3449da7e7">getCO2</a>() { <span class="keywordflow">return</span> CO2Levels; };</div>
-<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span> </div>
-<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>        <span class="keywordtype">void</span> setSerial(Uart&amp; serial){</div>
-<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>            K30_Serial = &amp;serial;</div>
-<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>        };</div>
-<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span> </div>
-<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span>    <span class="keyword">private</span>:</div>
-<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span>        <a class="code hl_class" href="class_manager.html">Manager</a>* manInst;                                               <span class="comment">// Instance of the manager</span></div>
-<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span> </div>
-<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span>        Uart* K30_Serial = <span class="keyword">nullptr</span>;</div>
-<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span>        <span class="keywordtype">int</span> addr;                                                       <span class="comment">// Address of the I2C sensor</span></div>
-<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span> </div>
-<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span>        CommType type;                                                  <span class="comment">// Type of communication to use</span></div>
-<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span> </div>
-<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span>        <span class="keywordtype">int</span> CO2Levels;                                                  <span class="comment">// Current CO2 levels of the sensor</span></div>
-<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span> </div>
-<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span>        <span class="keywordtype">int</span> valMult;                                                    <span class="comment">// Return value multiplier</span></div>
-<div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span>        <span class="keywordtype">bool</span> warmUp;                                                    <span class="comment">// Should we wait 6 mins for warm up to get accurate results</span></div>
-<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span> </div>
-<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span>        <span class="keywordtype">byte</span> buffer[4] = {0, 0, 0, 0};                                  <span class="comment">// Buffer to store data read from the sensor</span></div>
-<div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span> </div>
-<div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span>        <span class="keywordtype">byte</span> read_CO2[7] = {0xFE, 0X44, 0X00, 0X08, 0X02, 0X9F, 0X25};  <span class="comment">// Command packet to read Co2 (see app note)</span></div>
-<div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span>        <span class="keywordtype">byte</span> sensor_response[7] = {0, 0, 0, 0, 0, 0, 0};                <span class="comment">// create an array to store the response</span></div>
-<div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span> </div>
-<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span>        <span class="keywordtype">bool</span> verifyChecksum();                                          <span class="comment">// Verify the checksum for the data is correct</span></div>
-<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span>        <span class="keywordtype">void</span> getCO2Level();                                             <span class="comment">// Request the CO2 Level from the sensor</span></div>
-<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span>};</div>
-<div class="ttc" id="aclass_loom___k30_html"><div class="ttname"><a href="class_loom___k30.html">Loom_K30</a></div><div class="ttdef"><b>Definition:</b> Loom_K30.h:21</div></div>
-<div class="ttc" id="aclass_loom___k30_html_ae85e4ab9ae61612de171fcc3449da7e7"><div class="ttname"><a href="class_loom___k30.html#ae85e4ab9ae61612de171fcc3449da7e7">Loom_K30::getCO2</a></div><div class="ttdeci">int getCO2()</div><div class="ttdef"><b>Definition:</b> Loom_K30.h:67</div></div>
+<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span>        <span class="keywordtype">bool</span> verifyChecksum();                                          <span class="comment">// Verify the checksum for the data is correct</span></div>
+<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span>        <span class="keywordtype">void</span> getCO2Level();                                             <span class="comment">// Request the CO2 Level from the sensor</span></div>
+<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>};</div>
+<div class="ttc" id="aclass_i2_c_device_html"><div class="ttname"><a href="class_i2_c_device.html">I2CDevice</a></div><div class="ttdef"><b>Definition:</b> I2CDevice.h:5</div></div>
+<div class="ttc" id="aclass_loom___k30_html"><div class="ttname"><a href="class_loom___k30.html">Loom_K30</a></div><div class="ttdef"><b>Definition:</b> Loom_K30.h:16</div></div>
+<div class="ttc" id="aclass_loom___k30_html_ae85e4ab9ae61612de171fcc3449da7e7"><div class="ttname"><a href="class_loom___k30.html#ae85e4ab9ae61612de171fcc3449da7e7">Loom_K30::getCO2</a></div><div class="ttdeci">int getCO2()</div><div class="ttdef"><b>Definition:</b> Loom_K30.h:46</div></div>
 <div class="ttc" id="aclass_manager_html"><div class="ttname"><a href="class_manager.html">Manager</a></div><div class="ttdef"><b>Definition:</b> Loom_Manager.h:18</div></div>
-<div class="ttc" id="aclass_module_html"><div class="ttname"><a href="class_module.html">Module</a></div><div class="ttdef"><b>Definition:</b> Module.h:10</div></div>
 </div><!-- fragment --></div><!-- contents -->
-</div><!-- doc-content -->
 <!-- start footer part -->
-<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
-  <ul>
-    <li class="navelem"><a class="el" href="dir_6ee4b6940993f1d96fed89d0689c4fb4.html">AppData</a></li><li class="navelem"><a class="el" href="dir_f394ec1e447942e556e794b67308cbd2.html">Local</a></li><li class="navelem"><a class="el" href="dir_c11a3b8e9600d73dba24763eaf73d086.html">Arduino15</a></li><li class="navelem"><a class="el" href="dir_686e5a742523f6c2e406ce3138607834.html">packages</a></li><li class="navelem"><a class="el" href="dir_9e729aa3d3d908b6243f8ba5111e3297.html">loom4</a></li><li class="navelem"><a class="el" href="dir_8647139c151abecbbe73d291d6cda9bb.html">hardware</a></li><li class="navelem"><a class="el" href="dir_c64b423dcc94659d410f7d3eca36d7a9.html">samd</a></li><li class="navelem"><a class="el" href="dir_975285b4f84afcb4fca053413886488c.html">4.0.6</a></li><li class="navelem"><a class="el" href="dir_fe829e72f4fe72bf24d4d4025922f6a4.html">libraries</a></li><li class="navelem"><a class="el" href="dir_d06fdbd79b1b6e34548d0fa51485f4a5.html">Loom</a></li><li class="navelem"><a class="el" href="dir_b14d86d2dc324b96b7fcdcd080ed6fcf.html">src</a></li><li class="navelem"><a class="el" href="dir_34ad8d73d8b032955901177e6cabcd8e.html">Sensors</a></li><li class="navelem"><a class="el" href="dir_a545c452ef6823fd8b38a8c1abee1b51.html">I2C</a></li><li class="navelem"><a class="el" href="dir_91bd7c1afc117d1485ceb9f1b2a9f5b1.html">Loom_K30</a></li><li class="navelem"><b>Loom_K30.h</b></li>
-    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.5 </li>
-  </ul>
-</div>
+<hr class="footer"/><address class="footer"><small>
+Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.5
+</small></address>
 </body>
 </html>

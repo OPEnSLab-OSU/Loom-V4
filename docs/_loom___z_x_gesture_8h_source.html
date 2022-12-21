@@ -5,14 +5,10 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.5"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Loom 4: C:/Users/Will/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.0.6/libraries/Loom/src/Sensors/I2C/Loom_ZXGesture/Loom_ZXGesture.h Source File</title>
+<title>Loom 4: C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.1/libraries/Loom/src/Sensors/I2C/Loom_ZXGesture/Loom_ZXGesture.h Source File</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
-<link href="navtree.css" rel="stylesheet" type="text/css"/>
-<script type="text/javascript" src="resize.js"></script>
-<script type="text/javascript" src="navtreedata.js"></script>
-<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -26,7 +22,7 @@
  <tr id="projectrow">
   <td id="projectlogo"><img alt="Logo" src="OPEnSLogo.png"/></td>
   <td id="projectalign">
-   <div id="projectname">Loom 4<span id="projectnumber">&#160;V4.0.6</span>
+   <div id="projectname">Loom 4<span id="projectnumber">&#160;V4.0.7</span>
    </div>
    <div id="projectbrief">Arduino library for Internet of Things Rapid Prototyping in environmental sensing</div>
   </td>
@@ -52,23 +48,6 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
-</div><!-- top -->
-<div id="side-nav" class="ui-resizable side-nav-resizable">
-  <div id="nav-tree">
-    <div id="nav-tree-contents">
-      <div id="nav-sync" class="sync"></div>
-    </div>
-  </div>
-  <div id="splitbar" style="-moz-user-select:none;" 
-       class="ui-resizable-handle">
-  </div>
-</div>
-<script type="text/javascript">
-/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
-$(document).ready(function(){initNavTree('_loom___z_x_gesture_8h_source.html',''); initResizable(); });
-/* @license-end */
-</script>
-<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -90,6 +69,11 @@ $(document).ready(function(){initNavTree('_loom___z_x_gesture_8h_source.html',''
 </div>
 </div>
 
+<div id="nav-path" class="navpath">
+  <ul>
+<li class="navelem"><a class="el" href="dir_6ee4b6940993f1d96fed89d0689c4fb4.html">AppData</a></li><li class="navelem"><a class="el" href="dir_f394ec1e447942e556e794b67308cbd2.html">Local</a></li><li class="navelem"><a class="el" href="dir_c11a3b8e9600d73dba24763eaf73d086.html">Arduino15</a></li><li class="navelem"><a class="el" href="dir_686e5a742523f6c2e406ce3138607834.html">packages</a></li><li class="navelem"><a class="el" href="dir_9e729aa3d3d908b6243f8ba5111e3297.html">loom4</a></li><li class="navelem"><a class="el" href="dir_8647139c151abecbbe73d291d6cda9bb.html">hardware</a></li><li class="navelem"><a class="el" href="dir_c64b423dcc94659d410f7d3eca36d7a9.html">samd</a></li><li class="navelem"><a class="el" href="dir_ae74f9d611b5b28cff189f386f984ef8.html">4.1</a></li><li class="navelem"><a class="el" href="dir_5b07f7c54480940db2a192be310fbb99.html">libraries</a></li><li class="navelem"><a class="el" href="dir_567dd0aa6b2c1a082a7de74bc3cbbd34.html">Loom</a></li><li class="navelem"><a class="el" href="dir_8dd662a0542eff3750cbe60ef91608e8.html">src</a></li><li class="navelem"><a class="el" href="dir_4004860eb1a85e8050d1e439c3966aac.html">Sensors</a></li><li class="navelem"><a class="el" href="dir_d62f84927fcac143f6b7f8042c3d7004.html">I2C</a></li><li class="navelem"><a class="el" href="dir_0ab153e8ee0e238b20b2dcbd444b587d.html">Loom_ZXGesture</a></li>  </ul>
+</div>
+</div><!-- top -->
 <div class="header">
   <div class="headertitle"><div class="title">Loom_ZXGesture.h</div></div>
 </div><!--header-->
@@ -98,10 +82,10 @@ $(document).ready(function(){initNavTree('_loom___z_x_gesture_8h_source.html',''
 <div class="line"><a id="l00002" name="l00002"></a><span class="lineno">    2</span> </div>
 <div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span><span class="preprocessor">#include &lt;ZX_Sensor.h&gt;</span></div>
 <div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span> </div>
-<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="preprocessor">#include &quot;Module.h&quot;</span></div>
+<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="preprocessor">#include &quot;../I2CDevice.h&quot;</span></div>
 <div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span><span class="preprocessor">#include &quot;Loom_Manager.h&quot;</span></div>
 <div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span> </div>
-<div class="line"><a id="l00013" name="l00013"></a><span class="lineno"><a class="line" href="class_loom___z_x_gesture.html">   13</a></span><span class="keyword">class </span><a class="code hl_class" href="class_loom___z_x_gesture.html">Loom_ZXGesture</a> : <span class="keyword">public</span> <a class="code hl_class" href="class_module.html">Module</a>{</div>
+<div class="line"><a id="l00013" name="l00013"></a><span class="lineno"><a class="line" href="class_loom___z_x_gesture.html">   13</a></span><span class="keyword">class </span><a class="code hl_class" href="class_loom___z_x_gesture.html">Loom_ZXGesture</a> : <span class="keyword">public</span> <a class="code hl_class" href="class_i2_c_device.html">I2CDevice</a>{</div>
 <div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span>    <span class="keyword">protected</span>:</div>
 <div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span> </div>
 <div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span>        <span class="keywordtype">void</span> power_up()<span class="keyword"> override </span>{};</div>
@@ -126,46 +110,43 @@ $(document).ready(function(){initNavTree('_loom___z_x_gesture_8h_source.html',''
 <div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span>        };</div>
 <div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span> </div>
 <div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>        <a class="code hl_class" href="class_loom___z_x_gesture.html">Loom_ZXGesture</a>(</div>
-<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>                      <a class="code hl_class" href="class_manager.html">Manager</a>&amp; man, </div>
-<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>                      <span class="keywordtype">int</span> address = 0x10, </div>
-<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span>                      <a class="code hl_enumeration" href="class_loom___z_x_gesture.html#a4c381d3f296be2cac6188fd8c5f8b7dd">Mode</a> mode = Mode::POS</div>
-<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span>                );</div>
-<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span> </div>
-<div class="line"><a id="l00058" name="l00058"></a><span class="lineno"><a class="line" href="class_loom___z_x_gesture.html#a3a3e8d089b18608fc0e3b04a18fcc540">   58</a></span>        String <a class="code hl_function" href="class_loom___z_x_gesture.html#a3a3e8d089b18608fc0e3b04a18fcc540">getGesture</a>() {<span class="keywordflow">return</span> gestureString; };</div>
-<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span> </div>
-<div class="line"><a id="l00063" name="l00063"></a><span class="lineno"><a class="line" href="class_loom___z_x_gesture.html#addca40e382d0d392f97c40d8c4a1489d">   63</a></span>        uint8_t <a class="code hl_function" href="class_loom___z_x_gesture.html#addca40e382d0d392f97c40d8c4a1489d">getGestureSpeed</a>() { <span class="keywordflow">return</span> gestureSpeed; };</div>
-<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span> </div>
-<div class="line"><a id="l00068" name="l00068"></a><span class="lineno"><a class="line" href="class_loom___z_x_gesture.html#a75c6514535b15076c37d4f0ef87c6b1d">   68</a></span>        <a class="code hl_struct" href="struct_loom___z_x_gesture_1_1_position.html">Position</a> <a class="code hl_function" href="class_loom___z_x_gesture.html#a75c6514535b15076c37d4f0ef87c6b1d">getPosition</a>() { <span class="keywordflow">return</span> pos; };</div>
-<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span> </div>
+<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>                      <a class="code hl_class" href="class_manager.html">Manager</a>&amp; man,</div>
+<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>                      <span class="keywordtype">int</span> address = 0x10,</div>
+<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span>                      <span class="keywordtype">bool</span> useMux = <span class="keyword">false</span>,  </div>
+<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span>                      <a class="code hl_enumeration" href="class_loom___z_x_gesture.html#a4c381d3f296be2cac6188fd8c5f8b7dd">Mode</a> mode = Mode::POS</div>
+<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span>                );</div>
+<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span> </div>
+<div class="line"><a id="l00059" name="l00059"></a><span class="lineno"><a class="line" href="class_loom___z_x_gesture.html#a3a3e8d089b18608fc0e3b04a18fcc540">   59</a></span>        String <a class="code hl_function" href="class_loom___z_x_gesture.html#a3a3e8d089b18608fc0e3b04a18fcc540">getGesture</a>() {<span class="keywordflow">return</span> gestureString; };</div>
+<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span> </div>
+<div class="line"><a id="l00064" name="l00064"></a><span class="lineno"><a class="line" href="class_loom___z_x_gesture.html#addca40e382d0d392f97c40d8c4a1489d">   64</a></span>        uint8_t <a class="code hl_function" href="class_loom___z_x_gesture.html#addca40e382d0d392f97c40d8c4a1489d">getGestureSpeed</a>() { <span class="keywordflow">return</span> gestureSpeed; };</div>
+<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span> </div>
+<div class="line"><a id="l00069" name="l00069"></a><span class="lineno"><a class="line" href="class_loom___z_x_gesture.html#a75c6514535b15076c37d4f0ef87c6b1d">   69</a></span>        <a class="code hl_struct" href="struct_loom___z_x_gesture_1_1_position.html">Position</a> <a class="code hl_function" href="class_loom___z_x_gesture.html#a75c6514535b15076c37d4f0ef87c6b1d">getPosition</a>() { <span class="keywordflow">return</span> pos; };</div>
 <div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span> </div>
 <div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span> </div>
-<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>    <span class="keyword">private</span>:</div>
-<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span>        <a class="code hl_class" href="class_manager.html">Manager</a>* manInst;                       <span class="comment">// Instance of the manager</span></div>
-<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span>        ZX_Sensor zx;                           <span class="comment">// ZX sensor instance</span></div>
-<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span> </div>
-<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span>        <a class="code hl_enumeration" href="class_loom___z_x_gesture.html#a4c381d3f296be2cac6188fd8c5f8b7dd">Mode</a> mode;                              <span class="comment">// Current mode of the sensor </span></div>
-<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span>        Position pos;                           <span class="comment">// Position measured by the sensor (X and Y) in mm</span></div>
-<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span> </div>
-<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span>        GestureType gesture;                    <span class="comment">// Last measured gesture</span></div>
-<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>        String gestureString;                   <span class="comment">// String name of the last gesture</span></div>
-<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span>        uint8_t gestureSpeed;                   <span class="comment">// The speed at which the gesture was preformed</span></div>
-<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span>};</div>
+<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span> </div>
+<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span>    <span class="keyword">private</span>:</div>
+<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span>        <a class="code hl_class" href="class_manager.html">Manager</a>* manInst;                       <span class="comment">// Instance of the manager</span></div>
+<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span>        ZX_Sensor zx;                           <span class="comment">// ZX sensor instance</span></div>
+<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span> </div>
+<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span>        <a class="code hl_enumeration" href="class_loom___z_x_gesture.html#a4c381d3f296be2cac6188fd8c5f8b7dd">Mode</a> mode;                              <span class="comment">// Current mode of the sensor </span></div>
+<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span>        Position pos;                           <span class="comment">// Position measured by the sensor (X and Y) in mm</span></div>
+<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span> </div>
+<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>        GestureType gesture;                    <span class="comment">// Last measured gesture</span></div>
+<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span>        String gestureString;                   <span class="comment">// String name of the last gesture</span></div>
+<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span>        uint8_t gestureSpeed;                   <span class="comment">// The speed at which the gesture was preformed</span></div>
+<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span>};</div>
+<div class="ttc" id="aclass_i2_c_device_html"><div class="ttname"><a href="class_i2_c_device.html">I2CDevice</a></div><div class="ttdef"><b>Definition:</b> I2CDevice.h:5</div></div>
 <div class="ttc" id="aclass_loom___z_x_gesture_html"><div class="ttname"><a href="class_loom___z_x_gesture.html">Loom_ZXGesture</a></div><div class="ttdef"><b>Definition:</b> Loom_ZXGesture.h:13</div></div>
-<div class="ttc" id="aclass_loom___z_x_gesture_html_a3a3e8d089b18608fc0e3b04a18fcc540"><div class="ttname"><a href="class_loom___z_x_gesture.html#a3a3e8d089b18608fc0e3b04a18fcc540">Loom_ZXGesture::getGesture</a></div><div class="ttdeci">String getGesture()</div><div class="ttdef"><b>Definition:</b> Loom_ZXGesture.h:58</div></div>
+<div class="ttc" id="aclass_loom___z_x_gesture_html_a3a3e8d089b18608fc0e3b04a18fcc540"><div class="ttname"><a href="class_loom___z_x_gesture.html#a3a3e8d089b18608fc0e3b04a18fcc540">Loom_ZXGesture::getGesture</a></div><div class="ttdeci">String getGesture()</div><div class="ttdef"><b>Definition:</b> Loom_ZXGesture.h:59</div></div>
 <div class="ttc" id="aclass_loom___z_x_gesture_html_a4c381d3f296be2cac6188fd8c5f8b7dd"><div class="ttname"><a href="class_loom___z_x_gesture.html#a4c381d3f296be2cac6188fd8c5f8b7dd">Loom_ZXGesture::Mode</a></div><div class="ttdeci">Mode</div><div class="ttdef"><b>Definition:</b> Loom_ZXGesture.h:38</div></div>
-<div class="ttc" id="aclass_loom___z_x_gesture_html_a75c6514535b15076c37d4f0ef87c6b1d"><div class="ttname"><a href="class_loom___z_x_gesture.html#a75c6514535b15076c37d4f0ef87c6b1d">Loom_ZXGesture::getPosition</a></div><div class="ttdeci">Position getPosition()</div><div class="ttdef"><b>Definition:</b> Loom_ZXGesture.h:68</div></div>
-<div class="ttc" id="aclass_loom___z_x_gesture_html_addca40e382d0d392f97c40d8c4a1489d"><div class="ttname"><a href="class_loom___z_x_gesture.html#addca40e382d0d392f97c40d8c4a1489d">Loom_ZXGesture::getGestureSpeed</a></div><div class="ttdeci">uint8_t getGestureSpeed()</div><div class="ttdef"><b>Definition:</b> Loom_ZXGesture.h:63</div></div>
+<div class="ttc" id="aclass_loom___z_x_gesture_html_a75c6514535b15076c37d4f0ef87c6b1d"><div class="ttname"><a href="class_loom___z_x_gesture.html#a75c6514535b15076c37d4f0ef87c6b1d">Loom_ZXGesture::getPosition</a></div><div class="ttdeci">Position getPosition()</div><div class="ttdef"><b>Definition:</b> Loom_ZXGesture.h:69</div></div>
+<div class="ttc" id="aclass_loom___z_x_gesture_html_addca40e382d0d392f97c40d8c4a1489d"><div class="ttname"><a href="class_loom___z_x_gesture.html#addca40e382d0d392f97c40d8c4a1489d">Loom_ZXGesture::getGestureSpeed</a></div><div class="ttdeci">uint8_t getGestureSpeed()</div><div class="ttdef"><b>Definition:</b> Loom_ZXGesture.h:64</div></div>
 <div class="ttc" id="aclass_manager_html"><div class="ttname"><a href="class_manager.html">Manager</a></div><div class="ttdef"><b>Definition:</b> Loom_Manager.h:18</div></div>
-<div class="ttc" id="aclass_module_html"><div class="ttname"><a href="class_module.html">Module</a></div><div class="ttdef"><b>Definition:</b> Module.h:10</div></div>
 <div class="ttc" id="astruct_loom___z_x_gesture_1_1_position_html"><div class="ttname"><a href="struct_loom___z_x_gesture_1_1_position.html">Loom_ZXGesture::Position</a></div><div class="ttdef"><b>Definition:</b> Loom_ZXGesture.h:30</div></div>
 </div><!-- fragment --></div><!-- contents -->
-</div><!-- doc-content -->
 <!-- start footer part -->
-<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
-  <ul>
-    <li class="navelem"><a class="el" href="dir_6ee4b6940993f1d96fed89d0689c4fb4.html">AppData</a></li><li class="navelem"><a class="el" href="dir_f394ec1e447942e556e794b67308cbd2.html">Local</a></li><li class="navelem"><a class="el" href="dir_c11a3b8e9600d73dba24763eaf73d086.html">Arduino15</a></li><li class="navelem"><a class="el" href="dir_686e5a742523f6c2e406ce3138607834.html">packages</a></li><li class="navelem"><a class="el" href="dir_9e729aa3d3d908b6243f8ba5111e3297.html">loom4</a></li><li class="navelem"><a class="el" href="dir_8647139c151abecbbe73d291d6cda9bb.html">hardware</a></li><li class="navelem"><a class="el" href="dir_c64b423dcc94659d410f7d3eca36d7a9.html">samd</a></li><li class="navelem"><a class="el" href="dir_975285b4f84afcb4fca053413886488c.html">4.0.6</a></li><li class="navelem"><a class="el" href="dir_fe829e72f4fe72bf24d4d4025922f6a4.html">libraries</a></li><li class="navelem"><a class="el" href="dir_d06fdbd79b1b6e34548d0fa51485f4a5.html">Loom</a></li><li class="navelem"><a class="el" href="dir_b14d86d2dc324b96b7fcdcd080ed6fcf.html">src</a></li><li class="navelem"><a class="el" href="dir_34ad8d73d8b032955901177e6cabcd8e.html">Sensors</a></li><li class="navelem"><a class="el" href="dir_a545c452ef6823fd8b38a8c1abee1b51.html">I2C</a></li><li class="navelem"><a class="el" href="dir_fdd68fe00a56963f00982d81db715ba8.html">Loom_ZXGesture</a></li><li class="navelem"><b>Loom_ZXGesture.h</b></li>
-    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.5 </li>
-  </ul>
-</div>
+<hr class="footer"/><address class="footer"><small>
+Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.5
+</small></address>
 </body>
 </html>

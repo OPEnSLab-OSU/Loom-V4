@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['package_0',['package',['../class_manager.html#a78fe36ccbe1c79d37054c83e42599706',1,'Manager']]],
+  ['package_0',['package',['../class_manager.html#a78fe36ccbe1c79d37054c83e42599706',1,'Manager::package()'],['../class_loom___freewave.html#a3e19b0017e74d4804eba7a268dd8456e',1,'Loom_Freewave::package()'],['../class_loom___lo_ra.html#ac4058e32c1c1c292b87253b75dfa0a54',1,'Loom_LoRa::package()']]],
   ['pause_1',['pause',['../class_manager.html#af10eb1e6f2cc00cc9026516ed96fee02',1,'Manager']]],
   ['power_5fdown_2',['power_down',['../class_manager.html#a855325a3bd12d5d1275397c82cc497b7',1,'Manager::power_down()'],['../class_loom___freewave.html#ac069ad4c8e7d7e464d7d9437173c327a',1,'Loom_Freewave::power_down()'],['../class_loom___lo_ra.html#a28c3103ea9024475f152e7585cc462df',1,'Loom_LoRa::power_down()']]],
   ['power_5fup_3',['power_up',['../class_manager.html#a8781f33a0c9f2483c6ce877b145cce8f',1,'Manager::power_up()'],['../class_loom___freewave.html#a68c3761c526eb1222ba966a8c26bec6c',1,'Loom_Freewave::power_up()'],['../class_loom___lo_ra.html#ad94dccb488e41df1492129c81d480ae4',1,'Loom_LoRa::power_up()']]],

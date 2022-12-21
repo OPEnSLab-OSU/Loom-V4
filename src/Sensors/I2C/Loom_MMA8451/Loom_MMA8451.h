@@ -3,7 +3,7 @@
 #include <Wire.h>
 #include <Adafruit_MMA8451.h>
 
-#include "Module.h"
+#include "../I2CDevice.h"
 #include "Loom_Manager.h"
 
 /**
@@ -11,7 +11,7 @@
  * 
  * @author Will Richards
  */ 
-class Loom_MMA8451 : public Module{
+class Loom_MMA8451 : public I2CDevice{
     protected:
         void power_down() override {}; 
         void print_measurements() override {};

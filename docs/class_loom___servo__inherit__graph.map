@@ -1,0 +1,5 @@
+<map id="Loom_Servo" name="Loom_Servo">
+<area shape="rect" id="node1" title=" " alt="" coords="5,152,99,177"/>
+<area shape="rect" id="node2" href="$class_actuator.html" title=" " alt="" coords="17,79,87,104"/>
+<area shape="rect" id="node3" href="$class_module.html" title=" " alt="" coords="20,5,84,31"/>
+</map>

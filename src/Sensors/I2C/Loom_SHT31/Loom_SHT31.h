@@ -2,7 +2,7 @@
 
 #include <Adafruit_SHT31.h>
 
-#include "Module.h"
+#include "../I2CDevice.h"
 #include "Loom_Manager.h"
 
 /**
@@ -10,7 +10,7 @@
  * 
  *  @author Will Richards
  */ 
-class Loom_SHT31 : public Module{
+class Loom_SHT31 : public I2CDevice{
     protected:
        
        // Manager controlled functions

@@ -3,7 +3,7 @@
 #include <Adafruit_ADS1X15.h>
 #include <map>
 
-#include "Module.h"
+#include "../I2CDevice.h"
 #include "Loom_Manager.h"
 
 /**
@@ -11,9 +11,7 @@
  * 
  * @author Will Richards
  */  
-class Loom_ADS1115 : public Module{
-
-
+class Loom_ADS1115 : public I2CDevice{
     protected:
         void print_measurements() override {};  
         void power_down() override {}; 

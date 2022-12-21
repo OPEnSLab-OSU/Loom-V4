@@ -5,7 +5,7 @@ Loom_SHT31::Loom_SHT31(
                         Manager& man,
                         int address, 
                         bool useMux
-                    ) : Module("SHT31"), manInst(&man), i2c_address(address){
+                    ) : I2CDevice("SHT31"), manInst(&man), i2c_address(address){
                         module_address = address;
                         
                         // Register the module with the manager

@@ -17,20 +17,6 @@ class Module{
         virtual String getModuleName() { return moduleName; }; // Return the name of the sensor
         virtual void printModuleName() { Serial.print("[" + String(getModuleName()) + "] "); };
 
-        /* Checks if the given I2C device is currently connected*/
-        bool checkDeviceConnection() {
-            if(module_address != -1){
-                Wire.beginTransmission(module_address);
-                if(Wire.endTransmission() == 0){
-                    return true;
-                }
-                else{
-                    needsReinit = true;
-                    return false;
-                }
-            }
-        };
-
         // Generic measure and package calls to unify some interaction with different sensor implementations
         virtual void initialize() = 0;                      // Initialize all functionality of the sensor
         virtual void measure() = 0;                         // Collect data from the sensor
@@ -43,7 +29,6 @@ class Module{
         virtual void display_data() {};                     // Called by the manager to allow OLED to display data at the same time as manager.display_data  
 
         bool moduleInitialized = true;                      // Whether or not the module initialized successfully true until set otherwise
-        bool needsReinit = false;                           // Whether or not the device needs to be reinitialized
         int module_address = -1;                            // Specifically for I2C addresses, -1 means the module doesn't have an address
     private:
         String moduleName;

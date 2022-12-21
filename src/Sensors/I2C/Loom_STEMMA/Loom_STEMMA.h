@@ -2,7 +2,7 @@
 
 #include <Adafruit_seesaw.h>
 
-#include "Module.h"
+#include "../I2CDevice.h"
 #include "Loom_Manager.h"
 
 /**
@@ -10,7 +10,7 @@
  * 
  * @author Will Richards
  */ 
-class Loom_STEMMA : public Module{
+class Loom_STEMMA : public I2CDevice{
     protected:
        
         // Manager controlled functions

@@ -1,7 +1,7 @@
 #include "Loom_K30.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_K30::Loom_K30(Manager& man, bool useMux, int addr, bool warmUp, int valMult) : Module("K30"), manInst(&man), valMult(valMult), warmUp(warmUp), addr(addr){
+Loom_K30::Loom_K30(Manager& man, bool useMux, int addr, bool warmUp, int valMult) : I2CDevice("K30"), manInst(&man), valMult(valMult), warmUp(warmUp), addr(addr){
     module_address = addr;
 
     if(!useMux)

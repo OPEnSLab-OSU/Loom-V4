@@ -9,7 +9,7 @@
 /**
  * Class for driving the OLED display
  * 
- * @author Will Richards
+ * @authors Will Richards, Luke Goertzen
  */ 
 class Loom_OLED : public Module{
     protected:
@@ -19,9 +19,10 @@ class Loom_OLED : public Module{
         void print_measurements() override {};
         
         // Manager controlled functions
-        void measure() override;
+        void measure() override {};
         void initialize() override;
-        void package() override;
+        void package() override {};
+        void display_data() override;
 
     public:
 
@@ -77,10 +78,17 @@ class Loom_OLED : public Module{
                 const FreezeType	freeze_behavior			= FreezeType::SCROLL
             );
 
+        /* Destructor for the display pointer */
+        ~Loom_OLED();
+
     private:
+        bool canWrite();                        // Returns whether or not we can write to the display yet
+        void flattenJSONObject(JsonObject json);// Flattens the given JSON object so we can display it
+
         Manager*            manInst;            // Pointer to the manager
 
-        Adafruit_SSD1306	display;			// Underlying OLED controller
+        Adafruit_SSD1306*	display = nullptr;	// Underlying OLED controller
+        uint16_t            min_filter_delay;   // Time to wait in between updates
 		Version				version;			// What type the OLED is (FeatherWing or breakout)
 		byte				reset_pin;			// The reset pin (only applies to breakout version)
 
@@ -88,5 +96,10 @@ class Loom_OLED : public Module{
 		uint				scroll_duration;	// The duration to complete a full cycle through a bundle of data (milliseconds)(non-blocking)
 		byte				freeze_pin;			// Which pin to check if display should freeze
 		FreezeType			freeze_behavior;	// What 'freezing' behavior should be followed
+
+        unsigned long       lastLogTime;        // Value of millis() at the last log
+        unsigned long	    previous_time;      // Used to handle scrolling
+        StaticJsonDocument<2000> flattenedDoc;  // Flattened object 
+
 
 };
