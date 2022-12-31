@@ -5,9 +5,9 @@ Loom_Neopixel::Loom_Neopixel(Manager& man, const bool enableA0, const bool enabl
     Actuator(ACTUATOR_TYPE::NEOPIXEL, 0), 
     manInst(&man), 
     enabledPins{ enableA0, enableA1, enableA2 },
-	pixels{ Adafruit_NeoPixel(1, 14, NEO_GRB + NEO_KHZ800),
-            Adafruit_NeoPixel(1, 15, NEO_GRB + NEO_KHZ800),
-            Adafruit_NeoPixel(1, 16, NEO_GRB + NEO_KHZ800) }
+	pixels{ Adafruit_NeoPixel(1, 14, NEO_RGB + NEO_KHZ800),
+            Adafruit_NeoPixel(1, 15, NEO_RGB + NEO_KHZ800),
+            Adafruit_NeoPixel(1, 16, NEO_RGB + NEO_KHZ800) }
 {
     this->enabledPins[0] = enableA0;
     this->enabledPins[1] = enableA1;
@@ -21,9 +21,9 @@ Loom_Neopixel::Loom_Neopixel(Manager& man, const bool enableA0, const bool enabl
 Loom_Neopixel::Loom_Neopixel(const bool enableA0, const bool enableA1, const bool enableA2) : 
     Actuator(ACTUATOR_TYPE::NEOPIXEL, 0), 
     enabledPins{ enableA0, enableA1, enableA2 },
-	pixels{ Adafruit_NeoPixel(1, 14, NEO_GRB + NEO_KHZ800),
-            Adafruit_NeoPixel(1, 15, NEO_GRB + NEO_KHZ800),
-            Adafruit_NeoPixel(1, 16, NEO_GRB + NEO_KHZ800) }
+	pixels{ Adafruit_NeoPixel(1, 14, NEO_RGB + NEO_KHZ800),
+            Adafruit_NeoPixel(1, 15, NEO_RGB + NEO_KHZ800),
+            Adafruit_NeoPixel(1, 16, NEO_RGB + NEO_KHZ800) }
 {
     this->enabledPins[0] = enableA0;
     this->enabledPins[1] = enableA1;
