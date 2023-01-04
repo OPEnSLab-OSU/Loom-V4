@@ -65,7 +65,9 @@ void Loom_LoRa::initialize(){
 
     // Set bandwidth
     driver.setSignalBandwidth(125000);
-    driver.setSpreadingFactor(10); 
+
+    // Higher spreading factors give us more range
+    driver.setSpreadingFactor(12); 
 	driver.setCodingRate4(8);	
 	driver.sleep();
 }
@@ -169,10 +171,6 @@ bool Loom_LoRa::receivePartial(uint waitTime){
                 recvStatus = manager->recvfromAckTimeout((uint8_t*)buffer, &len, waitTime, &fromAddress);
             }
 
-            for(int i = 0; i < maxMessageLength; i++){
-                Serial.print((char)buffer[i]);
-            }
-
             // If a packet was received 
             if(recvStatus){
                 printModuleName(); Serial.println("Fragment received " + String(i+1) + " / " + String(numPackets));
@@ -240,7 +238,8 @@ bool Loom_LoRa::sendFull(const uint8_t destinationAddress){
 bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
     printModuleName(); Serial.println("Packet was greater than the maximum packet length the packet will be fragmented");
 
-    char buffer[maxMessageLength];  
+    char buffer[maxMessageLength]; 
+    // Get a clear JsonObject reference of the tempDoc
     JsonObject obj = tempDoc.to<JsonObject>();
     obj["type"] = manInst->getDocument()["type"].as<String>();
     JsonObject objID = obj.createNestedObject("id");
@@ -267,16 +266,18 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
         printModuleName(); Serial.println("Successfully transmitted packet!");
     }
 
+
     // Send all modules by themselves to allow for larger amounts of data to be sent over radio
     sendModules(manInst->getDocument().as<JsonObject>(), destinationAddress);
 
-     // If we have a timestamp we also need to copy this across to the new one
+    // If we have a timestamp we also need to copy this across to the new one, MUST BE BEFORE
     if(!manInst->getDocument()["timestamp"].isNull()){
         JsonObject objTS = obj.createNestedObject("timestamp");
         objTS["time_utc"] = manInst->getDocument()["timestamp"]["time_utc"].as<String>();
         objTS["time_local"] = manInst->getDocument()["timestamp"]["time_local"].as<String>();
     }
 
+    
     signalStrength = driver.lastRssi();
     driver.sleep();
     return true;
@@ -286,7 +287,10 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::sendModules(JsonObject json, const uint8_t destinationAddress){
     char buffer[maxMessageLength];  
-    JsonObject obj = tempDoc.to<JsonObject>();
+
+    // Use as with a clear to avoid dangling roots
+    tempDoc.clear();
+    JsonObject obj = tempDoc.as<JsonObject>();
     int numPackets = json["contents"].size();
 
     // Loop through the number of packets we need to send
