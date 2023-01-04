@@ -91,21 +91,22 @@ If you are experiencing issues, please click the "Issues" tab on this repo and c
 There are some weird idiosyncrasies with the Feather M0
  - Something that is only found in the datasheet is that pin A7 and pin D9 are linked together and since A7 is the voltage divider this pin sits at around 2v at all times\
  - Some interrupt vectors are linked together so multiple pins may use the same interrupt and may then break interrupts below is a list of pins and their corresponding interrupt
-  | Pin #         | Interrupt #  |
-  |---------------|--------------|
-  | D11           | 0            |
-  | D13           | 1            |
-  | D10, A0, A5   | 2            |
-  | D12           | 3            |
-  | D6, A3        | 4            |
-  | A4            | 5            |
-  | SDA           | 6            |
-  | D9, SCL       | 7            |
-  | A1            | 8            |
-  | A2            | 9            |
-  | D23, D1       | 10           |
-  | D24, D0       | 11           |
-  | D5            | 15           |
+
+    | Pin # | Interrupt # |
+    |--- | --- |
+    | D11 | 0 |
+    | D13 | 1 |
+    | D10, A0, A5 | 2 |
+    | D12 | 3 |
+    | D6, A3 | 4 |
+    | A4 | 5 |
+    | SDA | 6 |
+    | D9, SCL | 7 |
+    | A1 | 8 |
+    | A2 | 9 |
+    | D23, D1 | 10 |
+    | D24, D0 | 11 |
+    | D5 | 15 |
 
 ## OPEnS Supported Projects
  - WeatherChimes (Fully Tested)
