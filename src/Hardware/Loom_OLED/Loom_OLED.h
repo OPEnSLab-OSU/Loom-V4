@@ -99,7 +99,7 @@ class Loom_OLED : public Module{
 
         unsigned long       lastLogTime;        // Value of millis() at the last log
         unsigned long	    previous_time;      // Used to handle scrolling
-        StaticJsonDocument<2000> flattenedDoc;  // Flattened object 
+        DynamicJsonDocument flattenedDoc;  // Flattened object 
 
 
 };

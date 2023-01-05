@@ -38,7 +38,7 @@ class Loom_LoRa : public Radio{
          */ 
         Loom_LoRa(
             Manager& man,
-            const uint8_t address,
+            const uint8_t address = -1,
             const uint8_t powerLevel = 23,
             const uint8_t retryCount = 3,
             const uint16_t retryTimeout = 200,
@@ -93,7 +93,7 @@ class Loom_LoRa : public Radio{
         RH_RF95 driver;                                     // Underlying radio driver
         RHReliableDatagram* manager;                        // Manager for driver
 
-        StaticJsonDocument<2048> tempDoc;                   // Temporary document to help reconstruct the fragmented packets
+        StaticJsonDocument<255> tempDoc;                   // Temporary document to help reconstruct the fragmented packets
 
         bool sendFull(const uint8_t destinationAddress);                                    // Send the full packet with no fragmentation
         bool sendPartial(const uint8_t destinationAddress);                                 // Fragment the packet when needed

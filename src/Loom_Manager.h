@@ -35,7 +35,7 @@ class Manager{
          * Get a reference to the JSON document that sensor data is stored in
          * @return reference to the main JSON document
          */ 
-        StaticJsonDocument<2000>& getDocument(); // Returns a reference to the main JSON document storing 
+        DynamicJsonDocument& getDocument(); // Returns a reference to the main JSON document storing 
 
         /**
          * Add a random piece of data to the overall JSON package in the given module name with a name for the data
@@ -160,7 +160,7 @@ class Manager{
         void read_serial_num();                                 // Read the serial number out of the feather's registers
 
         /* Module Data */
-        StaticJsonDocument<2000> doc;                           // JSON document that will store all sensor information
+        DynamicJsonDocument doc;                           // JSON document that will store all sensor information
         JsonArray contentsArray;                                // Stores the contents of the modules
         std::vector<std::pair<String, Module*>> modules;        // List of modules that have been added to the stack
 

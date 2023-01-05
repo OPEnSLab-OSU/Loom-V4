@@ -407,7 +407,7 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 TimeSpan Loom_Hypnos::getSleepIntervalFromSD(String fileName){
     // Doc to store the JSON data from the SD card in
-    StaticJsonDocument<500> doc;
+    StaticJsonDocument<255> doc;
     DeserializationError deserialError = deserializeJson(doc, sdMan->readFile(fileName));
 
     // Create json object to easily pull data from
@@ -428,7 +428,7 @@ TimeSpan Loom_Hypnos::getSleepIntervalFromSD(String fileName){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::getTimeZoneFromSD(String fileName){
     // Doc to store the JSON data from the SD card in
-    StaticJsonDocument<500> doc;
+    StaticJsonDocument<255> doc;
     DeserializationError deserialError = deserializeJson(doc, sdMan->readFile(fileName));
 
     // Create json object to easily pull data from
