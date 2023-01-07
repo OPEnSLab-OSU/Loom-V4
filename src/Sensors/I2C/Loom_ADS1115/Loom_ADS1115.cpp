@@ -76,8 +76,8 @@ void Loom_ADS1115::package(){
         }
 
         if(enableDiff){
-            json["Differential_0"] = diffData[0];
-            json["Differential_1"] = diffData[1];
+            json["Diff_0"] = diffData[0];
+            json["Diff_1"] = diffData[1];
         }
     }
 }

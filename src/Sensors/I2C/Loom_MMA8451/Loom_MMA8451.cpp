@@ -73,9 +73,7 @@ void Loom_MMA8451::measure() {
 void Loom_MMA8451::package() {
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        json["X_Acceleration"] = accel[0];
-        json["Y_Acceleration"] = accel[1];
-        json["Z_Acceleration"] = accel[2];
+        json["X_Acc"] = accel[2];
 
         // Convert the orientation to a string
         String orientationString = "";
@@ -91,7 +89,7 @@ void Loom_MMA8451::package() {
         }
         
         // Package the orientation string
-        json["Orientation"] = orientationString;
+        json["Orien"] = orientationString;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
