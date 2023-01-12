@@ -3,7 +3,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_LoRa::Loom_LoRa(
         Manager& man,
-        const uint8_t address, 
+        const int address, 
         const uint8_t powerLevel, 
         const uint8_t retryCount, 
         const uint16_t retryTimeout,
@@ -64,11 +64,14 @@ void Loom_LoRa::initialize(){
     printModuleName(); Serial.println("Retry count set to: " + String(retryCount));
     manager->setRetries(retryCount);
 
+    // Print the set address of the device
+    printModuleName(); Serial.println("Address set to: " + String(manager->thisAddress()));
+
     // Set bandwidth
     driver.setSignalBandwidth(125000);
 
     // Higher spreading factors give us more range
-    driver.setSpreadingFactor(12); 
+    driver.setSpreadingFactor(10); 
 	driver.setCodingRate4(8);	
 	driver.sleep();
 }
@@ -172,6 +175,10 @@ bool Loom_LoRa::receivePartial(uint waitTime){
                 recvStatus = manager->recvfromAckTimeout((uint8_t*)buffer, &len, waitTime, &fromAddress);
             }
 
+            for(int i = 0; i < 255; i++){
+                Serial.print((char)buffer[i]);
+            }
+
             // If a packet was received 
             if(recvStatus){
                 printModuleName(); Serial.println("Fragment received " + String(i+1) + " / " + String(numPackets));
@@ -238,6 +245,9 @@ bool Loom_LoRa::sendFull(const uint8_t destinationAddress){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
     printModuleName(); Serial.println("Packet was greater than the maximum packet length the packet will be fragmented");
+    
+    // Disable retries when sending partial packets
+    manager->setRetries(0);
 
     char buffer[maxMessageLength]; 
     // Get a clear JsonObject reference of the tempDoc
@@ -280,6 +290,7 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
 
     
     signalStrength = driver.lastRssi();
+    manager->setRetries(3);
     driver.sleep();
     return true;
 }
@@ -287,16 +298,16 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::sendModules(JsonObject json, const uint8_t destinationAddress){
+    
     char buffer[maxMessageLength];  
 
     // Use as with a clear to avoid dangling roots
     tempDoc.clear();
-    JsonObject obj = tempDoc.as<JsonObject>();
     int numPackets = json["contents"].size();
 
     // Loop through the number of packets we need to send
     for(int i = 0; i < numPackets; i++){
-        obj.clear();
+        JsonObject obj = tempDoc.to<JsonObject>();
         JsonArray objContents = obj.createNestedArray("contents");
 
         // Create a data object for each content
@@ -314,6 +325,8 @@ bool Loom_LoRa::sendModules(JsonObject json, const uint8_t destinationAddress){
             printModuleName(); Serial.println("Failed to convert JSON to MsgPack");
             return false;
         }
+
+        serializeJsonPretty(obj, Serial);
 
         // Send the packet off
         if(!manager->sendtoWait((uint8_t*)buffer, measureMsgPack(obj), destinationAddress)){

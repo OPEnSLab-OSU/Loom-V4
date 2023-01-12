@@ -78,7 +78,7 @@ class Radio : public Module{
         bool jsonToBuffer(char* buffer, JsonObjectConst json){
 
             // Write all null-bytes
-            memset(buffer, '\0', sizeof(buffer));
+            memset(buffer, '\0', 255);
 
             bool status = serializeMsgPack(json, buffer, (size_t)maxMessageLength);
 
