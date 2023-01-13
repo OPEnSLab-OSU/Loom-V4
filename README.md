@@ -65,10 +65,11 @@ Give Arduino IDE Full Disk Access:
 System Preferences->Security & Privacy->"Privacy" tab->Full Disk Access->+ plus button to add Arduino
 You will also need to install Developet Tools, which requires Admin access.
 
-## Getting Started Videos
+## Getting Started Resources
 1. Loom Manager Walkthrough: https://media.oregonstate.edu/media/t/1_csq6zrae
 2. Loom Hypnos Walkthrough: https://media.oregonstate.edu/media/t/1_7owroc4a
 3. Hypnos Interrupts: https://media.oregonstate.edu/media/t/1_7hq18o2d
+4. C Tutorials https://www.cprogramming.com/tutorial/c-tutorial.html?inl=pf
 
 ## Run an Example
 
