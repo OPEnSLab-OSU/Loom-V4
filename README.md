@@ -66,9 +66,9 @@ System Preferences->Security & Privacy->"Privacy" tab->Full Disk Access->+ plus 
 You will also need to install Developet Tools, which requires Admin access.
 
 ## Getting Started Videos
-Loom Manager Walkthrough: https://media.oregonstate.edu/media/t/1_csq6zrae
-Loom Hypnos Walkthrough: https://media.oregonstate.edu/media/t/1_7owroc4a
-Hypnos Interrupts: https://media.oregonstate.edu/media/t/1_7hq18o2d
+1. Loom Manager Walkthrough: https://media.oregonstate.edu/media/t/1_csq6zrae
+2. Loom Hypnos Walkthrough: https://media.oregonstate.edu/media/t/1_7owroc4a
+3. Hypnos Interrupts: https://media.oregonstate.edu/media/t/1_7hq18o2d
 
 ## Run an Example
 
