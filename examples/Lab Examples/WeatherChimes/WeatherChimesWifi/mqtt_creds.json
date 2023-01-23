@@ -1,0 +1,7 @@
+{
+    "broker": "",
+    "port": 1883,
+    "username": "",
+    "password": "",
+    "database": "WeatherChimesV4"
+}

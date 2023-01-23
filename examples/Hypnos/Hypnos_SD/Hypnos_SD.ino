@@ -28,6 +28,7 @@ void setup() {
 
   manager.display_data();
   
+  // Log to the SD card twice and then lay dormant
   hypnos.logToSD();
   hypnos.logToSD();
 }

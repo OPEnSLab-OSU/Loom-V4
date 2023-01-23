@@ -176,7 +176,8 @@ bool Loom_LoRa::receivePartial(uint waitTime){
             }
 
             for(int i = 0; i < 255; i++){
-                Serial.print((char)buffer[i]);
+                Serial.print((uint8_t)buffer[i], HEX);
+                Serial.print(" ");
             }
 
             // If a packet was received 
@@ -270,13 +271,17 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
         return false;
     }
 
+    for(int i = 0; i < 255; i++){
+        Serial.print((uint8_t)buffer[i], HEX);
+        Serial.print(" ");
+    }
+
     // Send the packet off
     if(!manager->sendtoWait((uint8_t*)buffer, measureMsgPack(obj), destinationAddress)){
         printModuleName(); Serial.println("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
     }else{
         printModuleName(); Serial.println("Successfully transmitted packet!");
     }
-
 
     // Send all modules by themselves to allow for larger amounts of data to be sent over radio
     sendModules(manInst->getDocument().as<JsonObject>(), destinationAddress);
@@ -324,6 +329,11 @@ bool Loom_LoRa::sendModules(JsonObject json, const uint8_t destinationAddress){
         if(!jsonToBuffer(buffer, obj)){
             printModuleName(); Serial.println("Failed to convert JSON to MsgPack");
             return false;
+        }
+
+        for(int i = 0; i < 255; i++){
+            Serial.print((uint8_t)buffer[i], HEX);
+            Serial.print(" ");
         }
 
         serializeJsonPretty(obj, Serial);
