@@ -71,8 +71,8 @@ void Loom_LoRa::initialize(){
     driver.setSignalBandwidth(125000);
 
     // Higher spreading factors give us more range
-    driver.setSpreadingFactor(10); 
-	driver.setCodingRate4(8);	
+    driver.setSpreadingFactor(12); 
+	driver.setCodingRate4(5);	
 	driver.sleep();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -150,10 +150,9 @@ bool Loom_LoRa::receivePartial(uint waitTime){
     if(moduleInitialized){
         bool recvStatus = false;
         uint8_t fromAddress;
-        uint8_t len = maxMessageLength;
 
         // Write all null bytes to the buffer
-        char buffer[maxMessageLength];
+        uint8_t buffer[RH_RF95_MAX_MESSAGE_LEN];
        
         // Contents array to store each module in
         JsonArray contents = manInst->getDocument().createNestedArray("contents");
@@ -169,14 +168,14 @@ bool Loom_LoRa::receivePartial(uint waitTime){
 
             // Non-blocking receive if time is set to 0
             if(waitTime == 0){
-                recvStatus = manager->recvfromAck((uint8_t*)buffer, &len, &fromAddress);
+                recvStatus = manager->recvfromAck(buffer, sizeof(buffer), &fromAddress);
             }
             else{
-                recvStatus = manager->recvfromAckTimeout((uint8_t*)buffer, &len, waitTime, &fromAddress);
+                recvStatus = manager->recvfromAckTimeout(buffer, sizeof(buffer), waitTime, &fromAddress);
             }
 
             for(int i = 0; i < 255; i++){
-                Serial.print((uint8_t)buffer[i], HEX);
+                Serial.print((char)buffer[i]);
                 Serial.print(" ");
             }
 
@@ -231,7 +230,7 @@ bool Loom_LoRa::sendFull(const uint8_t destinationAddress){
         return false;
     }
 
-    if(!manager->sendtoWait((uint8_t*)buffer, measureMsgPack(manInst->getDocument()), destinationAddress)){
+    if(!manager->sendtoWait((uint8_t*)buffer, sizeof(buffer), destinationAddress)){
         printModuleName(); Serial.println("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
     }else{
         printModuleName(); Serial.println("Successfully transmitted packet!");
