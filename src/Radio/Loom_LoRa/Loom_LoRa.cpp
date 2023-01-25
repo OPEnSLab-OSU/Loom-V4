@@ -67,11 +67,18 @@ void Loom_LoRa::initialize(){
     // Print the set address of the device
     printModuleName(); Serial.println("Address set to: " + String(manager->thisAddress()));
 
+    /* 
+        
+        https://cdn.sparkfun.com/assets/a/e/7/e/b/RFM95_96_97_98W.pdf, Page 22
+    */
+
     // Set bandwidth
     driver.setSignalBandwidth(125000);
 
     // Higher spreading factors give us more range
     driver.setSpreadingFactor(12); 
+
+    // Coding rate should be 4/5
 	driver.setCodingRate4(5);	
 	driver.sleep();
 }
@@ -99,20 +106,20 @@ bool Loom_LoRa::receive(uint maxWaitTime){
     if(moduleInitialized){
         bool recvStatus = false;
         uint8_t fromAddress;
-        uint8_t len = maxMessageLength;
+        
 
         // Write all null bytes to the buffer
-        char buffer[maxMessageLength];
-        memset(buffer, '\0', maxMessageLength);
+        uint8_t buffer[RH_RF95_MAX_MESSAGE_LEN];
+        uint8_t len = sizeof(buffer);
 
         printModuleName(); Serial.println("Waiting for packet...");
 
         // Non-blocking receive if time is set to 0
         if(maxWaitTime == 0){
-            recvStatus = manager->recvfromAck((uint8_t*)buffer, &len, &fromAddress);
+            recvStatus = manager->recvfromAck(buffer, &len, &fromAddress);
         }
         else{
-            recvStatus = manager->recvfromAckTimeout((uint8_t*)buffer, &len, maxWaitTime, &fromAddress);
+            recvStatus = manager->recvfromAckTimeout(buffer, &len, maxWaitTime, &fromAddress);
         }
 
         // If a packet was received 
@@ -149,10 +156,12 @@ bool Loom_LoRa::receive(uint maxWaitTime){
 bool Loom_LoRa::receivePartial(uint waitTime){
     if(moduleInitialized){
         bool recvStatus = false;
+
         uint8_t fromAddress;
 
         // Write all null bytes to the buffer
         uint8_t buffer[RH_RF95_MAX_MESSAGE_LEN];
+        uint8_t len = sizeof(buffer);
        
         // Contents array to store each module in
         JsonArray contents = manInst->getDocument().createNestedArray("contents");
@@ -164,14 +173,13 @@ bool Loom_LoRa::receivePartial(uint waitTime){
         for(int i = 0; i < numPackets; i++){
             tempDoc.clear();
             printModuleName(); Serial.println("Waiting for packet " + String(i+1) + " / " + String(numPackets));
-            memset(buffer, '\0', maxMessageLength);
 
             // Non-blocking receive if time is set to 0
             if(waitTime == 0){
-                recvStatus = manager->recvfromAck(buffer, sizeof(buffer), &fromAddress);
+                recvStatus = manager->recvfromAck(buffer, &len, &fromAddress);
             }
             else{
-                recvStatus = manager->recvfromAckTimeout(buffer, sizeof(buffer), waitTime, &fromAddress);
+                recvStatus = manager->recvfromAckTimeout(buffer, &len, waitTime, &fromAddress);
             }
 
             for(int i = 0; i < 255; i++){

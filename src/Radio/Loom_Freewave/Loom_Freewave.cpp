@@ -69,20 +69,20 @@ void Loom_Freewave::setAddress(uint8_t addr){
 bool Loom_Freewave::receive(uint maxWaitTime){
     bool recvStatus = false;
     uint8_t fromAddress;
-    uint8_t len = maxMessageLength;
+    
 
     // Write all null bytes to the buffer
-    char buffer[maxMessageLength];
-    memset(buffer, '\0', maxMessageLength);
+    uint8_t buffer[maxMessageLength];
+    uint8_t len = sizeof(buffer);
 
     printModuleName(); Serial.println("Waiting for packet...");
 
     // Non-blocking receive if time is set to 0
     if(maxWaitTime == 0){
-        recvStatus = manager->recvfromAck((uint8_t*)buffer, &len, &fromAddress);
+        recvStatus = manager->recvfromAck(buffer, &len, &fromAddress);
     }
     else{
-        recvStatus = manager->recvfromAckTimeout((uint8_t*)buffer, &len, maxWaitTime, &fromAddress);
+        recvStatus = manager->recvfromAckTimeout(buffer, &len, maxWaitTime, &fromAddress);
     }
 
     // If a packet was received 
@@ -114,12 +114,12 @@ bool Loom_Freewave::send(const uint8_t destinationAddress){
         return false;
     }
 
-    if(!manager->sendtoWait((uint8_t*)buffer, measureMsgPack(manInst->getDocument()), destinationAddress)){
+    if(!manager->sendtoWait((uint8_t*)buffer, sizeof(buffer), destinationAddress)){
         printModuleName(); Serial.println("Failed to send packet to specified address!");
         return false;
     }
 
-    printModuleName(); Serial.println("Succsessfully transmit packet!");
+    printModuleName(); Serial.println("Successfully transmit packet!");
     signalStrength = driver.lastRssi();
     driver.sleep();
     return true;

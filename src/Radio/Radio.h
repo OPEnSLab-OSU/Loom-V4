@@ -46,7 +46,7 @@ class Radio : public Module{
         /**
          * Convert the message pack to json
          */ 
-        bool bufferToJson(char* buffer, JsonDocument& json){
+        bool bufferToJson(uint8_t* buffer, JsonDocument& json){
 
             // Clear the json to store new data
             messageJson.clear();
@@ -76,9 +76,6 @@ class Radio : public Module{
          * Convert the json to a message pack
          */ 
         bool jsonToBuffer(char* buffer, JsonObjectConst json){
-
-            // Write all null-bytes
-            memset(buffer, '\0', 255);
 
             bool status = serializeMsgPack(json, buffer, (size_t)maxMessageLength);
 
