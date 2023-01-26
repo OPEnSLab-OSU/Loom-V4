@@ -13,7 +13,7 @@ Manager manager("Device", 1);
 
 // Reads the battery voltage
 // Manger Instance, Address, Range
-Loom_MMA8451 mma(manager, false, 0x1D, MMA8451_RANGE_2_G);
+Loom_MMA8451 mma(manager, 0x1D, false, MMA8451_RANGE_2_G);
 
 void setup() {
 
