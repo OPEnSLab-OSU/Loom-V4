@@ -76,10 +76,10 @@ void Loom_LoRa::initialize(){
     driver.setSignalBandwidth(125000);
 
     // Higher spreading factors give us more range
-    driver.setSpreadingFactor(12); 
+    driver.setSpreadingFactor(10); 
 
     // Coding rate should be 4/5
-	driver.setCodingRate4(5);	
+	driver.setCodingRate4(8);	
 	driver.sleep();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -107,7 +107,6 @@ bool Loom_LoRa::receive(uint maxWaitTime){
         bool recvStatus = false;
         uint8_t fromAddress;
         
-
         // Write all null bytes to the buffer
         uint8_t buffer[RH_RF95_MAX_MESSAGE_LEN];
         uint8_t len = sizeof(buffer);
