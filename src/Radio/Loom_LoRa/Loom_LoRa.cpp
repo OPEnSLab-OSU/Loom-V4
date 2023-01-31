@@ -238,7 +238,7 @@ bool Loom_LoRa::sendFull(const uint8_t destinationAddress){
     }
 
     if(!manager->sendtoWait((uint8_t*)buffer, sizeof(buffer), destinationAddress)){
-        printModuleName(); Serial.println("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
+        printModuleName(); Serial.println("Failed to send packet to specified address! The message may have gotten there but not received and acknowledgement response");
     }else{
         printModuleName(); Serial.println("Successfully transmitted packet!");
     }
