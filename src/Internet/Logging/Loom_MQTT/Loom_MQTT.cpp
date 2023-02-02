@@ -36,6 +36,7 @@ Loom_MQTT::~Loom_MQTT(){
 void Loom_MQTT::publish(){
     if(moduleInitialized){
 
+        Watchdog.disable();
         if(mqttClient == nullptr){
             printModuleName(); Serial.println("Creating new MQTT client!");
             mqttClient = new MqttClient(*internetClient);
@@ -67,6 +68,7 @@ void Loom_MQTT::publish(){
             // If our retry limit has been reached we dont want to try to send data cause it wont work
             if(retryAttempts == 4){
                 printModuleName(); Serial.println("Retry limit exceeded!");
+                Watchdog.enable(WATCHDOG_TIMEOUT);
                 return;
             }
 
@@ -91,13 +93,12 @@ void Loom_MQTT::publish(){
         }
         else{
             printModuleName(); Serial.println("Data has been successfully sent!");
-        }
-
-            
+        }   
     }
     else{
         printModuleName(); Serial.println("Module not initialized! If using credentials from SD make sure they are loaded first.");
     }
+    Watchdog.enable(WATCHDOG_TIMEOUT);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -105,6 +106,7 @@ void Loom_MQTT::publish(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MQTT::publish(Loom_BatchSD& batchSD){
     if(moduleInitialized ){
+        Watchdog.disable();
 
         if(mqttClient == nullptr){
             printModuleName(); Serial.println("Creating new MQTT client!");
@@ -139,6 +141,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
                 // If our retry limit has been reached we dont want to try to send data cause it wont work
                 if(retryAttempts == 4){
                     printModuleName(); Serial.println("Retry limit exceeded!");
+                    Watchdog.enable(WATCHDOG_TIMEOUT);
                     return;
                 }
 
@@ -172,6 +175,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
     else{
         printModuleName(); Serial.println("Module not initialized! If using credentials from SD make sure they are loaded first.");
     }
+    Watchdog.enable(WATCHDOG_TIMEOUT);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -55,6 +55,7 @@ void Manager::measure() {
             else{
                 modules[i].second->printModuleName(); Serial.println("Not initialized!");
             }
+            Watchdog.reset();
         }
     }
     else{
@@ -87,6 +88,7 @@ void Manager::package(){
         else{
             modules[i].second->printModuleName(); Serial.println("Not initialized!");
         }
+        Watchdog.reset();
     }
     packetNumber++;
 }
@@ -119,6 +121,7 @@ void Manager::power_up(){
         else{
             modules[i].second->printModuleName(); Serial.println("Not initialized!");
         }
+        Watchdog.reset();
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -131,6 +134,7 @@ void Manager::power_down(){
         else{
             modules[i].second->printModuleName(); Serial.println("Not initialized!");
         }
+        Watchdog.reset();
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -163,6 +167,9 @@ void Manager::initialize() {
     }
     hasInitialized = true;
     Serial.println("[Manager] ** Setup Complete ** ");
+
+
+    Watchdog.enable(WATCHDOG_TIMEOUT);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -198,7 +205,9 @@ void Manager::read_serial_num(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::pause(const uint32_t ms) const {
+    Watchdog.disable();
     int waitTime = millis() + ms;
     while (millis() < waitTime);
+    Watchdog.enable(WATCHDOG_TIMEOUT);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

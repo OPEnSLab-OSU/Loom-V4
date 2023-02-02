@@ -75,6 +75,7 @@ void Loom_LTE::power_up(){
         
     // If not connected to a network we want to connect
     if(moduleInitialized){
+        Watchdog.disable();
         printModuleName(); Serial.println("Powering up GPRS Modem. This should take about 10 seconds...");
         digitalWrite(powerPin, LOW);
         delay(10000);
@@ -82,6 +83,7 @@ void Loom_LTE::power_up(){
         delay(6000);
         modem.restart();
         printModuleName(); Serial.println("Powering up complete!");
+        Watchdog.enable(WATCHDOG_TIMEOUT);
     }
 
     // If the module isn't initialized we want to try again
@@ -120,6 +122,7 @@ void Loom_LTE::package(){
 bool Loom_LTE::connect(){
     uint8_t attemptCount = 1; // Tracks number of attempts, 5 is a fail
 
+    Watchdog.disable();
     do{
         printModuleName(); Serial.println("Waiting for network...");
         if(!modem.waitForNetwork()){
@@ -138,6 +141,7 @@ bool Loom_LTE::connect(){
         printModuleName(); Serial.println("Attempting to connect to LTE Network: " + APN);
         if(modem.gprsConnect(APN.c_str(), gprsUser.c_str(), gprsPass.c_str())){
             printModuleName(); Serial.println("Successfully Connected!");
+            Watchdog.enable(WATCHDOG_TIMEOUT);
             return true;
         }
         else{
@@ -149,6 +153,7 @@ bool Loom_LTE::connect(){
         // If the last attempt was the 5th attempt then stop
         if(attemptCount > 5){
             printModuleName(); Serial.println("Connection reattempts exceeded 10 tries. Connection Failed");
+            Watchdog.enable(WATCHDOG_TIMEOUT);
             return false;
         }
     }while(!isConnected());
@@ -194,6 +199,7 @@ bool Loom_LTE::verifyConnection(){
         Serial.println();
         client.stop();
     }
+    Watchdog.reset();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

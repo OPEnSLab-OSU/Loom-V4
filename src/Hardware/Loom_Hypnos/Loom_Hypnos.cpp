@@ -379,6 +379,9 @@ void Loom_Hypnos::pre_sleep(){
 
     // Disable the power rails
     disable();
+
+    // Disable watchdog when entering sleep
+    Watchdog.disable();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -398,8 +401,8 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
     if(waitForSerial)
         while(!Serial);
 
-    
-
+    // Enable the watchdog timer when waking up
+    Watchdog.enable(WATCHDOG_TIMEOUT);
     printModuleName(); Serial.println("Device has awoken from sleep!");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

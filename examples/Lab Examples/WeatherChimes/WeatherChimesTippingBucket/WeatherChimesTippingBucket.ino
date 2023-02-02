@@ -46,6 +46,12 @@ Loom_MS5803 ms_air(manager, 118); // 118(0x76) if CSB=HIGH on WC PCB
 Loom_LTE lte(manager, "hologram", "", "");
 Loom_MQTT mqtt(manager, lte.getClient());
 
+/* Calculate the water height based on the difference of pressures*/
+float calculateWaterHeight(){
+  // ((Water Pressure - Air Pressure) * 100 (conversion to pascals)) / (Water Density * Gravity)
+  return (((ms_water.getPressure()-ms_air.getPressure()) * 100) / (997.77 * 9.81));
+}
+
 // Called when the interrupt is triggered 
 void isrTrigger(){
   sampleFlag = true;
@@ -94,6 +100,9 @@ void loop() {
     manager.package();
 
     manager.addData("Tip_Bucket", "Tip_Count", counter);
+
+    // Add the water height calculation to the data
+    manager.addData("Water", "Height_(m)", calculateWaterHeight());
     
     // Print the current JSON packet
     manager.display_data();            

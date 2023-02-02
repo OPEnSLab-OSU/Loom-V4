@@ -229,17 +229,17 @@ void Loom_SDI12::getData(char addr){
         sendCommand(addr, "M!");
         sendCommand(addr, "D0!").toCharArray(buf, 20);
 
-	
+        Watchdog.reset();
+	    if(String(buf).length() == 1){
+            printModuleName(); Serial.println("Retrying for a second time...");
+            delay(3000);
 
-	if(String(buf).length() == 1){
-
-	printModuleName(); Serial.println("Retrying for a second time...");
-        delay(3000);
-
-        // Request a measurement from the sensor at the given address
-        sendCommand(addr, "M!");
-        sendCommand(addr, "D0!").toCharArray(buf, 20);
-	}
+            // Request a measurement from the sensor at the given address
+            sendCommand(addr, "M!");
+            sendCommand(addr, "D0!").toCharArray(buf, 20);
+            Watchdog.reset();
+            
+	    }
     }
 
     // Check if there is actually data to store in the variables

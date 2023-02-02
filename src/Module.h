@@ -2,6 +2,9 @@
 #include "Arduino.h"
 #include <Wire.h>
 #include <ArduinoJson.h>
+#include <Adafruit_SleepyDog.h>
+
+#define WATCHDOG_TIMEOUT 8000
 
 /**
  *  General overarching interface to provide basic unified functionality

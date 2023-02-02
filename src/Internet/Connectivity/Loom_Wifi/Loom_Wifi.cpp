@@ -98,6 +98,7 @@ void Loom_WIFI::power_up() {
 void Loom_WIFI::connect_to_network(){
     int retry_count = 0;
     printModuleName(); Serial.println("Attempting to connect to SSID: " + wifi_name);
+    Watchdog.disable();
 
     // If we are logging into a network with a password
     if(wifi_password.length() > 0){
@@ -119,6 +120,7 @@ void Loom_WIFI::connect_to_network(){
                     wifi_name = manInst->get_device_name() + String(manInst->get_instance_num());
                     start_ap();
                 }
+                Watchdog.enable(WATCHDOG_TIMEOUT);
                 return;
             }
         }
@@ -141,6 +143,7 @@ void Loom_WIFI::connect_to_network(){
                     wifi_name = manInst->get_device_name() + String(manInst->get_instance_num());
                     start_ap();
                 }
+                Watchdog.enable(WATCHDOG_TIMEOUT);
                 return;
             }
         }
@@ -152,6 +155,7 @@ void Loom_WIFI::connect_to_network(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::start_ap(){
+    Watchdog.disable();
     printModuleName(); Serial.println("Starting access point on: " + wifi_name);
 
     auto status = WiFi.beginAP(wifi_name.c_str());
@@ -166,6 +170,7 @@ void Loom_WIFI::start_ap(){
     printModuleName(); Serial.println("Waiting for a device to connect to the access point...");
     while(WiFi.status() != WL_AP_CONNECTED);
     printModuleName(); Serial.println("Device connected to AP!");
+    Watchdog.enable(WATCHDOG_TIMEOUT);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -23,8 +23,7 @@ void isrTrigger(){
 void setup() {
 
   // Start and wait for the user to open the Serial monitor
-  Serial.begin(115200);
-  while(!Serial);
+  manager.beginSerial();
 
   // Load the Timezone before we enable the hypnos
   hypnos.getTimeZoneFromSD("Timezone.json");

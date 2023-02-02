@@ -23,7 +23,7 @@
 #include <Internet/Logging/Loom_MQTT/Loom_MQTT.h>
 #include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
 
-Manager manager("4Gchime", 10);
+Manager manager("Chime", 1);
 
 // Create a new Hypnos object
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, true);
@@ -46,6 +46,13 @@ Loom_Teros10 t10(manager, A0);
 
 // If using SDI12, GS3 or Teros 11 or 12 uncoment this line
 //Loom_SDI12 sdi(manager, A0);
+
+
+/* Calculate the water height based on the difference of pressures*/
+float calculateWaterHeight(){
+  // ((Water Pressure - Air Pressure) * 100 (conversion to pascals)) / (Water Density * Gravity)
+  return (((ms_water.getPressure()-ms_air.getPressure()) * 100) / (997.77 * 9.81));
+}
 
 // Called when the interrupt is triggered 
 void isrTrigger(){
@@ -75,6 +82,9 @@ void loop() {
   // Measure and package the data
   manager.measure();
   manager.package();
+
+  // Add the water height calculation to the data
+  manager.addData("Water", "Height_(m)", calculateWaterHeight());
   
   // Print the current JSON packet
   manager.display_data();            
