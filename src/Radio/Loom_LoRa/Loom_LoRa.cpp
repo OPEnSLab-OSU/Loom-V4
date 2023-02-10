@@ -34,38 +34,38 @@ void Loom_LoRa::initialize(){
 
     // Initialize the radio manager
     if(manager->init()){
-        printModuleName(); Serial.println("Radio manager successfully initialized!");
+        printModuleName("Radio manager successfully initialized!");
     }
     else{
-        printModuleName(); Serial.println("Radio manager failed to initialize!");
+        printModuleName("Radio manager failed to initialize!");
         moduleInitialized = false;
         return;
     }
 
     // Set the radio frequency
     if(driver.setFrequency(RF95_FREQ)){
-        printModuleName(); Serial.println("Radio frequency successfully set to: " + String(RF95_FREQ));
+        printModuleName("Radio frequency successfully set to: " + String(RF95_FREQ));
     }
     else{
-        printModuleName(); Serial.println("Failed to set frequency!");
+        printModuleName("Failed to set frequency!");
         moduleInitialized = false;
         return;
     }
 
     // Set radio power level
-    printModuleName(); Serial.println("Setting device power level to: " + String(powerLevel));
+    printModuleName("Setting device power level to: " + String(powerLevel));
     driver.setTxPower(powerLevel, false);
 
     // Set timeout time
-    printModuleName(); Serial.println("Timeout time set to: " + String(retryTimeout));
+    printModuleName("Timeout time set to: " + String(retryTimeout));
     manager->setTimeout(retryTimeout);
 
     // Set retry attempts
-    printModuleName(); Serial.println("Retry count set to: " + String(retryCount));
+    printModuleName("Retry count set to: " + String(retryCount));
     manager->setRetries(retryCount);
 
     // Print the set address of the device
-    printModuleName(); Serial.println("Address set to: " + String(manager->thisAddress()));
+    printModuleName("Address set to: " + String(manager->thisAddress()));
 
     /* 
         
@@ -111,7 +111,7 @@ bool Loom_LoRa::receive(uint maxWaitTime){
         uint8_t buffer[RH_RF95_MAX_MESSAGE_LEN];
         uint8_t len = sizeof(buffer);
 
-        printModuleName(); Serial.println("Waiting for packet...");
+        printModuleName("Waiting for packet...");
 
         // Non-blocking receive if time is set to 0
         if(maxWaitTime == 0){
@@ -123,7 +123,7 @@ bool Loom_LoRa::receive(uint maxWaitTime){
 
         // If a packet was received 
         if(recvStatus){
-            printModuleName(); Serial.println("Packet Received!");
+            printModuleName("Packet Received!");
             signalStrength = driver.lastRssi();
             recvStatus = bufferToJson(buffer, manInst->getDocument());
 
@@ -139,13 +139,13 @@ bool Loom_LoRa::receive(uint maxWaitTime){
             }
         }
         else{
-            printModuleName(); Serial.println("No Packet Received");
+            printModuleName("No Packet Received");
         }
 
         driver.sleep();
         return recvStatus;
     }else{
-        printModuleName(); Serial.println("Module not initialized!");
+        printModuleName("Module not initialized!");
         return false;
     }
 }
@@ -171,7 +171,7 @@ bool Loom_LoRa::receivePartial(uint waitTime){
         // Loop for the given number of packets we are expecting
         for(int i = 0; i < numPackets; i++){
             tempDoc.clear();
-            printModuleName(); Serial.println("Waiting for packet " + String(i+1) + " / " + String(numPackets));
+            printModuleName("Waiting for packet " + String(i+1) + " / " + String(numPackets));
 
             // Non-blocking receive if time is set to 0
             if(waitTime == 0){
@@ -188,7 +188,7 @@ bool Loom_LoRa::receivePartial(uint waitTime){
 
             // If a packet was received 
             if(recvStatus){
-                printModuleName(); Serial.println("Fragment received " + String(i+1) + " / " + String(numPackets));
+                printModuleName("Fragment received " + String(i+1) + " / " + String(numPackets));
                 signalStrength = driver.lastRssi();
                 recvStatus = bufferToJson(buffer, tempDoc);
 
@@ -196,14 +196,14 @@ bool Loom_LoRa::receivePartial(uint waitTime){
                 contents.add(tempDoc["contents"][0].as<JsonObject>());
             }
             else{
-                printModuleName(); Serial.println("No Packet Received");
+                printModuleName("No Packet Received");
             }
         }
 
         driver.sleep();
         return recvStatus;
     }else{
-        printModuleName(); Serial.println("Module not initialized!");
+        printModuleName("Module not initialized!");
         return false;
     }
 }
@@ -221,7 +221,7 @@ bool Loom_LoRa::send(const uint8_t destinationAddress){
         }
     }
     else{
-        printModuleName(); Serial.println("Module not initialized!");
+        printModuleName("Module not initialized!");
         return false;
     }
 }
@@ -233,14 +233,14 @@ bool Loom_LoRa::sendFull(const uint8_t destinationAddress){
 
     // Try to write the JSON to the buffer
     if(!jsonToBuffer(buffer, manInst->getDocument().as<JsonObject>())){
-        printModuleName(); Serial.println("Failed to convert JSON to MsgPack");
+        printModuleName("Failed to convert JSON to MsgPack");
         return false;
     }
 
     if(!manager->sendtoWait((uint8_t*)buffer, sizeof(buffer), destinationAddress)){
-        printModuleName(); Serial.println("Failed to send packet to specified address! The message may have gotten there but not received and acknowledgement response");
+        printModuleName("Failed to send packet to specified address! The message may have gotten there but not received and acknowledgement response");
     }else{
-        printModuleName(); Serial.println("Successfully transmitted packet!");
+        printModuleName("Successfully transmitted packet!");
     }
 
     signalStrength = driver.lastRssi();
@@ -251,7 +251,7 @@ bool Loom_LoRa::sendFull(const uint8_t destinationAddress){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
-    printModuleName(); Serial.println("Packet was greater than the maximum packet length the packet will be fragmented");
+    printModuleName("Packet was greater than the maximum packet length the packet will be fragmented");
     
     // Disable retries when sending partial packets
     manager->setRetries(0);
@@ -273,7 +273,7 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
     
     // Try to write the JSON to the buffer
     if(!jsonToBuffer(buffer, obj)){
-        printModuleName(); Serial.println("Failed to convert JSON to MsgPack");
+        printModuleName("Failed to convert JSON to MsgPack");
         return false;
     }
 
@@ -284,9 +284,9 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
 
     // Send the packet off
     if(!manager->sendtoWait((uint8_t*)buffer, measureMsgPack(obj), destinationAddress)){
-        printModuleName(); Serial.println("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
+        printModuleName("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
     }else{
-        printModuleName(); Serial.println("Successfully transmitted packet!");
+        printModuleName("Successfully transmitted packet!");
     }
 
     // Send all modules by themselves to allow for larger amounts of data to be sent over radio
@@ -333,7 +333,7 @@ bool Loom_LoRa::sendModules(JsonObject json, const uint8_t destinationAddress){
 
         // Try to write the JSON to the buffer
         if(!jsonToBuffer(buffer, obj)){
-            printModuleName(); Serial.println("Failed to convert JSON to MsgPack");
+            printModuleName("Failed to convert JSON to MsgPack");
             return false;
         }
 
@@ -346,9 +346,9 @@ bool Loom_LoRa::sendModules(JsonObject json, const uint8_t destinationAddress){
 
         // Send the packet off
         if(!manager->sendtoWait((uint8_t*)buffer, measureMsgPack(obj), destinationAddress)){
-            printModuleName(); Serial.println("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
+            printModuleName("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
         }else{
-            printModuleName(); Serial.println("Successfully transmitted packet!");
+            printModuleName("Successfully transmitted packet!");
         }
         delay(500);
     }

@@ -38,7 +38,7 @@ void Loom_MQTT::publish(){
 
         Watchdog.disable();
         if(mqttClient == nullptr){
-            printModuleName(); Serial.println("Creating new MQTT client!");
+            printModuleName("Creating new MQTT client!");
             mqttClient = new MqttClient(*internetClient);
         }
 
@@ -57,17 +57,17 @@ void Loom_MQTT::publish(){
         // Try to connect multiple times as some may be dropped
         while(!mqttClient->connected() && retryAttempts < 5)
         {
-            printModuleName(); Serial.println("Attempting to connect to broker: " + address + ":" + String(port));
+            printModuleName("Attempting to connect to broker: " + address + ":" + String(port));
 
             // Attempt to Connect to the MQTT client 
             if(!mqttClient->connect(address.c_str(), port)){
-                printModuleName(); Serial.println("Failed to connect to broker: " + getMQTTError());
+                printModuleName("Failed to connect to broker: " + getMQTTError());
                 delay(5000);
             }
 
             // If our retry limit has been reached we dont want to try to send data cause it wont work
             if(retryAttempts == 4){
-                printModuleName(); Serial.println("Retry limit exceeded!");
+                printModuleName("Retry limit exceeded!");
                 Watchdog.enable(WATCHDOG_TIMEOUT);
                 return;
             }
@@ -75,28 +75,28 @@ void Loom_MQTT::publish(){
             retryAttempts++;
         }
         
-        printModuleName(); Serial.println("Successfully connected to broker!");
-        printModuleName(); Serial.println("Attempting to send data...");
+        printModuleName("Successfully connected to broker!");
+        printModuleName("Attempting to send data...");
 
         // Tell the broker we are still here
         mqttClient->poll();
 
         // Start a message write the data and close the message
         if(mqttClient->beginMessage(topic, false, 2) != 1){
-            printModuleName(); Serial.println("Failed to begin message!");
+            printModuleName("Failed to begin message!");
         }
         mqttClient->print(manInst->getJSONString());
 
         // Check to see if we are actually closing messages properly
         if(mqttClient->endMessage() != 1){
-            printModuleName(); Serial.println("Failed to close message!");
+            printModuleName("Failed to close message!");
         }
         else{
-            printModuleName(); Serial.println("Data has been successfully sent!");
+            printModuleName("Data has been successfully sent!");
         }   
     }
     else{
-        printModuleName(); Serial.println("Module not initialized! If using credentials from SD make sure they are loaded first.");
+        printModuleName("Module not initialized! If using credentials from SD make sure they are loaded first.");
     }
     Watchdog.enable(WATCHDOG_TIMEOUT);
 }
@@ -109,7 +109,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
         Watchdog.disable();
 
         if(mqttClient == nullptr){
-            printModuleName(); Serial.println("Creating new MQTT client!");
+            printModuleName("Creating new MQTT client!");
             mqttClient = new MqttClient(*internetClient);
         }
 
@@ -130,17 +130,17 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
             // Try to connect multiple times as some may be dropped
             while(!mqttClient->connected() && retryAttempts < 5)
             {
-                printModuleName(); Serial.println("Attempting to connect to broker: " + address + ":" + String(port));
+                printModuleName("Attempting to connect to broker: " + address + ":" + String(port));
 
                 // Attempt to Connect to the MQTT client 
                 if(!mqttClient->connect(address.c_str(), port)){
-                    printModuleName(); Serial.println("Failed to connect to broker: " + getMQTTError());
+                    printModuleName("Failed to connect to broker: " + getMQTTError());
                     delay(5000);
                 }
 
                 // If our retry limit has been reached we dont want to try to send data cause it wont work
                 if(retryAttempts == 4){
-                    printModuleName(); Serial.println("Retry limit exceeded!");
+                    printModuleName("Retry limit exceeded!");
                     Watchdog.enable(WATCHDOG_TIMEOUT);
                     return;
                 }
@@ -148,15 +148,15 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
                 retryAttempts++;
             }
             
-            printModuleName(); Serial.println("Successfully connected to broker!");
-            printModuleName(); Serial.println("Attempting to send data...");
+            printModuleName("Successfully connected to broker!");
+            printModuleName("Attempting to send data...");
 
             // Tell the broker we are still here
             mqttClient->poll();
             
             std::vector<String> batch = batchSD.getBatch();
             for(int i = 0; i < batch.size(); i++){
-                printModuleName(); Serial.println("Publishing Packet " + String(i+1) + " of " + String(batch.size()));
+                printModuleName("Publishing Packet " + String(i+1) + " of " + String(batch.size()));
                 
                 // Start a message write the data and close the message
                 mqttClient->beginMessage(topic, false, 2);
@@ -165,15 +165,15 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
                 delay(500);
             }
             
-            printModuleName(); Serial.println("Data has been successfully sent!");
+            printModuleName("Data has been successfully sent!");
             
         }
         else{
-            printModuleName(); Serial.println("Batch not ready to publish: " + String(batchSD.getCurrentBatch()) + "/" + String(batchSD.getBatchSize()));
+            printModuleName("Batch not ready to publish: " + String(batchSD.getCurrentBatch()) + "/" + String(batchSD.getBatchSize()));
         }
     }
     else{
-        printModuleName(); Serial.println("Module not initialized! If using credentials from SD make sure they are loaded first.");
+        printModuleName("Module not initialized! If using credentials from SD make sure they are loaded first.");
     }
     Watchdog.enable(WATCHDOG_TIMEOUT);
 }
@@ -212,7 +212,7 @@ void Loom_MQTT::loadConfigFromJSON(String json){
 
     // Check if an error occurred and if so print it
     if(deserialError != DeserializationError::Ok){
-        printModuleName(); Serial.println("There was an error reading the MQTT credentials from SD: " + String(deserialError.c_str()));
+        printModuleName("There was an error reading the MQTT credentials from SD: " + String(deserialError.c_str()));
     }
     
     address = doc["broker"].as<String>();

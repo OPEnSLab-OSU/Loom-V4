@@ -26,22 +26,22 @@ class EZOSensor : public I2CDevice{
         bool calibrate(){
             // Check the device is connected before calibrating
             if(!checkDeviceConnection()){
-                printModuleName(); Serial.println("Failed to detect device at the specified address");
+                printModuleName("Failed to detect device at the specified address");
                 return false;
             }
 
             // Send the calibrate command
             if(sendTransmission("cal") != 0){
-                printModuleName(); Serial.println("Failed to transmit calibration command");
+                printModuleName("Failed to transmit calibration command");
                 return false;
             }
 
-            printModuleName(); Serial.println("Calibrating Device...");
+            printModuleName("Calibrating Device...");
 
             // Wait calibration time
             delay(1300);
 
-            printModuleName(); Serial.println("Device successfully calibrated!");
+            printModuleName("Device successfully calibrated!");
 
             return true;
         };
@@ -54,13 +54,13 @@ class EZOSensor : public I2CDevice{
 
                 // Check that the device is still present and connected
                 if(!checkDeviceConnection()){
-                    printModuleName(); Serial.println("Failed to detect device at the specified address");
+                    printModuleName("Failed to detect device at the specified address");
                     return false;
                 }
 
                 // Attempt to send a read command to the device
                 if(!sendTransmission("r")){
-                    printModuleName(); Serial.println("Failed to send 'read' command to device");
+                    printModuleName("Failed to send 'read' command to device");
                     return false;
                 }
                 
@@ -73,7 +73,7 @@ class EZOSensor : public I2CDevice{
                 // Check if the I2C code was not valid
                 code = Wire.read();
                 if(code != 1){
-                    printModuleName(); Serial.println("Unsuccessful Response Code Received: " + responseCodes[code-1]);
+                    printModuleName("Unsuccessful Response Code Received: " + responseCodes[code-1]);
                     return false;
                 } 
 

@@ -23,12 +23,12 @@ void Loom_MAX31865::measure(){
         // Check and print any faults
         uint8_t fault = max.readFault();
         if (fault) {
-            if (fault & MAX31865_FAULT_HIGHTHRESH)  printModuleName(); Serial.println("RTD High Threshold"); 
-            if (fault & MAX31865_FAULT_LOWTHRESH)   printModuleName(); Serial.println("RTD Low Threshold"); 
-            if (fault & MAX31865_FAULT_REFINLOW)    printModuleName(); Serial.println("REFIN- > 0.85 x Bias"); 
-            if (fault & MAX31865_FAULT_REFINHIGH)   printModuleName(); Serial.println("REFIN- < 0.85 x Bias - FORCE- open"); 
-            if (fault & MAX31865_FAULT_RTDINLOW)    printModuleName(); Serial.println("RTDIN- < 0.85 x Bias - FORCE- open"); 
-            if (fault & MAX31865_FAULT_OVUV)        printModuleName(); Serial.println("Under/Over voltage"); 
+            if (fault & MAX31865_FAULT_HIGHTHRESH)  printModuleName("RTD High Threshold"); 
+            if (fault & MAX31865_FAULT_LOWTHRESH)   printModuleName("RTD Low Threshold"); 
+            if (fault & MAX31865_FAULT_REFINLOW)    printModuleName("REFIN- > 0.85 x Bias"); 
+            if (fault & MAX31865_FAULT_REFINHIGH)   printModuleName("REFIN- < 0.85 x Bias - FORCE- open"); 
+            if (fault & MAX31865_FAULT_RTDINLOW)    printModuleName("RTDIN- < 0.85 x Bias - FORCE- open"); 
+            if (fault & MAX31865_FAULT_OVUV)        printModuleName("Under/Over voltage"); 
             break;
         }
     }

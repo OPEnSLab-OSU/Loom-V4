@@ -24,7 +24,7 @@ void Loom_Multiplexer::initialize(){
 
         // Check if there is a device on the current I2C device
         if(isDeviceConnected(addr)) {
-            printModuleName(); Serial.println("Multiplexer found at address: " + String(addr));
+            printModuleName("Multiplexer found at address: " + String(addr));
             activeMuxAddr = addr;
             moduleInitialized = true;
 
@@ -38,7 +38,7 @@ void Loom_Multiplexer::initialize(){
                     if(addr > 0){
                         // Is there any device at this address
                         if(isDeviceConnected(addr)){
-                            printModuleName(); Serial.println("Found I2C Device on Pin " + String(i) + " at address " + String(addr));
+                            printModuleName("Found I2C Device on Pin " + String(i) + " at address " + String(addr));
 
                             sensors.push_back(std::make_tuple(addr, loadSensor(addr), i));
 
@@ -46,7 +46,7 @@ void Loom_Multiplexer::initialize(){
                             std::get<1>(sensors[moduleIndex])->setModuleName(std::get<1>(sensors[moduleIndex])->getModuleName() + "_" + String(i));
                             std::get<1>(sensors[moduleIndex])->initialize();
 
-                            printModuleName(); Serial.println("Loaded sensor " + std::get<1>(sensors[moduleIndex])->getModuleName() + " on port " + String(i));
+                            printModuleName("Loaded sensor " + std::get<1>(sensors[moduleIndex])->getModuleName() + " on port " + String(i));
                             moduleIndex++;
                         }
                     }
@@ -54,14 +54,14 @@ void Loom_Multiplexer::initialize(){
             }
 
             if(sensors.size() <= 0){
-                printModuleName(); Serial.println("No sensors found!");
+                printModuleName("No sensors found!");
             }
             return;
         }
     }
 
     // There was no device so error
-    printModuleName(); Serial.println("Multiplexer was not found at the standard address or any alternatives");
+    printModuleName("Multiplexer was not found at the standard address or any alternatives");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -85,7 +85,7 @@ void Loom_Multiplexer::refreshSensors(){
                     sensors[moduleIndex] = std::make_tuple(addr, loadSensor(addr), i);
 
                     // Initialize the new sensor
-                    printModuleName(); Serial.println("New sensor detected on port " + String(i) + " at I2C address " + String(addr) + " of type " + std::get<1>(sensors[moduleIndex])->getModuleName());
+                    printModuleName("New sensor detected on port " + String(i) + " at I2C address " + String(addr) + " of type " + std::get<1>(sensors[moduleIndex])->getModuleName());
                     
                     // Update name for unique instances in the Mux
                     std::get<1>(sensors[moduleIndex])->setModuleName(std::get<1>(sensors[moduleIndex])->getModuleName() + "_" + String(i));

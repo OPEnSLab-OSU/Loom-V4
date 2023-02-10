@@ -160,7 +160,7 @@ class Loom_Hypnos : public Module{
             if(RTC_initialized)
                 return RTC_DS.now(); 
             else{
-                printModuleName(); Serial.println("Attempted to pull time when RTC was not previously initialized! Returned default datetime");
+                printModuleName("Attempted to pull time when RTC was not previously initialized! Returned default datetime");
                 return DateTime();
             }
         };

@@ -29,7 +29,7 @@ void Loom_Stepper::initialize(){
     // Wait for init move
     yield();
 
-    printModuleName(); Serial.println("Stepper Initialized!");
+    printModuleName("Stepper Initialized!");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -64,10 +64,6 @@ void Loom_Stepper::moveSteps(const uint16_t steps, const uint8_t speed, const bo
     else
         currentSteps =  currentSteps + steps;
 
-    printModuleName(); 
-    Serial.print("Stepper set to move " + String(steps));
-    Serial.print(" steps at speed " + String(speed));
-    Serial.print(" going ");
-    Serial.println((clockwise) ? "counterclockwise" : "clockwise");
+    printModuleName("Stepper set to move " + String(steps) + " steps at speed " + String(speed) + " going " + (clockwise) ? "counterclockwise" : "clockwise"); 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

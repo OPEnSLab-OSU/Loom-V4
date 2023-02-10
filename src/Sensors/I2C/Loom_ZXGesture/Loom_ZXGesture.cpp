@@ -17,33 +17,33 @@ Loom_ZXGesture::Loom_ZXGesture(
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ZXGesture::initialize() {
     if(!zx.init()){
-        printModuleName(); Serial.println("Failed to initialize ZX Gesture Sensor! Check connections and try again...");
+        printModuleName("Failed to initialize ZX Gesture Sensor! Check connections and try again...");
     }
     else{
 
         // Make sure the version number is correct
         uint8_t ver = zx.getModelVersion();
-        printModuleName();
+        //printModuleName();
         if (ver != ZX_MODEL_VER) {
             moduleInitialized = false;
-            Serial.println("Incorrect Model Version. Expected Version: " + String(ZX_MODEL_VER) + " Actual Version: " + String(ver));
+            printModuleName("Incorrect Model Version. Expected Version: " + String(ZX_MODEL_VER) + " Actual Version: " + String(ver));
             return;
         } else {
-            Serial.println("Model Version: " + String(ver));
+            printModuleName("Model Version: " + String(ver));
         }
 
         // Read the register map version and ensure the library will work
         ver = zx.getRegMapVersion();
-        printModuleName();
+        //printModuleName();
         if (ver != ZX_REG_MAP_VER) {
             moduleInitialized = false;
-            Serial.println("Incorrect Register Map Version. Expected Version: " + String(ZX_REG_MAP_VER) + " Actual Version: " + String(ver));
+            printModuleName("Incorrect Register Map Version. Expected Version: " + String(ZX_REG_MAP_VER) + " Actual Version: " + String(ver));
             return;
         } else {
-            Serial.println("Register Map Version: " + String(ver));
+            printModuleName("Register Map Version: " + String(ver));
         }
 
-        printModuleName(); Serial.println("Successfully initialized ZX Gesture Sensor!");
+        printModuleName("Successfully initialized ZX Gesture Sensor!");
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -62,7 +62,7 @@ void Loom_ZXGesture::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            printModuleName(); Serial.println("No acknowledge received from the device");
+            printModuleName("No acknowledge received from the device");
             return;
         }
 
@@ -81,7 +81,7 @@ void Loom_ZXGesture::measure() {
                     pos.z = z;
                 }
                 else {
-                    printModuleName(); Serial.println("Error occurred while reading position data");
+                    printModuleName("Error occurred while reading position data");
                 }
             }
             

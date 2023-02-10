@@ -49,6 +49,13 @@ class SDManager : public Module{
         String readFile(String fileName);
 
         /**
+         * Write a single line to a file
+         * @param filename File to write to
+         * @param content String to write to the line
+        */
+        bool writeLineToFile(String filename, String content); 
+
+        /**
          * Get the default SD card file name
          */ 
         String getDefaultFilename(){ return fileName; };
@@ -84,6 +91,9 @@ class SDManager : public Module{
          */ 
         void setLogName(String name) { overrideName = name; };
 
+        /* Get whatever number we are currently appending to the SD fileNames*/
+        int getCurrentFileNumber() {return file_count;};
+
         
     private:
 
@@ -104,13 +114,14 @@ class SDManager : public Module{
 
         int batch_size = -1;                                    // How many packets to log per batch
         int current_batch = 0;                                  // Current count of the batch
+        int file_count = 0;                                     // What file number are we logging to
 
         bool sdInitialized = false;                             // If the SD card actually initialized
         String headers[2] = {"", ""};                           // Contains the main and sub headers that are added to the top of the CSV files
 
 
         void logBatch();                                        // Log data in batch format
-        bool writeLineToFile(String filename, String content);  // Write the given string to a file
+        
         void createHeaders();                                   // Create the headers for the CSV file based off what info we are storing
         bool updateCurrentFileName();                           // Update the current file name to log to based on files already existing on the SD card
 };

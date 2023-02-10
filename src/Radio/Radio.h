@@ -56,7 +56,7 @@ class Radio : public Module{
 
             // Check if an error occurred 
             if(error != DeserializationError::Ok){
-                printModuleName(); Serial.println("Error occurred parsing MsgPack: " + String(error.c_str()));
+                printModuleName("Error occurred parsing MsgPack: " + String(error.c_str()));
                 return false;
             }
 
@@ -65,7 +65,7 @@ class Radio : public Module{
             deserializeJson(json, jsonStr);
 
             // Print out the received packet
-            printModuleName(); Serial.println("\nMessage Received: ");
+            printModuleName("\nMessage Received: ");
             serializeJsonPretty(messageJson, Serial);
             Serial.println("\n");
 

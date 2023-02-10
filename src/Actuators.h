@@ -41,7 +41,7 @@ class Actuator : public Module{
          */ 
         virtual void control(JsonArray json) = 0;
 
-        void printModuleName() override { Serial.print("[" + (typeToString() + String(instance_num)) + "] "); };
+        void printModuleName(String message) override { Serial.print("[" + (typeToString() + String(instance_num)) + "] "); };
 
         String getModuleName() override { return (typeToString() + String(instance_num)); };
 

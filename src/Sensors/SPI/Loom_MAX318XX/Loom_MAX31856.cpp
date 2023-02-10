@@ -9,12 +9,12 @@ Loom_MAX31856::Loom_MAX31856(Manager& man, int samples, int chip_select) : Modul
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MAX31856::initialize(){
     if (!maxthermo.begin()) {
-        printModuleName(); Serial.println("Could not initialize thermocouple.");
+        printModuleName("Could not initialize thermocouple.");
         moduleInitialized = false;
         return;
     }
     else{
-        printModuleName(); Serial.println("Successfully initialized thermocouple.");
+        printModuleName("Successfully initialized thermocouple.");
     }
     maxthermo.setThermocoupleType(MAX31856_TCTYPE_K);
 }
@@ -32,14 +32,14 @@ void Loom_MAX31856::measure(){
             // Check and print any faults
             uint8_t fault = maxthermo.readFault();
             if (fault) {
-                if (fault & MAX31856_FAULT_CJRANGE) printModuleName(); Serial.println("Cold Junction Range Fault");
-                if (fault & MAX31856_FAULT_TCRANGE) printModuleName(); Serial.println("Thermocouple Range Fault");
-                if (fault & MAX31856_FAULT_CJHIGH)  printModuleName(); Serial.println("Cold Junction High Fault");
-                if (fault & MAX31856_FAULT_CJLOW)   printModuleName(); Serial.println("Cold Junction Low Fault");
-                if (fault & MAX31856_FAULT_TCHIGH)  printModuleName(); Serial.println("Thermocouple High Fault");
-                if (fault & MAX31856_FAULT_TCLOW)   printModuleName(); Serial.println("Thermocouple Low Fault");
-                if (fault & MAX31856_FAULT_OVUV)    printModuleName(); Serial.println("Over/Under Voltage Fault");
-                if (fault & MAX31856_FAULT_OPEN)    printModuleName(); Serial.println("Thermocouple Open Fault");
+                if (fault & MAX31856_FAULT_CJRANGE) printModuleName("Cold Junction Range Fault");
+                if (fault & MAX31856_FAULT_TCRANGE) printModuleName("Thermocouple Range Fault");
+                if (fault & MAX31856_FAULT_CJHIGH)  printModuleName("Cold Junction High Fault");
+                if (fault & MAX31856_FAULT_CJLOW)   printModuleName("Cold Junction Low Fault");
+                if (fault & MAX31856_FAULT_TCHIGH)  printModuleName("Thermocouple High Fault");
+                if (fault & MAX31856_FAULT_TCLOW)   printModuleName("Thermocouple Low Fault");
+                if (fault & MAX31856_FAULT_OVUV)    printModuleName("Over/Under Voltage Fault");
+                if (fault & MAX31856_FAULT_OPEN)    printModuleName("Thermocouple Open Fault");
                 break;
             }
         }

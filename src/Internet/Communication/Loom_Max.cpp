@@ -30,7 +30,7 @@ void Loom_Max::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Max::initialize(){
-    printModuleName(); Serial.println("Initializing Max Communication....");
+    printModuleName("Initializing Max Communication....");
 
     udpSend = UDPPtr(wifiInst->getUDP());
     udpRecv = UDPPtr(wifiInst->getUDP());
@@ -39,33 +39,33 @@ void Loom_Max::initialize(){
     setIP();
     setUDPPort();
 
-    printModuleName(); Serial.println("Connections Opened!");
+    printModuleName("Connections Opened!");
 
     /**
      * Initialize each actuator
      */ 
     if(actuators.size() > 0){
-        printModuleName(); Serial.println("Initializing desired actuators...");
+        printModuleName("Initializing desired actuators...");
         for(int i = 0; i < actuators.size(); i++){
             actuators[i]->initialize();
         }
-        printModuleName(); Serial.println("Successfully initialized actuators!");
+        printModuleName("Successfully initialized actuators!");
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Max::publish(){
-    printModuleName(); Serial.println("Sending packet to " + Loom_WIFI::IPtoString(remoteIP) + ":" + String(sendPort));
+    printModuleName("Sending packet to " + Loom_WIFI::IPtoString(remoteIP) + ":" + String(sendPort));
 
     if(!udpSend){
-        printModuleName(); Serial.println("Sender UDP instance not set!");
+        printModuleName("Sender UDP instance not set!");
         return false;
     }
 
     // Attempt to start a new packet
     if(udpSend->beginPacket(remoteIP, sendPort) != 1){
-        printModuleName(); Serial.println("The IP address or port were invalid!");
+        printModuleName("The IP address or port were invalid!");
         return false;
     }
 
@@ -79,16 +79,16 @@ bool Loom_Max::publish(){
     size_t size = serializeJson(manInst->getDocument(), (*udpSend));
 
     if(size <= 0){
-        printModuleName(); Serial.println("An error occurred when attempting to write the JSON packet to the UDP stream");
+        printModuleName("An error occurred when attempting to write the JSON packet to the UDP stream");
         return false;
     }
 
     if(udpSend->endPacket() != 1){
-        printModuleName(); Serial.println("An error occurred when attempting to close the current packet!");
+        printModuleName("An error occurred when attempting to close the current packet!");
         return false;
     }
 
-    printModuleName(); Serial.println("Packet successfully sent!");
+    printModuleName("Packet successfully sent!");
 
     return true;
 }
@@ -104,7 +104,7 @@ bool Loom_Max::subscribe(){
 
         DeserializationError error = deserializeJson(messageJson, (*udpRecv) );
 		if (error != DeserializationError::Ok) {
-			printModuleName(); Serial.println("Failed to parse JSON data from UDP stream, Error: " + String(error.c_str()));
+			printModuleName("Failed to parse JSON data from UDP stream, Error: " + String(error.c_str()));
 			return false;
 		}
 
@@ -143,8 +143,8 @@ bool Loom_Max::subscribe(){
             }
         }
         else{            
-            printModuleName(); Serial.println("Packet received from: " + Loom_WIFI::IPtoString(udpRecv->remoteIP()));
-            printModuleName(); Serial.println("Message Json: ");
+            printModuleName("Packet received from: " + Loom_WIFI::IPtoString(udpRecv->remoteIP()));
+            printModuleName("Message Json: ");
             serializeJsonPretty(messageJson, Serial);
             Serial.println("\n");
 
@@ -168,7 +168,7 @@ bool Loom_Max::subscribe(){
         return true;
     }
 
-    printModuleName(); Serial.println("No message received!");
+    printModuleName("No message received!");
 
     return false;
     
@@ -184,7 +184,7 @@ void Loom_Max::setUDPPort(){
     udpSend->begin(sendPort);
     udpRecv->begin(recvPort);
 
-    printModuleName(); Serial.println("Listening for UDP Packets on " + String(recvPort));
+    printModuleName("Listening for UDP Packets on " + String(recvPort));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

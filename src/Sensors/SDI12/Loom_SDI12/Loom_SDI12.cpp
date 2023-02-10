@@ -15,7 +15,7 @@ Loom_SDI12::Loom_SDI12(const int pinNumber) : Module("SDI12"), sdiInterface(pinN
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::initialize(){
 
-    printModuleName(); Serial.println("Initializing SDI-12 Sensors...");
+    printModuleName("Initializing SDI-12 Sensors...");
 
     // On init we set the SDI pin to OUTPUT so we can request data
     pinMode(sdiInterface.getDataPin(), OUTPUT);
@@ -53,7 +53,7 @@ void Loom_SDI12::measure(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::print_measurements(){
    
-    printModuleName();
+   // printModuleName();
 	Serial.println("Measurements:");
 	Serial.println("\tTemperature: " + String(sensorData[0]));
 	Serial.println("\tDielectric Permeability: " + String(sensorData[1]));
@@ -103,7 +103,7 @@ std::vector<char> Loom_SDI12::scanAddressSpace(){
     std::vector<char> activeSensors;
 
     // Print the module name followed by the message saying please wait
-    printModuleName(); Serial.println("Scanning SDI-12 Address Space this make take a little while...");
+    printModuleName("Scanning SDI-12 Address Space this make take a little while...");
 
     // Scan over the characters that can be used as addresses for refrencing the sensors
 	for (char i = '0'; i <= '9'; i++){
@@ -127,15 +127,14 @@ std::vector<char> Loom_SDI12::scanAddressSpace(){
     // Check if we actually found any connected devices
     if(activeSensors.size() > 0){
         // Print the module name followed by the message saying please wait
-        printModuleName(); Serial.println("== We found the following active Addresses ==");
+        printModuleName("== We found the following active Addresses ==");
         for(int i = 0; i < activeSensors.size(); i++){
-            printModuleName(); 
-            Serial.print("    Address: ");
+            printModuleName("    Address: "); 
             Serial.println(activeSensors[i]);
         }
     }
     else{
-        printModuleName(); Serial.println("== No SDI-12 Devices Were Discovered == ");
+        printModuleName("== No SDI-12 Devices Were Discovered == ");
     }
 
     return activeSensors;
@@ -222,7 +221,7 @@ void Loom_SDI12::getData(char addr){
     
     // If the value returned was 0 we want to re-request data
     if(String(buf).length() == 1){
-        printModuleName(); Serial.println("Invalid data received! Retrying...");
+        printModuleName("Invalid data received! Retrying...");
         delay(3000);
 
         // Request a measurement from the sensor at the given address
@@ -231,7 +230,7 @@ void Loom_SDI12::getData(char addr){
 
         Watchdog.reset();
 	    if(String(buf).length() == 1){
-            printModuleName(); Serial.println("Retrying for a second time...");
+            printModuleName("Retrying for a second time...");
             delay(3000);
 
             // Request a measurement from the sensor at the given address
@@ -270,7 +269,7 @@ void Loom_SDI12::getData(char addr){
         }
     }
     else{
-        printModuleName(); Serial.println("Failed to record new data! Using previous valid information!");
+        printModuleName("Failed to record new data! Using previous valid information!");
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

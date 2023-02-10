@@ -29,19 +29,19 @@ void Loom_Freewave::initialize(){
     serial1.begin(115200);
 
     // Set timeout time
-    printModuleName(); Serial.println("Timeout time set to: " + String(retryTimeout));
+    printModuleName("Timeout time set to: " + String(retryTimeout));
     manager->setTimeout(retryTimeout);
 
     // Set retry attempts
-    printModuleName(); Serial.println("Retry count set to: " + String(retryCount));
+    printModuleName("Retry count set to: " + String(retryCount));
     manager->setRetries(retryCount);
 
     // Initialize the radio manager
     if(manager->init()){
-        printModuleName(); Serial.println("Radio manager successfully initialized!");
+        printModuleName("Radio manager successfully initialized!");
     }
     else{
-        printModuleName(); Serial.println("Radio manager failed to initialize!");
+        printModuleName("Radio manager failed to initialize!");
         moduleInitialized = false;
         return;
     }
@@ -75,7 +75,7 @@ bool Loom_Freewave::receive(uint maxWaitTime){
     uint8_t buffer[maxMessageLength];
     uint8_t len = sizeof(buffer);
 
-    printModuleName(); Serial.println("Waiting for packet...");
+    printModuleName("Waiting for packet...");
 
     // Non-blocking receive if time is set to 0
     if(maxWaitTime == 0){
@@ -87,7 +87,7 @@ bool Loom_Freewave::receive(uint maxWaitTime){
 
     // If a packet was received 
     if(recvStatus){
-        printModuleName(); Serial.println("Packet Received!");
+        printModuleName("Packet Received!");
         signalStrength = driver.lastRssi();
         recvStatus = bufferToJson(buffer, manInst->getDocument());
 
@@ -96,7 +96,7 @@ bool Loom_Freewave::receive(uint maxWaitTime){
         manInst->set_instance_num(manInst->getDocument()["id"]["instance"].as<int>());
     }
     else{
-        printModuleName(); Serial.println("No Packet Received");
+        printModuleName("No Packet Received");
     }
 
     driver.sleep();
@@ -110,16 +110,16 @@ bool Loom_Freewave::send(const uint8_t destinationAddress){
 
     // Try to write the JSON to the buffer
     if(!jsonToBuffer(buffer, manInst->getDocument().as<JsonObject>())){
-        printModuleName(); Serial.println("Failed to convert JSON to MsgPack");
+        printModuleName("Failed to convert JSON to MsgPack");
         return false;
     }
 
     if(!manager->sendtoWait((uint8_t*)buffer, sizeof(buffer), destinationAddress)){
-        printModuleName(); Serial.println("Failed to send packet to specified address!");
+        printModuleName("Failed to send packet to specified address!");
         return false;
     }
 
-    printModuleName(); Serial.println("Successfully transmit packet!");
+    printModuleName("Successfully transmit packet!");
     signalStrength = driver.lastRssi();
     driver.sleep();
     return true;

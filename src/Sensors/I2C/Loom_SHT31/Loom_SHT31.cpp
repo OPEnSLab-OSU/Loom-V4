@@ -17,11 +17,11 @@ Loom_SHT31::Loom_SHT31(
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SHT31::initialize() {
     if(!sht.begin(i2c_address)){
-        printModuleName(); Serial.println("Failed to initialize SHT31! Check connections and try again...");
+        printModuleName("Failed to initialize SHT31! Check connections and try again...");
         moduleInitialized = false;
     }
     else{
-        printModuleName(); Serial.println("Successfully initialized SHT31!");
+        printModuleName("Successfully initialized SHT31!");
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -40,7 +40,7 @@ void Loom_SHT31::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            printModuleName(); Serial.println("No acknowledge received from the device");
+            printModuleName("No acknowledge received from the device");
             return;
         }
         // Pull the data from the sensor
@@ -53,7 +53,7 @@ void Loom_SHT31::measure() {
             sensorData[1] = humid;
         }
         else{
-            printModuleName(); Serial.println("Collected information was invalid, the previous collected data will be published again.");
+            printModuleName("Collected information was invalid, the previous collected data will be published again.");
         }
     }
 }
@@ -72,7 +72,7 @@ void Loom_SHT31::package() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SHT31::print_measurements() {
 
-    printModuleName();
+    printModuleName("Measurements:");
 	Serial.println("Measurements:");
 	Serial.println("\tTemperature: " + String(sensorData[0]));
 	Serial.println("\tHumidity: " + String(sensorData[1]));

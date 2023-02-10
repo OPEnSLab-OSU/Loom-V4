@@ -23,12 +23,12 @@ void Loom_AS7263::initialize() {
 
     // If we have less than 2 bytes of json from the sensor
     if(!asInst.begin()){
-        printModuleName(); Serial.println("Failed to initialize AS7263! Check connections and try again...");
+        printModuleName("Failed to initialize AS7263! Check connections and try again...");
         moduleInitialized = false;
         return;
     }
     else{
-        printModuleName(); Serial.println("Successfully initialized AS7263!");
+        printModuleName("Successfully initialized AS7263!");
         asInst.setGain(gain);
 		asInst.setMeasurementMode(mode);
         asInst.setIntegrationTime(integration_time);
@@ -50,7 +50,7 @@ void Loom_AS7263::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            printModuleName(); Serial.println("No acknowledge received from the device");
+            printModuleName("No acknowledge received from the device");
             return;
         }
     

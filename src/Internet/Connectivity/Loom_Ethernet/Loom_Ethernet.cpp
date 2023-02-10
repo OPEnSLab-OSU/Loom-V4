@@ -18,7 +18,7 @@ Loom_Ethernet::Loom_Ethernet(Manager& man) : Module("Ethernet"), manInst(&man) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Ethernet::initialize() {
 
-    printModuleName(); Serial.println("Initializing Ethernet module...");
+    printModuleName("Initializing Ethernet module...");
 
     // Call the connect class to initiate the connection
     connect();
@@ -28,9 +28,9 @@ void Loom_Ethernet::initialize() {
 
     moduleInitialized = true;
     
-    printModuleName(); Serial.println("Successfully Initalized Ethernet!");
-    printModuleName(); Serial.println("Device IP Address: " + Loom_Ethernet::IPtoString(getIPAddress()));
-    printModuleName(); Serial.println("Device Subnet Address: " + Loom_Ethernet::IPtoString(getSubnetMask()));
+    printModuleName("Successfully Initalized Ethernet!");
+    printModuleName("Device IP Address: " + Loom_Ethernet::IPtoString(getIPAddress()));
+    printModuleName("Device Subnet Address: " + Loom_Ethernet::IPtoString(getSubnetMask()));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -45,7 +45,7 @@ void Loom_Ethernet::connect(){
 
        // No DHCP server
        if(Ethernet.begin(mac) == 0){
-        printModuleName(); Serial.println("Failed to configure using DHCP");
+        printModuleName("Failed to configure using DHCP");
 
         // Attempt to assign a static IP
         Ethernet.begin(mac, ip);
@@ -65,7 +65,7 @@ void Loom_Ethernet::loadConfigFromJSON(String json){
 
     // Check if an error occurred and if so print it
     if(deserialError != DeserializationError::Ok){
-        printModuleName(); Serial.println("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
+        printModuleName("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
     }
 
     JsonArray macJson = doc["mac"].as<JsonArray>();

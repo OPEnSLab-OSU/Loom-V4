@@ -5,6 +5,7 @@
 #include <Adafruit_SleepyDog.h>
 
 #define WATCHDOG_TIMEOUT 8000
+using SDLogDebug = void (*)(String);
 
 /**
  *  General overarching interface to provide basic unified functionality
@@ -18,7 +19,15 @@ class Module{
         void setModuleName(String moduleName) { this->moduleName = moduleName; };
 
         virtual String getModuleName() { return moduleName; }; // Return the name of the sensor
-        virtual void printModuleName() { Serial.print("[" + String(getModuleName()) + "] "); };
+        virtual void printModuleName(String message) { 
+            printOutput = "[" + String(getModuleName()) + "] " + message;
+            Serial.println(printOutput); 
+            if(logFunc != nullptr)
+                logFunc(printOutput);
+        };
+
+        /* Allows us to log the contents of what should be printed to the Serial*/
+        void setLogCallback(SDLogDebug logger) { logFunc = logger; };
 
         // Generic measure and package calls to unify some interaction with different sensor implementations
         virtual void initialize() = 0;                      // Initialize all functionality of the sensor
@@ -35,5 +44,8 @@ class Module{
         int module_address = -1;                            // Specifically for I2C addresses, -1 means the module doesn't have an address
     private:
         String moduleName;
+
+        String printOutput = "";
+        SDLogDebug logFunc = nullptr;
         
 };

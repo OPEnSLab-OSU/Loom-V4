@@ -12,20 +12,20 @@ bool SDManager::writeLineToFile(String filename, String content){
     // Check if the SD card is actually functional
     if(sdInitialized){
         // Open the given file for writing
-        myFile = sd.open(filename, FILE_WRITE);
+        myFile = sd.open(filename, O_RDWR | O_CREAT | O_APPEND);
     
         // Check if the file was actually opened, if so write the content to the file
         if(myFile){
             myFile.println(content);
             myFile.close();
-            printModuleName(); Serial.println("Content successfully written to file: " + filename);
+            printModuleName("Content successfully written to file: " + filename);
             return true;
         }
-        printModuleName(); Serial.println("Failed to Open File!");
+        printModuleName("Failed to Open File!");
         return false;
     }
 
-    printModuleName(); Serial.println("SD Card was improperly initialized and as such this functionality was disabled!");
+    printModuleName("SD Card was improperly initialized and as such this functionality was disabled!");
     return false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -131,10 +131,10 @@ bool SDManager::log(DateTime currentTime){
             myFile.close();
 
             // Inform the user that we have successfully written to the file
-            printModuleName(); Serial.println("Successfully logged data to " + fileName);
+            printModuleName("Successfully logged data to " + fileName);
         }
         else{
-            printModuleName(); Serial.println("Failed to open log file!");
+            printModuleName("Failed to open log file!");
         }
 
         // If we want to log batch data do so
@@ -142,7 +142,7 @@ bool SDManager::log(DateTime currentTime){
             logBatch();
     }
     else{
-        printModuleName(); Serial.println("Failed to log! SD card not Initialized!");
+        printModuleName("Failed to log! SD card not Initialized!");
     }
     
 }
@@ -152,15 +152,15 @@ bool SDManager::log(DateTime currentTime){
 bool SDManager::begin(){
     digitalWrite(8, HIGH);  // Disable LoRa
 
-    printModuleName(); Serial.println("Initializing SD Card...");
+    printModuleName("Initializing SD Card...");
 
     // Start the SD card with the fastest SPI speed
     if(!sd.begin(chip_select, SD_SCK_MHZ(50))){
-        printModuleName(); Serial.println("Failed to Initialize SD Card! SD Card functionality will be disabled, is there an SD card inserted into the device?");
+        printModuleName("Failed to Initialize SD Card! SD Card functionality will be disabled, is there an SD card inserted into the device?");
         return false;
     }
     else{
-        printModuleName(); Serial.println("Successfully initialized SD Card!");
+        printModuleName("Successfully initialized SD Card!");
     }
 
     
@@ -169,7 +169,7 @@ bool SDManager::begin(){
     if(!sdInitialized){
         // Try to open the root of the file system so we can get the files on the device
         if(!root.open("/", O_RDONLY)){
-            printModuleName(); Serial.println("Failed to open root file system on SD Card!");
+            printModuleName("Failed to open root file system on SD Card!");
             return false;
         }
         updateCurrentFileName();
@@ -188,7 +188,7 @@ bool SDManager::updateCurrentFileName(){
     char f_name[25];
 
     // What number we need to append to the file name
-    int file_count = 0;
+    file_count = 0;
 
     // While there is a next file to open, open it
     while(scanningFile.openNext(&root)){
@@ -210,7 +210,7 @@ bool SDManager::updateCurrentFileName(){
 
     // Close the root file after we have decided what to name the next file
     root.close();
-    printModuleName(); Serial.println("Data will be logged to " + fileName);
+    printModuleName("Data will be logged to " + fileName);
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -230,11 +230,11 @@ String SDManager::readFile(String fileName){
             return output;
         }
         else{
-            printModuleName(); Serial.println("Failed to open file!");
+            printModuleName("Failed to open file!");
         }
     }
     else{
-        printModuleName(); Serial.println("Failed to read! SD card not Initialized!");
+        printModuleName("Failed to read! SD card not Initialized!");
     }
     return "";
 }
@@ -259,7 +259,7 @@ void SDManager::logBatch(){
         myFile.close();
         current_batch++;
     }else{
-        printModuleName(); Serial.println("Failed to open file!");
+        printModuleName("Failed to open file!");
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

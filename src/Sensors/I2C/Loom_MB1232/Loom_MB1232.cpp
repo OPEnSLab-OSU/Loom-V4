@@ -32,11 +32,11 @@ void Loom_MB1232::initialize() {
 
     // If we have less than 2 bytes of data from the sensor
     if(Wire.available() < 2){
-        printModuleName(); Serial.println("Failed to initialize MB1232! Check connections and try again...");
+        printModuleName("Failed to initialize MB1232! Check connections and try again...");
         moduleInitialized = false;
     }
     else{
-        printModuleName(); Serial.println("Successfully initialized MB1232!");
+        printModuleName("Successfully initialized MB1232!");
 
     }
 }
@@ -56,7 +56,7 @@ void Loom_MB1232::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            printModuleName(); Serial.println("No acknowledge received from the device");
+            printModuleName("No acknowledge received from the device");
             return;
         }
     
@@ -81,7 +81,7 @@ void Loom_MB1232::measure() {
 
             range = (high * 256) + low;
         } else {
-            printModuleName(); Serial.println("Error reading from MB1232");
+            printModuleName("Error reading from MB1232");
         }
     }
     

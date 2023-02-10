@@ -142,7 +142,7 @@ void Loom_OLED::display_data(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_OLED::canWrite(){
     if ( (millis() > min_filter_delay) && ( (millis()-lastLogTime) < min_filter_delay ) ) {
-	    printModuleName(); Serial.println("Not enough time since last log, need at least " + String(min_filter_delay) + "ms at current settings");
+	    printModuleName("Not enough time since last log, need at least " + String(min_filter_delay) + "ms at current settings");
 		return false;
 	} else {
 		lastLogTime = millis();

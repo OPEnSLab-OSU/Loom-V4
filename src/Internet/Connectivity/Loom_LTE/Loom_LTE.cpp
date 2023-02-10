@@ -34,12 +34,12 @@ void Loom_LTE::initialize(){
 
     // If no LTE shield is found we should not initialize the module
     if(modemInfo == NULL){
-        printModuleName(); Serial.println("LTE shield not detected! This can also be triggered if there isn't a SIM card in the board");
+        printModuleName("LTE shield not detected! This can also be triggered if there isn't a SIM card in the board");
         moduleInitialized = false;
         return;
     }
     else{
-        printModuleName(); Serial.println("Modem Information: " + modemInfo);
+        printModuleName("Modem Information: " + modemInfo);
     }
 
     // Connect to the LTE network
@@ -47,18 +47,17 @@ void Loom_LTE::initialize(){
 
     // If we successfully connected to the LTE network print out some information
     if(moduleInitialized){
-        printModuleName(); Serial.println("Connected!");
-        printModuleName(); Serial.println("APN: " + APN);
-        printModuleName(); Serial.print("Signal State: ");
-        Serial.println(modem.getSignalQuality());
-        printModuleName(); Serial.println("IP Address: " + Loom_LTE::IPtoString(modem.localIP()));
+        printModuleName("Connected!");
+        printModuleName("APN: " + APN);
+        printModuleName("Signal State: " + String(modem.getSignalQuality()));
+        printModuleName("IP Address: " + Loom_LTE::IPtoString(modem.localIP()));
 
         verifyConnection();
 
-        printModuleName(); Serial.println("Module successfully initialized!");
+        printModuleName("Module successfully initialized!");
     }
     else{
-        printModuleName(); Serial.println("Module failed to initialize");
+        printModuleName("Module failed to initialize");
     }
 
     firstInit = false;
@@ -76,13 +75,13 @@ void Loom_LTE::power_up(){
     // If not connected to a network we want to connect
     if(moduleInitialized){
         Watchdog.disable();
-        printModuleName(); Serial.println("Powering up GPRS Modem. This should take about 10 seconds...");
+        printModuleName("Powering up GPRS Modem. This should take about 10 seconds...");
         digitalWrite(powerPin, LOW);
         delay(10000);
         SerialAT.begin(9600);
         delay(6000);
         modem.restart();
-        printModuleName(); Serial.println("Powering up complete!");
+        printModuleName("Powering up complete!");
         Watchdog.enable(WATCHDOG_TIMEOUT);
     }
 
@@ -100,11 +99,11 @@ void Loom_LTE::power_up(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::power_down(){
     if(moduleInitialized){
-        printModuleName(); Serial.println("Powering down GPRS Modem. This should take about 5 seconds...");
+        printModuleName("Powering down GPRS Modem. This should take about 5 seconds...");
         modem.poweroff();
         digitalWrite(powerPin, HIGH);
         delay(5000);
-        printModuleName(); Serial.println("Powering down complete!");
+        printModuleName("Powering down complete!");
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -124,35 +123,35 @@ bool Loom_LTE::connect(){
 
     Watchdog.disable();
     do{
-        printModuleName(); Serial.println("Waiting for network...");
+        printModuleName("Waiting for network...");
         if(!modem.waitForNetwork()){
-            printModuleName(); Serial.println("No Response from network!");
+            printModuleName("No Response from network!");
             return false;
         }
 
         if(!modem.isNetworkConnected()){
-            printModuleName(); Serial.println("No connection to network!");
+            printModuleName("No connection to network!");
             return false;
         }
 
-        printModuleName(); Serial.println("Connected to network!");
+        printModuleName("Connected to network!");
 
         // Connect to lte network
-        printModuleName(); Serial.println("Attempting to connect to LTE Network: " + APN);
+        printModuleName("Attempting to connect to LTE Network: " + APN);
         if(modem.gprsConnect(APN.c_str(), gprsUser.c_str(), gprsPass.c_str())){
-            printModuleName(); Serial.println("Successfully Connected!");
+            printModuleName("Successfully Connected!");
             Watchdog.enable(WATCHDOG_TIMEOUT);
             return true;
         }
         else{
-            printModuleName(); Serial.println("Connection failed " + String(attemptCount) + "/ 10. Retrying...");
+            printModuleName("Connection failed " + String(attemptCount) + "/ 10. Retrying...");
             delay(10000);
             attemptCount++;
         }
 
         // If the last attempt was the 5th attempt then stop
         if(attemptCount > 5){
-            printModuleName(); Serial.println("Connection reattempts exceeded 10 tries. Connection Failed");
+            printModuleName("Connection reattempts exceeded 10 tries. Connection Failed");
             Watchdog.enable(WATCHDOG_TIMEOUT);
             return false;
         }
@@ -171,11 +170,11 @@ void Loom_LTE::disconnect(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::verifyConnection(){
-    printModuleName(); Serial.println("Attempting to verify internet connection...");
+    printModuleName("Attempting to verify internet connection...");
     
     // Connect to TinyGSM's creator's website
     if(!client.connect("vsh.pp.ua", 80)){
-        printModuleName(); Serial.println("Failed to contact TinyGSM example your internet connection may not be completely established!");
+        printModuleName("Failed to contact TinyGSM example your internet connection may not be completely established!");
         client.stop();
     }
     else{
@@ -211,7 +210,7 @@ void Loom_LTE::loadConfigFromJSON(String json){
 
     // Check if an error occurred and if so print it
     if(deserialError != DeserializationError::Ok){
-        printModuleName(); Serial.println("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
+        printModuleName("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
     }
 
     APN = doc["apn"].as<String>();

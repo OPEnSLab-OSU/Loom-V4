@@ -13,11 +13,11 @@ Loom_ADS1115::Loom_ADS1115(Manager& man, byte address, bool useMux,  bool enable
 void Loom_ADS1115::initialize(){
 
     if(!ads.begin(i2c_address)){
-        printModuleName(); Serial.println("Failed to initialize ADS1115 interface! Data may be invalid");
+        printModuleName("Failed to initialize ADS1115 interface! Data may be invalid");
         moduleInitialized = false;
     }
     else{
-        printModuleName(); Serial.println("Successfully initialized sensor!");
+        printModuleName("Successfully initialized sensor!");
     }
 
     // Set the gain of the ADC
@@ -39,7 +39,7 @@ void Loom_ADS1115::measure(){
 
         // If we are not connected
         else if(!connectionStatus){
-            printModuleName(); Serial.println("No acknowledge received from the device");
+            printModuleName("No acknowledge received from the device");
             return;
         }
 

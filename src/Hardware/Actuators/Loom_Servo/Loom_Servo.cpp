@@ -17,7 +17,7 @@ void Loom_Servo::initialize(){
     servo.begin();
     servo.setPWMFreq(60);
 
-    printModuleName(); Serial.println("Servo initialized!");
+    printModuleName("Servo initialized!");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -37,6 +37,6 @@ void Loom_Servo::control(JsonArray json){
 void Loom_Servo::setDegrees(const int degrees){
     this->degrees = degrees;
     servo.setPWM(instance, 0, map(degrees, 0, 180, SERVO_MIN, SERVO_MAX));
-    printModuleName(); Serial.println("Servo set to: " + String(degrees));
+    printModuleName("Servo set to: " + String(degrees));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

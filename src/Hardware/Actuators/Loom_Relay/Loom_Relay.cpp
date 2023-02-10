@@ -19,7 +19,7 @@ void Loom_Relay::control(JsonArray json){
     // Update the state
     state = json[0].as<bool>();
     digitalWrite(pin , state ? HIGH : LOW);
-    printModuleName(); Serial.println("Relay pin is set to: " + String(state ? "HIGH" : "LOW"));
+    printModuleName("Relay pin is set to: " + String(state ? "HIGH" : "LOW"));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -32,6 +32,6 @@ void Loom_Relay::package(JsonObject json) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Relay::setState(bool state){
     digitalWrite(pin , state ? HIGH : LOW);
-    printModuleName(); Serial.println("Relay pin is set to: " + String(state ? "HIGH" : "LOW"));
+    printModuleName("Relay pin is set to: " + String(state ? "HIGH" : "LOW"));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

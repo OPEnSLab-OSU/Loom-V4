@@ -17,21 +17,21 @@ void Loom_K30::initialize(){
     // Check if the sensor is actually connected
     Wire.beginTransmission(addr);
     if(Wire.endTransmission() != 0){
-        printModuleName(); Serial.println("Failed to initialize sensor!");
+        printModuleName("Failed to initialize sensor!");
         moduleInitialized = false;
         return;
     }
 
     // If we want to wait for the sensor to warmup do so here
     if(warmUp){
-        printModuleName(); Serial.println("Warm-up was enabled for this sensor. Initialization will now pause for 6 minutes");
+        printModuleName("Warm-up was enabled for this sensor. Initialization will now pause for 6 minutes");
 
         // Pause for 6 minutes
         manInst->pause(60000 * 6);
         warmUp = false;
     }
 
-    printModuleName(); Serial.println("Initialized successfully!");
+    printModuleName("Initialized successfully!");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -49,7 +49,7 @@ void Loom_K30::measure(){
 
     // If we are not connected
     else if(!connectionStatus){
-        printModuleName(); Serial.println("No acknowledge received from the device");
+        printModuleName("No acknowledge received from the device");
         return;
     } 
     delay(1);
@@ -104,6 +104,6 @@ void Loom_K30::getCO2Level() {
         CO2Levels |= buffer[2] & 0xFF;
     }
     else{
-        printModuleName(); Serial.println("Failed to validate checksum! Using previously recorded data.");
+        printModuleName("Failed to validate checksum! Using previously recorded data.");
     }
 }

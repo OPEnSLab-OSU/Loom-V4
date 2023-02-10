@@ -46,7 +46,7 @@ void Loom_Neopixel::initialize(){
 		}
 	}
 
-    printModuleName(); Serial.println("Succsessfully initialized Neopixel");
+    printModuleName("Succsessfully initialized Neopixel");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -79,7 +79,7 @@ void Loom_Neopixel::set_color(const uint8_t port, const uint8_t chain_num, const
 		*/
 		
 	} else {
-		printModuleName(); Serial.println("Neopixel not enabled on port " + String(port));
+		printModuleName("Neopixel not enabled on port " + String(port));
 	}
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,7 +91,7 @@ void Loom_Neopixel::enable_pin(const uint8_t port, const bool state){
 		pinMode(port, OUTPUT);
 	}
 
-	printModuleName(); Serial.println("Neopixel state changed on port" + String(port));
+	printModuleName("Neopixel state changed on port" + String(port));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

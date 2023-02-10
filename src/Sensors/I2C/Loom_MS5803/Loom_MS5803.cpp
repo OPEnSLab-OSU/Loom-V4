@@ -13,11 +13,11 @@ Loom_MS5803::Loom_MS5803(Manager& man, byte address, bool useMux) : I2CDevice("M
 void Loom_MS5803::initialize(){
     // Setup is backwards apparently
     if(inst.initializeMS_5803(false)){
-        printModuleName(); Serial.println("Failed to initialize sensor!");
+        printModuleName("Failed to initialize sensor!");
         moduleInitialized = false;
     }
     else{
-        printModuleName(); Serial.println("Successfully Initialized!");
+        printModuleName("Successfully Initialized!");
         
         // Wait 3 seconds after initializing
         delay(3000);
@@ -42,7 +42,7 @@ void Loom_MS5803::measure(){
 
         // If we are not connected
         else if(!connectionStatus){
-            printModuleName(); Serial.println("No acknowledge received from the device");
+            printModuleName("No acknowledge received from the device");
             return;
         }
     

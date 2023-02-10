@@ -53,7 +53,7 @@ void Manager::measure() {
             if(modules[i].second->moduleInitialized)
                 modules[i].second->measure();
             else{
-                modules[i].second->printModuleName(); Serial.println("Not initialized!");
+                modules[i].second->printModuleName("Not initialized!");
             }
             Watchdog.reset();
         }
@@ -86,7 +86,7 @@ void Manager::package(){
         if(modules[i].second->moduleInitialized)
             modules[i].second->package();
         else{
-            modules[i].second->printModuleName(); Serial.println("Not initialized!");
+            modules[i].second->printModuleName("Not initialized!");
         }
         Watchdog.reset();
     }
@@ -119,7 +119,7 @@ void Manager::power_up(){
         if(modules[i].second->moduleInitialized)
             modules[i].second->power_up();
         else{
-            modules[i].second->printModuleName(); Serial.println("Not initialized!");
+            modules[i].second->printModuleName("Not initialized!");
         }
         Watchdog.reset();
     }
@@ -132,7 +132,7 @@ void Manager::power_down(){
         if(modules[i].second->moduleInitialized)
             modules[i].second->power_down();
         else{
-            modules[i].second->printModuleName(); Serial.println("Not initialized!");
+            modules[i].second->printModuleName("Not initialized!");
         }
         Watchdog.reset();
     }

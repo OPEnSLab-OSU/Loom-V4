@@ -14,13 +14,11 @@ void Loom_MPU6050::initialize(){
 
     // If we want to auto calibrate the gyro on initialize
     if(autoCali){
-        printModuleName(); Serial.println("Calibrating Gyroscope...");
-        printModuleName();
+        printModuleName("Calibrating Gyroscope...");
         mpu.calcGyroOffsets(true);
-        Serial.println();
     }
 
-    printModuleName(); Serial.println("Successfully initialized sensor!");
+    printModuleName("Successfully initialized sensor!");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -71,8 +69,8 @@ void Loom_MPU6050::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MPU6050::calibrate(){
-    printModuleName(); Serial.println("Calibrating Gyroscope...");
-    printModuleName();
+    printModuleName("Calibrating Gyroscope...");
+
     mpu.calcGyroOffsets(true);
     Serial.println();
 }

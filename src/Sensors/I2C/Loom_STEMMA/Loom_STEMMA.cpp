@@ -17,11 +17,11 @@ Loom_STEMMA::Loom_STEMMA(
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::initialize() {
     if(!stemma.begin(address)){
-        printModuleName(); Serial.println("Failed to initialize STEMMA! Check connections and try again...");
+        printModuleName("Failed to initialize STEMMA! Check connections and try again...");
         moduleInitialized = false;
     }
     else{
-        printModuleName(); Serial.println("Successfully initialized STEMMA Version: " + String(stemma.getVersion()));
+        printModuleName("Successfully initialized STEMMA Version: " + String(stemma.getVersion()));
         
     }
 }
@@ -41,7 +41,7 @@ void Loom_STEMMA::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            printModuleName(); Serial.println("No acknowledge received from the device");
+            printModuleName("No acknowledge received from the device");
             return;
         }
         
@@ -67,7 +67,7 @@ void Loom_STEMMA::package() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::print_measurements() {
 
-    printModuleName();
+    //printModuleName();
 	Serial.println("Measurements:");
 	Serial.println("\tTemperature: " + String(temperature));
 	Serial.println("\tCapacitive: " + String(cap));
