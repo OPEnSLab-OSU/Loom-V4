@@ -68,7 +68,6 @@ void Loom_LoRa::initialize(){
     printModuleName("Address set to: " + String(manager->thisAddress()));
 
     /* 
-        
         https://cdn.sparkfun.com/assets/a/e/7/e/b/RFM95_96_97_98W.pdf, Page 22
     */
 

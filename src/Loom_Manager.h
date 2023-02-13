@@ -149,6 +149,9 @@ class Manager{
          */ 
         int get_packet_number() { return packetNumber; };
 
+        /* Set the callback for logging the serial to SD for all modules*/
+        void setLogCallback(SDLogDebug func);
+
     private:
 
         /* Device Information */
