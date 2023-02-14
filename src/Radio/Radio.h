@@ -50,7 +50,13 @@ class Radio : public Module{
          * Convert the message pack to json
          */ 
         bool bufferToJson(uint8_t* buffer){
-            DeserializationError error = deserializeMsgPack(recvDoc, buffer, 255);
+
+            // Get the true size so stop when
+            int size = 0;
+            while(buffer[size] != 0)
+                size++;
+
+            DeserializationError error = deserializeMsgPack(recvDoc, buffer, size);
 
             // Check if an error occurred 
             if(error != DeserializationError::Ok){
@@ -66,7 +72,7 @@ class Radio : public Module{
          */ 
         bool jsonToBuffer(uint8_t* buffer, JsonObjectConst json){
             sendDoc.set(json);
-            bool status = serializeMsgPack(json, buffer, (size_t)maxMessageLength);
+            bool status = serializeMsgPack(json, buffer, measureMsgPack(json));
 
             return status;
         };

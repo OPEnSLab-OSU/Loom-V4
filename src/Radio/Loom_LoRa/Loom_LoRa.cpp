@@ -163,7 +163,7 @@ bool Loom_LoRa::receivePartial(uint waitTime){
                 printModuleName("Fragment received " + String(i+1) + " / " + String(numPackets));
 
                 // Add the current module to the overall contents array
-                contents.add(recvDoc["contents"][0].as<JsonObject>());
+                contents.add(recvDoc.as<JsonObject>());
                 return true;
             }
             else{
@@ -241,6 +241,17 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::sendModules(JsonObject json, int numModules, const uint8_t destinationAddress){
 
+    /*
+        This is how each module will be sent across
+        {
+            "module": "SHT31",
+            "data": {
+                "Temperature": 21.35000038,
+                "Humidity": 53.22999954
+            }
+        }
+    */
+
     // Loop through the number of packets we need to send
     for(int i = 0; i < numModules; i++){
         sendDoc.clear();
@@ -250,34 +261,15 @@ bool Loom_LoRa::sendModules(JsonObject json, int numModules, const uint8_t desti
         JsonArray contents = manInst->getDocument()["contents"].as<JsonArray>();
         sendDoc.set(contents[i].as<JsonObject>());
 
+        printModuleName("Fragmented Packet Being Sent...")
+        serializeJsonPretty(sendDoc, Serial);
 
-        // Create a data object for each content
-        objContents[0]["module"] = json["contents"][i]["module"];
-        JsonObject objData = objContents[0].createNestedObject("data");
-        
-        // Get each piece of data that the module had
-        JsonObject old_data = json["contents"][i]["data"];
-	    for (JsonPair kv : old_data){
-		    objData[kv.key()] = kv.value();
-	    }
-
-        // Try to write the JSON to the buffer
-        if(!jsonToBuffer(buffer, obj)){
-            printModuleName("Failed to convert JSON to MsgPack");
-            return false;
-        }
-
-        serializeJsonPretty(obj, Serial);
-
-        Watchdog.disable();
-        // Send the packet off
-        if(!manager->sendtoWait((uint8_t*)buffer, measureMsgPack(obj), destinationAddress)){
-            printModuleName("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
-        }else{
-            printModuleName("Successfully transmitted packet!");
+        // Attempt to transmit the document to the other device
+        if(!transmit(sendDoc.as<JsonObject>(), destinationAddress)){
+            printModuleName("Failed to transmit fragmented packet!");
         }
         delay(3000);
-        Watchdog.enable(WATCHDOG_TIMEOUT);
+        Watchdog.reset();
     }
     return true;
 }
