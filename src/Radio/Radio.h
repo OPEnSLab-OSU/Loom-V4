@@ -18,6 +18,9 @@ class Radio : public Module{
         uint8_t powerLevel;                     // The power level we want to transmit at
         uint8_t retryCount;                     // Number transmission retries allowed
         uint16_t retryTimeout;                  // Delay between retries (MS)
+
+        StaticJsonDocument<255> recvDoc;        // Individual Document Representing what is being received
+        StaticJsonDocument<255> sendDoc;        // Individual Document Representing what is being sent
         
         StaticJsonDocument<2000> messageJson;   // Where to store the received message
 
@@ -46,13 +49,8 @@ class Radio : public Module{
         /**
          * Convert the message pack to json
          */ 
-        bool bufferToJson(uint8_t* buffer, JsonDocument& json){
-
-            // Clear the json to store new data
-            messageJson.clear();
-            String jsonStr = "";
-            
-            DeserializationError error = deserializeMsgPack(messageJson, buffer);
+        bool bufferToJson(uint8_t* buffer){
+            DeserializationError error = deserializeMsgPack(recvDoc, buffer, 255);
 
             // Check if an error occurred 
             if(error != DeserializationError::Ok){
@@ -60,23 +58,14 @@ class Radio : public Module{
                 return false;
             }
 
-            // Convert to string back into the main json document
-            serializeJson(messageJson, jsonStr);
-            deserializeJson(json, jsonStr);
-
-            // Print out the received packet
-            printModuleName("\nMessage Received: ");
-            serializeJsonPretty(messageJson, Serial);
-            Serial.println("\n");
-
             return true;
         };
 
         /**
          * Convert the json to a message pack
          */ 
-        bool jsonToBuffer(char* buffer, JsonObjectConst json){
-
+        bool jsonToBuffer(uint8_t* buffer, JsonObjectConst json){
+            sendDoc.set(json);
             bool status = serializeMsgPack(json, buffer, (size_t)maxMessageLength);
 
             return status;

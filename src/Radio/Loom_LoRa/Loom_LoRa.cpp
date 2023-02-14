@@ -42,9 +42,6 @@ void Loom_LoRa::initialize(){
         return;
     }
 
-    // Set the modem config to work in a longer range capacity
-    //driver.setModemConfig(RH_RF95::Bw125Cr48Sf4096);
-
     // Set the radio frequency
     if(driver.setFrequency(RF95_FREQ)){
         printModuleName("Radio frequency successfully set to: " + String(RF95_FREQ));
@@ -104,112 +101,6 @@ void Loom_LoRa::setAddress(uint8_t addr){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LoRa::receive(uint maxWaitTime){
-    if(moduleInitialized){
-        bool recvStatus = false;
-        uint8_t fromAddress;
-        
-        // Write all null bytes to the buffer
-        uint8_t buffer[RH_RF95_MAX_MESSAGE_LEN];
-        uint8_t len = sizeof(buffer);
-
-        printModuleName("Waiting for packet...");
-
-        // Non-blocking receive if time is set to 0
-        if(maxWaitTime == 0){
-            recvStatus = manager->recvfromAck(buffer, &len, &fromAddress);
-        }
-        else{
-            Watchdog.disable();
-            recvStatus = manager->recvfromAckTimeout(buffer, &len, maxWaitTime, &fromAddress);
-            Watchdog.enable(WATCHDOG_TIMEOUT);
-            
-        }
-
-        // If a packet was received 
-        if(recvStatus){
-            printModuleName("Packet Received!");
-            signalStrength = driver.lastRssi();
-            recvStatus = bufferToJson(buffer, manInst->getDocument());
-
-            // Update device details
-            if(recvStatus){
-                manInst->set_device_name(manInst->getDocument()["id"]["name"].as<String>());
-                manInst->set_instance_num(manInst->getDocument()["id"]["instance"].as<int>());
-            }
-
-            // Check if we have a numPackets field which tells us we should expect more packets
-            if(!manInst->getDocument()["numPackets"].isNull()){
-                receivePartial(maxWaitTime);
-            }
-        }
-        else{
-            printModuleName("No Packet Received");
-        }
-
-        driver.sleep();
-        return recvStatus;
-    }else{
-        printModuleName("Module not initialized!");
-        return false;
-    }
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LoRa::receivePartial(uint waitTime){
-    if(moduleInitialized){
-        bool recvStatus = false;
-
-        uint8_t fromAddress;
-
-        // Write all null bytes to the buffer
-        uint8_t buffer[RH_RF95_MAX_MESSAGE_LEN];
-        uint8_t len = sizeof(buffer);
-       
-        // Contents array to store each module in
-        JsonArray contents = manInst->getDocument().createNestedArray("contents");
-        
-        // Gets the number of additional packets the hub should expect
-        int numPackets = manInst->getDocument()["numPackets"].as<int>();
-
-        // Loop for the given number of packets we are expecting
-        for(int i = 0; i < numPackets; i++){
-            tempDoc.clear();
-            printModuleName("Waiting for packet " + String(i+1) + " / " + String(numPackets));
-
-            // Non-blocking receive if time is set to 0
-            if(waitTime == 0){
-                recvStatus = manager->recvfromAck(buffer, &len, &fromAddress);
-            }
-            else{
-                recvStatus = manager->recvfromAckTimeout(buffer, &len, waitTime, &fromAddress);
-            }
-
-            // If a packet was received 
-            if(recvStatus){
-                printModuleName("Fragment received " + String(i+1) + " / " + String(numPackets));
-                signalStrength = driver.lastRssi();
-                recvStatus = bufferToJson(buffer, tempDoc);
-
-                // Add the current module to the overall contents array
-                contents.add(tempDoc["contents"][0].as<JsonObject>());
-            }
-            else{
-                printModuleName("No Packet Received");
-            }
-        }
-
-        driver.sleep();
-        return recvStatus;
-    }else{
-        printModuleName("Module not initialized!");
-        return false;
-    }
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::send(const uint8_t destinationAddress){
     if(moduleInitialized){
 
@@ -228,67 +119,107 @@ bool Loom_LoRa::send(const uint8_t destinationAddress){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LoRa::sendFull(const uint8_t destinationAddress){
-    char buffer[maxMessageLength];
+bool Loom_LoRa::receive(uint maxWaitTime){
+    if(moduleInitialized){
 
-    // Try to write the JSON to the buffer
-    if(!jsonToBuffer(buffer, manInst->getDocument().as<JsonObject>())){
-        printModuleName("Failed to convert JSON to MsgPack");
+        // Wait for packet to arrive
+        if(recv(maxWaitTime)){
+            manInst->set_device_name(recvDoc["id"]["name"].as<String>());
+            manInst->set_instance_num(recvDoc["id"]["instance"].as<int>());
+
+            // Set the main document to the contents of the received
+            manInst->getDocument().set(recvDoc);
+        
+            // Check if we have a numPackets field which tells us we should expect more packets
+            if(!manInst->getDocument()["numPackets"].isNull()){
+                return receivePartial(maxWaitTime);
+            }
+            return true;
+        }
+        else{
+            return false;
+        }
+
+    }else{
+        printModuleName("Module not initialized!");
         return false;
     }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    Watchdog.disable();
-    if(!manager->sendtoWait((uint8_t*)buffer, sizeof(buffer), destinationAddress)){
-        printModuleName("Failed to send packet to specified address! The message may have gotten there but not received and acknowledgement response");
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::receivePartial(uint waitTime){
+    if(moduleInitialized){
+        // Gets the number of additional packets the hub should expect
+        int numPackets = manInst->getDocument()["numPackets"].as<int>();
+        JsonArray contents = manInst->getDocument()["contents"].as<JsonArray>();
+
+        // Loop for the given number of packets we are expecting
+        for(int i = 0; i < numPackets; i++){
+            printModuleName("Waiting for packet " + String(i+1) + " / " + String(numPackets));
+
+            // If a packet was received 
+            if(recv(waitTime)){
+                printModuleName("Fragment received " + String(i+1) + " / " + String(numPackets));
+
+                // Add the current module to the overall contents array
+                contents.add(recvDoc["contents"][0].as<JsonObject>());
+                return true;
+            }
+            else{
+                printModuleName("No Packet Received");
+                return false;
+            }
+        }
+
+        return false;
     }else{
-        printModuleName("Successfully transmitted packet!");
+        printModuleName("Module not initialized!");
+        return false;
     }
-    Watchdog.enable(WATCHDOG_TIMEOUT);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    signalStrength = driver.lastRssi();
-    driver.sleep();
-    return true;
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::sendFull(const uint8_t destinationAddress){
+    return transmit(manInst->getDocument().as<JsonObject>(), destinationAddress);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
     printModuleName("Packet was greater than the maximum packet length the packet will be fragmented");
-    
-    // Disable retries when sending partial packets
-    manager->setRetries(0);
+    sendDoc.clear();
+   
+   /* 
+    This is what the initial packet will look like
+    {
+        "type": "data",
+        "id": {
+            "name": "Dend4",
+            "instance": 123
+        },
+        "numPackets": 2
+        "contents": [],
+        "timestamp": {
+            "time_utc": "2022-11-30T6:48:21Z",
+            "time_local": "2022-11-29T22:48:21Z"
+        }
+    }
+   */
+    sendDoc["type"] = manInst->getDocument()["type"].as<String>();
 
-    char buffer[maxMessageLength]; 
-    // Get a clear JsonObject reference of the tempDoc
-    JsonObject obj = tempDoc.to<JsonObject>();
-    obj["type"] = manInst->getDocument()["type"].as<String>();
-    JsonObject objID = obj.createNestedObject("id");
-    
+    // Re-construct the packet header including the number of packets to expect after this initial one
+    JsonObject objID = sendDoc.createNestedObject("id");
+    objID["name"] = manInst->getDocument()["id"]["name"].as<String>();   
+    objID["instance"] = manInst->getDocument()["id"]["instance"].as<int>();
 
     // Gets the number of additional packets the hub should expect
     int numPackets = manInst->getDocument()["contents"].size();
-
-    // Re-construct the packet header including the number of packets to expect after this initial one
-    objID["name"] = manInst->getDocument()["id"]["name"].as<String>();   
-    objID["instance"] = manInst->getDocument()["id"]["instance"].as<int>();  
     obj["numPackets"] = numPackets;
-    
-    // Try to write the JSON to the buffer
-    if(!jsonToBuffer(buffer, obj)){
-        printModuleName("Failed to convert JSON to MsgPack");
-        return false;
-    }
-    Watchdog.disable();
-    // Send the packet off
-    if(!manager->sendtoWait((uint8_t*)buffer, measureMsgPack(obj), destinationAddress)){
-        printModuleName("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
-    }else{
-        printModuleName("Successfully transmitted packet!");
-    }
-    Watchdog.enable(WATCHDOG_TIMEOUT);
 
-    // Send all modules by themselves to allow for larger amounts of data to be sent over radio
-    sendModules(manInst->getDocument().as<JsonObject>(), destinationAddress);
+    // Create an empty contents array to preserve formatting
+    sendDoc.createNestedArray("contents");
 
     // If we have a timestamp we also need to copy this across to the new one, MUST BE BEFORE
     if(!manInst->getDocument()["timestamp"].isNull()){
@@ -296,29 +227,29 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
         objTS["time_utc"] = manInst->getDocument()["timestamp"]["time_utc"].as<String>();
         objTS["time_local"] = manInst->getDocument()["timestamp"]["time_local"].as<String>();
     }
+   
+    if(!transmit(sendDoc.as<JsonObject>(), destinationAddress)){
+        printModuleName("Unable to transmit initial packet fragmentation notice! Split packets will not be sent");
+        return false;
+    }
 
-    
-    signalStrength = driver.lastRssi();
-    manager->setRetries(3);
-    driver.sleep();
-    return true;
+    // Send all modules by themselves to allow for larger amounts of data to be sent over radio
+    return sendModules(manInst->getDocument().as<JsonObject>(), numPackets, destinationAddress);;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LoRa::sendModules(JsonObject json, const uint8_t destinationAddress){
-    
-    char buffer[maxMessageLength];  
-
-    // Use as with a clear to avoid dangling roots
-    tempDoc.clear();
-    int numPackets = json["contents"].size();
+bool Loom_LoRa::sendModules(JsonObject json, int numModules, const uint8_t destinationAddress){
 
     // Loop through the number of packets we need to send
-    for(int i = 0; i < numPackets; i++){
+    for(int i = 0; i < numModules; i++){
+        sendDoc.clear();
         Watchdog.reset();
-        JsonObject obj = tempDoc.to<JsonObject>();
-        JsonArray objContents = obj.createNestedArray("contents");
+
+        // Set the module key to whatever the main one is
+        JsonArray contents = manInst->getDocument()["contents"].as<JsonArray>();
+        sendDoc.set(contents[i].as<JsonObject>());
+
 
         // Create a data object for each content
         objContents[0]["module"] = json["contents"][i]["module"];
@@ -361,5 +292,65 @@ void Loom_LoRa::power_up(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LoRa::power_down(){
     driver.sleep();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::transmit(JsonObject& json, int destination){
+    // Buffer of the data being sent
+    uint8_t buffer[maxMessageLength];
+
+    // Try to write the JSON to the buffer
+    if(!jsonToBuffer(buffer, json)){
+        printModuleName("Failed to convert JSON to MsgPack");
+        return false;
+    }
+
+    Watchdog.disable();
+    if(!manager->sendtoWait(buffer, sizeof(buffer), destination)){
+        printModuleName("Failed to send packet to specified address! The message may have gotten there but not received and acknowledgement response");
+    }else{
+        printModuleName("Successfully transmitted packet!");
+    }
+    Watchdog.enable(WATCHDOG_TIMEOUT);
+
+    signalStrength = driver.lastRssi();
+    driver.sleep();
+    return true;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::recv(int waitTime){
+    bool recvStatus = false;
+    uint8_t fromAddress;
+    
+    // Write all null bytes to the buffer
+    uint8_t buffer[maxMessageLength];
+    uint8_t len = sizeof(buffer);
+
+    printModuleName("Waiting for packet...");
+
+    // Non-blocking receive if time is set to 0
+    if(waitTime == 0){
+        recvStatus = manager->recvfromAck(buffer, &len, &fromAddress);
+    }
+    else{
+        Watchdog.disable();
+        recvStatus = manager->recvfromAckTimeout(buffer, &len, waitTime, &fromAddress);
+        Watchdog.enable(WATCHDOG_TIMEOUT);
+        
+    }
+    // If a packet was received 
+    if(recvStatus){
+        printModuleName("Packet Received!");
+        signalStrength = driver.lastRssi();
+        recvStatus = bufferToJson(buffer);
+    }
+    else{
+        printModuleName("No Packet Received");
+    }
+    driver.sleep();
+    return recvStatus;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

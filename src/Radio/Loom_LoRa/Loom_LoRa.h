@@ -92,12 +92,16 @@ class Loom_LoRa : public Radio{
 
         RH_RF95 driver;                                     // Underlying radio driver
         RHReliableDatagram* manager;                        // Manager for driver
+        
 
-        StaticJsonDocument<255> tempDoc;                   // Temporary document to help reconstruct the fragmented packets
+        bool transmit(JsonObject& json, int destination)     // Internal method for sending JSON data over radio
+        bool recv(int waitTime);                             // Internal method for reading data in from radio
 
-        bool sendFull(const uint8_t destinationAddress);                                    // Send the full packet with no fragmentation
-        bool sendPartial(const uint8_t destinationAddress);                                 // Fragment the packet when needed
-        bool sendModules(JsonObject json, const uint8_t destinationAddress);                // Send one module to the hub to allow for fragmented sending
+        //StaticJsonDocument<255> tempDoc;                   // Temporary document to help reconstruct the fragmented packets
+
+        bool sendFull(const uint8_t destinationAddress);                                                    // Send the full packet with no fragmentation
+        bool sendPartial(const uint8_t destinationAddress);                                                 // Fragment the packet when needed
+        bool sendModules(JsonObject json, int numModules, const uint8_t destinationAddress);                // Send one module to the hub to allow for fragmented sending
 
         bool receivePartial(uint waitTime);
         
