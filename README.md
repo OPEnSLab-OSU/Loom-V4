@@ -114,6 +114,7 @@ There are some weird idiosyncrasies with the Feather M0
     | D23, D1 | 10 |
     | D24, D0 | 11 |
     | D5 | 15 |
+ - LoRa Must Be Configured Properly based off the selected modem configuration, see issue: https://github.com/OPEnSLab-OSU/Loom-V4/issues/54
 
 ## OPEnS Supported Projects
  - WeatherChimes (Fully Tested)
