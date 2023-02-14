@@ -83,9 +83,9 @@ void Manager::package(){
     json["Number"] = packetNumber;
 
     for(int i = 0; i < modules.size(); i++){
-        if(modules[i].second->moduleInitialized)
+        if(modules[i].second->moduleInitialized){
             modules[i].second->package();
-        else{
+        } else{
             modules[i].second->printModuleName("Not initialized!");
         }
         Watchdog.reset();

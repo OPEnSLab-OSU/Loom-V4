@@ -42,6 +42,9 @@ void Loom_LoRa::initialize(){
         return;
     }
 
+    // Set the modem config to work in a longer range capacity
+    //driver.setModemConfig(RH_RF95::Bw125Cr48Sf4096);
+
     // Set the radio frequency
     if(driver.setFrequency(RF95_FREQ)){
         printModuleName("Radio frequency successfully set to: " + String(RF95_FREQ));
@@ -75,10 +78,10 @@ void Loom_LoRa::initialize(){
     driver.setSignalBandwidth(125000);
 
     // Higher spreading factors give us more range
-    driver.setSpreadingFactor(10); 
+    driver.setSpreadingFactor(7); 
 
     // Coding rate should be 4/5
-	driver.setCodingRate4(8);	
+	driver.setCodingRate4(5);	
 	driver.sleep();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -117,7 +120,10 @@ bool Loom_LoRa::receive(uint maxWaitTime){
             recvStatus = manager->recvfromAck(buffer, &len, &fromAddress);
         }
         else{
+            Watchdog.disable();
             recvStatus = manager->recvfromAckTimeout(buffer, &len, maxWaitTime, &fromAddress);
+            Watchdog.enable(WATCHDOG_TIMEOUT);
+            
         }
 
         // If a packet was received 
@@ -180,11 +186,6 @@ bool Loom_LoRa::receivePartial(uint waitTime){
                 recvStatus = manager->recvfromAckTimeout(buffer, &len, waitTime, &fromAddress);
             }
 
-            for(int i = 0; i < 255; i++){
-                Serial.print((char)buffer[i]);
-                Serial.print(" ");
-            }
-
             // If a packet was received 
             if(recvStatus){
                 printModuleName("Fragment received " + String(i+1) + " / " + String(numPackets));
@@ -236,11 +237,13 @@ bool Loom_LoRa::sendFull(const uint8_t destinationAddress){
         return false;
     }
 
+    Watchdog.disable();
     if(!manager->sendtoWait((uint8_t*)buffer, sizeof(buffer), destinationAddress)){
         printModuleName("Failed to send packet to specified address! The message may have gotten there but not received and acknowledgement response");
     }else{
         printModuleName("Successfully transmitted packet!");
     }
+    Watchdog.enable(WATCHDOG_TIMEOUT);
 
     signalStrength = driver.lastRssi();
     driver.sleep();
@@ -275,18 +278,14 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
         printModuleName("Failed to convert JSON to MsgPack");
         return false;
     }
-
-    for(int i = 0; i < 255; i++){
-        Serial.print((uint8_t)buffer[i], HEX);
-        Serial.print(" ");
-    }
-
+    Watchdog.disable();
     // Send the packet off
     if(!manager->sendtoWait((uint8_t*)buffer, measureMsgPack(obj), destinationAddress)){
         printModuleName("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
     }else{
         printModuleName("Successfully transmitted packet!");
     }
+    Watchdog.enable(WATCHDOG_TIMEOUT);
 
     // Send all modules by themselves to allow for larger amounts of data to be sent over radio
     sendModules(manInst->getDocument().as<JsonObject>(), destinationAddress);
@@ -317,6 +316,7 @@ bool Loom_LoRa::sendModules(JsonObject json, const uint8_t destinationAddress){
 
     // Loop through the number of packets we need to send
     for(int i = 0; i < numPackets; i++){
+        Watchdog.reset();
         JsonObject obj = tempDoc.to<JsonObject>();
         JsonArray objContents = obj.createNestedArray("contents");
 
@@ -336,20 +336,17 @@ bool Loom_LoRa::sendModules(JsonObject json, const uint8_t destinationAddress){
             return false;
         }
 
-        for(int i = 0; i < 255; i++){
-            Serial.print((uint8_t)buffer[i], HEX);
-            Serial.print(" ");
-        }
-
         serializeJsonPretty(obj, Serial);
 
+        Watchdog.disable();
         // Send the packet off
         if(!manager->sendtoWait((uint8_t*)buffer, measureMsgPack(obj), destinationAddress)){
             printModuleName("Failed to send packet to specified address! The message may have gotten their but not received and acknowledgement response");
         }else{
             printModuleName("Successfully transmitted packet!");
         }
-        delay(500);
+        delay(3000);
+        Watchdog.enable(WATCHDOG_TIMEOUT);
     }
     return true;
 }
