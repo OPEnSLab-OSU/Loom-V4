@@ -124,16 +124,22 @@ bool Loom_LoRa::receive(uint maxWaitTime){
 
         // Wait for packet to arrive
         if(recv(maxWaitTime)){
+            printModuleName("Packet Received!");
             manInst->set_device_name(recvDoc["id"]["name"].as<String>());
             manInst->set_instance_num(recvDoc["id"]["instance"].as<int>());
-
-            // Set the main document to the contents of the received
-            manInst->getDocument().set(recvDoc);
+            
+            deserializeJson(manInst->getDocument(), recvData);
         
             // Check if we have a numPackets field which tells us we should expect more packets
             if(!manInst->getDocument()["numPackets"].isNull()){
-                return receivePartial(maxWaitTime);
+                receivePartial(maxWaitTime);
+                manInst->getDocument().remove("numPackets");
             }
+
+            if(manInst->getDocument()["id"].isNull()){
+                return false;
+            }
+
             return true;
         }
         else{
@@ -153,26 +159,27 @@ bool Loom_LoRa::receivePartial(uint waitTime){
         // Gets the number of additional packets the hub should expect
         int numPackets = manInst->getDocument()["numPackets"].as<int>();
         JsonArray contents = manInst->getDocument()["contents"].as<JsonArray>();
+        StaticJsonDocument<300> tempDoc;
+
 
         // Loop for the given number of packets we are expecting
         for(int i = 0; i < numPackets; i++){
+            
             printModuleName("Waiting for packet " + String(i+1) + " / " + String(numPackets));
 
             // If a packet was received 
             if(recv(waitTime)){
                 printModuleName("Fragment received " + String(i+1) + " / " + String(numPackets));
-
+                deserializeJson(tempDoc, recvData);
                 // Add the current module to the overall contents array
-                contents.add(recvDoc.as<JsonObject>());
-                return true;
+                contents.add(tempDoc);
             }
             else{
                 printModuleName("No Packet Received");
-                return false;
             }
         }
 
-        return false;
+        return true;
     }else{
         printModuleName("Module not initialized!");
         return false;
@@ -207,25 +214,25 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
         }
     }
    */
-    sendDoc["type"] = manInst->getDocument()["type"].as<String>();
+    sendDoc["type"] = manInst->getDocument()["type"].as<const char*>();
 
     // Re-construct the packet header including the number of packets to expect after this initial one
     JsonObject objID = sendDoc.createNestedObject("id");
-    objID["name"] = manInst->getDocument()["id"]["name"].as<String>();   
+    objID["name"] = manInst->getDocument()["id"]["name"].as<const char*>();   
     objID["instance"] = manInst->getDocument()["id"]["instance"].as<int>();
 
     // Gets the number of additional packets the hub should expect
     int numPackets = manInst->getDocument()["contents"].size();
-    obj["numPackets"] = numPackets;
+    sendDoc["numPackets"] = numPackets;
 
     // Create an empty contents array to preserve formatting
     sendDoc.createNestedArray("contents");
 
     // If we have a timestamp we also need to copy this across to the new one, MUST BE BEFORE
     if(!manInst->getDocument()["timestamp"].isNull()){
-        JsonObject objTS = obj.createNestedObject("timestamp");
-        objTS["time_utc"] = manInst->getDocument()["timestamp"]["time_utc"].as<String>();
-        objTS["time_local"] = manInst->getDocument()["timestamp"]["time_local"].as<String>();
+        JsonObject objTS = sendDoc.createNestedObject("timestamp");
+        objTS["time_utc"] = manInst->getDocument()["timestamp"]["time_utc"].as<const char*>();
+        objTS["time_local"] = manInst->getDocument()["timestamp"]["time_local"].as<const char*>();
     }
    
     if(!transmit(sendDoc.as<JsonObject>(), destinationAddress)){
@@ -261,14 +268,13 @@ bool Loom_LoRa::sendModules(JsonObject json, int numModules, const uint8_t desti
         JsonArray contents = manInst->getDocument()["contents"].as<JsonArray>();
         sendDoc.set(contents[i].as<JsonObject>());
 
-        printModuleName("Fragmented Packet Being Sent...")
-        serializeJsonPretty(sendDoc, Serial);
+        printModuleName("Fragmented Packet Being Sent (" + String(i+1) + "/" + String(numModules) + ")");
 
         // Attempt to transmit the document to the other device
         if(!transmit(sendDoc.as<JsonObject>(), destinationAddress)){
             printModuleName("Failed to transmit fragmented packet!");
         }
-        delay(3000);
+        delay(500);
         Watchdog.reset();
     }
     return true;
@@ -288,8 +294,9 @@ void Loom_LoRa::power_down(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LoRa::transmit(JsonObject& json, int destination){
+bool Loom_LoRa::transmit(JsonObject json, int destination){
     // Buffer of the data being sent
+    bool returnState = false;
     uint8_t buffer[maxMessageLength];
 
     // Try to write the JSON to the buffer
@@ -300,15 +307,17 @@ bool Loom_LoRa::transmit(JsonObject& json, int destination){
 
     Watchdog.disable();
     if(!manager->sendtoWait(buffer, sizeof(buffer), destination)){
-        printModuleName("Failed to send packet to specified address! The message may have gotten there but not received and acknowledgement response");
+        printModuleName("Failed to send packet to specified address!");
+
     }else{
         printModuleName("Successfully transmitted packet!");
+        returnState = true;
     }
     Watchdog.enable(WATCHDOG_TIMEOUT);
 
     signalStrength = driver.lastRssi();
     driver.sleep();
-    return true;
+    return returnState;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -333,11 +342,14 @@ bool Loom_LoRa::recv(int waitTime){
         Watchdog.enable(WATCHDOG_TIMEOUT);
         
     }
+
+
     // If a packet was received 
     if(recvStatus){
-        printModuleName("Packet Received!");
         signalStrength = driver.lastRssi();
         recvStatus = bufferToJson(buffer);
+        recvData = "";
+        serializeJson(recvDoc, recvData);
     }
     else{
         printModuleName("No Packet Received");

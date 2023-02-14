@@ -93,9 +93,10 @@ class Loom_LoRa : public Radio{
         RH_RF95 driver;                                     // Underlying radio driver
         RHReliableDatagram* manager;                        // Manager for driver
         
-
-        bool transmit(JsonObject& json, int destination)     // Internal method for sending JSON data over radio
+        bool transmit(JsonObject json, int destination);     // Internal method for sending JSON data over radio
         bool recv(int waitTime);                             // Internal method for reading data in from radio
+
+        String recvData = "";
 
         //StaticJsonDocument<255> tempDoc;                   // Temporary document to help reconstruct the fragmented packets
 
