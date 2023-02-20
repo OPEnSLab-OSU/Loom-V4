@@ -137,8 +137,8 @@
           },
           "url": "https://github.com/OPEnSLab-OSU/Loom-V4/releases/download/v4.2/loom4.zip",
           "archiveFileName": "loom4.zip",
-          "checksum": "SHA-256:92851e0410940f9d9413dd7c940def4317efcfdbdbcd304fd3d02fbbb6839cf9",
-          "size": "21346647",
+          "checksum": "SHA-256:8fab47feafc89cc47bd519529bf124694aac9d9eea096fc5758918959f656b4f",
+          "size": "21353914",
           "boards": [
             {
               "name": "Loomified Adafruit Feather M0 (SAMD21)"

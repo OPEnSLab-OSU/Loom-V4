@@ -4,11 +4,11 @@
 #include "Loom_Manager.h"
 
 /**
- * Functionality for the EZO Dissolved Oxygen Sensor
+ * Functionality for the EZO RGB Sensor
  * 
  * @author Will Richards
  */  
-class Loom_EZODO : public EZOSensor{
+class Loom_EZORGB : public EZOSensor{
     protected:
         void print_measurements() override {};  
         void power_up() override {}; 
@@ -20,33 +20,30 @@ class Loom_EZODO : public EZOSensor{
         void power_down() override;
 
         /**
-         *  Construct a new EZODO device
+         *  Construct a new EZORGB device
          *  @param man Reference to the manager
          *  @param address I2C address to communicate over
          *  @param useMux Whether or not to use the mux
          */ 
-        Loom_EZODO(
+        Loom_EZORGB(
                 Manager& man,
-                byte address            = 0x61,
+                byte address            = 0x70,
                 bool useMux             = false
             );
 
 
         /**
-         * Get the dissolved oxygen level
+         * Get the color values individually
          */ 
-        float getOxygen() { return oxygen; };
-
-        /**
-         * Get the percent saturation
-         */ 
-        float getSaturation() { return saturation; };
+        uint8_t getRed() { return rgb[0]; };
+        uint8_t getGreen() { return rgb[1]; };
+        uint8_t getBlue() { return rgb[2]; };
     
     private:
         Manager* manInst;                                                       // Instance of the manager
         
-        float oxygen;                                                           // Reading for the DO value
-        float saturation;                                                       // Get the percent saturation
-        void parseResponse(String response);
+        uint8_t rgb[3] = {0,0,0};                                               // RGB readings
+        void parseData(String sensorData);                                      // Parse data into a separated format
+
        
 };

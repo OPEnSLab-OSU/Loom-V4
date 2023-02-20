@@ -1,17 +1,17 @@
 /**
- * EZO Dissolved Oxygen Sensor Example
+ * EZO CO2 Sensor Example
  *
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 
 #include <Loom_Manager.h>
 
-#include <Sensors/I2C/Loom_EZODO/Loom_EZODO.h>
+#include <Sensors/I2C/Loom_EZOCO2/Loom_EZOCO2.h>
 
 Manager manager("Device", 1);
 
 // Manager Instance,      Address, useMux
-Loom_EZODO ezoDO(manager, 0x61, false);
+Loom_EZOCO2 ezoCO2(manager, 0x69, false);
 
 void setup() {
 
@@ -24,8 +24,6 @@ void setup() {
 }
 
 void loop() {
-  // Put your main code here, to run repeatedly:
-
   // Measure and package the data from the sensors
   manager.measure();
   
