@@ -20,6 +20,7 @@ class I2CDevice : public Module{
                     return false;
                 }
             }
+            return false;
         };
 
         bool needsReinit = false;                      // Whether or not the device needs to be reinitialized

@@ -212,6 +212,8 @@ bool SDManager::updateCurrentFileName(){
     root.close();
     printModuleName("Data will be logged to " + fileName);
 
+    return true;
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

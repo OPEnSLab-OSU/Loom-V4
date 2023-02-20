@@ -74,7 +74,7 @@ void Loom_LTE::power_up(){
         
     // If not connected to a network we want to connect
     if(moduleInitialized){
-        Watchdog.disable();
+        //Watchdog.disable();
         printModuleName("Powering up GPRS Modem. This should take about 10 seconds...");
         digitalWrite(powerPin, LOW);
         delay(10000);
@@ -82,7 +82,7 @@ void Loom_LTE::power_up(){
         delay(6000);
         modem.restart();
         printModuleName("Powering up complete!");
-        Watchdog.enable(WATCHDOG_TIMEOUT);
+        ////Watchdog.enable(//Watchdog_TIMEOUT);
     }
 
     // If the module isn't initialized we want to try again
@@ -121,7 +121,7 @@ void Loom_LTE::package(){
 bool Loom_LTE::connect(){
     uint8_t attemptCount = 1; // Tracks number of attempts, 5 is a fail
 
-    Watchdog.disable();
+    //Watchdog.disable();
     do{
         printModuleName("Waiting for network...");
         if(!modem.waitForNetwork()){
@@ -140,7 +140,7 @@ bool Loom_LTE::connect(){
         printModuleName("Attempting to connect to LTE Network: " + APN);
         if(modem.gprsConnect(APN.c_str(), gprsUser.c_str(), gprsPass.c_str())){
             printModuleName("Successfully Connected!");
-            Watchdog.enable(WATCHDOG_TIMEOUT);
+            ////Watchdog.enable(//Watchdog_TIMEOUT);
             return true;
         }
         else{
@@ -152,7 +152,7 @@ bool Loom_LTE::connect(){
         // If the last attempt was the 5th attempt then stop
         if(attemptCount > 5){
             printModuleName("Connection reattempts exceeded 10 tries. Connection Failed");
-            Watchdog.enable(WATCHDOG_TIMEOUT);
+            ////Watchdog.enable(//Watchdog_TIMEOUT);
             return false;
         }
     }while(!isConnected());
@@ -176,6 +176,7 @@ bool Loom_LTE::verifyConnection(){
     if(!client.connect("vsh.pp.ua", 80)){
         printModuleName("Failed to contact TinyGSM example your internet connection may not be completely established!");
         client.stop();
+        return false;
     }
     else{
 
@@ -198,7 +199,8 @@ bool Loom_LTE::verifyConnection(){
         Serial.println();
         client.stop();
     }
-    Watchdog.reset();
+    return true;
+    //Watchdog.reset();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -101,12 +101,12 @@ class Loom_LTE : public Module{
 
         /* Restart the modem */
         void restartModem() { 
-            Watchdog.reset();
+            //Watchdog.reset();
             modem.poweroff();
             delay(3000);
             modem.restart(); 
             delay(1000);
-            Watchdog.reset();
+            //Watchdog.reset();
         };
 
         /**
