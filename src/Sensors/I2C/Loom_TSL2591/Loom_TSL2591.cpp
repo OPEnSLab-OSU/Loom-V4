@@ -1,4 +1,5 @@
 #include "Loom_TSL2591.h"
+#include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_TSL2591::Loom_TSL2591(
@@ -18,6 +19,7 @@ Loom_TSL2591::Loom_TSL2591(
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::initialize() {
+    FUNCTION_START;
     if(!tsl.begin()){
         printModuleName("Failed to initialize TSL2591! Check connections and try again...");
         moduleInitialized = false;
@@ -30,11 +32,13 @@ void Loom_TSL2591::initialize() {
 
         printModuleName("Successfully initialized TSL2591!");
     }
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::measure() {
+    FUNCTION_START;
     if(moduleInitialized){
         // Get the current connection status
         bool connectionStatus = checkDeviceConnection();
@@ -71,24 +75,26 @@ void Loom_TSL2591::measure() {
             lightLevels[2] = tsl.getLuminosity(TSL2591_FULLSPECTRUM);
         }
     }
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::package() {
+    FUNCTION_START;
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
         json["Visible"] = lightLevels[0];
         json["Infrared"] = lightLevels[1];
         json["Full_Spectrum"] = lightLevels[2];
     }
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::print_measurements() {
 
-    //printModuleName();
 	Serial.println("Measurements:");
 	Serial.println("\tVisible: " + String(lightLevels[0]));
 	Serial.println("\tIR: " + String(lightLevels[1]));
@@ -98,10 +104,12 @@ void Loom_TSL2591::print_measurements() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::power_up() {
+    FUNCTION_START;
     if(moduleInitialized){
         // Set the gain and integration time of the sensor
         tsl.setGain(gain);
         tsl.setTiming(intTime);
     }
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

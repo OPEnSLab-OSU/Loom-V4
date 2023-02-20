@@ -3,12 +3,7 @@
 #include <Wire.h>
 #include <ArduinoJson.h>
 
-#include <MemoryFree.h>
 #include <Adafruit_SleepyDog.h>
-
-#define FUNCTION_START(f,i) printModuleName("[" + String(i) +":" + String(f) +"] Entering Function - Current Memory Usage: " + String(freeMemory()))
-#define FUNCTION_END(f,i) printModuleName("[" + String(i) +":" + String(f) +"] Exiting Function - Current Memory Usage: " + String(freeMemory()))
-
 
 #define WATCHDOG_TIMEOUT 8000
 using SDLogDebug = void (*)(String);
