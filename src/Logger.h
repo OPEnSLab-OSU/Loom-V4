@@ -14,13 +14,16 @@
 class Logger{
     private:
         struct functionInfo{
-            String logBanner;
+            String fileName;
+            String funcName;
+            unsigned int lineNumber;
             int netMemoryUsage;
-            int time;
-            functionInfo(String banner, int mem, int time) : logBanner(banner), netMemoryUsage(mem), time(time) {}
-            
+            int totalMemoryUsage;
+            unsigned long time;
+            functionInfo(String fileName, String funcName, unsigned int lineNumber, int mem, unsigned long time) : fileName(fileName), funcName(funcName), lineNumber(lineNumber), netMemoryUsage(mem), time(time) {};
         };
         
+        // Function call list
         std::stack<Logger::functionInfo*> callStack;
 
         static Logger* instance;
@@ -43,35 +46,41 @@ class Logger{
             }
         };
 
+        /* Set an instance of the SD Manager */
         void setSDManager(SDManager* manager) { sdInst = manager; };
 
-        // Log a debug message to the debug log file
-        void debugLog(String message){
+        /* Summarization of the current function*/
+        void functionSummary(String ret){
             functionInfo* info = callStack.top();
-            Serial.println(info->logBanner + message);
+
+            String banner = "[" + info->fileName + ":" + info->funcName + "]";
 
             // Log as long as we have given it a SD card instance
             if(sdInst != nullptr)
-                sdInst->writeLineToFile("debug_" + String(sdInst->getCurrentFileNumber()) + ".log", String(info->logBanner + message));
+                sdInst->writeLineToFile("funcSummaries_" + String(sdInst->getCurrentFileNumber()) + ".log", String(banner + " Summary\n\tFunction Memory Usage: " + String(info->netMemoryUsage) + "\n\tTotal Memory Usage: " + String(info->totalMemoryUsage) +"\n\tElapsed Time: " + String(info->time) + "\n\tReturn Status: " + String(ret)));
+        };
+
+        // Log a debug message to the debug log file    
+        void debugLog(String message){
+            functionInfo* info = callStack.top();
+            String banner = "[" + info->fileName + ":" + info->funcName + ":" + String(info->lineNumber) + "] ";
+            Serial.println(banner + message);
+
+            // Log as long as we have given it a SD card instance
+            if(sdInst != nullptr)
+                sdInst->writeLineToFile("debug_" + String(sdInst->getCurrentFileNumber()) + ".log", String(banner + message));
         };
 
         /* Marks the start of a function */
         void startFunction(String file, String func, unsigned int num){
             // Log the start time of the function
             int netMemoryUsage = freeMemory();
-            int time = millis();
+            unsigned long time = millis();
             
             // Get the last slash in the file name
-            #if _WIN32
-                int lastSlash = file.lastIndexOf('\\');
-            #else
-                int lastSlash = file.lastIndexOf('/');
-            #endif
+            int lastSlash = file.lastIndexOf('\\')+1;
 
-            // Debug log banner
-            String logBanner = "[" + file.substring(lastSlash, file.length()) + ":" + func + ":" + String(num) + "]";
-
-            callStack.push(new functionInfo(logBanner, time, netMemoryUsage));
+            callStack.push(new functionInfo(file.substring(lastSlash, file.length()), func, num, netMemoryUsage, time));
         };
 
         /* Marks the end of a function*/
@@ -80,15 +89,14 @@ class Logger{
             // Log the start time of the function
             functionInfo* info = callStack.top();
             info->netMemoryUsage = freeMemory() - info->netMemoryUsage;
+            info->totalMemoryUsage = freeMemory();
             info->time = millis() - info->time;
             
-            debugLog(" Summary\n\tNet Memory Usage: " + String(info->netMemoryUsage) 
-                           + "\n\tElapsed Time: " + String(info->time) 
-                           + "\n\tReturn Status: " + String(ret));
-
             // Delete the top most function on the call stack
+            functionSummary(String(ret));
             delete(info);
             callStack.pop();
+            
         };
 };
 

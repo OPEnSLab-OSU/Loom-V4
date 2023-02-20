@@ -18,7 +18,6 @@ bool SDManager::writeLineToFile(String filename, String content){
         if(myFile){
             myFile.println(content);
             myFile.close();
-            printModuleName("Content successfully written to file: " + filename);
             return true;
         }
         printModuleName("Failed to Open File!");

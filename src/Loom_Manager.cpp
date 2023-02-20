@@ -1,4 +1,6 @@
 #include "Loom_Manager.h"
+#include "Logger.h"
+Logger* Logger::instance = nullptr;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Manager::Manager(String devName, uint32_t instanceNum) : deviceName(devName), instanceNumber(instanceNum), doc(2000) {};

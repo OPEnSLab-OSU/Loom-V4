@@ -46,7 +46,7 @@ void Loom_Neopixel::initialize(){
 		}
 	}
 
-    printModuleName("Succsessfully initialized Neopixel");
+    printModuleName("Successfully initialized Neopixel");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
