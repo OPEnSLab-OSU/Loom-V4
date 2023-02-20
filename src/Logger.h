@@ -43,7 +43,7 @@ class Logger{
             }
         };
 
-        void setSDManager(SDManager& manager) { sdInst = &manager; };
+        void setSDManager(SDManager* manager) { sdInst = manager; };
 
         // Log a debug message to the debug log file
         void debugLog(String message){
