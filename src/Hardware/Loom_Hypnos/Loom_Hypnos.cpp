@@ -358,7 +358,6 @@ void Loom_Hypnos::sleep(bool waitForSerial){
     // Try to power down the active modules
     manInst->power_down();
     
-    disable();                      // Disable the power rails before sleeping
     pre_sleep();                    // Pre-sleep cleanup
     LowPower.sleep();               // Go to sleep and hang
     post_sleep(waitForSerial);      // Wake up
@@ -378,12 +377,12 @@ void Loom_Hypnos::pre_sleep(){
 
     attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
 
-    // Disable the power rails
-    disable();
-
     // Disable //Watchdog when entering sleep
     TIMER_DISABLE;
     FUNCTION_END("void");
+
+    // Disable the power rails
+    disable();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
