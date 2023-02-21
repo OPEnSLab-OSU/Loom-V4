@@ -172,6 +172,10 @@ bool SDManager::begin(){
             return false;
         }
         updateCurrentFileName();
+
+        // Make a debug folder if it doesn't already exist
+        if(!sd.exists("debug"))
+            sd.mkdir("debug");
     }
     
     // Once the SD card has initialized the first round through we don't want to update the file name

@@ -19,7 +19,7 @@ Loom_SHT31::Loom_SHT31(
 void Loom_SHT31::initialize() {
     FUNCTION_START;
     if(!sht.begin(i2c_address)){
-        LOG("Failed to initialize SHT31! Check connections and try again...");
+        ERROR("Failed to initialize SHT31! Check connections and try again...");
         moduleInitialized = false;
     }
     else{
@@ -44,7 +44,7 @@ void Loom_SHT31::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            LOG("No acknowledge received from the device");
+            ERROR("No acknowledge received from the device");
             return;
         }
         // Pull the data from the sensor
@@ -57,7 +57,7 @@ void Loom_SHT31::measure() {
             sensorData[1] = humid;
         }
         else{
-            LOG("Collected information was invalid, the previous collected data will be published again.");
+            WARNING("Collected information was invalid, the previous collected data will be published again.");
         }
     }
     FUNCTION_END("void");

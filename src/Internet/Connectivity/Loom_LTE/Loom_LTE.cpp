@@ -35,7 +35,7 @@ void Loom_LTE::initialize(){
 
     // If no LTE shield is found we should not initialize the module
     if(modemInfo == NULL){
-        LOG("LTE shield not detected! This can also be triggered if there isn't a SIM card in the board");
+        ERROR("LTE shield not detected! This can also be triggered if there isn't a SIM card in the board");
         moduleInitialized = false;
         return;
     }
@@ -58,7 +58,7 @@ void Loom_LTE::initialize(){
         LOG("Module successfully initialized!");
     }
     else{
-        LOG("Module failed to initialize");
+        ERROR("Module failed to initialize");
     }
 
     firstInit = false;
@@ -95,7 +95,7 @@ void Loom_LTE::power_up(){
 
     if(!firstInit && !isConnected() && moduleInitialized)
             connect();
-    FUNCTION_END("ret");
+    FUNCTION_END("void");
     
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -134,13 +134,13 @@ bool Loom_LTE::connect(){
     do{
         LOG("Waiting for network...");
         if(!modem.waitForNetwork()){
-            LOG("No Response from network!");
+            ERROR("No Response from network!");
             FUNCTION_END(false);
             return false;
         }
 
         if(!modem.isNetworkConnected()){
-            LOG("No connection to network!");
+            ERROR("No connection to network!");
             FUNCTION_END(false);
             return false;
         }
@@ -156,14 +156,14 @@ bool Loom_LTE::connect(){
             return true;
         }
         else{
-            LOG("Connection failed " + String(attemptCount) + "/ 10. Retrying...");
+            WARNING("Connection failed " + String(attemptCount) + "/ 10. Retrying...");
             delay(10000);
             attemptCount++;
         }
 
         // If the last attempt was the 5th attempt then stop
         if(attemptCount > 5){
-            LOG("Connection reattempts exceeded 10 tries. Connection Failed");
+            ERROR("Connection reattempts exceeded 10 tries. Connection Failed");
             FUNCTION_END(false);
             TIMER_ENABLE;
             return false;
@@ -186,12 +186,12 @@ void Loom_LTE::disconnect(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::verifyConnection(){
     bool returnStatus =  false;
-    String output = "";
+    String output = "Web Response\n";
     LOG("Attempting to verify internet connection...");
     
     // Connect to TinyGSM's creator's website
     if(!client.connect("vsh.pp.ua", 80)){
-        LOG("Failed to contact TinyGSM example your internet connection may not be completely established!");
+        ERROR("Failed to contact TinyGSM example your internet connection may not be completely established!");
         client.stop();
         return false;
     }
@@ -234,7 +234,7 @@ void Loom_LTE::loadConfigFromJSON(String json){
 
     // Check if an error occurred and if so print it
     if(deserialError != DeserializationError::Ok){
-        LOG("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
+        ERROR("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
     }
 
     APN = doc["apn"].as<String>();

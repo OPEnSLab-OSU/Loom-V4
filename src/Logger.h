@@ -4,8 +4,12 @@
 
 #define FUNCTION_START Logger::getInstance()->startFunction(__FILE__, __func__, __LINE__)
 #define FUNCTION_END(ret) Logger::getInstance()->endFunction(ret) 
-#define LOG(msg) Logger::getInstance()->debugLog(msg, false, __LINE__)         // Log a generic message
+
 #define SLOG(msg) Logger::getInstance()->debugLog(msg, true,  __LINE__)        // Log a message without printing to the serial
+#define LOG(msg) Logger::getInstance()->debugLog(msg, false, __LINE__)         // Log a generic message
+#define ERROR(msg) Logger::getInstance()->errorLog(msg, false, __LINE__)       // Log an error message
+#define WARNING(msg) Logger::getInstance()->warningLog(msg, false, __LINE__)   // Log an error message
+
 
 /**
  * Class for handling debug log information
@@ -20,6 +24,9 @@ class Logger{
          * fileName - Name of the file that we are in
          * funcName - Name of the function that we are in
          * lineNumber - The current line number of the function
+         * netMemoryUsage - The amount of memory that was allocated or deallocated in that function alone (bytes)
+         * totalMemoryUsage - The total amount of RAM being used at the end of the current function (bytes)
+         * time - The time the function took to return (ms)
         */
         struct functionInfo{
             String fileName;
@@ -36,6 +43,24 @@ class Logger{
 
         static Logger* instance;
         SDManager* sdInst = nullptr;
+
+        /**
+         * Generic Log Function prints to Serial and Logs to SD
+         * 
+         * @param message The message we want to log
+         * @param silent Wether or not the message gets print to the serial monitor
+         * @param lineNumber The lineNumber the log took place on
+        */
+        void log(String message, bool silent, long lineNumber){
+            
+            // If we want to actually print to serial
+            if(!silent)
+                Serial.println(message);
+
+            // Log as long as we have given it a SD card instance
+            if(sdInst != nullptr)
+                sdInst->writeLineToFile("/debug/output_" + String(sdInst->getCurrentFileNumber()) + ".log", String(message));
+        }
 
         Logger() {};
     
@@ -54,38 +79,54 @@ class Logger{
             }
         };
 
-        /* Set an instance of the SD Manager */
+        /**
+         * Set the instance of the SD Manager
+         * @param manager Pointer to the SD manager to allow us to utilize SD logging functionality
+        */
         void setSDManager(SDManager* manager) { sdInst = manager; };
-
-        /* Summarization of the current function*/
-        void functionSummary(String ret){
-            functionInfo* info = callStack.top();
-
-            String banner = "[" + info->fileName + ":" + info->funcName + "]";
-
-            // Log as long as we have given it a SD card instance
-            if(sdInst != nullptr)
-                sdInst->writeLineToFile("funcSummaries_" + String(sdInst->getCurrentFileNumber()) + ".log", String(banner + " Summary\n\tFunction Memory Usage: " + String(info->netMemoryUsage) + "\n\tTotal Memory Usage: " + String(info->totalMemoryUsage) +"\n\tElapsed Time: " + String(info->time) + "\n\tReturn Status: " + String(ret)));
-        };
 
         /**
          * Logs a Debug Message to the SD card and the serial monitor
          * @param message Message to log
          * @param silent If set to silent it will not appear in the serial monitor
+         * @param lineNumber The current line number this log is on
         */
         void debugLog(String message, bool silent, long lineNumber){
             functionInfo* info = callStack.top();
-            String banner = "[" + lineNumber + ":" + info->funcName + ":" + String(info->lineNumber) + "] ";
-
-            if(!silent)
-                Serial.println(banner + message);
-
-            // Log as long as we have given it a SD card instance
-            if(sdInst != nullptr)
-                sdInst->writeLineToFile("debug_" + String(sdInst->getCurrentFileNumber()) + ".log", String(banner + message));
+            String banner = "[" + info->fileName + ":" + info->funcName + ":" + String(lineNumber) + "] [DEBUG] ";
+            log(banner + message, silent, lineNumber);
         };
 
-        /* Marks the start of a function */
+        /**
+         * Logs an Error Message to the SD card and the serial monitor
+         * @param message Message to log
+         * @param silent If set to silent it will not appear in the serial monitor
+         * @param lineNumber The current line number this log is on
+        */
+        void errorLog(String message, bool silent, long lineNumber){
+            functionInfo* info = callStack.top();
+            String banner = "[" + info->fileName + ":" + info->funcName + ":" + String(lineNumber) + "] [ERROR] ";
+            log(banner + message, silent, lineNumber);
+        };
+
+        /**
+         * Logs a Warning Message to the SD card and the serial monitor
+         * @param message Message to log
+         * @param silent If set to silent it will not appear in the serial monitor
+         * @param lineNumber The current line number this log is on
+        */
+        void warningLog(String message, bool silent, long lineNumber){
+            functionInfo* info = callStack.top();
+            String banner = "[" + info->fileName + ":" + info->funcName + ":" + String(lineNumber) + "] [WARNING] ";
+            log(banner + message, silent, lineNumber);
+        };
+
+        /**
+         * Marks the start of a new function
+         * @param file File name that the function is in
+         * @param func Function name that this call is in
+         * @param num Current line number in the file of which this call is located
+        */
         void startFunction(String file, String func, unsigned int num){
             // Log the start time of the function
             int netMemoryUsage = freeMemory();
@@ -97,7 +138,10 @@ class Logger{
             callStack.push(new functionInfo(file.substring(lastSlash, file.length()), func, num, netMemoryUsage, time));
         };
 
-        /* Marks the end of a function*/
+        /**
+         * Marks the end of a function, logs summary to SD card
+         * @param ret Openly typed variable to show the return type of the function
+        */
         template<class T>
         void endFunction(T ret){
             // Log the start time of the function
@@ -107,10 +151,14 @@ class Logger{
             info->time = millis() - info->time;
             
             // Delete the top most function on the call stack
-            functionSummary(String(ret));
+            String banner = "[" + info->fileName + ":" + info->funcName + "]";
+
+            // Log as long as we have given it a SD card instance
+            if(sdInst != nullptr)
+                sdInst->writeLineToFile("/debug/funcSummaries_" + String(sdInst->getCurrentFileNumber()) + ".log", String(banner + " Summary\n\tFunction Memory Usage: " + String(info->netMemoryUsage) + " B\n\tTotal Memory Usage: " + String(info->totalMemoryUsage) +" B\n\tElapsed Time: " + String(info->time) + " MS\n\tReturn Status: " + String(ret)));
+            
             delete(info);
             callStack.pop();
-            
         };
 };
 

@@ -1,4 +1,5 @@
 #include "Loom_MQTT.h"
+#include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MQTT::Loom_MQTT(
@@ -34,11 +35,12 @@ Loom_MQTT::~Loom_MQTT(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MQTT::publish(){
+    FUNCTION_START;
     if(moduleInitialized){
 
         TIMER_DISABLE;
         if(mqttClient == nullptr){
-            printModuleName("Creating new MQTT client!");
+            LOG("Creating new MQTT client!");
             mqttClient = new MqttClient(*internetClient);
         }
 
@@ -57,47 +59,49 @@ void Loom_MQTT::publish(){
         // Try to connect multiple times as some may be dropped
         while(!mqttClient->connected() && retryAttempts < 5)
         {
-            printModuleName("Attempting to connect to broker: " + address + ":" + String(port));
+            LOG("Attempting to connect to broker: " + address + ":" + String(port));
 
             // Attempt to Connect to the MQTT client 
             if(!mqttClient->connect(address.c_str(), port)){
-                printModuleName("Failed to connect to broker: " + getMQTTError());
+                ERROR("Failed to connect to broker: " + getMQTTError());
                 delay(5000);
             }
 
             // If our retry limit has been reached we dont want to try to send data cause it wont work
             if(retryAttempts == 4){
-                printModuleName("Retry limit exceeded!");
+                ERROR("Retry limit exceeded!");
                 TIMER_ENABLE;
+                FUNCTION_END("void");
                 return;
             }
 
             retryAttempts++;
         }
         
-        printModuleName("Successfully connected to broker!");
-        printModuleName("Attempting to send data...");
+        LOG("Successfully connected to broker!");
+        LOG("Attempting to send data...");
 
         // Tell the broker we are still here
         mqttClient->poll();
 
         // Start a message write the data and close the message
         if(mqttClient->beginMessage(topic, false, 2) != 1){
-            printModuleName("Failed to begin message!");
+            ERROR("Failed to begin message!");
         }
         mqttClient->print(manInst->getJSONString());
 
         // Check to see if we are actually closing messages properly
         if(mqttClient->endMessage() != 1){
-            printModuleName("Failed to close message!");
+            ERROR("Failed to close message!");
         }
         else{
-            printModuleName("Data has been successfully sent!");
+            LOG("Data has been successfully sent!");
         }   
     }
     else{
-        printModuleName("Module not initialized! If using credentials from SD make sure they are loaded first.");
+        WARNING("Module not initialized! If using credentials from SD make sure they are loaded first.");
     }
+    FUNCTION_END("void");
     TIMER_ENABLE;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -105,11 +109,12 @@ void Loom_MQTT::publish(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MQTT::publish(Loom_BatchSD& batchSD){
+    FUNCTION_START;
     if(moduleInitialized ){
         TIMER_DISABLE;
 
         if(mqttClient == nullptr){
-            printModuleName("Creating new MQTT client!");
+            LOG("Creating new MQTT client!");
             mqttClient = new MqttClient(*internetClient);
         }
 
@@ -130,33 +135,34 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
             // Try to connect multiple times as some may be dropped
             while(!mqttClient->connected() && retryAttempts < 5)
             {
-                printModuleName("Attempting to connect to broker: " + address + ":" + String(port));
+                LOG("Attempting to connect to broker: " + address + ":" + String(port));
 
                 // Attempt to Connect to the MQTT client 
                 if(!mqttClient->connect(address.c_str(), port)){
-                    printModuleName("Failed to connect to broker: " + getMQTTError());
+                    ERROR("Failed to connect to broker: " + getMQTTError());
                     delay(5000);
                 }
 
                 // If our retry limit has been reached we dont want to try to send data cause it wont work
                 if(retryAttempts == 4){
-                    printModuleName("Retry limit exceeded!");
+                    ERROR("Retry limit exceeded!");
                     TIMER_ENABLE;
+                    FUNCTION_END("void");
                     return;
                 }
 
                 retryAttempts++;
             }
             
-            printModuleName("Successfully connected to broker!");
-            printModuleName("Attempting to send data...");
+            LOG("Successfully connected to broker!");
+            LOG("Attempting to send data...");
 
             // Tell the broker we are still here
             mqttClient->poll();
             
             std::vector<String> batch = batchSD.getBatch();
             for(int i = 0; i < batch.size(); i++){
-                printModuleName("Publishing Packet " + String(i+1) + " of " + String(batch.size()));
+                LOG("Publishing Packet " + String(i+1) + " of " + String(batch.size()));
                 
                 // Start a message write the data and close the message
                 mqttClient->beginMessage(topic, false, 2);
@@ -165,39 +171,49 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
                 delay(500);
             }
             
-            printModuleName("Data has been successfully sent!");
+            LOG("Data has been successfully sent!");
             
         }
         else{
-            printModuleName("Batch not ready to publish: " + String(batchSD.getCurrentBatch()) + "/" + String(batchSD.getBatchSize()));
+            LOG("Batch not ready to publish: " + String(batchSD.getCurrentBatch()) + "/" + String(batchSD.getBatchSize()));
         }
     }
     else{
-        printModuleName("Module not initialized! If using credentials from SD make sure they are loaded first.");
+        WARNING("Module not initialized! If using credentials from SD make sure they are loaded first.");
     }
+    FUNCTION_END("void");
     TIMER_ENABLE;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 String Loom_MQTT::getMQTTError(){
+    FUNCTION_START;
     // Convert error codes to actual descriptions
     switch(mqttClient->connectError()){
         case -2:
+            FUNCTION_END("CONNECTION_REFUSED");
             return String("CONNECTION_REFUSED");
         case -1:
+            FUNCTION_END("CONNECTION_TIMEOUT");
             return String("CONNECTION_TIMEOUT");
         case 1:
+            FUNCTION_END("UNACCEPTABLE_PROTOCOL_VERSION");
             return String("UNACCEPTABLE_PROTOCOL_VERSION");
         case 2:
+            FUNCTION_END("IDENTIFIER_REJECTED");
             return String("IDENTIFIER_REJECTED");
         case 3:
+            FUNCTION_END("SERVER_UNAVAILABLE");
             return String("SERVER_UNAVAILABLE");
         case 4:
+            FUNCTION_END("BAD_USER_NAME_OR_PASSWORD");
             return String("BAD_USER_NAME_OR_PASSWORD");
         case 5:
+            FUNCTION_END("NOT_AUTHORIZED");
             return String("NOT_AUTHORIZED");
         default:
+            FUNCTION_END("UNKNOWN_ERROR");
             return String("UNKNOWN_ERROR");
     }
 }
@@ -205,14 +221,14 @@ String Loom_MQTT::getMQTTError(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MQTT::loadConfigFromJSON(String json){
-
+    FUNCTION_START;
     // Doc to store the JSON data from the SD card in
     StaticJsonDocument<300> doc;
     DeserializationError deserialError = deserializeJson(doc, json);
 
     // Check if an error occurred and if so print it
     if(deserialError != DeserializationError::Ok){
-        printModuleName("There was an error reading the MQTT credentials from SD: " + String(deserialError.c_str()));
+        ERROR("There was an error reading the MQTT credentials from SD: " + String(deserialError.c_str()));
     }
     
     address = doc["broker"].as<String>();
@@ -224,5 +240,6 @@ void Loom_MQTT::loadConfigFromJSON(String json){
      // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
     topic = database_name + "/" + (manInst->get_device_name() + String(manInst->get_instance_num()));
     moduleInitialized = true;
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
