@@ -4,7 +4,8 @@
 
 #define FUNCTION_START Logger::getInstance()->startFunction(__FILE__, __func__, __LINE__)
 #define FUNCTION_END(ret) Logger::getInstance()->endFunction(ret) 
-#define LOG(msg) Logger::getInstance()->debugLog(msg)
+#define LOG(msg) Logger::getInstance()->debugLog(msg, false, __LINE__)         // Log a generic message
+#define SLOG(msg) Logger::getInstance()->debugLog(msg, true,  __LINE__)        // Log a message without printing to the serial
 
 /**
  * Class for handling debug log information
@@ -13,6 +14,13 @@
  */ 
 class Logger{
     private:
+
+        /**
+         * Function Info - Contains important information of the run state of the function
+         * fileName - Name of the file that we are in
+         * funcName - Name of the function that we are in
+         * lineNumber - The current line number of the function
+        */
         struct functionInfo{
             String fileName;
             String funcName;
@@ -60,11 +68,17 @@ class Logger{
                 sdInst->writeLineToFile("funcSummaries_" + String(sdInst->getCurrentFileNumber()) + ".log", String(banner + " Summary\n\tFunction Memory Usage: " + String(info->netMemoryUsage) + "\n\tTotal Memory Usage: " + String(info->totalMemoryUsage) +"\n\tElapsed Time: " + String(info->time) + "\n\tReturn Status: " + String(ret)));
         };
 
-        // Log a debug message to the debug log file    
-        void debugLog(String message){
+        /**
+         * Logs a Debug Message to the SD card and the serial monitor
+         * @param message Message to log
+         * @param silent If set to silent it will not appear in the serial monitor
+        */
+        void debugLog(String message, bool silent, long lineNumber){
             functionInfo* info = callStack.top();
-            String banner = "[" + info->fileName + ":" + info->funcName + ":" + String(info->lineNumber) + "] ";
-            Serial.println(banner + message);
+            String banner = "[" + lineNumber + ":" + info->funcName + ":" + String(info->lineNumber) + "] ";
+
+            if(!silent)
+                Serial.println(banner + message);
 
             // Log as long as we have given it a SD card instance
             if(sdInst != nullptr)

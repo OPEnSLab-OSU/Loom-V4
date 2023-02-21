@@ -262,7 +262,7 @@ bool Loom_LoRa::sendModules(JsonObject json, int numModules, const uint8_t desti
     // Loop through the number of packets we need to send
     for(int i = 0; i < numModules; i++){
         sendDoc.clear();
-        Watchdog.reset();
+        TIMER_RESET;
 
         // Set the module key to whatever the main one is
         JsonArray contents = manInst->getDocument()["contents"].as<JsonArray>();
@@ -275,7 +275,7 @@ bool Loom_LoRa::sendModules(JsonObject json, int numModules, const uint8_t desti
             printModuleName("Failed to transmit fragmented packet!");
         }
         delay(500);
-        Watchdog.reset();
+        TIMER_RESET;
     }
     return true;
 }
@@ -305,7 +305,7 @@ bool Loom_LoRa::transmit(JsonObject json, int destination){
         return false;
     }
 
-    Watchdog.disable();
+    TIMER_DISABLE;
     if(!manager->sendtoWait(buffer, sizeof(buffer), destination)){
         printModuleName("Failed to send packet to specified address!");
 
@@ -313,7 +313,7 @@ bool Loom_LoRa::transmit(JsonObject json, int destination){
         printModuleName("Successfully transmitted packet!");
         returnState = true;
     }
-    Watchdog.enable(WATCHDOG_TIMEOUT);
+    TIMER_ENABLE;
 
     signalStrength = driver.lastRssi();
     driver.sleep();
@@ -337,9 +337,9 @@ bool Loom_LoRa::recv(int waitTime){
         recvStatus = manager->recvfromAck(buffer, &len, &fromAddress);
     }
     else{
-        Watchdog.disable();
+        TIMER_DISABLE;
         recvStatus = manager->recvfromAckTimeout(buffer, &len, waitTime, &fromAddress);
-        Watchdog.enable(WATCHDOG_TIMEOUT);
+        TIMER_ENABLE;
         
     }
 

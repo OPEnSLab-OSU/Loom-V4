@@ -77,15 +77,15 @@ void Loom_LTE::power_up(){
         
     // If not connected to a network we want to connect
     if(moduleInitialized){
-        Watchdog.disable();
         LOG("Powering up GPRS Modem. This should take about 10 seconds...");
+        TIMER_DISABLE;
         digitalWrite(powerPin, LOW);
         delay(10000);
         SerialAT.begin(9600);
         delay(6000);
         modem.restart();
         LOG("Powering up complete!");
-        Watchdog.enable(WATCHDOG_TIMEOUT);
+        TIMER_ENABLE;
     }
 
     // If the module isn't initialized we want to try again
@@ -130,7 +130,7 @@ bool Loom_LTE::connect(){
     FUNCTION_START;
     uint8_t attemptCount = 1; // Tracks number of attempts, 5 is a fail
 
-    Watchdog.disable();
+    TIMER_DISABLE;
     do{
         LOG("Waiting for network...");
         if(!modem.waitForNetwork()){
@@ -151,8 +151,8 @@ bool Loom_LTE::connect(){
         LOG("Attempting to connect to LTE Network: " + APN);
         if(modem.gprsConnect(APN.c_str(), gprsUser.c_str(), gprsPass.c_str())){
             LOG("Successfully Connected!");
-            Watchdog.enable(WATCHDOG_TIMEOUT);
             FUNCTION_END(true);
+            TIMER_ENABLE;
             return true;
         }
         else{
@@ -164,8 +164,8 @@ bool Loom_LTE::connect(){
         // If the last attempt was the 5th attempt then stop
         if(attemptCount > 5){
             LOG("Connection reattempts exceeded 10 tries. Connection Failed");
-            Watchdog.enable(WATCHDOG_TIMEOUT);
             FUNCTION_END(false);
+            TIMER_ENABLE;
             return false;
         }
     }while(!isConnected());
@@ -186,12 +186,14 @@ void Loom_LTE::disconnect(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::verifyConnection(){
     bool returnStatus =  false;
+    String output = "";
     LOG("Attempting to verify internet connection...");
     
     // Connect to TinyGSM's creator's website
     if(!client.connect("vsh.pp.ua", 80)){
         LOG("Failed to contact TinyGSM example your internet connection may not be completely established!");
         client.stop();
+        return false;
     }
     else{
 
@@ -208,15 +210,18 @@ bool Loom_LTE::verifyConnection(){
             while (client.available()) {
                 char c = client.read();
                 Serial.print(c);
+                output += c;
                 timeout = millis();
             }
         }
         Serial.println();
+        SLOG(output.c_str());
         client.stop();
         returnStatus = true;
     }
-    Watchdog.reset();
-    return returnStatus;
+    TIMER_RESET;
+    return true;
+    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

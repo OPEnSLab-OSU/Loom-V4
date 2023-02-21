@@ -128,6 +128,8 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
         return false;
     }
 
+    return false;
+
    
         
 }
@@ -169,7 +171,7 @@ void Loom_Hypnos::initializeRTC(){
     // If the RTC failed to start inform the user and hang
     if(!RTC_DS.begin()){
         printModuleName("Couldn't start RTC! Check your connections... Execution will now hang as this is likely a fatal error");
-        while(1);
+        return;
     }
     
     // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't happen with coin cell batt backup
@@ -367,15 +369,15 @@ void Loom_Hypnos::pre_sleep(){
     // Disable the power rails
     disable();
 
-    // Disable watchdog when entering sleep
-    Watchdog.disable();
+    // Disable //Watchdog when entering sleep
+    TIMER_DISABLE;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::post_sleep(bool waitForSerial){
-    // Enable the watchdog timer when waking up
-    Watchdog.enable(WATCHDOG_TIMEOUT);
+    // Enable the //Watchdog timer when waking up
+    TIMER_ENABLE;
     USBDevice.attach();
     Serial.begin(115200);
     enable();
@@ -388,9 +390,9 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
 
     // We want to wait for the user to re-open the serial monitor before continuing to see readouts
     if(waitForSerial){
-        Watchdog.disable();
+        TIMER_DISABLE;
         while(!Serial);
-        Watchdog.enable(WATCHDOG_TIMEOUT);
+        TIMER_ENABLE;
     }
 
     printModuleName("Device has awoken from sleep!");

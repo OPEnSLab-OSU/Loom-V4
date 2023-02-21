@@ -2,10 +2,22 @@
 #include "Arduino.h"
 #include <Wire.h>
 #include <ArduinoJson.h>
-
 #include <Adafruit_SleepyDog.h>
 
+/* Watchdog Timer Setup */
 #define WATCHDOG_TIMEOUT 8000
+
+// Only allow the Timer to be used if WATCHDOG_ENABLE is set
+#if defined(WATCHDOG_ENABLE)
+    #define TIMER_ENABLE Wathchdog.enable(WATCHDOG_TIMEOUT)
+    #define TIMER_DISABLE Wathchdog.disable()
+    #define TIMER_RESET Wathchdog.reset()
+#else
+    #define TIMER_ENABLE 
+    #define TIMER_DISABLE
+    #define TIMER_RESET
+#endif
+
 using SDLogDebug = void (*)(String);
 
 /**
