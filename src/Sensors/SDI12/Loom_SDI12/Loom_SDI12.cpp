@@ -228,7 +228,7 @@ void Loom_SDI12::getData(char addr){
         sendCommand(addr, "M!");
         sendCommand(addr, "D0!").toCharArray(buf, 20);
 
-        //Watchdog.reset();
+        TIMER_RESET;
 	    if(String(buf).length() == 1){
             printModuleName("Retrying for a second time...");
             delay(3000);
@@ -236,7 +236,7 @@ void Loom_SDI12::getData(char addr){
             // Request a measurement from the sensor at the given address
             sendCommand(addr, "M!");
             sendCommand(addr, "D0!").toCharArray(buf, 20);
-            //Watchdog.reset();
+            TIMER_RESET;
             
 	    }
     }

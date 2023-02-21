@@ -370,14 +370,14 @@ void Loom_Hypnos::pre_sleep(){
     disable();
 
     // Disable //Watchdog when entering sleep
-    //Watchdog.disable();
+    TIMER_DISABLE;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::post_sleep(bool waitForSerial){
     // Enable the //Watchdog timer when waking up
-    ////Watchdog.enable(//Watchdog_TIMEOUT);
+    TIMER_ENABLE;
     USBDevice.attach();
     Serial.begin(115200);
     enable();
@@ -390,9 +390,9 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
 
     // We want to wait for the user to re-open the serial monitor before continuing to see readouts
     if(waitForSerial){
-        //Watchdog.disable();
+        TIMER_DISABLE;
         while(!Serial);
-        ////Watchdog.enable(//Watchdog_TIMEOUT);
+        TIMER_ENABLE;
     }
 
     printModuleName("Device has awoken from sleep!");

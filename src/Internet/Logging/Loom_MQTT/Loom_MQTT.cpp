@@ -36,7 +36,7 @@ Loom_MQTT::~Loom_MQTT(){
 void Loom_MQTT::publish(){
     if(moduleInitialized){
 
-        //Watchdog.disable();
+        TIMER_DISABLE;
         if(mqttClient == nullptr){
             printModuleName("Creating new MQTT client!");
             mqttClient = new MqttClient(*internetClient);
@@ -68,7 +68,7 @@ void Loom_MQTT::publish(){
             // If our retry limit has been reached we dont want to try to send data cause it wont work
             if(retryAttempts == 4){
                 printModuleName("Retry limit exceeded!");
-                ////Watchdog.enable(//Watchdog_TIMEOUT);
+                TIMER_ENABLE;
                 return;
             }
 
@@ -98,7 +98,7 @@ void Loom_MQTT::publish(){
     else{
         printModuleName("Module not initialized! If using credentials from SD make sure they are loaded first.");
     }
-    ////Watchdog.enable(//Watchdog_TIMEOUT);
+    TIMER_ENABLE;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -106,7 +106,7 @@ void Loom_MQTT::publish(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MQTT::publish(Loom_BatchSD& batchSD){
     if(moduleInitialized ){
-        //Watchdog.disable();
+        TIMER_DISABLE;
 
         if(mqttClient == nullptr){
             printModuleName("Creating new MQTT client!");
@@ -141,7 +141,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
                 // If our retry limit has been reached we dont want to try to send data cause it wont work
                 if(retryAttempts == 4){
                     printModuleName("Retry limit exceeded!");
-                    ////Watchdog.enable(//Watchdog_TIMEOUT);
+                    TIMER_ENABLE;
                     return;
                 }
 
@@ -175,7 +175,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
     else{
         printModuleName("Module not initialized! If using credentials from SD make sure they are loaded first.");
     }
-    ////Watchdog.enable(//Watchdog_TIMEOUT);
+    TIMER_ENABLE;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
