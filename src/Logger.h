@@ -8,7 +8,7 @@
 #define SLOG(msg) Logger::getInstance()->debugLog(msg, true,  __LINE__)        // Log a message without printing to the serial
 #define LOG(msg) Logger::getInstance()->debugLog(msg, false, __LINE__)         // Log a generic message
 #define ERROR(msg) Logger::getInstance()->errorLog(msg, false, __LINE__)       // Log an error message
-#define WARNING(msg) Logger::getInstance()->warningLog(msg, false, __LINE__)   // Log an error message
+#define WARNING(msg) Logger::getInstance()->warningLog(msg, false, __LINE__)   // Log a warning message
 
 
 /**
