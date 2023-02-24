@@ -5,10 +5,10 @@
 #define FUNCTION_START Logger::getInstance()->startFunction(__FILE__, __func__, __LINE__)
 #define FUNCTION_END(ret) Logger::getInstance()->endFunction(ret) 
 
-#define SLOG(msg) Logger::getInstance()->debugLog(msg, true,  __LINE__)        // Log a message without printing to the serial
-#define LOG(msg) Logger::getInstance()->debugLog(msg, false, __LINE__)         // Log a generic message
-#define ERROR(msg) Logger::getInstance()->errorLog(msg, false, __LINE__)       // Log an error message
-#define WARNING(msg) Logger::getInstance()->warningLog(msg, false, __LINE__)   // Log a warning message
+#define SLOG(msg) Logger::getInstance()->debugLog(msg, true, __FILE__, __func__, __LINE__)          // Log a message without printing to the serial
+#define LOG(msg) Logger::getInstance()->debugLog(msg, false, __FILE__, __func__, __LINE__)          // Log a generic message
+#define ERROR(msg) Logger::getInstance()->errorLog(msg, false, __FILE__, __func__, __LINE__)        // Log an error message
+#define WARNING(msg) Logger::getInstance()->warningLog(msg, false, __FILE__, __func__, __LINE__)    // Log a warning message
 
 
 /**
@@ -91,9 +91,8 @@ class Logger{
          * @param silent If set to silent it will not appear in the serial monitor
          * @param lineNumber The current line number this log is on
         */
-        void debugLog(String message, bool silent, long lineNumber){
-            functionInfo* info = callStack.top();
-            String banner = "[" + info->fileName + ":" + info->funcName + ":" + String(lineNumber) + "] [DEBUG] ";
+        void debugLog(String message, bool silent, String file, String func, long lineNumber){
+            String banner = "[DEBUG] [" + file + ":" + func + ":" + String(lineNumber) + "] ";
             log(banner + message, silent, lineNumber);
         };
 
@@ -103,9 +102,8 @@ class Logger{
          * @param silent If set to silent it will not appear in the serial monitor
          * @param lineNumber The current line number this log is on
         */
-        void errorLog(String message, bool silent, long lineNumber){
-            functionInfo* info = callStack.top();
-            String banner = "[" + info->fileName + ":" + info->funcName + ":" + String(lineNumber) + "] [ERROR] ";
+        void errorLog(String message, bool silent, String file, String func, long lineNumber){
+            String banner = "[ERROR] [" + file + ":" + func + ":" + String(lineNumber) + "] ";
             log(banner + message, silent, lineNumber);
         };
 
@@ -115,9 +113,8 @@ class Logger{
          * @param silent If set to silent it will not appear in the serial monitor
          * @param lineNumber The current line number this log is on
         */
-        void warningLog(String message, bool silent, long lineNumber){
-            functionInfo* info = callStack.top();
-            String banner = "[" + info->fileName + ":" + info->funcName + ":" + String(lineNumber) + "] [WARNING] ";
+        void warningLog(String message, bool silent, String file, String func, long lineNumber){
+            String banner = "[WARNING] [" + file + ":" + func + ":" + String(lineNumber) + "] ";
             log(banner + message, silent, lineNumber);
         };
 
