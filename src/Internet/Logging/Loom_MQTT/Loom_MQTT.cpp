@@ -214,12 +214,15 @@ void Loom_MQTT::loadConfigFromJSON(String json){
     if(deserialError != DeserializationError::Ok){
         printModuleName("There was an error reading the MQTT credentials from SD: " + String(deserialError.c_str()));
     }
-    
-    address = doc["broker"].as<String>();
-    port = doc["port"].as<int>();
-    database_name = doc["database"].as<String>();
-    username = doc["username"].as<String>();
-    password = doc["password"].as<String>();
+
+    // Only update values if not null
+    if(!doc["broker"].isNull()){
+        address = doc["broker"].as<String>();
+        port = doc["port"].as<int>();
+        database_name = doc["database"].as<String>();
+        username = doc["username"].as<String>();
+        password = doc["password"].as<String>();
+    }
 
      // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
     topic = database_name + "/" + (manInst->get_device_name() + String(manInst->get_instance_num()));
