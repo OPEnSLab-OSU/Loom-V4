@@ -19,7 +19,7 @@ class Loom_Ethernet : public Module{
 
         /* These aren't used with the Wifi manager */
         void measure() override {};                               
-        void print_measurements() override {};
+        
         void package() override {};        
 
         // Initialize the device and connect to the network

@@ -10,7 +10,7 @@
  */  
 class Loom_EZORGB : public EZOSensor{
     protected:
-        void print_measurements() override {};  
+        
         void power_up() override {}; 
 
     public:

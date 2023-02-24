@@ -23,7 +23,6 @@ class Loom_SDI12 : public Module{
         /* These should be called only by Manager.h */
         void measure() override;                                // Generic Measure Call To Pull Sensor Data
         void package() override;                                // Generic Package Call to Store Sensor Data
-        void print_measurements() override;
         void power_down() override;
         void power_up() override;
 

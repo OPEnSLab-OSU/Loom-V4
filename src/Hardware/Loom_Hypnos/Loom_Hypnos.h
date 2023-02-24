@@ -74,7 +74,7 @@ class Loom_Hypnos : public Module{
         void measure() override {};                               
        
         void initialize() override {};  
-        void print_measurements() override {};  
+        
         void power_up() override {};
         void power_down() override {}; 
 

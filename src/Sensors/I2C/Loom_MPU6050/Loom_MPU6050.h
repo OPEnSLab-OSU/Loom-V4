@@ -13,7 +13,7 @@
  */ 
 class Loom_MPU6050 : public I2CDevice{
     protected:
-        void print_measurements() override {};  
+        
         void power_up() override {};
         void power_down() override {}; 
 

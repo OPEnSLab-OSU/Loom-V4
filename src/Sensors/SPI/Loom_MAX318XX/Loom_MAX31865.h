@@ -15,7 +15,7 @@
  */ 
 class Loom_MAX31865 : public Module{
     protected:
-        void print_measurements() override {};  
+        
         void power_up() override {};
         void power_down() override {}; 
 

@@ -20,7 +20,7 @@ class Actuator : public Module{
     protected:
         /* Module methods that are inherited by actuator */
         void measure() override {};
-        void print_measurements() override {};  
+        
         void power_up() override {};
         void power_down() override {}; 
         void package() override {};

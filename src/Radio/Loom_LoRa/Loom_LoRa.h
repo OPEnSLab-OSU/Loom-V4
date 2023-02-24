@@ -22,7 +22,7 @@ class Loom_LoRa : public Radio{
     protected:
         /* These aren't used with this module */
         void measure() override {};                               
-        void print_measurements() override {};  
+        
              
 
     public:

@@ -16,7 +16,6 @@ class Loom_TSL2591 : public I2CDevice{
        
        // Manager controlled functions
         void measure() override;                               
-        void print_measurements() override;
         void initialize() override;    
         void power_up() override;
         void power_down() override {}; 

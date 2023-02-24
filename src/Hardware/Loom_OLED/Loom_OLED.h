@@ -16,7 +16,7 @@ class Loom_OLED : public Module{
 
         void power_up() override {};
         void power_down() override {}; 
-        void print_measurements() override {};
+        
         
         // Manager controlled functions
         void measure() override {};

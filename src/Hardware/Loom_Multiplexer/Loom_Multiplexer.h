@@ -31,7 +31,7 @@ class Loom_Multiplexer : public Module{
 	protected:
 
         /* These aren't used with the Mux */
-        void print_measurements() override {};  
+        
        
 
     public:

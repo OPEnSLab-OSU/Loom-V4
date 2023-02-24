@@ -34,7 +34,7 @@ class Loom_WIFI : public Module{
 
         /* These aren't used with the Wifi manager */
         void measure() override {};                               
-        void print_measurements() override {};
+        
              
 
         // Initialize the device and connect to the network

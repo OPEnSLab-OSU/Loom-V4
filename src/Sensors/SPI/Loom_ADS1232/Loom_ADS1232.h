@@ -13,7 +13,7 @@
  */ 
 class Loom_ADS1232 : public Module{
     protected:
-        void print_measurements() override {};   
+         
 
     public:
         Loom_ADS1232(Manager& man, int num_samples = 1, long offset = 8403613, float scale = 2041.46);

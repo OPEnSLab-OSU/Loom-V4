@@ -14,7 +14,7 @@
 
 class Loom_MS5803 : public I2CDevice{
     protected:
-        void print_measurements() override {};  
+        
         void power_down() override {};
          
     public:

@@ -16,7 +16,7 @@ class Loom_Teros10 : public Module{
 
     protected:
         void initialize() override {};
-        void print_measurements() override {};  
+        
         void power_up() override {};
         void power_down() override {}; 
 

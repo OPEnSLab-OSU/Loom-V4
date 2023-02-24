@@ -21,7 +21,7 @@ class Loom_Max : public Module{
     protected:
          /* These aren't used with the Max modules */
         void measure() override {};                               
-        void print_measurements() override {};  
+        
         void power_up() override {};
         void power_down() override {}; 
         void package() override;

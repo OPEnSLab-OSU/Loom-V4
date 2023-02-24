@@ -17,7 +17,7 @@ class SDManager : public Module{
         /* These aren't used with the Hypnos */
         void measure() override {};                               
         void package() override {};                                
-        void print_measurements() override {};
+        
         void initialize() override {};    
         void power_up() override {};
         void power_down() override {};                        

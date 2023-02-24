@@ -23,7 +23,7 @@ class Loom_LTE : public Module{
     protected:
         /* These aren't used with the Wifi manager */
         void measure() override {};                               
-        void print_measurements() override {};
+        
            
 
     public:

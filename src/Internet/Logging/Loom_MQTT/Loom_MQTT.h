@@ -19,7 +19,7 @@ class Loom_MQTT : public Module{
 
         /* These aren't used with the MQTT */
         void measure() override {};                               
-        void print_measurements() override {};
+        
         void initialize() override {};    
         void power_up() override {};
         void power_down() override {}; 

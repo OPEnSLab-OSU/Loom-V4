@@ -17,7 +17,7 @@ class Loom_Analog : public Module{
         void power_up() override {};
         void power_down() override {};
         void initialize() override {};  
-        void print_measurements() override {};
+        
 
     public:
         /**
