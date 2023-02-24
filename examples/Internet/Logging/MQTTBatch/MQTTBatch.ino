@@ -29,6 +29,9 @@ void setup() {
   // Enable the Hypnos
   hypnos.enable();
 
+  // Set an instance of BatchSD on the wifi module
+  wifi.setBatchSD(batchSD);
+
   // Initialize all modules
   manager.initialize();
 }

@@ -4,8 +4,10 @@
 #include <WiFiUdp.h>
 #include <FlashStorage.h>
 
+
 #include "Module.h"
 #include "Loom_Manager.h"
+#include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
 
 /**
  * Communication mode for routing traffic between the feather and Max client
@@ -130,6 +132,11 @@ class Loom_WIFI : public Module{
         void useMax() {usingMax = true; };
 
         /**
+         * Set an instance of BatchSD to check if we need to power up
+        */
+        void setBatchSD(Loom_BatchSD& batch) { batchSD = &batch; };
+
+        /**
          * Convert an IP address to a string
          */ 
         static String IPtoString(IPAddress ip) { return String(ip[0]) + "." + String(ip[1]) + "." + String(ip[2]) + "." + String(ip[3]); };
@@ -138,6 +145,7 @@ class Loom_WIFI : public Module{
         Manager* manInst;                   // Pointer to the manager
 
         WiFiClient wifiClient;              // Wifi client that can be used with the MQTT client or other additional objects
+        Loom_BatchSD* batchSD = nullptr;
 
         bool hasInitialized = false;        // Has the WiFi module run through the initialization process
 
