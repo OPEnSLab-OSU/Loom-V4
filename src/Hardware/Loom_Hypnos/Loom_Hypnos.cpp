@@ -434,7 +434,9 @@ void Loom_Hypnos::getTimeZoneFromSD(String fileName){
     }
     else{
         printModuleName("Timezone successfully loaded!");
-        timezone = timezoneMap[json["timezone"].as<String>()];
+
+        if(!json["timezone"].isNull())
+            timezone = timezoneMap[json["timezone"].as<String>()];
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
