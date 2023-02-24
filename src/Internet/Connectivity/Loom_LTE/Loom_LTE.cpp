@@ -215,9 +215,12 @@ void Loom_LTE::loadConfigFromJSON(String json){
         printModuleName("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
     }
 
-    APN = doc["apn"].as<String>();
-    gprsUser = doc["user"].as<String>();
-    gprsPass = doc["pass"].as<String>();
+    // Check if apn is null
+    if(!doc["apn"].isNull()){
+        APN = doc["apn"].as<String>();
+        gprsUser = doc["user"].as<String>();
+        gprsPass = doc["pass"].as<String>();
+    }
 
     // If we are supplying a different power pin then use that one
     if(doc.containsKey("pin"))
