@@ -235,9 +235,12 @@ void Loom_WIFI::loadConfigFromJSON(String json){
     if(deserialError != DeserializationError::Ok){
         printModuleName("There was an error reading the WIFI credentials from SD: " + String(deserialError.c_str()));
     }
-    
-    wifi_name = doc["SSID"].as<String>();
-    wifi_password = doc["password"].as<String>();
+
+    // Only update the wifi creds if the data was not NULL
+    if(!doc["SSID"].isNull()){
+        wifi_name = doc["SSID"].as<String>();
+        wifi_password = doc["password"].as<String>();
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
