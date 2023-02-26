@@ -13,14 +13,16 @@
 
 #include <Loom_Manager.h>
 #include <Logger.h>
+
+#include <Sensors/Loom_Analog/Loom_Analog.h>
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Sensors/I2C/Loom_AS7265X/Loom_AS7265X.h>
 
 Manager manager("WeedWarden", 1);
 
-Loom_Hypnos hypnos(&manager, HYPNOS_VERSION::V3_2, TIME_ZONE::PST, true);
-Loom_AS7265X as(&manager);
-Loom_Analog analog(&manager);
+Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2, TIME_ZONE::PST, true);
+Loom_AS7265X as(manager);
+Loom_Analog analog(manager);
 
 /* Defines the available algorithms
  * If custom is slected the user will need to fill out their custom indicator index in the index_algorithm function
@@ -34,7 +36,7 @@ enum AlgoChoice{
 };
 
 float threshold = 0;   // variable to hold the calibration threshold
-float ndvi[16];        // array to hold the NDVI values during calibration
+float ndviCal[16];        // array to hold the NDVI values during calibration
 
 // This is the indicator index choice that the sensor will use 
 AlgoChoice algorithm_choice = AlgoChoice::endvi;   
@@ -131,15 +133,15 @@ void calibrate()
     manager.package();
     manager.display_data();
 
-    ndvi[z] = index_algorithm();  // Store indicator index values in an array
+    ndviCal[z] = index_algorithm();  // Store indicator index values in an array
 
-    LOG(ndvi[z]);   // print out the calculated indicator index values
+    LOG(ndviCal[z]);   // print out the calculated indicator index values
    
   } // for loop 
 
   // loop to sum up the indicator index values 
   for(int i=0; i<16; i++)
-    threshold += ndvi[i];
+    threshold += ndviCal[i];
   
   threshold = (threshold / 16) + offset;  // divide by 16 to average values then add an offset to the value
 
@@ -170,7 +172,7 @@ void setup(){
 // Called continuously
 void loop(){
     manager.measure();
-    measure.package();
+    manager.package();
     manager.display_data();
 
     LOG("+++++ START +++++");
@@ -235,7 +237,7 @@ void loop(){
     float evi = ((2.5*(v-s))/(v+6*s-7.5*b+1));
 
     // Add Values to the JSON Package so that they will be logged to SD Card
-    manager.addData("ENDVI", "ENDVI", endvi); manager.a
+    manager.addData("ENDVI", "ENDVI", endvi);
     manager.addData("EVI", "EVI", evi);
     manager.addData("Threshold", "Threshold", threshold);
 
