@@ -154,7 +154,10 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
             // Tell the broker we are still here
             mqttClient->poll();
             
-            std::vector<String> batch = batchSD.getBatch();
+            // Pass batch vector in as a reference 
+            std::vector<String> batch;
+            batchSD.getBatch(batch);
+
             for(int i = 0; i < batch.size(); i++){
                 printModuleName("Publishing Packet " + String(i+1) + " of " + String(batch.size()));
                 

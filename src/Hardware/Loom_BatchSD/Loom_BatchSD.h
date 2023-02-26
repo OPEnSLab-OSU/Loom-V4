@@ -24,7 +24,7 @@ class Loom_BatchSD{
         /**
          * Get the current batch of data as a vector of strings
          */ 
-        std::vector<String> getBatch();
+        void getBatch( std::vector<String>& batch);
 
         /**
          * Get the specified size of the batch

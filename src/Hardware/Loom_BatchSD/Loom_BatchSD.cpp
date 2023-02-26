@@ -14,8 +14,8 @@ bool Loom_BatchSD::shouldPublish(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-std::vector<String> Loom_BatchSD::getBatch(){
-    std::vector<String> batch;
+void Loom_BatchSD::getBatch(std::vector<String>& batch){
+    batch.clear();
     String fileOutput = sdMan->readFile(sdMan->getBatchFilename());
     String currentLine = "";
 
@@ -29,7 +29,5 @@ std::vector<String> Loom_BatchSD::getBatch(){
             currentLine += fileOutput[i];
         }
     }
-
-    return batch;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
