@@ -63,20 +63,27 @@ void Loom_WIFI::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::package(){
-    JsonObject json = manInst->get_data_object(getModuleName());
-    json["SSID"] = WiFi.SSID();
-    json["RSSI"] = WiFi.RSSI();
+    if(moduleInitialized && powerUp){
+        JsonObject json = manInst->get_data_object(getModuleName());
+        json["SSID"] = WiFi.SSID();
+        json["RSSI"] = WiFi.RSSI();
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::power_up() {
-    if(moduleInitialized){
-        // If batchSD is defined and our current batch is not equal to one less than the needed for publishing dont power up
-        if(batchSD != nullptr && batchSD->getCurrentBatch() != batchSD->getBatchSize()-1){ 
-            printModuleName("Not ready to publish, WIFI will not be powered up");
-            return; 
-        }
+    // If batchSD is defined and our current batch is not equal to one less than the needed for publishing dont power up
+    if(batchSD != nullptr && batchSD->getCurrentBatch() != batchSD->getBatchSize()-1){ 
+        printModuleName("Not ready to publish, WIFI will not be powered up");
+        powerUp = false;
+        return; 
+    }else{
+        powerUp = true;
+    }
+
+    if(moduleInitialized && powerUp){
+        
 
         // Check if we are going through our power up and are using max
         if(usingMax){
@@ -181,7 +188,7 @@ void Loom_WIFI::start_ap(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::power_down(){
-    if(moduleInitialized){
+    if(moduleInitialized && powerUp){
         // Disconnect and end the Wifi when we power down the device
         WiFi.disconnect();
         WiFi.end();
@@ -191,7 +198,7 @@ void Loom_WIFI::power_down(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_WIFI::verifyConnection(){
-    if(hasInitialized && moduleInitialized){
+    if(hasInitialized && moduleInitialized && powerUp){
         int pingLatency = WiFi.ping("www.google.com");
         if(pingLatency >= 0){
             printModuleName("Successfully Pinged Google! Response Time: " + String(pingLatency) + "ms");
