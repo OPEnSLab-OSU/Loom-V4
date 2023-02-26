@@ -62,6 +62,16 @@ class Logger{
                 sdInst->writeLineToFile("/debug/output_" + String(sdInst->getCurrentFileNumber()) + ".log", String(message));
         }
 
+        /**
+         * Truncate the __FILE__ output to just show the name instead of the whole path
+         * @param fileName String to truncate
+        */
+        String truncateFileName(String fileName){
+             // Get the last slash in the file name
+            int lastSlash = fileName.lastIndexOf('\\')+1;
+            return fileName.substring(lastSlash, fileName.length());
+        };
+
         Logger() {};
     
     public:
@@ -92,7 +102,7 @@ class Logger{
          * @param lineNumber The current line number this log is on
         */
         void debugLog(String message, bool silent, String file, String func, long lineNumber){
-            String banner = "[DEBUG] [" + file + ":" + func + ":" + String(lineNumber) + "] ";
+            String banner = "[DEBUG] [" + truncateFileName(file) + ":" + func + ":" + String(lineNumber) + "] ";
             log(banner + message, silent, lineNumber);
         };
 
@@ -103,7 +113,7 @@ class Logger{
          * @param lineNumber The current line number this log is on
         */
         void errorLog(String message, bool silent, String file, String func, long lineNumber){
-            String banner = "[ERROR] [" + file + ":" + func + ":" + String(lineNumber) + "] ";
+            String banner = "[ERROR] [" + truncateFileName(file) + ":" + func + ":" + String(lineNumber) + "] ";
             log(banner + message, silent, lineNumber);
         };
 
@@ -114,7 +124,7 @@ class Logger{
          * @param lineNumber The current line number this log is on
         */
         void warningLog(String message, bool silent, String file, String func, long lineNumber){
-            String banner = "[WARNING] [" + file + ":" + func + ":" + String(lineNumber) + "] ";
+            String banner = "[WARNING] [" + truncateFileName(file) + ":" + func + ":" + String(lineNumber) + "] ";
             log(banner + message, silent, lineNumber);
         };
 
@@ -132,7 +142,7 @@ class Logger{
             // Get the last slash in the file name
             int lastSlash = file.lastIndexOf('\\')+1;
 
-            callStack.push(new functionInfo(file.substring(lastSlash, file.length()), func, num, netMemoryUsage, time));
+            callStack.push(new functionInfo(truncateFileName(file), func, num, netMemoryUsage, time));
         };
 
         /**
