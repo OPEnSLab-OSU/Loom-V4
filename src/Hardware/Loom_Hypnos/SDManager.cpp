@@ -246,7 +246,7 @@ String SDManager::readFile(String fileName){
 void SDManager::logBatch(){
 
     // We want to clear the file after the batch size has been exceeded
-    if(current_batch > batch_size){
+    if(current_batch >= batch_size){
         current_batch = 0;
         myFile = sd.open(fileNameNoExtension + "-Batch.txt", O_WRITE | O_TRUNC | O_APPEND);
     }
