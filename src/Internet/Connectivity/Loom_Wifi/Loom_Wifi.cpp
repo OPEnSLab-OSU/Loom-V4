@@ -51,12 +51,16 @@ void Loom_WIFI::initialize() {
         if(mode != CommunicationMode::AP && !usingMax){
             // Verify the wifi connection after we have connected
             printModuleName("Verifying Connection to the Internet...");
-            verifyConnection();
+            moduleInitialized = verifyConnection();
         }
         
-        printModuleName("Successfully Initalized Wifi!");
-        printModuleName("Device IP Address: " + Loom_WIFI::IPtoString(getIPAddress()));
-        printModuleName("Device Subnet Address: " + Loom_WIFI::IPtoString(getSubnetMask()));
+        if(moduleInitialized){
+            printModuleName("Successfully Initalized Wifi!");
+            printModuleName("Device IP Address: " + Loom_WIFI::IPtoString(getIPAddress()));
+            printModuleName("Device Subnet Address: " + Loom_WIFI::IPtoString(getSubnetMask()));
+        }else{
+            printModuleName("Failed to initialize Wifi!");
+        }
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
