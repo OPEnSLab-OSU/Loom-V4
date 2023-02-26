@@ -148,6 +148,7 @@ class Loom_WIFI : public Module{
         Loom_BatchSD* batchSD = nullptr;
 
         bool hasInitialized = false;        // Has the WiFi module run through the initialization process
+        bool powerUp = true;                // Whether or not the WiFi should power up (used with batch uploads)
 
         String wifi_name;                   // Access point to connect to
         String wifi_password;               // Password to connect to the access point
