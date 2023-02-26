@@ -48,11 +48,11 @@ void Loom_Hypnos::package(){
 /* Power Rail Control Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::enable(){
+void Loom_Hypnos::enable(bool enable33, bool enable5){
 
     // Enable the 3.3v and 5v rails on the Hypnos
-    digitalWrite(5, LOW);
-    digitalWrite(6, HIGH);
+    digitalWrite(5, (enable33) ? LOW : HIGH);
+    digitalWrite(6, (enable5) ? HIGH : LOW);
     digitalWrite(LED_BUILTIN, HIGH);
 
     if(enableSD){

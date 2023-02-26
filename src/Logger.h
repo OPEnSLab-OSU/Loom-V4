@@ -5,10 +5,10 @@
 #define FUNCTION_START Logger::getInstance()->startFunction(__FILE__, __func__, __LINE__)
 #define FUNCTION_END(ret) Logger::getInstance()->endFunction(ret) 
 
-#define SLOG(msg) Logger::getInstance()->debugLog(msg, true, __FILE__, __func__, __LINE__)          // Log a message without printing to the serial
-#define LOG(msg) Logger::getInstance()->debugLog(msg, false, __FILE__, __func__, __LINE__)          // Log a generic message
-#define ERROR(msg) Logger::getInstance()->errorLog(msg, false, __FILE__, __func__, __LINE__)        // Log an error message
-#define WARNING(msg) Logger::getInstance()->warningLog(msg, false, __FILE__, __func__, __LINE__)    // Log a warning message
+#define SLOG(msg) Logger::getInstance()->debugLog(String(msg), true, __FILE__, __func__, __LINE__)          // Log a message without printing to the serial
+#define LOG(msg) Logger::getInstance()->debugLog(String(msg), false, __FILE__, __func__, __LINE__)          // Log a generic message
+#define ERROR(msg) Logger::getInstance()->errorLog(String(msg), false, __FILE__, __func__, __LINE__)        // Log an error message
+#define WARNING(msg) Logger::getInstance()->warningLog(String(msg), false, __FILE__, __func__, __LINE__)    // Log a warning message
 
 
 /**
