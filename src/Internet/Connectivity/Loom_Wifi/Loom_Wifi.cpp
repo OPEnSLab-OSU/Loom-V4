@@ -74,7 +74,7 @@ void Loom_WIFI::package(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::power_up() {
     // If batchSD is defined and our current batch is not equal to one less than the needed for publishing dont power up
-    if(batchSD != nullptr && batchSD->getCurrentBatch() != batchSD->getBatchSize()){ 
+    if(batchSD != nullptr && batchSD->getCurrentBatch() != batchSD->getBatchSize()-1){ 
         printModuleName("Not ready to publish, WIFI will not be powered up");
         powerUp = false;
         return; 
