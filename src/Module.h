@@ -1,6 +1,7 @@
 #pragma once
 #include "Arduino.h"
 #include <Wire.h>
+#include <cstring.h>
 #include <ArduinoJson.h>
 #include <Adafruit_SleepyDog.h>
 
@@ -27,14 +28,19 @@ using SDLogDebug = void (*)(String);
  */ 
 class Module{
     public:
-        Module(String modName) {moduleName = modName;};
+        Module(const char* modName) { strcpy(modName, moduleName); };
 
-        void setModuleName(String moduleName) { this->moduleName = moduleName; };
+        void setModuleName(const char* modName) { strcpy(modName, moduleName); };
 
-        virtual String getModuleName() { return moduleName; }; // Return the name of the sensor
-        virtual void printModuleName(String message) { 
-            printOutput = "[" + String(getModuleName()) + "] " + message;
-            Serial.println(printOutput); 
+        virtual char* getModuleName() { return moduleName; }; // Return the name of the sensor
+        virtual void printModuleName(const char* message) { 
+            char messageArr[256];
+            strcat(messageArr, "[");
+            strcat(messageArr, moduleName);
+            strcat(messageArr, "] ");
+            strcat(messageArr, message);
+
+            Serial.println(message); 
             if(logFunc != nullptr)
                 logFunc(printOutput);
         };
@@ -55,7 +61,7 @@ class Module{
         bool moduleInitialized = true;                      // Whether or not the module initialized successfully true until set otherwise
         int module_address = -1;                            // Specifically for I2C addresses, -1 means the module doesn't have an address
     private:
-        String moduleName;
+        char moduleName[25];                                // Name of the module being used
 
         String printOutput = "";
         SDLogDebug logFunc = nullptr;
