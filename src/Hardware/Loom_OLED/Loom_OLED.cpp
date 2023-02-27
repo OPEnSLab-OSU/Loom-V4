@@ -1,5 +1,5 @@
 #include "Loom_OLED.h"
-
+#include "Logger.h"
 
 #include <Adafruit_GFX.h>
 
@@ -143,7 +143,7 @@ void Loom_OLED::display_data(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_OLED::canWrite(){
     if ( (millis() > min_filter_delay) && ( (millis()-lastLogTime) < min_filter_delay ) ) {
-	    printModuleName("Not enough time since last log, need at least " + String(min_filter_delay) + "ms at current settings");
+	    LOG("Not enough time since last log, need at least " + String(min_filter_delay) + "ms at current settings");
 		return false;
 	} else {
 		lastLogTime = millis();
