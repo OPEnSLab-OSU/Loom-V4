@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stack>
 #include <MemoryFree.h>
 #include "Hardware/Loom_Hypnos/SDManager.h"

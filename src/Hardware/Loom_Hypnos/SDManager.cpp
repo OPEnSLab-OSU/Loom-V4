@@ -225,7 +225,6 @@ bool SDManager::updateCurrentFileName(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 String SDManager::readFile(String fileName){
-    long charCount = 0;
     String output = "";
     if(sdInitialized){
         myFile = sd.open(fileName);
@@ -233,9 +232,7 @@ String SDManager::readFile(String fileName){
             // read from the file until there's nothing else in it:
             while (myFile.available()) {
                 output += (char)(myFile.read());
-                charCount++;
             }
-            Serial.println("Char Count: " + String(charCount));
             // close the file:
             myFile.close();
             return output;
