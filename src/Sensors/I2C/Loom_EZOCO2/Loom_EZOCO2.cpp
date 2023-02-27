@@ -21,7 +21,7 @@ void Loom_EZOCO2::initialize(){
 void Loom_EZOCO2::measure(){
     if(moduleInitialized){
         if(!readSensor()){
-            printModuleName("Failed to read sensor!");
+            ERROR("Failed to read sensor!");
             return;
         }
         co2 = getSensorData().toFloat();
@@ -43,7 +43,7 @@ void Loom_EZOCO2::package(){
 void Loom_EZOCO2::power_down() {
     if(moduleInitialized){
         if(!sendTransmission("sleep")){
-            printModuleName("Failed to send 'sleep' command to device");
+            ERROR("Failed to send 'sleep' command to device");
         }
     }
 }

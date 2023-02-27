@@ -1,5 +1,5 @@
 #include "Loom_Multiplexer.h"
-
+#include "Logger.h"
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Multiplexer::Loom_Multiplexer(Manager& man) : Module("Multiplexer"), manInst(&man) {
     moduleInitialized = false;
@@ -17,6 +17,7 @@ Loom_Multiplexer::~Loom_Multiplexer()  {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::initialize(){
+    FUNCTION_START;
     Wire.begin();
     int moduleIndex = 0;
     // Find the multiplexer at the possible addresses
@@ -24,7 +25,7 @@ void Loom_Multiplexer::initialize(){
 
         // Check if there is a device on the current I2C device
         if(isDeviceConnected(addr)) {
-            printModuleName("Multiplexer found at address: " + String(addr));
+            LOG("Multiplexer found at address: " + String(addr));
             activeMuxAddr = addr;
             moduleInitialized = true;
 
@@ -38,7 +39,7 @@ void Loom_Multiplexer::initialize(){
                     if(addr > 0){
                         // Is there any device at this address
                         if(isDeviceConnected(addr)){
-                            printModuleName("Found I2C Device on Pin " + String(i) + " at address " + String(addr));
+                            LOG("Found I2C Device on Pin " + String(i) + " at address " + String(addr));
 
                             sensors.push_back(std::make_tuple(addr, loadSensor(addr), i));
 
@@ -46,7 +47,7 @@ void Loom_Multiplexer::initialize(){
                             std::get<1>(sensors[moduleIndex])->setModuleName(std::get<1>(sensors[moduleIndex])->getModuleName() + "_" + String(i));
                             std::get<1>(sensors[moduleIndex])->initialize();
 
-                            printModuleName("Loaded sensor " + std::get<1>(sensors[moduleIndex])->getModuleName() + " on port " + String(i));
+                            LOG("Loaded sensor " + std::get<1>(sensors[moduleIndex])->getModuleName() + " on port " + String(i));
                             moduleIndex++;
                         }
                     }
@@ -54,19 +55,22 @@ void Loom_Multiplexer::initialize(){
             }
 
             if(sensors.size() <= 0){
-                printModuleName("No sensors found!");
+                ERROR("No sensors found!");
             }
+            FUNCTION_END("void");
             return;
         }
     }
 
     // There was no device so error
-    printModuleName("Multiplexer was not found at the standard address or any alternatives");
+    ERROR("Multiplexer was not found at the standard address or any alternatives");
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::refreshSensors(){
+    FUNCTION_START;
     int moduleIndex = 0;
 
     // Cycle through the mux ports
@@ -85,7 +89,7 @@ void Loom_Multiplexer::refreshSensors(){
                     sensors[moduleIndex] = std::make_tuple(addr, loadSensor(addr), i);
 
                     // Initialize the new sensor
-                    printModuleName("New sensor detected on port " + String(i) + " at I2C address " + String(addr) + " of type " + std::get<1>(sensors[moduleIndex])->getModuleName());
+                    LOG("New sensor detected on port " + String(i) + " at I2C address " + String(addr) + " of type " + std::get<1>(sensors[moduleIndex])->getModuleName());
                     
                     // Update name for unique instances in the Mux
                     std::get<1>(sensors[moduleIndex])->setModuleName(std::get<1>(sensors[moduleIndex])->getModuleName() + "_" + String(i));
@@ -96,11 +100,13 @@ void Loom_Multiplexer::refreshSensors(){
         }
         
     }
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::measure(){
+    FUNCTION_START;
 
     // Refresh sensors before measuring
     refreshSensors();
@@ -110,62 +116,76 @@ void Loom_Multiplexer::measure(){
         delay(50);
         std::get<1>(sensors[i])->measure();
     }
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::package(){
+    FUNCTION_START;
     for(int i = 0; i < sensors.size(); i++){
         std::get<1>(sensors[i])->package();
     }
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::power_up(){
+    FUNCTION_START;
     for(int i = 0; i < sensors.size(); i++){
         selectPin(std::get<2>(sensors[i]));
         delay(50);
         std::get<1>(sensors[i])->power_up();
     }
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::power_down(){
+    FUNCTION_START;
     for(int i = 0; i < sensors.size(); i++){
         selectPin(std::get<2>(sensors[i]));
         delay(50);
         std::get<1>(sensors[i])->power_up();
     }
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::selectPin(uint8_t pin){
+    FUNCTION_START;
     // Pin not in range
     if(pin > 7) return;
 
     Wire.beginTransmission(activeMuxAddr);
     Wire.write(1 << pin);
     Wire.endTransmission();
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::disableChannels(){
+    FUNCTION_START;
     Wire.beginTransmission(activeMuxAddr);
     Wire.write(0);
     Wire.endTransmission();
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Multiplexer::isDeviceConnected(byte addr){
+    FUNCTION_START;
     Wire.beginTransmission(addr);
 
     // If end transmission returns 0 there is a device there
-    return (Wire.endTransmission() == 0);
+    bool response = Wire.endTransmission() == 0;
+    FUNCTION_END(response);
+    return response;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

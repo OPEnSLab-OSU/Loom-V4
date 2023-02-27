@@ -1,4 +1,5 @@
 #include "Loom_MMA8451.h"
+#include "Logger.h"
 
 uint8_t Loom_MMA8451::interruptPin;
 InterruptCallbackFunction Loom_MMA8451::isr;
@@ -27,12 +28,12 @@ void Loom_MMA8451::initialize() {
 
     // If we have less than 2 bytes of data from the sensor
     if(!mma.begin(address)){
-        printModuleName("Failed to initialize MMA8451! Check connections and try again...");
+        ERROR("Failed to initialize MMA8451! Check connections and try again...");
         moduleInitialized = false;
         return;
     }
     else{
-        printModuleName("Successfully initialized MMA8451!");
+        LOG("Successfully initialized MMA8451!");
         mma.setRange(range);
     }
 
@@ -47,7 +48,7 @@ void Loom_MMA8451::initialize() {
         mma.writeRegister8(MMA8451_REG_TRANSIENT_THS, sensitivity);
         mma.writeRegister8(MMA8451_REG_TRANSIENT_CT, REG_TRANS_CT);
         attachInterrupt(digitalPinToInterrupt(interruptPin), IMU_ISR, FALLING);
-        printModuleName("Interrupt Configured!");
+        LOG("Interrupt Configured!");
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -66,7 +67,7 @@ void Loom_MMA8451::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            printModuleName("No acknowledge received from the device");
+            ERROR("No acknowledge received from the device");
             return;
         }
         

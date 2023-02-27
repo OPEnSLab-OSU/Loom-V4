@@ -23,7 +23,7 @@ void Loom_EZOORP::measure(){
 
         // Attempt to read data from the sensor
         if(!readSensor()){
-            printModuleName("Failed to read sensor!");
+            ERROR("Failed to read sensor!");
             return;
         }
 
@@ -46,7 +46,7 @@ void Loom_EZOORP::package(){
 void Loom_EZOORP::power_down() {
     if(moduleInitialized){
         if(!sendTransmission("sleep")){
-            printModuleName("Failed to send 'sleep' command to device");
+            ERROR("Failed to send 'sleep' command to device");
         }
     }
 }

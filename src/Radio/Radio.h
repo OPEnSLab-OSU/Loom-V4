@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SPI.h>
+#include "Logger.h"
 #include "../Module.h"
 #include <ArduinoJson.h>
 
@@ -55,7 +56,7 @@ class Radio : public Module{
 
             // Check if an error occurred 
             if(error != DeserializationError::Ok){
-                printModuleName("Error occurred parsing MsgPack: " + String(error.c_str()));
+                ERROR("Error occurred parsing MsgPack: " + String(error.c_str()));
                 return false;
             }
 

@@ -159,14 +159,7 @@ class Loom_Hypnos : public Module{
         /**
          * Get the current time from the RTC
          */ 
-        DateTime getCurrentTime() {
-            if(RTC_initialized)
-                return RTC_DS.now(); 
-            else{
-                printModuleName("Attempted to pull time when RTC was not previously initialized! Returned default datetime");
-                return DateTime();
-            }
-        };
+        DateTime getCurrentTime(); 
     
         /**
          * Get a custom sleep interval specified in a file on the SD card

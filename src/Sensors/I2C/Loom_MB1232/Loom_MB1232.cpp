@@ -1,4 +1,5 @@
 #include "Loom_MB1232.h"
+#include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MB1232::Loom_MB1232(
@@ -32,11 +33,11 @@ void Loom_MB1232::initialize() {
 
     // If we have less than 2 bytes of data from the sensor
     if(Wire.available() < 2){
-        printModuleName("Failed to initialize MB1232! Check connections and try again...");
+        ERROR("Failed to initialize MB1232! Check connections and try again...");
         moduleInitialized = false;
     }
     else{
-        printModuleName("Successfully initialized MB1232!");
+        LOG("Successfully initialized MB1232!");
 
     }
 }
@@ -56,7 +57,7 @@ void Loom_MB1232::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            printModuleName("No acknowledge received from the device");
+            ERROR("No acknowledge received from the device");
             return;
         }
     
@@ -81,7 +82,7 @@ void Loom_MB1232::measure() {
 
             range = (high * 256) + low;
         } else {
-            printModuleName("Error reading from MB1232");
+            ERROR("Error reading from MB1232");
         }
     }
     

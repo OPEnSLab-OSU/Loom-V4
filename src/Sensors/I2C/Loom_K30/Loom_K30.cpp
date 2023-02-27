@@ -1,4 +1,5 @@
 #include "Loom_K30.h"
+#include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_K30::Loom_K30(Manager& man, bool useMux, int addr, bool warmUp, int valMult) : I2CDevice("K30"), manInst(&man), valMult(valMult), warmUp(warmUp), addr(addr){
@@ -17,21 +18,21 @@ void Loom_K30::initialize(){
     // Check if the sensor is actually connected
     Wire.beginTransmission(addr);
     if(Wire.endTransmission() != 0){
-        printModuleName("Failed to initialize sensor!");
+        ERROR("Failed to initialize sensor!");
         moduleInitialized = false;
         return;
     }
 
     // If we want to wait for the sensor to warmup do so here
     if(warmUp){
-        printModuleName("Warm-up was enabled for this sensor. Initialization will now pause for 6 minutes");
+        LOG("Warm-up was enabled for this sensor. Initialization will now pause for 6 minutes");
 
         // Pause for 6 minutes
         manInst->pause(60000 * 6);
         warmUp = false;
     }
 
-    printModuleName("Initialized successfully!");
+    LOG("Initialized successfully!");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -49,7 +50,7 @@ void Loom_K30::measure(){
 
     // If we are not connected
     else if(!connectionStatus){
-        printModuleName("No acknowledge received from the device");
+        ERROR("No acknowledge received from the device");
         return;
     } 
     delay(1);
@@ -104,6 +105,6 @@ void Loom_K30::getCO2Level() {
         CO2Levels |= buffer[2] & 0xFF;
     }
     else{
-        printModuleName("Failed to validate checksum! Using previously recorded data.");
+        ERROR("Failed to validate checksum! Using previously recorded data.");
     }
 }

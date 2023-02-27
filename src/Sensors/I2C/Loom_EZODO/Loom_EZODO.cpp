@@ -23,7 +23,7 @@ void Loom_EZODO::measure(){
 
         // Attempt to read data from the sensor
         if(!readSensor()){
-            printModuleName("Failed to read sensor!");
+            ERROR("Failed to read sensor!");
             return;
         }
 
@@ -47,7 +47,7 @@ void Loom_EZODO::package(){
 void Loom_EZODO::power_down() {
     if(moduleInitialized){
         if(!sendTransmission("sleep")){
-            printModuleName("Failed to send 'sleep' command to device");
+            ERROR("Failed to send 'sleep' command to device");
         }
     }
 }

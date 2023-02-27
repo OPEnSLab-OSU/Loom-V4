@@ -1,5 +1,5 @@
 #include "Loom_SDI12.h"
-
+#include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_SDI12::Loom_SDI12(Manager& man, const int pinNumber): Module("SDI12"), sdiInterface(pinNumber) { 
@@ -15,7 +15,7 @@ Loom_SDI12::Loom_SDI12(const int pinNumber) : Module("SDI12"), sdiInterface(pinN
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::initialize(){
 
-    printModuleName("Initializing SDI-12 Sensors...");
+    LOG("Initializing SDI-12 Sensors...");
 
     // On init we set the SDI pin to OUTPUT so we can request data
     pinMode(sdiInterface.getDataPin(), OUTPUT);
@@ -103,7 +103,7 @@ std::vector<char> Loom_SDI12::scanAddressSpace(){
     std::vector<char> activeSensors;
 
     // Print the module name followed by the message saying please wait
-    printModuleName("Scanning SDI-12 Address Space this make take a little while...");
+    LOG("Scanning SDI-12 Address Space this make take a little while...");
 
     // Scan over the characters that can be used as addresses for refrencing the sensors
 	for (char i = '0'; i <= '9'; i++){
@@ -127,14 +127,13 @@ std::vector<char> Loom_SDI12::scanAddressSpace(){
     // Check if we actually found any connected devices
     if(activeSensors.size() > 0){
         // Print the module name followed by the message saying please wait
-        printModuleName("== We found the following active Addresses ==");
+        LOG("== We found the following active Addresses ==");
         for(int i = 0; i < activeSensors.size(); i++){
-            printModuleName("    Address: "); 
-            Serial.println(activeSensors[i]);
+            LOG("    Address: " + String(activeSensors[i])); 
         }
     }
     else{
-        printModuleName("== No SDI-12 Devices Were Discovered == ");
+        LOG("== No SDI-12 Devices Were Discovered == ");
     }
 
     return activeSensors;
@@ -221,7 +220,7 @@ void Loom_SDI12::getData(char addr){
     
     // If the value returned was 0 we want to re-request data
     if(String(buf).length() == 1){
-        printModuleName("Invalid data received! Retrying...");
+        WARNING("Invalid data received! Retrying...");
         delay(3000);
 
         // Request a measurement from the sensor at the given address
@@ -230,7 +229,7 @@ void Loom_SDI12::getData(char addr){
 
         TIMER_RESET;
 	    if(String(buf).length() == 1){
-            printModuleName("Retrying for a second time...");
+            WARNING("Retrying for a second time...");
             delay(3000);
 
             // Request a measurement from the sensor at the given address
@@ -269,7 +268,7 @@ void Loom_SDI12::getData(char addr){
         }
     }
     else{
-        printModuleName("Failed to record new data! Using previous valid information!");
+        ERROR("Failed to record new data! Using previous valid information!");
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

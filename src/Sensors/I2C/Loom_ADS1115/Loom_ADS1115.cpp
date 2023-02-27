@@ -1,4 +1,5 @@
 #include "Loom_ADS1115.h"
+#include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_ADS1115::Loom_ADS1115(Manager& man, byte address, bool useMux,  bool enable_analog, bool enable_diff, adsGain_t gain) : I2CDevice("ADS1115"), manInst(&man), i2c_address(address), enableAnalog(enable_analog), enableDiff(enable_diff), adc_gain(gain) {
@@ -13,11 +14,11 @@ Loom_ADS1115::Loom_ADS1115(Manager& man, byte address, bool useMux,  bool enable
 void Loom_ADS1115::initialize(){
 
     if(!ads.begin(i2c_address)){
-        printModuleName("Failed to initialize ADS1115 interface! Data may be invalid");
+        ERROR("Failed to initialize ADS1115 interface! Data may be invalid");
         moduleInitialized = false;
     }
     else{
-        printModuleName("Successfully initialized sensor!");
+        LOG("Successfully initialized sensor!");
     }
 
     // Set the gain of the ADC
@@ -39,7 +40,7 @@ void Loom_ADS1115::measure(){
 
         // If we are not connected
         else if(!connectionStatus){
-            printModuleName("No acknowledge received from the device");
+            ERROR("No acknowledge received from the device");
             return;
         }
 

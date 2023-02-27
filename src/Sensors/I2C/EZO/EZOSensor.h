@@ -3,6 +3,7 @@
 #include <Wire.h>
 
 #include "../I2CDevice.h"
+#include "Logger.h"
 
 class EZOSensor : public I2CDevice{
     protected:
@@ -26,22 +27,22 @@ class EZOSensor : public I2CDevice{
         bool calibrate(){
             // Check the device is connected before calibrating
             if(!checkDeviceConnection()){
-                printModuleName("Failed to detect device at the specified address");
+                ERROR("Failed to detect device at the specified address");
                 return false;
             }
 
             // Send the calibrate command
             if(sendTransmission("cal") != 0){
-                printModuleName("Failed to transmit calibration command");
+                ERROR("Failed to transmit calibration command");
                 return false;
             }
 
-            printModuleName("Calibrating Device...");
+            LOG("Calibrating Device...");
 
             // Wait calibration time
             delay(1300);
 
-            printModuleName("Device successfully calibrated!");
+            LOG("Device successfully calibrated!");
 
             return true;
         };
@@ -54,13 +55,13 @@ class EZOSensor : public I2CDevice{
 
                 // Check that the device is still present and connected
                 if(!checkDeviceConnection()){
-                    printModuleName("Failed to detect device at the specified address");
+                    ERROR("Failed to detect device at the specified address");
                     return false;
                 }
 
                 // Attempt to send a read command to the device
                 if(!sendTransmission("r")){
-                    printModuleName("Failed to send 'read' command to device");
+                    ERROR("Failed to send 'read' command to device");
                     return false;
                 }
                 
@@ -73,7 +74,7 @@ class EZOSensor : public I2CDevice{
                 // Check if the I2C code was not valid
                 code = Wire.read();
                 if(code != 1){
-                    printModuleName("Unsuccessful Response Code Received: " + responseCodes[code-1]);
+                    ERROR("Unsuccessful Response Code Received: " + responseCodes[code-1]);
                     return false;
                 } 
 
