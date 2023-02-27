@@ -177,13 +177,13 @@ void Loom_Hypnos::initializeRTC(){
     FUNCTION_START;
     // If the RTC failed to start inform the user and hang
     if(!RTC_DS.begin()){
-        ERROR("Couldn't start RTC! Check your connections... Execution will now hang as this is likely a fatal error");
+        //ERROR("Couldn't start RTC! Check your connections... Execution will now hang as this is likely a fatal error");
         return;
     }
     
     // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't happen with coin cell batt backup
 	if (RTC_DS.lostPower()) {
-		WARNING("RTC lost power, lets set the time!");
+		//WARNING("RTC lost power, lets set the time!");
 
         // If we want to set a custom time
         if(Serial && custom_time){
@@ -201,7 +201,7 @@ void Loom_Hypnos::initializeRTC(){
     RTC_DS.writeSqwPinMode(DS3231_OFF);
 
     // We successfully started the RTC 
-    LOG("DS3231 Real-Time Clock Initialized Successfully!");
+    //LOG("DS3231 Real-Time Clock Initialized Successfully!");
     RTC_initialized = true;
     FUNCTION_END("void");
 }

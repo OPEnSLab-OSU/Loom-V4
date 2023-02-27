@@ -70,6 +70,7 @@ You will also need to install Developet Tools, which requires Admin access.
 2. Loom Hypnos Walkthrough: https://media.oregonstate.edu/media/t/1_7owroc4a
 3. Hypnos Interrupts: https://media.oregonstate.edu/media/t/1_7hq18o2d
 4. C Tutorials https://www.cprogramming.com/tutorial/c-tutorial.html?inl=pf
+5. Loom Sensor Hookup Tutorials: https://www.youtube.com/watch?v=AU5vwO4RJqE&list=PLGLI7V_o5-ahvLrscgoZRVfLx5KtgjEVV&index=3
 
 ## Run an Example
 

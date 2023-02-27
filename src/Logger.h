@@ -155,16 +155,17 @@ class Logger{
         void endFunction(T ret){
             // Log the start time of the function
             functionInfo* info = callStack.top();
-            info->netMemoryUsage = freeMemory() - info->netMemoryUsage;
+            info->netMemoryUsage = info->netMemoryUsage - freeMemory();
             info->totalMemoryUsage = freeMemory();
             info->time = millis() - info->time;
+            float percentage = ((float)info->totalMemoryUsage / 32000.0) * 100;
             
             // Delete the top most function on the call stack
             String banner = "[" + info->fileName + ":" + info->funcName + "]";
 
             // Log as long as we have given it a SD card instance
             if(sdInst != nullptr)
-                sdInst->writeLineToFile("/debug/funcSummaries_" + String(sdInst->getCurrentFileNumber()) + ".log", String(banner + " Summary\n\tFunction Memory Usage: " + String(info->netMemoryUsage) + " B\n\tTotal Memory Usage: " + String(info->totalMemoryUsage) +" B\n\tElapsed Time: " + String(info->time) + " MS\n\tReturn Status: " + String(ret)));
+                sdInst->writeLineToFile("/debug/funcSummaries_" + String(sdInst->getCurrentFileNumber()) + ".log", String(banner + " Summary\n\tFunction Memory Usage: " + String(info->netMemoryUsage) + "\n\tFree Memory: " + String(info->totalMemoryUsage) + " B (" + String(percentage) + "\% Free)\n\tElapsed Time: " + String(info->time) + " MS\n\tReturn Status: " + String(ret)));
             
             delete(info);
             callStack.pop();

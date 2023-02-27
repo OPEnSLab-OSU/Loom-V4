@@ -21,11 +21,11 @@ bool SDManager::writeLineToFile(String filename, String content){
             myFile.close();
             return true;
         }
-        LOG("Failed to Open File!");
+        printModuleName("Failed to Open File!");
         return false;
     }
 
-    LOG("SD Card was improperly initialized and as such this functionality was disabled!");
+    printModuleName("SD Card was improperly initialized and as such this functionality was disabled!");
     return false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -131,10 +131,10 @@ bool SDManager::log(DateTime currentTime){
             myFile.close();
 
             // Inform the user that we have successfully written to the file
-            LOG("Successfully logged data to " + fileName);
+            printModuleName("Successfully logged data to " + fileName);
         }
         else{
-            LOG("Failed to open log file!");
+            printModuleName("Failed to open log file!");
         }
 
         // If we want to log batch data do so
@@ -142,7 +142,7 @@ bool SDManager::log(DateTime currentTime){
             logBatch();
     }
     else{
-        LOG("Failed to log! SD card not Initialized!");
+        printModuleName("Failed to log! SD card not Initialized!");
     }
     
 }
@@ -216,7 +216,7 @@ bool SDManager::updateCurrentFileName(){
 
     // Close the root file after we have decided what to name the next file
     root.close();
-    LOG("Data will be logged to " + fileName);
+    printModuleName("Data will be logged to " + fileName);
 
     return true;
 
@@ -225,24 +225,29 @@ bool SDManager::updateCurrentFileName(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 String SDManager::readFile(String fileName){
-    String output = "";
+    char output[6000];
+    long index = 0;
     if(sdInitialized){
-        myFile = sd.open(fileName);
+
+    myFile = sd.open(fileName);
+
         if(myFile){
             // read from the file until there's nothing else in it:
             while (myFile.available()) {
-                output += (char)(myFile.read());
+                output[index] = (char)(myFile.read());
+                index++;
             }
+            output[index] = '\0';
             // close the file:
             myFile.close();
-            return output;
+            return String(output);
         }
         else{
-            ERROR("Failed to open file!");
+            printModuleName("Failed to open file!");
         }
     }
     else{
-        ERROR("Failed to read! SD card not Initialized!");
+        printModuleName("Failed to read! SD card not Initialized!");
     }
     return "";
 }
@@ -267,7 +272,7 @@ void SDManager::logBatch(){
         myFile.close();
         current_batch++;
     }else{
-        ERROR("Failed to open file!");
+        printModuleName("Failed to open file!");
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
