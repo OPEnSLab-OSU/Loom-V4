@@ -1,4 +1,5 @@
 #include "Loom_STEMMA.h"
+#include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_STEMMA::Loom_STEMMA(
@@ -16,19 +17,22 @@ Loom_STEMMA::Loom_STEMMA(
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::initialize() {
+    FUNCTION_START;
     if(!stemma.begin(address)){
-        printModuleName("Failed to initialize STEMMA! Check connections and try again...");
+        LOG("Failed to initialize STEMMA! Check connections and try again...");
         moduleInitialized = false;
     }
     else{
-        printModuleName("Successfully initialized STEMMA Version: " + String(stemma.getVersion()));
+        LOG("Successfully initialized STEMMA Version: " + String(stemma.getVersion()));
         
     }
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::measure() {
+    FUNCTION_START;
     if(moduleInitialized){
         // Get the current connection status
         bool connectionStatus = checkDeviceConnection();
@@ -41,7 +45,7 @@ void Loom_STEMMA::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            printModuleName("No acknowledge received from the device");
+            LOG("No acknowledge received from the device");
             return;
         }
         
@@ -50,16 +54,19 @@ void Loom_STEMMA::measure() {
         temperature = stemma.getTemp();
         cap = stemma.touchRead(0);
     }
+    FUNCTION_END("void");
     
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::package() {
+    FUNCTION_START;
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
         json["Temperature"] = temperature;
         json["Capacitive"] = cap;
     }
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

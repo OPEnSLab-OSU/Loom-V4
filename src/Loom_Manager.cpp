@@ -1,7 +1,9 @@
 #include "Loom_Manager.h"
+#include "Logger.h"
+Logger* Logger::instance = nullptr;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Manager::Manager(String devName, uint32_t instanceNum) : deviceName(devName), instanceNumber(instanceNum), doc(2000) {};
+Manager::Manager(String devName, uint32_t instanceNum) : deviceName(devName), instanceNumber(instanceNum), doc(2000) { Logger::getInstance();};
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,6 +50,7 @@ void Manager::beginSerial(bool waitForSerial){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::measure() {
+    FUNCTION_START;
     if(hasInitialized){
        for(int i = 0; i < modules.size(); i++){
             if(modules[i].second->moduleInitialized)
@@ -59,14 +62,15 @@ void Manager::measure() {
         }
     }
     else{
-            Serial.println("[Manager] Unable to collect data as the manager and thus all sensors connected to it have not been initialized! Call manager.initialize() to fix this.");
+            ERROR("Unable to collect data as the manager and thus all sensors connected to it have not been initialized! Call manager.initialize() to fix this.");
     }
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::package(){
-
+    FUNCTION_START;
     // Clear the document so that we don't get null characters after too many updates
     doc.clear();
     doc["type"] = "data";
@@ -91,6 +95,7 @@ void Manager::package(){
         TIMER_RESET;
     }
     packetNumber++;
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -115,6 +120,7 @@ JsonObject Manager::get_data_object(String moduleName){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::power_up(){
+    FUNCTION_START;
     for(int i = 0; i < modules.size(); i++){
         if(modules[i].second->moduleInitialized)
             modules[i].second->power_up();
@@ -123,6 +129,7 @@ void Manager::power_up(){
         }
         TIMER_RESET;
     }
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -141,35 +148,38 @@ void Manager::power_down(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::display_data(){
+    FUNCTION_START;
     if(!doc.isNull()){
-        Serial.println("\n[Manager] Data Json: ");
-        serializeJsonPretty(doc, Serial);
-        Serial.println("\n");
+        String jsonStr = "";
+        serializeJsonPretty(doc, jsonStr);
+        LOG("Data Json: \n" + jsonStr + "\n");
     }
     else{
-        Serial.println("[Manager] JSON Document is Null there is no data to display");
+        LOG("JSON Document is Null there is no data to display");
     }
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::initialize() {
-
+    FUNCTION_START;
     // If you are using a hypnos board that has not been enabled, this needs to occur before initializing sensors
     if(usingHypnos && !hypnosEnabled){
-        Serial.println("[Manager] Your sketch is set to use a Hypnos board which has not been enabled before attempting to initialize sensors. \nThis will causing hanging please enable the board before initialization. Continuing but know this may cause issues!"); 
+        LOG("Your sketch is set to use a Hypnos board which has not been enabled before attempting to initialize sensors. \nThis will causing hanging please enable the board before initialization. Continuing but know this may cause issues!"); 
     }
 
-    Serial.println("[Manager] ** Initializing Modules **");
+    LOG("** Initializing Modules **");
     read_serial_num();
     for(int i = 0; i < modules.size(); i++){
         modules[i].second->initialize();
     }
     hasInitialized = true;
-    Serial.println("[Manager] ** Setup Complete ** ");
+    LOG("** Setup Complete ** ");
 
 
     TIMER_ENABLE;
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

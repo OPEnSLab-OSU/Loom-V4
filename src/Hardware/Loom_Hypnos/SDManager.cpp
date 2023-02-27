@@ -1,4 +1,5 @@
 #include "SDManager.h"
+#include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 SDManager::SDManager(Manager* man, int sd_chip_select) : manInst(man), Module("SD Manager"), chip_select(sd_chip_select) {
@@ -18,14 +19,13 @@ bool SDManager::writeLineToFile(String filename, String content){
         if(myFile){
             myFile.println(content);
             myFile.close();
-            printModuleName("Content successfully written to file: " + filename);
             return true;
         }
-        printModuleName("Failed to Open File!");
+        LOG("Failed to Open File!");
         return false;
     }
 
-    printModuleName("SD Card was improperly initialized and as such this functionality was disabled!");
+    LOG("SD Card was improperly initialized and as such this functionality was disabled!");
     return false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -131,10 +131,10 @@ bool SDManager::log(DateTime currentTime){
             myFile.close();
 
             // Inform the user that we have successfully written to the file
-            printModuleName("Successfully logged data to " + fileName);
+            LOG("Successfully logged data to " + fileName);
         }
         else{
-            printModuleName("Failed to open log file!");
+            LOG("Failed to open log file!");
         }
 
         // If we want to log batch data do so
@@ -142,7 +142,7 @@ bool SDManager::log(DateTime currentTime){
             logBatch();
     }
     else{
-        printModuleName("Failed to log! SD card not Initialized!");
+        LOG("Failed to log! SD card not Initialized!");
     }
     
 }
@@ -160,7 +160,11 @@ bool SDManager::begin(){
         return false;
     }
     else{
-        printModuleName("Successfully initialized SD Card!");
+        // Make a debug folder if it doesn't already exist
+        if(!sd.exists("debug"))
+            sd.mkdir("debug");
+
+        LOG("Successfully initialized SD Card!");
     }
 
     
@@ -169,10 +173,12 @@ bool SDManager::begin(){
     if(!sdInitialized){
         // Try to open the root of the file system so we can get the files on the device
         if(!root.open("/", O_RDONLY)){
-            printModuleName("Failed to open root file system on SD Card!");
+            ERROR("Failed to open root file system on SD Card!");
             return false;
         }
         updateCurrentFileName();
+
+        
     }
     
     // Once the SD card has initialized the first round through we don't want to update the file name
@@ -210,7 +216,7 @@ bool SDManager::updateCurrentFileName(){
 
     // Close the root file after we have decided what to name the next file
     root.close();
-    printModuleName("Data will be logged to " + fileName);
+    LOG("Data will be logged to " + fileName);
 
     return true;
 
@@ -235,11 +241,11 @@ String SDManager::readFile(String fileName){
             return output;
         }
         else{
-            printModuleName("Failed to open file!");
+            ERROR("Failed to open file!");
         }
     }
     else{
-        printModuleName("Failed to read! SD card not Initialized!");
+        ERROR("Failed to read! SD card not Initialized!");
     }
     return "";
 }
@@ -264,7 +270,7 @@ void SDManager::logBatch(){
         myFile.close();
         current_batch++;
     }else{
-        printModuleName("Failed to open file!");
+        ERROR("Failed to open file!");
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

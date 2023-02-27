@@ -102,8 +102,11 @@ class Loom_Hypnos : public Module{
         /**
          * Enable the Hypnos board
          * Sets the power rail pins to OUTPUT mode and then enables them
+         * 
+         * @param enable33 whether or not to enable the 3.3v rails
+         * @param enable5 whether or not to enable the 5v and 12v rails
          */ 
-        void enable();
+        void enable(bool enable33 = true, bool emable5 = true);
 
         /**
          * Disables the Hypnos Board
@@ -156,14 +159,7 @@ class Loom_Hypnos : public Module{
         /**
          * Get the current time from the RTC
          */ 
-        DateTime getCurrentTime() {
-            if(RTC_initialized)
-                return RTC_DS.now(); 
-            else{
-                printModuleName("Attempted to pull time when RTC was not previously initialized! Returned default datetime");
-                return DateTime();
-            }
-        };
+        DateTime getCurrentTime(); 
     
         /**
          * Get a custom sleep interval specified in a file on the SD card

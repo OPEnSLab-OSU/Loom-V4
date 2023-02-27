@@ -1,4 +1,5 @@
 #include "Loom_Max.h"
+#include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Max::Loom_Max(Manager& man, Loom_WIFI& wifi) : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi) {
@@ -30,7 +31,7 @@ void Loom_Max::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Max::initialize(){
-    printModuleName("Initializing Max Communication....");
+    LOG("Initializing Max Communication....");
 
     udpSend = UDPPtr(wifiInst->getUDP());
     udpRecv = UDPPtr(wifiInst->getUDP());
@@ -39,33 +40,33 @@ void Loom_Max::initialize(){
     setIP();
     setUDPPort();
 
-    printModuleName("Connections Opened!");
+    LOG("Connections Opened!");
 
     /**
      * Initialize each actuator
      */ 
     if(actuators.size() > 0){
-        printModuleName("Initializing desired actuators...");
+        LOG("Initializing desired actuators...");
         for(int i = 0; i < actuators.size(); i++){
             actuators[i]->initialize();
         }
-        printModuleName("Successfully initialized actuators!");
+        LOG("Successfully initialized actuators!");
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Max::publish(){
-    printModuleName("Sending packet to " + Loom_WIFI::IPtoString(remoteIP) + ":" + String(sendPort));
+    LOG("Sending packet to " + Loom_WIFI::IPtoString(remoteIP) + ":" + String(sendPort));
 
     if(!udpSend){
-        printModuleName("Sender UDP instance not set!");
+        ERROR("Sender UDP instance not set!");
         return false;
     }
 
     // Attempt to start a new packet
     if(udpSend->beginPacket(remoteIP, sendPort) != 1){
-        printModuleName("The IP address or port were invalid!");
+        ERROR("The IP address or port were invalid!");
         return false;
     }
 
@@ -79,16 +80,16 @@ bool Loom_Max::publish(){
     size_t size = serializeJson(manInst->getDocument(), (*udpSend));
 
     if(size <= 0){
-        printModuleName("An error occurred when attempting to write the JSON packet to the UDP stream");
+        ERROR("An error occurred when attempting to write the JSON packet to the UDP stream");
         return false;
     }
 
     if(udpSend->endPacket() != 1){
-        printModuleName("An error occurred when attempting to close the current packet!");
+        ERROR("An error occurred when attempting to close the current packet!");
         return false;
     }
 
-    printModuleName("Packet successfully sent!");
+    LOG("Packet successfully sent!");
 
     return true;
 }
@@ -104,7 +105,7 @@ bool Loom_Max::subscribe(){
 
         DeserializationError error = deserializeJson(messageJson, (*udpRecv) );
 		if (error != DeserializationError::Ok) {
-			printModuleName("Failed to parse JSON data from UDP stream, Error: " + String(error.c_str()));
+			ERROR("Failed to parse JSON data from UDP stream, Error: " + String(error.c_str()));
 			return false;
 		}
 
@@ -143,10 +144,11 @@ bool Loom_Max::subscribe(){
             }
         }
         else{            
-            printModuleName("Packet received from: " + Loom_WIFI::IPtoString(udpRecv->remoteIP()));
-            printModuleName("Message Json: ");
-            serializeJsonPretty(messageJson, Serial);
-            Serial.println("\n");
+            LOG("Packet received from: " + Loom_WIFI::IPtoString(udpRecv->remoteIP()));
+            LOG("Message Json: ");
+            String jsonStr = "";
+            serializeJsonPretty(messageJson, jsonStr);
+            LOG(jsonStr + "\n");
 
             // If we are receiving a command for the MaxSub module
             if(messageJson["commands"][0]["module"].as<String>().startsWith("MaxSub")){
@@ -168,7 +170,7 @@ bool Loom_Max::subscribe(){
         return true;
     }
 
-    printModuleName("No message received!");
+    WARNING("No message received!");
 
     return false;
     
@@ -184,7 +186,7 @@ void Loom_Max::setUDPPort(){
     udpSend->begin(sendPort);
     udpRecv->begin(recvPort);
 
-    printModuleName("Listening for UDP Packets on " + String(recvPort));
+    LOG("Listening for UDP Packets on " + String(recvPort));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

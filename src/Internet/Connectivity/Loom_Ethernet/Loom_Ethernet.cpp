@@ -1,4 +1,5 @@
 #include "Loom_Ethernet.h"
+#include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Ethernet::Loom_Ethernet(Manager& man, uint8_t mac[6], IPAddress ip) : Module("Ethernet"), manInst(&man){
@@ -18,7 +19,7 @@ Loom_Ethernet::Loom_Ethernet(Manager& man) : Module("Ethernet"), manInst(&man) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Ethernet::initialize() {
 
-    printModuleName("Initializing Ethernet module...");
+    LOG("Initializing Ethernet module...");
 
     // Call the connect class to initiate the connection
     connect();
@@ -28,9 +29,9 @@ void Loom_Ethernet::initialize() {
 
     moduleInitialized = true;
     
-    printModuleName("Successfully Initalized Ethernet!");
-    printModuleName("Device IP Address: " + Loom_Ethernet::IPtoString(getIPAddress()));
-    printModuleName("Device Subnet Address: " + Loom_Ethernet::IPtoString(getSubnetMask()));
+    LOG("Successfully Initalized Ethernet!");
+    LOG("Device IP Address: " + Loom_Ethernet::IPtoString(getIPAddress()));
+    LOG("Device Subnet Address: " + Loom_Ethernet::IPtoString(getSubnetMask()));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -45,7 +46,7 @@ void Loom_Ethernet::connect(){
 
        // No DHCP server
        if(Ethernet.begin(mac) == 0){
-        printModuleName("Failed to configure using DHCP");
+        WARNING("Failed to configure using DHCP");
 
         // Attempt to assign a static IP
         Ethernet.begin(mac, ip);
@@ -65,7 +66,7 @@ void Loom_Ethernet::loadConfigFromJSON(String json){
 
     // Check if an error occurred and if so print it
     if(deserialError != DeserializationError::Ok){
-        printModuleName("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
+        ERROR("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
     }
 
     JsonArray macJson = doc["mac"].as<JsonArray>();

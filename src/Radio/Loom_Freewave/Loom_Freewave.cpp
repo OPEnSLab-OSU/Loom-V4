@@ -29,19 +29,19 @@ void Loom_Freewave::initialize(){
     serial1.begin(115200);
 
     // Set timeout time
-    printModuleName("Timeout time set to: " + String(retryTimeout));
+    LOG("Timeout time set to: " + String(retryTimeout));
     manager->setTimeout(retryTimeout);
 
     // Set retry attempts
-    printModuleName("Retry count set to: " + String(retryCount));
+    LOG("Retry count set to: " + String(retryCount));
     manager->setRetries(retryCount);
 
     // Initialize the radio manager
     if(manager->init()){
-        printModuleName("Radio manager successfully initialized!");
+        LOG("Radio manager successfully initialized!");
     }
     else{
-        printModuleName("Radio manager failed to initialize!");
+        ERROR("Radio manager failed to initialize!");
         moduleInitialized = false;
         return;
     }
@@ -75,7 +75,7 @@ bool Loom_Freewave::receive(uint maxWaitTime){
     uint8_t buffer[maxMessageLength];
     uint8_t len = sizeof(buffer);
 
-    printModuleName("Waiting for packet...");
+    LOG("Waiting for packet...");
 
     // Non-blocking receive if time is set to 0
     if(maxWaitTime == 0){
@@ -87,7 +87,7 @@ bool Loom_Freewave::receive(uint maxWaitTime){
 
     // If a packet was received 
     if(recvStatus){
-        printModuleName("Packet Received!");
+        LOG("Packet Received!");
         signalStrength = driver.lastRssi();
         recvStatus = bufferToJson(buffer);
         recvData = "";
@@ -100,7 +100,7 @@ bool Loom_Freewave::receive(uint maxWaitTime){
         
     }
     else{
-        printModuleName("No Packet Received");
+        WARNING("No Packet Received");
     }
 
     driver.sleep();
@@ -114,16 +114,16 @@ bool Loom_Freewave::send(const uint8_t destinationAddress){
 
     // Try to write the JSON to the buffer
     if(!jsonToBuffer(buffer, manInst->getDocument().as<JsonObject>())){
-        printModuleName("Failed to convert JSON to MsgPack");
+        ERROR("Failed to convert JSON to MsgPack");
         return false;
     }
 
     if(!manager->sendtoWait((uint8_t*)buffer, sizeof(buffer), destinationAddress)){
-        printModuleName("Failed to send packet to specified address!");
+        ERROR("Failed to send packet to specified address!");
         return false;
     }
 
-    printModuleName("Successfully transmit packet!");
+    LOG("Successfully transmit packet!");
     signalStrength = driver.lastRssi();
     driver.sleep();
     return true;

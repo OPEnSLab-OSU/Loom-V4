@@ -43,6 +43,15 @@ class Loom_AS7265X : public I2CDevice{
                     uint8_t mode = AS7265X_MEASUREMENT_MODE_6CHAN_ONE_SHOT,
                     uint8_t integration_time = 50
                 );
+
+        /* Returns a pointer to the UV array, it is 6 elements*/
+        uint16_t* getUV() { return uv; };
+        
+        /* Returns a pointer to the color array, it is 6 elements*/
+        uint16_t* getColor() { return color; };
+
+        /* Returns a pointer to the NIR array, it is 6 elements*/
+        uint16_t* getNIR() { return nir; };
     private:
         Manager* manInst;                       // Instance of the manager
         AS7265X asInst;                         // Instance of the AS7265X

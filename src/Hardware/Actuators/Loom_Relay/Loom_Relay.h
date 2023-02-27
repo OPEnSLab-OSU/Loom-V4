@@ -20,7 +20,7 @@ class Loom_Relay : public Actuator{
         Loom_Relay(Manager& man, const byte controlPin = 10);
 
         void control(JsonArray json) override;
-        void initialize() override {printModuleName("Initialized Module!"); };
+        void initialize() override {};
         void package(JsonObject json) override;
 
         void printModuleName(String message) override { Serial.print("[" + (typeToString() + String(pin)) + "] "); };

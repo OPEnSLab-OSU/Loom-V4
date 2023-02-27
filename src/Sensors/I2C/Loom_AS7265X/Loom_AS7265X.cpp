@@ -1,4 +1,5 @@
 #include "Loom_AS7265X.h"
+#include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_AS7265X::Loom_AS7265X(
@@ -24,12 +25,12 @@ void Loom_AS7265X::initialize() {
 
     // If we have less than 2 bytes of json from the sensor
     if(!asInst.begin()){
-        printModuleName("Failed to initialize AS7265X! Check connections and try again...");
+        ERROR("Failed to initialize AS7265X! Check connections and try again...");
         moduleInitialized = false;
         return;
     }
     else{
-        printModuleName("Successfully initialized AS7265X!");
+        LOG("Successfully initialized AS7265X!");
         asInst.setGain(gain);
 		asInst.setMeasurementMode(mode);
         asInst.setIntegrationCycles(integration_time);
@@ -44,7 +45,7 @@ void Loom_AS7265X::measure() {
 			initialize();
 		}
 		else if(!checkDeviceConnection()){
-			printModuleName("No acknowledge received from the device");
+			ERROR("No acknowledge received from the device");
 			return;
 		}
 	

@@ -1,4 +1,5 @@
 #include "Loom_SHT31.h"
+#include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_SHT31::Loom_SHT31(
@@ -16,18 +17,21 @@ Loom_SHT31::Loom_SHT31(
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SHT31::initialize() {
+    FUNCTION_START;
     if(!sht.begin(i2c_address)){
-        printModuleName("Failed to initialize SHT31! Check connections and try again...");
+        ERROR("Failed to initialize SHT31! Check connections and try again...");
         moduleInitialized = false;
     }
     else{
-        printModuleName("Successfully initialized SHT31!");
+        LOG("Successfully initialized SHT31!");
     }
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SHT31::measure() {
+    FUNCTION_START;
     if(moduleInitialized){
         // Get the current connection status
         bool connectionStatus = checkDeviceConnection();
@@ -40,7 +44,7 @@ void Loom_SHT31::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            printModuleName("No acknowledge received from the device");
+            ERROR("No acknowledge received from the device");
             return;
         }
         // Pull the data from the sensor
@@ -53,18 +57,21 @@ void Loom_SHT31::measure() {
             sensorData[1] = humid;
         }
         else{
-            printModuleName("Collected information was invalid, the previous collected data will be published again.");
+            WARNING("Collected information was invalid, the previous collected data will be published again.");
         }
     }
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SHT31::package() {
+    FUNCTION_START;
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
         json["Temperature"] = sensorData[0];
         json["Humidity"] = sensorData[1];
     }
+    FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

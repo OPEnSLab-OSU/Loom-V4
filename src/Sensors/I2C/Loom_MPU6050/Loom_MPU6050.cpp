@@ -1,4 +1,5 @@
 #include "Loom_MPU6050.h"
+#include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MPU6050::Loom_MPU6050(Manager& man, bool useMux, const bool autoCalibrate) : I2CDevice("MPU6050"), manInst(&man), mpu(Wire), autoCali(autoCalibrate){ 
@@ -14,11 +15,10 @@ void Loom_MPU6050::initialize(){
 
     // If we want to auto calibrate the gyro on initialize
     if(autoCali){
-        printModuleName("Calibrating Gyroscope...");
-        mpu.calcGyroOffsets(true);
+        calibrate();
     }
 
-    printModuleName("Successfully initialized sensor!");
+    LOG("Successfully initialized sensor!");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -69,7 +69,7 @@ void Loom_MPU6050::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MPU6050::calibrate(){
-    printModuleName("Calibrating Gyroscope...");
+    LOG("Calibrating Gyroscope...");
 
     mpu.calcGyroOffsets(true);
     Serial.println();

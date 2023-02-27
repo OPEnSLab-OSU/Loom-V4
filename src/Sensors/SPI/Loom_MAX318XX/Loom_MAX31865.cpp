@@ -1,4 +1,5 @@
 #include "Loom_MAX31865.h"
+#include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MAX31865::Loom_MAX31865(Manager& man, int samples, int chip_select) : Module("MAX31865"), manInst(&man), max(chip_select), num_samples(samples) {
@@ -23,12 +24,12 @@ void Loom_MAX31865::measure(){
         // Check and print any faults
         uint8_t fault = max.readFault();
         if (fault) {
-            if (fault & MAX31865_FAULT_HIGHTHRESH)  printModuleName("RTD High Threshold"); 
-            if (fault & MAX31865_FAULT_LOWTHRESH)   printModuleName("RTD Low Threshold"); 
-            if (fault & MAX31865_FAULT_REFINLOW)    printModuleName("REFIN- > 0.85 x Bias"); 
-            if (fault & MAX31865_FAULT_REFINHIGH)   printModuleName("REFIN- < 0.85 x Bias - FORCE- open"); 
-            if (fault & MAX31865_FAULT_RTDINLOW)    printModuleName("RTDIN- < 0.85 x Bias - FORCE- open"); 
-            if (fault & MAX31865_FAULT_OVUV)        printModuleName("Under/Over voltage"); 
+            if (fault & MAX31865_FAULT_HIGHTHRESH)  ERROR("RTD High Threshold"); 
+            if (fault & MAX31865_FAULT_LOWTHRESH)   ERROR("RTD Low Threshold"); 
+            if (fault & MAX31865_FAULT_REFINLOW)    ERROR("REFIN- > 0.85 x Bias"); 
+            if (fault & MAX31865_FAULT_REFINHIGH)   ERROR("REFIN- < 0.85 x Bias - FORCE- open"); 
+            if (fault & MAX31865_FAULT_RTDINLOW)    ERROR("RTDIN- < 0.85 x Bias - FORCE- open"); 
+            if (fault & MAX31865_FAULT_OVUV)        ERROR("Under/Over voltage"); 
             break;
         }
     }
