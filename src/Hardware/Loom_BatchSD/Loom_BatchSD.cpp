@@ -1,4 +1,5 @@
 #include "Loom_BatchSD.h"
+#include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_BatchSD::Loom_BatchSD(Loom_Hypnos& hypnos, int batchSize) : batchSize(batchSize){
@@ -16,7 +17,14 @@ bool Loom_BatchSD::shouldPublish(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_BatchSD::getBatch(std::vector<String>& batch){
     batch.clear();
+
+    LOG("Reading file");
+    LOG("Memory Before Read: " + String(freeMemory()));
     String fileOutput = sdMan->readFile(sdMan->getBatchFilename());
+    LOG("Memory After Read: " + String(freeMemory()));
+
+    LOG("File read done");
+
 
     String currentLine = "";
 

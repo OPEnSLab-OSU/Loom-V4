@@ -48,6 +48,7 @@ class SDManager : public Module{
          */ 
         String readFile(String fileName);
 
+
         /**
          * Write a single line to a file
          * @param filename File to write to
