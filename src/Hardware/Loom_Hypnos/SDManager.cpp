@@ -3,12 +3,13 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 SDManager::SDManager(Manager* man, int sd_chip_select) : manInst(man), Module("SD Manager"), chip_select(sd_chip_select) {
+    strncpy(device_name, , 100)
     device_name = manInst->get_device_name();
  } // Disables Lora so we can use the SD card on hypnos 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool SDManager::writeLineToFile(String filename, String content){
+bool SDManager::writeLineToFile(const char* filename, const char* content){
 
     // Check if the SD card is actually functional
     if(sdInitialized){

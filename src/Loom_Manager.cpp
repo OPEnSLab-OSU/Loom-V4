@@ -3,27 +3,38 @@
 Logger* Logger::instance = nullptr;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Manager::Manager(String devName, uint32_t instanceNum) : deviceName(devName), instanceNumber(instanceNum), doc(2000) { Logger::getInstance();};
+Manager::Manager(const char* devName, uint32_t instanceNum) : deviceName(devName), instanceNumber(instanceNum), doc(2000) {
+    strncpy(ths->deviceName, devName, 100);
+    Logger::getInstance();
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
  void Manager::registerModule(Module* module){
+    char* location;
     // If there are no duplicates proceed as normal
     for(int i = 0; i < modules.size(); i++){
+        // Find the pointer to the module name
+        location = strstr(modules[i].first, module->getModuleName());
         
         // Check if the module name contains the base string to make sure this works past 2 modules of the same type
-        if(modules[i].first.startsWith(module->getModuleName())){
-            
+        if(location != NULL){
             // Append the address to the name
-            modules[i].second->setModuleName(modules[i].second->getModuleName() + String("_") + String(modules[i].second->module_address));
-            module->setModuleName(module->getModuleName() + String("_") + String(module->module_address));
+            char modifiedName[100];
+
+            // Format first module name
+            sprintf(modifiedName, "%s_%i", modules[i].second->getModuleName(), modules[i].second->module_address);
+            modules[i].second->setModuleName(modifiedName);
+
+            // Format second string using the same array
+            sprintf(modifiedName, "%s_%i", module->getModuleName(), module->module_address);
+            module->setModuleName(modifiedName);
 
             // Once we find a module of this type we want to break out to avoid redundant name changes
             break;
         }
     }
 
-    
     modules.push_back(std::make_pair(module->getModuleName(), module));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -100,13 +111,13 @@ void Manager::package(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-JsonObject Manager::get_data_object(String moduleName){
+JsonObject Manager::get_data_object(const char* moduleName){
 
     // Check if the key already exists in the array
     for(JsonVariant value : contentsArray){
 
         // If the data already exists
-        if(value.as<JsonObject>()["module"].as<String>() == moduleName){
+        if(strcmp(value.as<JsonObject>()["module"].as<const char*>(), moduleName) == 0){
             return value.as<JsonObject>()["data"];
         }
     }
@@ -148,15 +159,26 @@ void Manager::power_down(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::display_data(){
+    
     FUNCTION_START;
     if(!doc.isNull()){
-        String jsonStr = "";
+
+        // Get the json size with the null terminator
+        size_t jsonSize = measureJsonPretty(doc)+1;
+        char *jsonStr = malloc(jsonSize);
+        char *output = malloc(jsonSize+15);
         serializeJsonPretty(doc, jsonStr);
-        LOG("Data Json: \n" + jsonStr + "\n");
+        
+        // Read the jsonStr into the proper output format
+        snprintf(output, jsonSize+15,"Data Json: \n%s\n", jsonStr);
+        free(jsonStr);
+        LOG(output);
+        free(output);
     }
     else{
         LOG("JSON Document is Null there is no data to display");
     }
+    
     FUNCTION_END("void");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -184,8 +206,8 @@ void Manager::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-String Manager::getJSONString(){
-    String jsonString ="";
+char* Manager::getJSONString(){
+    char* jsonString = malloc(measureJson(doc));
     serializeJson(doc, jsonString);
     return jsonString;
 }
@@ -209,7 +231,8 @@ void Manager::read_serial_num(){
 		}
 	}
 
-    serial_num = String(serial_no);
+    // Copy the contents of the calculated char array into the member variable
+    strncpy(serial_num, serial_no, 33);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -219,13 +242,5 @@ void Manager::pause(const uint32_t ms) const {
     int waitTime = millis() + ms;
     while (millis() < waitTime);
     TIMER_ENABLE;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Manager::setLogCallback(SDLogDebug func){
-    for(int i = 0; i < modules.size(); i++){
-        modules[i].second->setLogCallback(func);
-    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

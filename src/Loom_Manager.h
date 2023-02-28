@@ -23,7 +23,7 @@ class Manager{
          * @param devName Device name to provided for logging purposes
          * @param instanceNum Instance number for logging purposes
          */ 
-        Manager(String devName, uint32_t instanceNum);
+        Manager(const char* devName, uint32_t instanceNum);
 
         /**
          * Registers a new sub-module to be controlled by the manager (Used on sensors so measure and package calls can all be called at once)
@@ -44,7 +44,7 @@ class Manager{
          * @param data The data itself
          */ 
         template <typename T>
-        void addData(String moduleName, String dataName, T data){
+        void addData(const char* moduleName, const char* dataName, T data){
             JsonObject json = get_data_object(moduleName);
             json[dataName] = data;
         };
@@ -95,13 +95,13 @@ class Manager{
          * Get a serialized version of the JSON packet as a string
          * @return JSON String
          */
-        String getJSONString();
+        char* getJSONString();
     
         /**
          * Gets the current device name set by the user
          * @return current device name
          */ 
-        String get_device_name(){ return deviceName; };
+        const char* get_device_name(){ return deviceName; };
 
         /**
          * Set the device name at runtime
@@ -125,7 +125,7 @@ class Manager{
          * Get the unique serial number of the Feather m0
          * @return Unique serial number
          */ 
-        String get_serial_num(){ return serial_num; }; 
+        const char* get_serial_num(){ return serial_num; }; 
 
         /**
          * Called by the Hypnos on construction to tell the manager it is in use
@@ -142,30 +142,27 @@ class Manager{
          * Get the JSON object to store the module data in
          * @param moduleName Name of the module we are trying to store data for
          */ 
-        JsonObject get_data_object(String moduleName);
+        JsonObject get_data_object(const char* moduleName);
 
         /**
          * Get the current packet number that will be packaged by the manager
          */ 
         int get_packet_number() { return packetNumber; };
 
-        /* Set the callback for logging the serial to SD for all modules*/
-        void setLogCallback(SDLogDebug func);
-
     private:
 
         /* Device Information */
-        String deviceName;                                      // Name of the device
+        char deviceName[100];                                   // Name of the device
         uint32_t instanceNumber;                                // Instance number of the device
         uint32_t packetNumber = 1;                              // Tracks the current packet number
-        String serial_num;
+        char serial_num[33];
 
         void read_serial_num();                                 // Read the serial number out of the feather's registers
 
         /* Module Data */
         DynamicJsonDocument doc;                           // JSON document that will store all sensor information
         JsonArray contentsArray;                                // Stores the contents of the modules
-        std::vector<std::pair<String, Module*>> modules;        // List of modules that have been added to the stack
+        std::vector<std::pair<const char*, Module*>> modules;        // List of modules that have been added to the stack
 
         /* Validation */
         bool hasInitialized = false;                            // Whether or not the initialize function has been called, if not it could be the source of hanging so we want to know

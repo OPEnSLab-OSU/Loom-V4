@@ -7,10 +7,10 @@
 #define FUNCTION_START Logger::getInstance()->startFunction(__FILE__, __func__, __LINE__)
 #define FUNCTION_END(ret) Logger::getInstance()->endFunction(ret) 
 
-#define SLOG(msg) Logger::getInstance()->debugLog(String(msg), true, __FILE__, __func__, __LINE__)          // Log a message without printing to the serial
-#define LOG(msg) Logger::getInstance()->debugLog(String(msg), false, __FILE__, __func__, __LINE__)          // Log a generic message
-#define ERROR(msg) Logger::getInstance()->errorLog(String(msg), false, __FILE__, __func__, __LINE__)        // Log an error message
-#define WARNING(msg) Logger::getInstance()->warningLog(String(msg), false, __FILE__, __func__, __LINE__)    // Log a warning message
+#define SLOG(msg) Logger::getInstance()->debugLog(msg, true, __FILE__, __func__, __LINE__)          // Log a message without printing to the serial
+#define LOG(msg) Logger::getInstance()->debugLog(msg, false, __FILE__, __func__, __LINE__)          // Log a generic message
+#define ERROR(msg) Logger::getInstance()->errorLog(msg, false, __FILE__, __func__, __LINE__)        // Log an error message
+#define WARNING(msg) Logger::getInstance()->warningLog(msg, false, __FILE__, __func__, __LINE__)    // Log a warning message
 
 
 /**
@@ -31,13 +31,16 @@ class Logger{
          * time - The time the function took to return (ms)
         */
         struct functionInfo{
-            String fileName;
-            String funcName;
-            unsigned int lineNumber;
+            char fileName[260];
+            char funcName[260];
+            unsigned long lineNumber;
             int netMemoryUsage;
             int totalMemoryUsage;
             unsigned long time;
-            functionInfo(String fileName, String funcName, unsigned int lineNumber, int mem, unsigned long time) : fileName(fileName), funcName(funcName), lineNumber(lineNumber), netMemoryUsage(mem), time(time) {};
+            functionInfo(const char* file, const char* func, unsigned int lineNumber, int mem, unsigned long time) : lineNumber(lineNumber), netMemoryUsage(mem), time(time) {
+                strncpy(fileName, file, 260);
+                strncpy(funcName, func, 260);
+            };
         };
         
         // Function call list
@@ -51,27 +54,44 @@ class Logger{
          * 
          * @param message The message we want to log
          * @param silent Wether or not the message gets print to the serial monitor
-         * @param lineNumber The lineNumber the log took place on
         */
-        void log(String message, bool silent, long lineNumber){
+        void log(char* message, bool silent){
+            char filePath[100];
             
             // If we want to actually print to serial
             if(!silent)
                 Serial.println(message);
 
+            snprintf(filePath, 100, "/debug/output_%i.log", sdInst->getCurrentFileNumber());
             // Log as long as we have given it a SD card instance
             if(sdInst != nullptr)
-                sdInst->writeLineToFile("/debug/output_" + String(sdInst->getCurrentFileNumber()) + ".log", String(message));
+                sdInst->writeLineToFile(filePath, message);
         }
 
         /**
          * Truncate the __FILE__ output to just show the name instead of the whole path
          * @param fileName String to truncate
+         * 
+         * @return Pointer to a malloced char*
         */
-        String truncateFileName(String fileName){
-             // Get the last slash in the file name
-            int lastSlash = fileName.lastIndexOf('\\')+1;
-            return fileName.substring(lastSlash, fileName.length());
+        char* truncateFileName(const char* fileName){
+            // Get the last slash in the file name
+            char* file = malloc(260);
+            int i;
+            // Find the last \\ in the file path to know where the name is
+            char *lastOccurance = strrchr(fileName, '\\');
+            int lastSlash = lastOccurance-fileName+1;
+
+            // Loop from the last slash to the end of the string
+            for(i = lastSlash, i < strlen(fileName); i++){
+                file[i-lastSlash] = fileName[i];
+            }
+
+            // Terminate the string with \0
+            i++;
+            file[i-lastSlash] = '\0';
+
+            return file;
         };
 
         Logger() {};
@@ -103,9 +123,13 @@ class Logger{
          * @param silent If set to silent it will not appear in the serial monitor
          * @param lineNumber The current line number this log is on
         */
-        void debugLog(String message, bool silent, String file, String func, long lineNumber){
-            String banner = "[DEBUG] [" + truncateFileName(file) + ":" + func + ":" + String(lineNumber) + "] ";
-            log(banner + message, silent, lineNumber);
+        void debugLog(const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
+            char logMessage[100];
+            char* shortFileName =  truncateFileName(file);
+            snprintf(logMessage, 100, "[DEBUG] [%s:%s:%u] %s", shortFileName, func, lineNumber, message);
+            free(shortFileName);
+            log(logMessage, silent);
+            
         };
 
         /**
@@ -114,9 +138,12 @@ class Logger{
          * @param silent If set to silent it will not appear in the serial monitor
          * @param lineNumber The current line number this log is on
         */
-        void errorLog(String message, bool silent, String file, String func, long lineNumber){
-            String banner = "[ERROR] [" + truncateFileName(file) + ":" + func + ":" + String(lineNumber) + "] ";
-            log(banner + message, silent, lineNumber);
+        void errorLog(const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
+            char logMessage[100];
+            char* shortFileName =  truncateFileName(file);
+            snprintf(logMessage, 100, "[ERROR] [%s:%s:%u] %s", shortFileName, func, lineNumber, message);
+            free(shortFileName);
+            log(logMessage, silent);
         };
 
         /**
@@ -125,9 +152,12 @@ class Logger{
          * @param silent If set to silent it will not appear in the serial monitor
          * @param lineNumber The current line number this log is on
         */
-        void warningLog(String message, bool silent, String file, String func, long lineNumber){
-            String banner = "[WARNING] [" + truncateFileName(file) + ":" + func + ":" + String(lineNumber) + "] ";
-            log(banner + message, silent, lineNumber);
+        void warningLog(const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
+            char logMessage[100];
+            char* shortFileName =  truncateFileName(file);
+            snprintf(logMessage, 100, "[WARNING] [%s:%s:%u] %s\0", shortFileName, func, lineNumber, message);
+            free(shortFileName);
+            log(logMessage, silent);
         };
 
         /**
@@ -136,24 +166,23 @@ class Logger{
          * @param func Function name that this call is in
          * @param num Current line number in the file of which this call is located
         */
-        void startFunction(String file, String func, unsigned int num){
+        void startFunction(const char* file, const char* func, unsigned long num){
             // Log the start time of the function
             int netMemoryUsage = freeMemory();
             unsigned long time = millis();
-            
-            // Get the last slash in the file name
-            int lastSlash = file.lastIndexOf('\\')+1;
 
-            callStack.push(new functionInfo(truncateFileName(file), func, num, netMemoryUsage, time));
+            callStack.push(new functionInfo(file, func, num, netMemoryUsage, time));
         };
 
         /**
          * Marks the end of a function, logs summary to SD card
          * @param ret Openly typed variable to show the return type of the function
         */
-        template<class T>
-        void endFunction(T ret){
+        void endFunction(){
             // Log the start time of the function
+            char fileName[100];
+            char output[300];
+
             functionInfo* info = callStack.top();
             info->netMemoryUsage = info->netMemoryUsage - freeMemory();
             info->totalMemoryUsage = freeMemory();
@@ -163,9 +192,13 @@ class Logger{
             // Delete the top most function on the call stack
             String banner = "[" + info->fileName + ":" + info->funcName + "]";
 
+            // Format the fileName and log output
+            smprintf(fileName, 100,"/debug/funcSummaries_%i.log", sdInst->getCurrentFileNumber());
+            smprintf(output, 300, "[%s:%s] Summary\n\tFunction Memory Usage: %i B\n\tFree Memory: %i B (%f\% Free)\n\tElapsed Time: %u MS", info->fileName, info->funcName, info->netMemoryUsage, info->totalMemoryUsage, percentage, info->time);
+
             // Log as long as we have given it a SD card instance
             if(sdInst != nullptr)
-                sdInst->writeLineToFile("/debug/funcSummaries_" + String(sdInst->getCurrentFileNumber()) + ".log", String(banner + " Summary\n\tFunction Memory Usage: " + String(info->netMemoryUsage) + "\n\tFree Memory: " + String(info->totalMemoryUsage) + " B (" + String(percentage) + "\% Free)\n\tElapsed Time: " + String(info->time) + " MS\n\tReturn Status: " + String(ret)));
+                sdInst->writeLineToFile(fileName, output);
             
             delete(info);
             callStack.pop();
