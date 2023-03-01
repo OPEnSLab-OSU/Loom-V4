@@ -52,16 +52,19 @@ void Loom_SDI12::measure(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::package(){
+    char output[100];
     for(int i = 0; i < inUseAddresses.size(); i++){
         
         if(getSensorInfo(inUseAddresses[i]).indexOf("GS3") != -1){
-            JsonObject json = manInst->get_data_object("GS3_" + String(i));
+            snprintf(output, 100, "GS3_%i", i);
+            JsonObject json = manInst->get_data_object(output);
             json["Temperature"] = sensorData[0];
             json["Dielectric_Permittivity"] = sensorData[1];
             json["Conductivity"] = sensorData[2];
         }
         else{
-            JsonObject json = manInst->get_data_object("Terros_" + String(i));
+            snprintf(output, 100, "Teros_%i", i);
+            JsonObject json = manInst->get_data_object(output);
             json["Temperature"] = sensorData[0];
             json["Volumetric_Water_Content"] = sensorData[1];
             if(getSensorInfo(inUseAddresses[i]).indexOf("TER12") != -1)
@@ -89,6 +92,7 @@ void Loom_SDI12::power_down(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 std::vector<char> Loom_SDI12::scanAddressSpace(){
     std::vector<char> activeSensors;
+    char output[100];
 
     // Print the module name followed by the message saying please wait
     LOG("Scanning SDI-12 Address Space this make take a little while...");
@@ -117,7 +121,8 @@ std::vector<char> Loom_SDI12::scanAddressSpace(){
         // Print the module name followed by the message saying please wait
         LOG("== We found the following active Addresses ==");
         for(int i = 0; i < activeSensors.size(); i++){
-            LOG("    Address: " + String(activeSensors[i])); 
+            snprintf(output, 100, "    Address: %c", activeSensors[i]);
+            LOG(output); 
         }
     }
     else{

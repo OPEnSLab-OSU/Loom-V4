@@ -44,6 +44,9 @@ class SDManager : public Module{
 
         /**
          * Read the contents of a given file on the SD card and return them as a string
+         * 
+         * YOU MUST FREE THIS BLOCK OF MEMORY AS IT IS 10kb
+         * 
          * @param fileName Name of the file to read from
          */ 
         char* readFile(const char* fileName);
@@ -65,7 +68,7 @@ class SDManager : public Module{
          * Get the current batch file name
          */ 
         const char* getBatchFilename(){
-            char* fileName = malloc(260);
+            char* fileName = (char*) malloc(260);
             sprintf(fileName, "%s-Batch.txt", fileNameNoExtension);
             return batchFileName;
         };
@@ -131,6 +134,6 @@ class SDManager : public Module{
 
         void logBatch();                                        // Log data in batch format
         
-        void createHeaders();                                   // Create the headers for the CSV file based off what info we are storing
+        void writeHeaders();                                   // Create the headers for the CSV file based off what info we are storing
         bool updateCurrentFileName();                           // Update the current file name to log to based on files already existing on the SD card
 };

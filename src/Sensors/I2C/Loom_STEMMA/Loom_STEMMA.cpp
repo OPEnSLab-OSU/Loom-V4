@@ -18,15 +18,17 @@ Loom_STEMMA::Loom_STEMMA(
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::initialize() {
     FUNCTION_START;
+    char output[100];
     if(!stemma.begin(address)){
         LOG("Failed to initialize STEMMA! Check connections and try again...");
         moduleInitialized = false;
     }
     else{
-        LOG("Successfully initialized STEMMA Version: " + String(stemma.getVersion()));
+        snprintf(output, 100, "Successfully initialized STEMMA Version: %u", stemma.getVersion());
+        LOG(output);
         
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -54,7 +56,7 @@ void Loom_STEMMA::measure() {
         temperature = stemma.getTemp();
         cap = stemma.touchRead(0);
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
     
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -67,6 +69,6 @@ void Loom_STEMMA::package() {
         json["Temperature"] = temperature;
         json["Capacitive"] = cap;
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

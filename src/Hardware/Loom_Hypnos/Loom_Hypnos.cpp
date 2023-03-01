@@ -39,8 +39,13 @@ void Loom_Hypnos::package(){
     time = get_utc_time();
     localTime = getCurrentTime();
 
-    json["time_utc"] = dateTime_toString(time);
-    json["time_local"] = dateTime_toString(localTime);
+    char* timeStr = dateTime_toString(time);
+    char* localTimeStr = dateTime_toString(localTime);
+    json["time_utc"] = timeStr;
+    json["time_local"] = localTimeStr;
+
+    free(timeStr);
+    free(localTimeStr);
     
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -97,13 +102,7 @@ void Loom_Hypnos::disable(){
 bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin, InterruptType interruptType, int triggerState){
     FUNCTION_START;
     pinMode(interruptPin, INPUT_PULLUP);  //  Set interrupt pin input mode
-
-    if(interruptPin == 12){
-        LOG("Registering RTC interrupt...");
-    }
-    else{
-        LOG("Registering interrupt on pin " + String(interruptPin) + "...");
-    }
+    LOG("Registering interrupt...");
 
     // If the RTC hasn't already been initialized then do so now if we are trying to schedule an RTC interrupt
     if(!RTC_initialized && interruptPin == 12)
@@ -123,16 +122,16 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
         }
         // Add the interrupt to the list of pin to interrupts
         pinToInterrupt.insert(std::make_pair(interruptPin, std::make_tuple(isrFunc, triggerState, interruptType)));
-        FUNCTION_END(true);
+        FUNCTION_END;
         return true;
     } 
     else{
         detachInterrupt(digitalPinToInterrupt(interruptPin));
         ERROR("Failed to attach interrupt! Interrupt callback evaluated to a null pointer, it is possible you forgot to supply a callback function");
-        FUNCTION_END(false);
+        FUNCTION_END;
         return false;
     }
-    FUNCTION_END(false);
+    FUNCTION_END;
     return false;
 
    
@@ -148,7 +147,7 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
         // If we haven't previously registered the interrupt we need to do this before we can reattach to an interrupt that doesn't exist
         if(pinToInterrupt.count(interruptPin) <= 0){
             ERROR("Failed to reattach interrupt! Interrupt has not previously been registered...");
-            FUNCTION_END(false);
+            FUNCTION_END;
             return false;
         }
 
@@ -160,7 +159,7 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
         LowPower.attachInterruptWakeup(interruptPin, std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
     }
     LOG("Interrupt successfully reattached!");
-    FUNCTION_END(true);
+    FUNCTION_END;
     return true;
 
 }
@@ -203,7 +202,7 @@ void Loom_Hypnos::initializeRTC(){
     // We successfully started the RTC 
     //LOG("DS3231 Real-Time Clock Initialized Successfully!");
     RTC_initialized = true;
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -251,28 +250,10 @@ DateTime Loom_Hypnos::getCurrentTime(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-String Loom_Hypnos::dateTime_toString(DateTime time){
-     // Formatted as: YYYY-MM-DD HH:MM:SS
-    int month = time.month();
-    int day = time.day();
-
-    // Adds a trailing 0 to numbers less than 10
-    String dayString = (day < 10) ? "0" + String(day) : String(day);
-    String monthString = (month < 10) ? "0" + String(month) : String(month);
-    
-    String timeString =   String(time.year()) 
-                        + "-"
-                        + monthString
-                        + "-"
-                        + dayString
-                        + "T"
-                        + String(time.hour())
-                        + ":"
-                        + String(time.minute())
-                        + ":"
-                        + String(time.second())
-                        + "Z";
-
+char* Loom_Hypnos::dateTime_toString(DateTime time){
+    char* timeString = (char*) malloc(21);
+    // Formatted as: YYYY-MM-DDTHH:MM:SSZ
+    snprintf(timeString, 21, "%u-%02u-%02uT%u:%u:%uZ", time.year(), time.month(), time.day(), time.hour(), time.minute(), time.second());
     return timeString;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -288,6 +269,7 @@ void Loom_Hypnos::set_custom_time(){
 	String computer_hour = "";
 	String computer_min = "";
 	String computer_sec = "";
+    char output[100];
 
 	// Let the user know that they should enter local time
 	LOG("Please use your local time, not UTC!");
@@ -298,7 +280,9 @@ void Loom_Hypnos::set_custom_time(){
 	while(computer_year == ""){
 		computer_year = Serial.readStringUntil('\n');
 	}
-	LOG("Year Entered: " + computer_year);
+
+    snprintf(output, 100, "Year Entered: %s", computer_year.c_str());
+	LOG(output);
 
 	// Entering the month
 	LOG("Enter the Month (1 ~ 12)");
@@ -306,7 +290,8 @@ void Loom_Hypnos::set_custom_time(){
 	while(computer_month == ""){
 		computer_month = Serial.readStringUntil('\n');
 	}
-	LOG("Month Entered: " + computer_month);
+    snprintf(output, 100, "Month Entered: %s", computer_month.c_str());
+	LOG(output);
 
 	// Entering the day
 	LOG("Enter the Day (1 ~ 31)");
@@ -314,7 +299,9 @@ void Loom_Hypnos::set_custom_time(){
 	while(computer_day  == ""){
 		computer_day = Serial.readStringUntil('\n');
 	}
-	LOG("Day Entered: " + computer_day);
+    snprintf(output, 100, "Day Entered: %s", computer_day.c_str());
+	LOG(output);
+    
 
 	// Entering the hour
 	LOG("Enter the Hour (0 ~ 23)");
@@ -322,7 +309,9 @@ void Loom_Hypnos::set_custom_time(){
 	while(computer_hour == ""){
 		computer_hour = Serial.readStringUntil('\n');
 	}
-	LOG("Hour Entered: "+computer_hour);
+
+    snprintf(output, 100, "Hour Entered: %s", computer_hour.c_str());
+	LOG(output);
 
 	// Entering the minute
 	LOG("Enter the Minute (0 ~ 59)");
@@ -330,7 +319,8 @@ void Loom_Hypnos::set_custom_time(){
 	while(computer_min == ""){
 		computer_min = Serial.readStringUntil('\n');
 	}
-	LOG("Minute Entered: "+computer_min);
+    snprintf(output, 100, "Minute Entered: %s", computer_min.c_str());
+	LOG(output);
 
 	// Entering the second
 	LOG("Enter the Second (0 ~ 59)");
@@ -341,24 +331,31 @@ void Loom_Hypnos::set_custom_time(){
     // Set the RTC to the custom time
     RTC_DS.adjust(DateTime(computer_year.toInt(), computer_month.toInt(), computer_day.toInt(), computer_hour.toInt(), computer_min.toInt(), computer_sec.toInt()));
     RTC_initialized = true;
-    // Entering the second
-	LOG("Custom time successfully set to: " + String(getCurrentTime().text()));
-    FUNCTION_END("void");
+
+    // Output
+    snprintf(output, 100, "Custom time successfully set to: %s", getCurrentTime().text());
+	LOG(output);
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){ 
     FUNCTION_START;
+    char output[100];
 
     // The time in the future that the alarm will be set for
     DateTime future(RTC_DS.now() + duration);
     RTC_DS.setAlarm(future);
 
+
     // Print the time that the next interrupt is set to trigger
-    LOG("Current Time: " + String(RTC_DS.now().text()));
-    LOG("Next Interrupt Alarm Set For: " + String(future.text()));
-    FUNCTION_END("void");
+    sprintf(output, "Current Time: %s", RTC_DS.now().text());
+    LOG(output);
+
+    sprintf(output, "Next Interrupt Alarm Set For: %s", future.text());
+    LOG(output);
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -390,7 +387,7 @@ void Loom_Hypnos::pre_sleep(){
 
     // Disable //Watchdog when entering sleep
     TIMER_DISABLE;
-    FUNCTION_END("void");
+    FUNCTION_END;
 
     // Disable the power rails
     disable();
@@ -420,22 +417,26 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
     }
 
     LOG("Device has awoken from sleep!");
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-TimeSpan Loom_Hypnos::getSleepIntervalFromSD(String fileName){
+TimeSpan Loom_Hypnos::getSleepIntervalFromSD(const char* fileName){
     FUNCTION_START;
     // Doc to store the JSON data from the SD card in
     StaticJsonDocument<255> doc;
-    DeserializationError deserialError = deserializeJson(doc, sdMan->readFile(fileName));
+    char output[100];
+    char* fileRead = sdMan->readFile(fileName);
+    DeserializationError deserialError = deserializeJson(doc, fileRead);
+    free(fileRead);
 
     // Create json object to easily pull data from
     JsonObject json = doc.as<JsonObject>();
 
     if(deserialError != DeserializationError::Ok){
-        ERROR("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
+        snprintf(output, 100, "There was an error reading the sleep interval from SD: %s", deserialError.c_str());
+        ERROR(output);
         return TimeSpan(0, 0, 20, 0);
     }
     else{
@@ -443,16 +444,18 @@ TimeSpan Loom_Hypnos::getSleepIntervalFromSD(String fileName){
         // Return the interval as set in the json
         return TimeSpan(json["days"].as<int>(), json["hours"].as<int>(), json["minutes"].as<int>(), json["seconds"].as<int>());
     }
-    FUNCTION_END("TimeSpan");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::getTimeZoneFromSD(String fileName){
+void Loom_Hypnos::getTimeZoneFromSD(const char* fileName){
     FUNCTION_START;
     // Doc to store the JSON data from the SD card in
     StaticJsonDocument<255> doc;
-    DeserializationError deserialError = deserializeJson(doc, sdMan->readFile(fileName));
+    char* fileRead = sdMan->readFile(fileName);
+    DeserializationError deserialError = deserializeJson(doc, fileRead);
+    free(fileRead);
 
     // Create json object to easily pull data from
     JsonObject json = doc.as<JsonObject>();
@@ -462,11 +465,11 @@ void Loom_Hypnos::getTimeZoneFromSD(String fileName){
     }
     else{
         if(!json["timezone"].isNull())
-            timezone = timezoneMap[json["timezone"].as<String>()];
+            timezone = timezoneMap[json["timezone"].as<const char*>()];
         LOG("Timezone successfully loaded!");
         
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

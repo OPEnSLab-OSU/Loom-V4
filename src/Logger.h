@@ -5,7 +5,7 @@
 #include "Hardware/Loom_Hypnos/SDManager.h"
 
 #define FUNCTION_START Logger::getInstance()->startFunction(__FILE__, __func__, __LINE__)
-#define FUNCTION_END(ret) Logger::getInstance()->endFunction(ret) 
+#define FUNCTION_END Logger::getInstance()->endFunction() 
 
 #define SLOG(msg) Logger::getInstance()->debugLog(msg, true, __FILE__, __func__, __LINE__)          // Log a message without printing to the serial
 #define LOG(msg) Logger::getInstance()->debugLog(msg, false, __FILE__, __func__, __LINE__)          // Log a generic message
@@ -76,14 +76,14 @@ class Logger{
         */
         char* truncateFileName(const char* fileName){
             // Get the last slash in the file name
-            char* file = malloc(260);
+            char* file =  (char*) malloc(260);
             int i;
             // Find the last \\ in the file path to know where the name is
             char *lastOccurance = strrchr(fileName, '\\');
             int lastSlash = lastOccurance-fileName+1;
 
             // Loop from the last slash to the end of the string
-            for(i = lastSlash, i < strlen(fileName); i++){
+            for(i = lastSlash; i < strlen(fileName); i++){
                 file[i-lastSlash] = fileName[i];
             }
 
@@ -188,13 +188,10 @@ class Logger{
             info->totalMemoryUsage = freeMemory();
             info->time = millis() - info->time;
             float percentage = ((float)info->totalMemoryUsage / 32000.0) * 100;
-            
-            // Delete the top most function on the call stack
-            String banner = "[" + info->fileName + ":" + info->funcName + "]";
 
             // Format the fileName and log output
-            smprintf(fileName, 100,"/debug/funcSummaries_%i.log", sdInst->getCurrentFileNumber());
-            smprintf(output, 300, "[%s:%s] Summary\n\tFunction Memory Usage: %i B\n\tFree Memory: %i B (%f\% Free)\n\tElapsed Time: %u MS", info->fileName, info->funcName, info->netMemoryUsage, info->totalMemoryUsage, percentage, info->time);
+            snprintf(fileName, 100,"/debug/funcSummaries_%i.log", sdInst->getCurrentFileNumber());
+            snprintf(output, 300, "[%s:%s] Summary\n\tFunction Memory Usage: %i B\n\tFree Memory: %i B (%f\% Free)\n\tElapsed Time: %u MS", info->fileName, info->funcName, info->netMemoryUsage, info->totalMemoryUsage, percentage, info->time);
 
             // Log as long as we have given it a SD card instance
             if(sdInst != nullptr)

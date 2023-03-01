@@ -6,7 +6,7 @@ class I2CDevice : public Module{
     public:
 
         /* Construct a new I2C device */
-        I2CDevice(String modName) : Module(modName) {};
+        I2CDevice(const char* modName) : Module(modName) {};
 
         /* Checks if the given I2C device is currently connected*/
         bool checkDeviceConnection() {

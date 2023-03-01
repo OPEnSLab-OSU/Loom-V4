@@ -3,8 +3,8 @@
 Logger* Logger::instance = nullptr;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Manager::Manager(const char* devName, uint32_t instanceNum) : deviceName(devName), instanceNumber(instanceNum), doc(2000) {
-    strncpy(ths->deviceName, devName, 100);
+Manager::Manager(const char* devName, uint32_t instanceNum) : instanceNumber(instanceNum), doc(2000) {
+    strncpy(this->deviceName, devName, 100);
     Logger::getInstance();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -75,7 +75,7 @@ void Manager::measure() {
     else{
             ERROR("Unable to collect data as the manager and thus all sensors connected to it have not been initialized! Call manager.initialize() to fix this.");
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -106,7 +106,7 @@ void Manager::package(){
         TIMER_RESET;
     }
     packetNumber++;
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -140,7 +140,7 @@ void Manager::power_up(){
         }
         TIMER_RESET;
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -165,9 +165,9 @@ void Manager::display_data(){
 
         // Get the json size with the null terminator
         size_t jsonSize = measureJsonPretty(doc)+1;
-        char *jsonStr = malloc(jsonSize);
-        char *output = malloc(jsonSize+15);
-        serializeJsonPretty(doc, jsonStr);
+        char *jsonStr =  (char*) malloc(jsonSize);
+        char *output =  (char*) malloc(jsonSize+15);
+        serializeJsonPretty(doc, jsonStr, jsonSize);
         
         // Read the jsonStr into the proper output format
         snprintf(output, jsonSize+15,"Data Json: \n%s\n", jsonStr);
@@ -179,7 +179,7 @@ void Manager::display_data(){
         LOG("JSON Document is Null there is no data to display");
     }
     
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -201,14 +201,15 @@ void Manager::initialize() {
 
 
     TIMER_ENABLE;
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 char* Manager::getJSONString(){
-    char* jsonString = malloc(measureJson(doc));
-    serializeJson(doc, jsonString);
+    size_t jsonSize = measureJson(doc)+1;
+    char* jsonString =  (char*) malloc(jsonSize);
+    serializeJson(doc, jsonString, jsonSize);
     return jsonString;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -216,7 +217,6 @@ char* Manager::getJSONString(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::read_serial_num(){
     char serial_no[33];
-    serial_num = "";
     // Serial numbers are made up of four words located at these specific registers (see datasheet)
 	uint32_t sn_words[4];
 	sn_words[0] = *(volatile uint32_t *)(0x0080A00C);

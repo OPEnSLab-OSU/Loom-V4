@@ -107,7 +107,7 @@ class Manager{
          * Set the device name at runtime
          * @param name New name of the device
          */ 
-        void set_device_name(String name) { deviceName = name; };
+        void set_device_name(const char* name) { strcpy(deviceName, name); };
 
         /**
          * Gets the current device instance number

@@ -32,7 +32,7 @@ void Loom_TSL2591::initialize() {
 
         LOG("Successfully initialized TSL2591!");
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -75,7 +75,7 @@ void Loom_TSL2591::measure() {
             lightLevels[2] = tsl.getLuminosity(TSL2591_FULLSPECTRUM);
         }
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -88,7 +88,7 @@ void Loom_TSL2591::package() {
         json["Infrared"] = lightLevels[1];
         json["Full_Spectrum"] = lightLevels[2];
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -100,6 +100,6 @@ void Loom_TSL2591::power_up() {
         tsl.setGain(gain);
         tsl.setTiming(intTime);
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

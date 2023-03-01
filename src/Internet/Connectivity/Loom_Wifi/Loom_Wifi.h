@@ -54,7 +54,7 @@ class Loom_WIFI : public Module{
          * @param name The name of the WiFi access point we are going to connect to
          * @param password The password (if applicable) to connect to the access point 
          */ 
-        Loom_WIFI(Manager& man, CommunicationMode mode, String name = "", String password = "");
+        Loom_WIFI(Manager& man, CommunicationMode mode, const char* name = "", const char* password = "");
 
         /**
          * Construct a new WiFi manager, passing the credentials in as a json document
@@ -65,9 +65,12 @@ class Loom_WIFI : public Module{
 
         /**
          * Load the Wifi credentials from a JSON string, used to pull credentials from a file
+         * 
+         * This automatically frees the input json
+         * 
          * @param jsonString JSON formatted string containing the SSID and password 
          */
-        void loadConfigFromJSON(String json);
+        void loadConfigFromJSON(char* json);
 
         /**
          * Returns a reference to the WifiClient
@@ -96,7 +99,7 @@ class Loom_WIFI : public Module{
         void start_ap();
 
         /* Take in new WiFi information store it to flash and restart the WiFi chip to put the new credentials into effect*/
-        void storeNewWiFiCreds(String name, String password);
+        void storeNewWiFiCreds(const char* name, const char* password);
 
         /**
          * Get the IP address of the WiFi module
@@ -137,7 +140,11 @@ class Loom_WIFI : public Module{
         /**
          * Convert an IP address to a string
          */ 
-        static String IPtoString(IPAddress ip) { return String(ip[0]) + "." + String(ip[1]) + "." + String(ip[2]) + "." + String(ip[3]); };
+        char* ipToString(IPAddress ip) { 
+            char* ipString = (char *) malloc(16);
+            snprintf(ipString, 16, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+            return ipString;
+        };
 
     private:
         Manager* manInst;                   // Pointer to the manager
@@ -148,8 +155,8 @@ class Loom_WIFI : public Module{
         bool hasInitialized = false;        // Has the WiFi module run through the initialization process
         bool powerUp = true;                // Whether or not the WiFi should power up (used with batch uploads)
 
-        String wifi_name;                   // Access point to connect to
-        String wifi_password;               // Password to connect to the access point
+        char wifi_name[100];                // Access point to connect to
+        char wifi_password[100];          // Password to connect to the access point
 
         bool usingMax = false;              // If we are using max
         CommunicationMode mode;             // Current WiFi mode we are in

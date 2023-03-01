@@ -26,6 +26,7 @@ Loom_LoRa::Loom_LoRa(
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LoRa::initialize(){
     // Set CS pin as pull up
+    char output[100];
     pinMode(RFM95_CS, INPUT_PULLUP);
     
     // Reset the radio
@@ -44,7 +45,8 @@ void Loom_LoRa::initialize(){
 
     // Set the radio frequency
     if(driver.setFrequency(RF95_FREQ)){
-        LOG("Radio frequency successfully set to: " + String(RF95_FREQ));
+        snprintf(output, 100, "Radio frequency successfully set to:%f", RF95_FREQ);
+        LOG(output);
     }
     else{
         ERROR("Failed to set frequency!");
@@ -53,19 +55,24 @@ void Loom_LoRa::initialize(){
     }
 
     // Set radio power level
-    LOG("Setting device power level to: " + String(powerLevel));
+    snprintf(output, 100, "Setting device power level to: %u", powerLevel);
+    LOG(output);
     driver.setTxPower(powerLevel, false);
 
     // Set timeout time
-    LOG("Timeout time set to: " + String(retryTimeout));
+    snprintf(output, 100, "Timeout time set to: %u", retryTimeout);
+    LOG(output);
     manager->setTimeout(retryTimeout);
 
     // Set retry attempts
-    LOG("Retry count set to: " + String(retryCount));
+    snprintf(output, 100, "Retry count set to: %u", retryCount);
+    LOG(output);
     manager->setRetries(retryCount);
 
     // Print the set address of the device
-    LOG("Address set to: " + String(manager->thisAddress()));
+    snprintf(output, 100, "Address set to: %u", manager->thisAddress());
+    LOG(output);
+    
 
     /* 
         https://cdn.sparkfun.com/assets/a/e/7/e/b/RFM95_96_97_98W.pdf, Page 22
@@ -132,7 +139,7 @@ bool Loom_LoRa::receive(uint maxWaitTime){
         // Wait for packet to arrive
         if(recv(maxWaitTime)){
             LOG("Packet Received!");
-            manInst->set_device_name(recvDoc["id"]["name"].as<String>());
+            manInst->set_device_name(recvDoc["id"]["name"].as<const char*>());
             manInst->set_instance_num(recvDoc["id"]["instance"].as<int>());
             
             deserializeJson(manInst->getDocument(), recvData);
@@ -164,6 +171,7 @@ bool Loom_LoRa::receive(uint maxWaitTime){
 bool Loom_LoRa::receivePartial(uint waitTime){
     if(moduleInitialized){
         // Gets the number of additional packets the hub should expect
+        char output[100];
         int numPackets = manInst->getDocument()["numPackets"].as<int>();
         JsonArray contents = manInst->getDocument()["contents"].as<JsonArray>();
         StaticJsonDocument<300> tempDoc;
@@ -171,13 +179,16 @@ bool Loom_LoRa::receivePartial(uint waitTime){
 
         // Loop for the given number of packets we are expecting
         for(int i = 0; i < numPackets; i++){
-            
-            LOG("Waiting for packet " + String(i+1) + " / " + String(numPackets));
+            snprintf(output, 100, "Waiting for packet %i/%i", i+1, numPackets);
+            LOG(output);
 
             // If a packet was received 
             if(recv(waitTime)){
-                LOG("Fragment received " + String(i+1) + " / " + String(numPackets));
+                snprintf(output, 100, "Fragment received %i/%i", i+1, numPackets);
+                LOG(output);
+
                 deserializeJson(tempDoc, recvData);
+
                 // Add the current module to the overall contents array
                 contents.add(tempDoc);
             }
@@ -254,7 +265,7 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::sendModules(JsonObject json, int numModules, const uint8_t destinationAddress){
-
+    char output[100];
     /*
         This is how each module will be sent across
         {
@@ -274,8 +285,8 @@ bool Loom_LoRa::sendModules(JsonObject json, int numModules, const uint8_t desti
         // Set the module key to whatever the main one is
         JsonArray contents = manInst->getDocument()["contents"].as<JsonArray>();
         sendDoc.set(contents[i].as<JsonObject>());
-
-        LOG("Fragmented Packet Being Sent (" + String(i+1) + "/" + String(numModules) + ")");
+        snprintf(output, 100, "Fragmented Packet Being Sent (%i/%i)", i+1, numModules);
+        LOG(output);
 
         // Attempt to transmit the document to the other device
         if(!transmit(sendDoc.as<JsonObject>(), destinationAddress)){
@@ -354,7 +365,7 @@ bool Loom_LoRa::recv(int waitTime){
     if(recvStatus){
         signalStrength = driver.lastRssi();
         recvStatus = bufferToJson(buffer);
-        recvData = "";
+        memset(recvData, '\0', 256);
         serializeJson(recvDoc, recvData);
     }
     else{

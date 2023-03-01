@@ -24,16 +24,18 @@ Loom_Freewave::Loom_Freewave(
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Freewave::initialize(){
-
+    char output[100];
     // Start serial communication with radio
     serial1.begin(115200);
 
     // Set timeout time
-    LOG("Timeout time set to: " + String(retryTimeout));
+    snprintf(output, 100, "Timeout time set to: %u", retryTimeout);
+    LOG(output);
     manager->setTimeout(retryTimeout);
 
     // Set retry attempts
-    LOG("Retry count set to: " + String(retryCount));
+    snprintf(output, 100, "Retry count set to: %u", retryCount);
+    LOG(output);
     manager->setRetries(retryCount);
 
     // Initialize the radio manager
@@ -90,12 +92,14 @@ bool Loom_Freewave::receive(uint maxWaitTime){
         LOG("Packet Received!");
         signalStrength = driver.lastRssi();
         recvStatus = bufferToJson(buffer);
-        recvData = "";
-        serializeJson(recvDoc, recvData);
+        size_t jsonSize = measureJson(recvDoc)+1;
+        recvData = (char *) malloc(jsonSize);
+        serializeJson(recvDoc, recvData, jsonSize);
         deserializeJson(manInst->getDocument(), recvData);
+        free(recvData);
 
         // Update device name
-        manInst->set_device_name(manInst->getDocument()["id"]["name"].as<String>());
+        manInst->set_device_name(manInst->getDocument()["id"]["name"].as<const char*>());
         manInst->set_instance_num(manInst->getDocument()["id"]["instance"].as<int>());
         
     }

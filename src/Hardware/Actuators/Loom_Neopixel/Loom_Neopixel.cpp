@@ -49,7 +49,7 @@ void Loom_Neopixel::initialize(){
 	}
 
     LOG("Successfully initialized Neopixel");
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -62,13 +62,14 @@ void Loom_Neopixel::control(JsonArray json){
     FUNCTION_START;
     //TODO: If using instance number offset all these by one
     set_color(json[0].as<uint8_t>(), json[1].as<uint8_t>(), json[2].as<uint8_t>(), json[3].as<uint8_t>(), json[4].as<uint8_t>());
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Neopixel::set_color(const uint8_t port, const uint8_t chain_num, const uint8_t red, const uint8_t green, const uint8_t blue){
     FUNCTION_START;
+    char output[100];
     if ( enabledPins[port] ) {
 		// Apply color
 		pixels[port].setPixelColor(chain_num, pixels[port].Color(red, green, blue));
@@ -85,22 +86,24 @@ void Loom_Neopixel::set_color(const uint8_t port, const uint8_t chain_num, const
 		*/
 		
 	} else {
-		WARNING("Neopixel not enabled on port " + String(port));
+        snprintf(output, 100, "Neopixel not enabled on port %u", port);
+		WARNING(output);
 	}
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Neopixel::enable_pin(const uint8_t port, const bool state){
     FUNCTION_START;
+    char output[100];
     enabledPins[port] = state;
 	if (state) {
 		pinMode(port, OUTPUT);
 	}
-
-	LOG("Neopixel state changed on port" + String(port));
-    FUNCTION_END("void");
+    snprintf(output, 100, "Neopixel state changed on port %u", port);
+	LOG(output);
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

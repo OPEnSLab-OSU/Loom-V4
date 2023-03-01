@@ -18,7 +18,7 @@ Loom_Ethernet::Loom_Ethernet(Manager& man) : Module("Ethernet"), manInst(&man) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Ethernet::initialize() {
-
+    char output[100];
     LOG("Initializing Ethernet module...");
 
     // Call the connect class to initiate the connection
@@ -30,8 +30,16 @@ void Loom_Ethernet::initialize() {
     moduleInitialized = true;
     
     LOG("Successfully Initalized Ethernet!");
-    LOG("Device IP Address: " + Loom_Ethernet::IPtoString(getIPAddress()));
-    LOG("Device Subnet Address: " + Loom_Ethernet::IPtoString(getSubnetMask()));
+    // Print the device IP
+    char* ip = ipToString(getIPAddress());
+    snprintf(output, 100, "Device IP Address: %s", ip);
+    free(ip);
+    LOG(output);
+
+    ip = ipToString(getSubnetMask());
+    snprintf(output, 100, "Device Subnet Address: %s", ip);
+    free(ip);
+    LOG(output);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -59,14 +67,16 @@ void Loom_Ethernet::connect(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Ethernet::loadConfigFromJSON(String json){
+void Loom_Ethernet::loadConfigFromJSON(char* json){
     // Doc to store the JSON data from the SD card in
     StaticJsonDocument<300> doc;
+    char output[100];
     DeserializationError deserialError = deserializeJson(doc, json);
 
     // Check if an error occurred and if so print it
     if(deserialError != DeserializationError::Ok){
-        ERROR("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
+        snprintf(output, 100, "There was an error reading the Ethernet credentials from SD: %s", deserialError.c_str());
+        ERROR(output);
     }
 
     JsonArray macJson = doc["mac"].as<JsonArray>();
@@ -78,6 +88,8 @@ void Loom_Ethernet::loadConfigFromJSON(String json){
     }
 
     ip = IPAddress(ipJson[0], ipJson[1], ipJson[2], ipJson[3]);
+
+    free(json);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

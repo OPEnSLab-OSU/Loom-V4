@@ -38,9 +38,9 @@ class Loom_LTE : public Module{
          */ 
         Loom_LTE(
             Manager& man, 
-            const String apn, 
-            const String user, 
-            const String pass, 
+            const char* apn, 
+            const char* user, 
+            const char* pass, 
             const int powerPin = A5
         );
 
@@ -65,8 +65,9 @@ class Loom_LTE : public Module{
 
         /**
          * Load the config to connect to the LTE network from a JSON string
+         * @param json Json file read, this is freed before returning
          */ 
-        void loadConfigFromJSON(String json);
+        void loadConfigFromJSON(char* json);
 
         /**
          * Turn on batch upload for the lte which means it will only initialize the module when we need to upload
@@ -112,14 +113,18 @@ class Loom_LTE : public Module{
         /**
          * Convert an IP address to a string
          */ 
-        static String IPtoString(IPAddress ip) { return String(ip[0]) + "." + String(ip[1]) + "." + String(ip[2]) + "." + String(ip[3]); };
+        char* ipToString(IPAddress ip) { 
+            char* ipString = (char *) malloc(16);
+            snprintf(ipString, 16, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+            return ipString;
+        };
 
     private:
         Manager* manInst;                   // Instance of the manager
 
-        String APN;                         // LTE Network Name
-        String gprsUser;                    // GPRS Username
-        String gprsPass;                    // GPRS Password
+        char APN[100];                         // LTE Network Name
+        char gprsUser[100];                    // GPRS Username
+        char gprsPass[100];                    // GPRS Password
 
         int powerPin = A5;                  // Analog pin to power the LTE board
 

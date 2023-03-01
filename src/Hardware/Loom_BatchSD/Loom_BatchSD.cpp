@@ -17,16 +17,11 @@ bool Loom_BatchSD::shouldPublish(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_BatchSD::getBatch(std::vector<String>& batch){
     batch.clear();
-
-    // THIS IS THE POINT OF HANGING WHEN USING BATCHSD WITH A HIGHER BATCH SIZE, String memory issue
-    /////////////////////////////////////////////////////////////////////////
-    String fileOutput = sdMan->readFile(sdMan->getBatchFilename());
-    /////////////////////////////////////////////////////////////////////////
-
+    char* fileOutput = sdMan->readFile(sdMan->getBatchFilename());
     String currentLine = "";
 
     // Convert each batch into a string and push it into the vector of batches
-    for(int i = 0; i < fileOutput.length(); i++){
+    for(int i = 0; i < strlen(fileOutput); i++){
         if(fileOutput[i] == '\n'){
             batch.push_back(currentLine);
             currentLine = "";
@@ -35,5 +30,7 @@ void Loom_BatchSD::getBatch(std::vector<String>& batch){
             currentLine += fileOutput[i];
         }
     }
+
+    free(fileOutput);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

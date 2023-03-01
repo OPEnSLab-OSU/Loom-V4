@@ -25,7 +25,7 @@ void Loom_SHT31::initialize() {
     else{
         LOG("Successfully initialized SHT31!");
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -60,7 +60,7 @@ void Loom_SHT31::measure() {
             WARNING("Collected information was invalid, the previous collected data will be published again.");
         }
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -72,6 +72,6 @@ void Loom_SHT31::package() {
         json["Temperature"] = sensorData[0];
         json["Humidity"] = sensorData[1];
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

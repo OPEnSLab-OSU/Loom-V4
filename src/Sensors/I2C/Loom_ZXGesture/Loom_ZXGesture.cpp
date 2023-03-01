@@ -17,6 +17,7 @@ Loom_ZXGesture::Loom_ZXGesture(
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ZXGesture::initialize() {
+    char output[100];
     if(!zx.init()){
         ERROR("Failed to initialize ZX Gesture Sensor! Check connections and try again...");
     }
@@ -26,10 +27,12 @@ void Loom_ZXGesture::initialize() {
         uint8_t ver = zx.getModelVersion();
         if (ver != ZX_MODEL_VER) {
             moduleInitialized = false;
-            ERROR("Incorrect Model Version. Expected Version: " + String(ZX_MODEL_VER) + " Actual Version: " + String(ver));
+            snprintf(output, 100, "Incorrect Model Version. Expected Version: %u Actual Version: %u", ZX_MODEL_VER, ver);
+            ERROR(output);
             return;
         } else {
-            LOG("Model Version: " + String(ver));
+            snprintf(output, 100, "Model Version: %u", ver);
+            LOG(output);
         }
 
         // Read the register map version and ensure the library will work
@@ -37,10 +40,12 @@ void Loom_ZXGesture::initialize() {
         //printModuleName();
         if (ver != ZX_REG_MAP_VER) {
             moduleInitialized = false;
-            ERROR("Incorrect Register Map Version. Expected Version: " + String(ZX_REG_MAP_VER) + " Actual Version: " + String(ver));
+            snprintf(output, 100, "Incorrect Register Map Version. Expected Version: %u Actual Version: %u", ZX_REG_MAP_VER, ver);
+            ERROR(output);
             return;
         } else {
-            LOG("Register Map Version: " + String(ver));
+            snprintf(output, 100, "Register Map Version: %u", ver);
+            LOG(output);
         }
 
         LOG("Successfully initialized ZX Gesture Sensor!");

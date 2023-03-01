@@ -29,6 +29,7 @@ class Actuator : public Module{
         Actuator(ACTUATOR_TYPE actType, int instance) : Module("Actuator") { 
             type = actType;
             instance_num = instance;
+            snprintf(moduleName, 100, "%s%i", typeToString(), instance_num);
         };
 
         // Initializer
@@ -41,14 +42,18 @@ class Actuator : public Module{
          */ 
         virtual void control(JsonArray json) = 0;
 
-        void printModuleName(String message) override { Serial.print("[" + (typeToString() + String(instance_num)) + "] "); };
+        void printModuleName(const char* message) override { 
+            char output[50];
+            snprintf(output, 50, "[%s] %s", moduleName, message);
+            Serial.print(output); 
+        };
 
-        String getModuleName() override { return (typeToString() + String(instance_num)); };
+        const char* getModuleName() override { return moduleName; };
 
         /**
          * Convert the type of actuator to a String
          */ 
-        String typeToString(){
+        const char* typeToString(){
             switch(type){
                 case SERVO:
                     return "Servo";
@@ -69,4 +74,6 @@ class Actuator : public Module{
     private:
         int instance_num;                   // Instance number of the Actuator
         ACTUATOR_TYPE type;                 // Type of actuator
+
+        char moduleName[100];
 };
