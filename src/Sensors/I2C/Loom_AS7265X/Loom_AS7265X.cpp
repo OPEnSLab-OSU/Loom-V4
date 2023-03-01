@@ -25,12 +25,12 @@ void Loom_AS7265X::initialize() {
 
     // If we have less than 2 bytes of json from the sensor
     if(!asInst.begin()){
-        ERROR("Failed to initialize AS7265X! Check connections and try again...");
+        ERROR(F("Failed to initialize AS7265X! Check connections and try again..."));
         moduleInitialized = false;
         return;
     }
     else{
-        LOG("Successfully initialized AS7265X!");
+        LOG(F("Successfully initialized AS7265X!"));
         asInst.setGain(gain);
 		asInst.setMeasurementMode(mode);
         asInst.setIntegrationCycles(integration_time);
@@ -45,7 +45,7 @@ void Loom_AS7265X::measure() {
 			initialize();
 		}
 		else if(!checkDeviceConnection()){
-			ERROR("No acknowledge received from the device");
+			ERROR(F("No acknowledge received from the device"));
 			return;
 		}
 	

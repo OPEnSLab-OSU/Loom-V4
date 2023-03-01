@@ -15,11 +15,11 @@ void Loom_MS5803::initialize(){
     FUNCTION_START;
     // Setup is backwards apparently
     if(inst.initializeMS_5803(false)){
-        ERROR("Failed to initialize sensor!");
+        ERROR(F("Failed to initialize sensor!"));
         moduleInitialized = false;
     }
     else{
-        LOG("Successfully Initialized!");
+        LOG(F("Successfully Initialized!"));
         
         // Wait 3 seconds after initializing
         delay(3000);
@@ -44,7 +44,7 @@ void Loom_MS5803::measure(){
 
         // If we are not connected
         else if(!connectionStatus){
-            ERROR("No acknowledge received from the device");
+            ERROR(F("No acknowledge received from the device"));
             return;
         }
     

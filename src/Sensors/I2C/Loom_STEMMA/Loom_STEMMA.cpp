@@ -20,7 +20,7 @@ void Loom_STEMMA::initialize() {
     FUNCTION_START;
     char output[100];
     if(!stemma.begin(address)){
-        LOG("Failed to initialize STEMMA! Check connections and try again...");
+        LOG(F("Failed to initialize STEMMA! Check connections and try again..."));
         moduleInitialized = false;
     }
     else{
@@ -47,7 +47,7 @@ void Loom_STEMMA::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            LOG("No acknowledge received from the device");
+            LOG(F("No acknowledge received from the device"));
             return;
         }
         

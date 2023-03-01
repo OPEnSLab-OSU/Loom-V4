@@ -143,7 +143,7 @@ void Loom_OLED::display_data(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_OLED::canWrite(){
     if ( (millis() > min_filter_delay) && ( (millis()-lastLogTime) < min_filter_delay ) ) {
-	    LOG("Not enough time since last log");
+	    LOG(F("Not enough time since last log"));
 		return false;
 	} else {
 		lastLogTime = millis();

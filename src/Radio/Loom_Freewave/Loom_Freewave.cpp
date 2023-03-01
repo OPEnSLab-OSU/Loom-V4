@@ -40,10 +40,10 @@ void Loom_Freewave::initialize(){
 
     // Initialize the radio manager
     if(manager->init()){
-        LOG("Radio manager successfully initialized!");
+        LOG(F("Radio manager successfully initialized!"));
     }
     else{
-        ERROR("Radio manager failed to initialize!");
+        ERROR(F("Radio manager failed to initialize!"));
         moduleInitialized = false;
         return;
     }
@@ -77,7 +77,7 @@ bool Loom_Freewave::receive(uint maxWaitTime){
     uint8_t buffer[maxMessageLength];
     uint8_t len = sizeof(buffer);
 
-    LOG("Waiting for packet...");
+    LOG(F("Waiting for packet..."));
 
     // Non-blocking receive if time is set to 0
     if(maxWaitTime == 0){
@@ -89,7 +89,7 @@ bool Loom_Freewave::receive(uint maxWaitTime){
 
     // If a packet was received 
     if(recvStatus){
-        LOG("Packet Received!");
+        LOG(F("Packet Received!"));
         signalStrength = driver.lastRssi();
         recvStatus = bufferToJson(buffer);
         size_t jsonSize = measureJson(recvDoc)+1;
@@ -104,7 +104,7 @@ bool Loom_Freewave::receive(uint maxWaitTime){
         
     }
     else{
-        WARNING("No Packet Received");
+        WARNING(F("No Packet Received"));
     }
 
     driver.sleep();
@@ -118,16 +118,16 @@ bool Loom_Freewave::send(const uint8_t destinationAddress){
 
     // Try to write the JSON to the buffer
     if(!jsonToBuffer(buffer, manInst->getDocument().as<JsonObject>())){
-        ERROR("Failed to convert JSON to MsgPack");
+        ERROR(F("Failed to convert JSON to MsgPack"));
         return false;
     }
 
     if(!manager->sendtoWait((uint8_t*)buffer, sizeof(buffer), destinationAddress)){
-        ERROR("Failed to send packet to specified address!");
+        ERROR(F("Failed to send packet to specified address!"));
         return false;
     }
 
-    LOG("Successfully transmit packet!");
+    LOG(F("Successfully transmit packet!"));
     signalStrength = driver.lastRssi();
     driver.sleep();
     return true;

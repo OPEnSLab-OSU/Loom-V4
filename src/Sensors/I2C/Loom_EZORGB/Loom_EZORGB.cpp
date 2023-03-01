@@ -23,7 +23,7 @@ void Loom_EZORGB::measure(){
 
         // Attempt to read data from the sensor
         if(!readSensor()){
-            ERROR("Failed to read sensor!");
+            ERROR(F("Failed to read sensor!"));
             return;
         }
 
@@ -48,7 +48,7 @@ void Loom_EZORGB::package(){
 void Loom_EZORGB::power_down() {
     if(moduleInitialized){
         if(!sendTransmission("sleep")){
-            ERROR("Failed to send 'sleep' command to device");
+            ERROR(F("Failed to send 'sleep' command to device"));
         }
     }
 }

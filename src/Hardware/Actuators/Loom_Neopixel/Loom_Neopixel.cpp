@@ -48,7 +48,7 @@ void Loom_Neopixel::initialize(){
 		}
 	}
 
-    LOG("Successfully initialized Neopixel");
+    LOG(F("Successfully initialized Neopixel"));
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

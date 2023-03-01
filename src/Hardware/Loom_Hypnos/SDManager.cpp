@@ -36,7 +36,7 @@ void SDManager::writeHeaders(){
     char header2[512];
 
     // Append the serial number to the top of the CSV file, reset the header1 array
-    snprintf(header1, 512, "%s\n", manInst->get_serial_num());
+    snprintf_P(header1, 512, PSTR("%s\n"), manInst->get_serial_num());
     myFile.println(header1);
 
     // Clear both arrays
@@ -63,9 +63,9 @@ void SDManager::writeHeaders(){
 
         // Get all JSON keys  
         for(JsonPair keyValue : v.as<JsonObject>()["data"].as<JsonObject>()){
-            strncat(header1, keyValue.key().c_str(), 512);
-            strncat(header1, ",", 512);
+            strncat(header2, keyValue.key().c_str(), 512);
             strncat(header2, ",", 512);
+            strncat(header1, ",", 512);
         }
     }
 
@@ -93,7 +93,7 @@ bool SDManager::log(DateTime currentTime){
                 writeHeaders();
             }    
 
-            snprintf(output, 512, "%s,%i,", manInst->get_device_name(), manInst->get_instance_num());
+            snprintf_P(output, 512, PSTR("%s,%i,"), manInst->get_device_name(), manInst->get_instance_num());
             // Write the Instance data that isn't included in the JSON packet
             myFile.print(output);
             memset(output, '\0', 512); // Clear array
@@ -145,7 +145,7 @@ bool SDManager::log(DateTime currentTime){
             myFile.close();
 
             // Inform the user that we have successfully written to the file
-            snprintf(output, 512, "Successfully logged data to %s", fileName);
+            snprintf_P(output, 512, PSTR("Successfully logged data to %s"), fileName);
             printModuleName(output);
         }
         else{
@@ -179,7 +179,7 @@ bool SDManager::begin(){
         if(!sd.exists("debug"))
             sd.mkdir("debug");
 
-        LOG("Successfully initialized SD Card!");
+        LOG(F("Successfully initialized SD Card!"));
     }
 
     
@@ -188,7 +188,7 @@ bool SDManager::begin(){
     if(!sdInitialized){
         // Try to open the root of the file system so we can get the files on the device
         if(!root.open("/", O_RDONLY)){
-            ERROR("Failed to open root file system on SD Card!");
+            ERROR(F("Failed to open root file system on SD Card!"));
             return false;
         }
         updateCurrentFileName();
@@ -225,15 +225,15 @@ bool SDManager::updateCurrentFileName(){
     }
 
     // Set all the fileNames
-    sprintf(fileName, "%s%i.csv", device_name, getCurrentFileNumber()); 
-    sprintf(fileNameNoExtension, "%s%i", device_name, getCurrentFileNumber()); 
-    sprintf(batchFileName, "%s-Batch.txt", device_name);
+    snprintf_P(fileName, 260, PSTR("%s%i.csv"), device_name, getCurrentFileNumber()); 
+    snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), device_name, getCurrentFileNumber()); 
+    snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), device_name);
 
     // Close the root file after we have decided what to name the next file
     root.close();
 
     char output[100];
-    snprintf(output, 100, "Data will be logged to %s", fileName);
+    snprintf_P(output, 100, PSTR("Data will be logged to %s"), fileName);
     printModuleName(output);
 
     return true;
@@ -274,7 +274,7 @@ char* SDManager::readFile(const char* fileName){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void SDManager::logBatch(){
     char f_name[260];
-    snprintf(f_name, 260, "%s-Batch.txt", fileNameNoExtension);
+    snprintf_P(f_name, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
     // We want to clear the file after the batch size has been exceeded
     if(current_batch >= batch_size){
         current_batch = 0;

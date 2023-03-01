@@ -60,7 +60,7 @@ void Loom_Multiplexer::initialize(){
             }
 
             if(sensors.size() <= 0){
-                ERROR("No sensors found!");
+                ERROR(F("No sensors found!"));
             }
             FUNCTION_END;
             return;
@@ -68,7 +68,7 @@ void Loom_Multiplexer::initialize(){
     }
 
     // There was no device so error
-    ERROR("Multiplexer was not found at the standard address or any alternatives");
+    ERROR(F("Multiplexer was not found at the standard address or any alternatives"));
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

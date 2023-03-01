@@ -19,7 +19,7 @@ Loom_ZXGesture::Loom_ZXGesture(
 void Loom_ZXGesture::initialize() {
     char output[100];
     if(!zx.init()){
-        ERROR("Failed to initialize ZX Gesture Sensor! Check connections and try again...");
+        ERROR(F("Failed to initialize ZX Gesture Sensor! Check connections and try again..."));
     }
     else{
 
@@ -48,7 +48,7 @@ void Loom_ZXGesture::initialize() {
             LOG(output);
         }
 
-        LOG("Successfully initialized ZX Gesture Sensor!");
+        LOG(F("Successfully initialized ZX Gesture Sensor!"));
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -67,7 +67,7 @@ void Loom_ZXGesture::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            ERROR("No acknowledge received from the device");
+            ERROR(F("No acknowledge received from the device"));
             return;
         }
 
@@ -86,7 +86,7 @@ void Loom_ZXGesture::measure() {
                     pos.z = z;
                 }
                 else {
-                    ERROR("Error occurred while reading position data");
+                    ERROR(F("Error occurred while reading position data"));
                 }
             }
             

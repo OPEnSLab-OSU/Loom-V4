@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Module.h"
+#include "Logger.h"
 
 class I2CDevice : public Module{
     public:
@@ -10,16 +11,20 @@ class I2CDevice : public Module{
 
         /* Checks if the given I2C device is currently connected*/
         bool checkDeviceConnection() {
+            FUNCTION_START;
             if(module_address != -1){
                 Wire.beginTransmission(module_address);
                 if(Wire.endTransmission() == 0){
+                    FUNCTION_END;
                     return true;
                 }
                 else{
                     needsReinit = true;
+                    FUNCTION_END;
                     return false;
                 }
             }
+            FUNCTION_END;
             return false;
         };
 

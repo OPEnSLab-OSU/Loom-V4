@@ -19,7 +19,7 @@ Loom_Ethernet::Loom_Ethernet(Manager& man) : Module("Ethernet"), manInst(&man) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Ethernet::initialize() {
     char output[100];
-    LOG("Initializing Ethernet module...");
+    LOG(F("Initializing Ethernet module..."));
 
     // Call the connect class to initiate the connection
     connect();
@@ -29,7 +29,7 @@ void Loom_Ethernet::initialize() {
 
     moduleInitialized = true;
     
-    LOG("Successfully Initalized Ethernet!");
+    LOG(F("Successfully Initalized Ethernet!"));
     // Print the device IP
     char* ip = ipToString(getIPAddress());
     snprintf(output, 100, "Device IP Address: %s", ip);
@@ -54,7 +54,7 @@ void Loom_Ethernet::connect(){
 
        // No DHCP server
        if(Ethernet.begin(mac) == 0){
-        WARNING("Failed to configure using DHCP");
+        WARNING(F("Failed to configure using DHCP"));
 
         // Attempt to assign a static IP
         Ethernet.begin(mac, ip);

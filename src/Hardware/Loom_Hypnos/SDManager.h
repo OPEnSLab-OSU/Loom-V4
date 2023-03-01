@@ -69,7 +69,7 @@ class SDManager : public Module{
          */ 
         const char* getBatchFilename(){
             char* fileName = (char*) malloc(260);
-            sprintf(fileName, "%s-Batch.txt", fileNameNoExtension);
+            snprintf_P(fileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
             return batchFileName;
         };
 
@@ -98,9 +98,9 @@ class SDManager : public Module{
          * Log to a different name other than one matching the device name
          */ 
         void setLogName(const char* name) { 
-            sprintf(fileName, "%s_%i.csv", name, getCurrentFileNumber()); 
-            sprintf(fileNameNoExtension, "%s_%i", name, getCurrentFileNumber()); 
-            sprintf(batchFileName, "%s-Batch.txt", fileNameNoExtension);
+            snprintf_P(fileName, 260, PSTR("%s_%i.csv"), name, getCurrentFileNumber()); 
+            snprintf_P(fileNameNoExtension, 260, PSTR("%s_%i"), name, getCurrentFileNumber()); 
+            snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
         };
 
         /* Get whatever number we are currently appending to the SD fileNames*/

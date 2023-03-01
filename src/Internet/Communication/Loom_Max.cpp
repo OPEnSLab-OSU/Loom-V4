@@ -31,7 +31,7 @@ void Loom_Max::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Max::initialize(){
-    LOG("Initializing Max Communication....");
+    LOG(F("Initializing Max Communication...."));
 
     udpSend = UDPPtr(wifiInst->getUDP());
     udpRecv = UDPPtr(wifiInst->getUDP());
@@ -40,17 +40,17 @@ void Loom_Max::initialize(){
     setIP();
     setUDPPort();
 
-    LOG("Connections Opened!");
+    LOG(F("Connections Opened!"));
 
     /**
      * Initialize each actuator
      */ 
     if(actuators.size() > 0){
-        LOG("Initializing desired actuators...");
+        LOG(F("Initializing desired actuators..."));
         for(int i = 0; i < actuators.size(); i++){
             actuators[i]->initialize();
         }
-        LOG("Successfully initialized actuators!");
+        LOG(F("Successfully initialized actuators!"));
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -66,13 +66,13 @@ bool Loom_Max::publish(){
     LOG(output);
 
     if(!udpSend){
-        ERROR("Sender UDP instance not set!");
+        ERROR(F("Sender UDP instance not set!"));
         return false;
     }
 
     // Attempt to start a new packet
     if(udpSend->beginPacket(remoteIP, sendPort) != 1){
-        ERROR("The IP address or port were invalid!");
+        ERROR(F("The IP address or port were invalid!"));
         return false;
     }
 
@@ -86,16 +86,16 @@ bool Loom_Max::publish(){
     size_t size = serializeJson(manInst->getDocument(), (*udpSend));
 
     if(size <= 0){
-        ERROR("An error occurred when attempting to write the JSON packet to the UDP stream");
+        ERROR(F("An error occurred when attempting to write the JSON packet to the UDP stream"));
         return false;
     }
 
     if(udpSend->endPacket() != 1){
-        ERROR("An error occurred when attempting to close the current packet!");
+        ERROR(F("An error occurred when attempting to close the current packet!"));
         return false;
     }
 
-    LOG("Packet successfully sent!");
+    LOG(F("Packet successfully sent!"));
 
     return true;
 }
@@ -160,7 +160,7 @@ bool Loom_Max::subscribe(){
             free(ip);
             LOG(output);
 
-            LOG("Message Json: ");
+            LOG(F("Message Json: "));
             size_t jsonSize = measureJsonPretty(messageJson)+1;
             char* jsonStr = (char *) malloc(jsonSize);
             serializeJsonPretty(messageJson, jsonStr, jsonSize);
@@ -187,7 +187,7 @@ bool Loom_Max::subscribe(){
         return true;
     }
 
-    WARNING("No message received!");
+    WARNING(F("No message received!"));
 
     return false;
     

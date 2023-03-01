@@ -36,7 +36,7 @@ void Loom_LTE::initialize(){
 
     // If no LTE shield is found we should not initialize the module
     if(modemInfo == NULL){
-        ERROR("LTE shield not detected! This can also be triggered if there isn't a SIM card in the board");
+        ERROR(F("LTE shield not detected! This can also be triggered if there isn't a SIM card in the board"));
         moduleInitialized = false;
         return;
     }
@@ -49,7 +49,7 @@ void Loom_LTE::initialize(){
 
     // If we successfully connected to the LTE network print out some information
     if(moduleInitialized){
-        LOG("Connected!");
+        LOG(F("Connected!"));
 
         // Print APN
         snprintf(output, 100, "APN: %s", APN);
@@ -67,10 +67,10 @@ void Loom_LTE::initialize(){
 
         verifyConnection();
 
-        LOG("Module successfully initialized!");
+        LOG(F("Module successfully initialized!"));
     }
     else{
-        ERROR("Module failed to initialize");
+        ERROR(F("Module failed to initialize"));
     }
 
     firstInit = false;
@@ -89,14 +89,14 @@ void Loom_LTE::power_up(){
         
     // If not connected to a network we want to connect
     if(moduleInitialized){
-        LOG("Powering up GPRS Modem. This should take about 10 seconds...");
+        LOG(F("Powering up GPRS Modem. This should take about 10 seconds..."));
         TIMER_DISABLE;
         digitalWrite(powerPin, LOW);
         delay(10000);
         SerialAT.begin(9600);
         delay(6000);
         modem.restart();
-        LOG("Powering up complete!");
+        LOG(F("Powering up complete!"));
         TIMER_ENABLE;
     }
 
@@ -116,11 +116,11 @@ void Loom_LTE::power_up(){
 void Loom_LTE::power_down(){
     FUNCTION_START;
     if(moduleInitialized){
-        LOG("Powering down GPRS Modem. This should take about 5 seconds...");
+        LOG(F("Powering down GPRS Modem. This should take about 5 seconds..."));
         modem.poweroff();
         digitalWrite(powerPin, HIGH);
         delay(5000);
-        LOG("Powering down complete!");
+        LOG(F("Powering down complete!"));
     }
     FUNCTION_END;
 }
@@ -145,26 +145,26 @@ bool Loom_LTE::connect(){
 
     TIMER_DISABLE;
     do{
-        LOG("Waiting for network...");
+        LOG(F("Waiting for network..."));
         if(!modem.waitForNetwork()){
-            ERROR("No Response from network!");
+            ERROR(F("No Response from network!"));
             FUNCTION_END;
             return false;
         }
 
         if(!modem.isNetworkConnected()){
-            ERROR("No connection to network!");
+            ERROR(F("No connection to network!"));
             FUNCTION_END;
             return false;
         }
 
-        LOG("Connected to network!");
+        LOG(F("Connected to network!"));
 
         // Connect to lte network
         snprintf(output, 100, "Attempting to connect to LTE Network: %s", APN);
         LOG(output);
         if(modem.gprsConnect(APN, gprsUser, gprsPass)){
-            LOG("Successfully Connected!");
+            LOG(F("Successfully Connected!"));
             FUNCTION_END;
             TIMER_ENABLE;
             return true;
@@ -178,7 +178,7 @@ bool Loom_LTE::connect(){
 
         // If the last attempt was the 5th attempt then stop
         if(attemptCount > 5){
-            ERROR("Connection reattempts exceeded 10 tries. Connection Failed");
+            ERROR(F("Connection reattempts exceeded 10 tries. Connection Failed"));
             FUNCTION_END;
             TIMER_ENABLE;
             return false;
@@ -203,11 +203,11 @@ bool Loom_LTE::verifyConnection(){
     bool returnStatus =  false;
     char output[100];
     strncat(output, "Web Response\n", 100);
-    LOG("Attempting to verify internet connection...");
+    LOG(F("Attempting to verify internet connection..."));
     
     // Connect to TinyGSM's creator's website
     if(!client.connect("vsh.pp.ua", 80)){
-        ERROR("Failed to contact TinyGSM example your internet connection may not be completely established!");
+        ERROR(F("Failed to contact TinyGSM example your internet connection may not be completely established!"));
         client.stop();
         return false;
     }

@@ -31,7 +31,7 @@ void Loom_Stepper::initialize(){
     // Wait for init move
     yield();
 
-    LOG("Stepper Initialized!");
+    LOG(F("Stepper Initialized!"));
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -56,6 +56,7 @@ void Loom_Stepper::control(JsonArray json){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Stepper::moveSteps(const uint16_t steps, const uint8_t speed, const bool clockwise){
+    char output[100];
     FUNCTION_START;
     rpm = speed;
     this->clockwise = clockwise;
@@ -72,7 +73,8 @@ void Loom_Stepper::moveSteps(const uint16_t steps, const uint8_t speed, const bo
     else
         currentSteps =  currentSteps + steps;
 
-    LOG("Stepper set to move " + String(steps) + " steps at speed " + String(speed) + " going " + (clockwise) ? "counterclockwise" : "clockwise"); 
+    snprintf_P(output, 100, PSTR("Stepper set to move %u steps at speed %u going %s"), steps, speed, (clockwise) ? "counterclockwise" : "clockwise");
+    LOG(output); 
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

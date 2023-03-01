@@ -23,11 +23,11 @@ Manager::Manager(const char* devName, uint32_t instanceNum) : instanceNumber(ins
             char modifiedName[100];
 
             // Format first module name
-            sprintf(modifiedName, "%s_%i", modules[i].second->getModuleName(), modules[i].second->module_address);
+            snprintf_P(modifiedName, 100, PSTR("%s_%i"), modules[i].second->getModuleName(), modules[i].second->module_address);
             modules[i].second->setModuleName(modifiedName);
 
             // Format second string using the same array
-            sprintf(modifiedName, "%s_%i", module->getModuleName(), module->module_address);
+            snprintf_P(modifiedName, 100, PSTR("%s_%i"), module->getModuleName(), module->module_address);
             module->setModuleName(modifiedName);
 
             // Once we find a module of this type we want to break out to avoid redundant name changes
@@ -73,7 +73,7 @@ void Manager::measure() {
         }
     }
     else{
-            ERROR("Unable to collect data as the manager and thus all sensors connected to it have not been initialized! Call manager.initialize() to fix this.");
+            ERROR(F("Unable to collect data as the manager and thus all sensors connected to it have not been initialized! Call manager.initialize() to fix this."));
     }
     FUNCTION_END;
 }
@@ -170,13 +170,13 @@ void Manager::display_data(){
         serializeJsonPretty(doc, jsonStr, jsonSize);
         
         // Read the jsonStr into the proper output format
-        snprintf(output, jsonSize+15,"Data Json: \n%s\n", jsonStr);
+        snprintf_P(output, jsonSize+15,PSTR("Data Json: \n%s\n"), jsonStr);
         free(jsonStr);
         LOG(output);
         free(output);
     }
     else{
-        LOG("JSON Document is Null there is no data to display");
+        LOG(F("JSON Document is Null there is no data to display"));
     }
     
     FUNCTION_END;
@@ -188,16 +188,16 @@ void Manager::initialize() {
     FUNCTION_START;
     // If you are using a hypnos board that has not been enabled, this needs to occur before initializing sensors
     if(usingHypnos && !hypnosEnabled){
-        LOG("Your sketch is set to use a Hypnos board which has not been enabled before attempting to initialize sensors. \nThis will causing hanging please enable the board before initialization. Continuing but know this may cause issues!"); 
+        LOG(F("Your sketch is set to use a Hypnos board which has not been enabled before attempting to initialize sensors. \nThis will causing hanging please enable the board before initialization. Continuing but know this may cause issues!")); 
     }
 
-    LOG("** Initializing Modules **");
+    LOG(F("** Initializing Modules **"));
     read_serial_num();
     for(int i = 0; i < modules.size(); i++){
         modules[i].second->initialize();
     }
     hasInitialized = true;
-    LOG("** Setup Complete ** ");
+    LOG(F("** Setup Complete ** "));
 
 
     TIMER_ENABLE;
@@ -227,7 +227,7 @@ void Manager::read_serial_num(){
     // Take these raw values and convert them into a string of hex characters
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
-			sprintf(serial_no + (i * 8) + (j * 2), "%02X", (uint8_t)(sn_words[i] >> ((3 - j) * 8)));
+			snprintf_P(serial_no + (i * 8) + (j * 2), 33, PSTR("%02X"), (uint8_t)(sn_words[i] >> ((3 - j) * 8)));
 		}
 	}
 

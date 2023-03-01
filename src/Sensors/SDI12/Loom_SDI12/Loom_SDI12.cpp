@@ -15,7 +15,7 @@ Loom_SDI12::Loom_SDI12(const int pinNumber) : Module("SDI12"), sdiInterface(pinN
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::initialize(){
 
-    LOG("Initializing SDI-12 Sensors...");
+    LOG(F("Initializing SDI-12 Sensors..."));
 
     // On init we set the SDI pin to OUTPUT so we can request data
     pinMode(sdiInterface.getDataPin(), OUTPUT);
@@ -95,7 +95,7 @@ std::vector<char> Loom_SDI12::scanAddressSpace(){
     char output[100];
 
     // Print the module name followed by the message saying please wait
-    LOG("Scanning SDI-12 Address Space this make take a little while...");
+    LOG(F("Scanning SDI-12 Address Space this make take a little while..."));
 
     // Scan over the characters that can be used as addresses for refrencing the sensors
 	for (char i = '0'; i <= '9'; i++){
@@ -119,14 +119,14 @@ std::vector<char> Loom_SDI12::scanAddressSpace(){
     // Check if we actually found any connected devices
     if(activeSensors.size() > 0){
         // Print the module name followed by the message saying please wait
-        LOG("== We found the following active Addresses ==");
+        LOG(F("== We found the following active Addresses =="));
         for(int i = 0; i < activeSensors.size(); i++){
             snprintf(output, 100, "    Address: %c", activeSensors[i]);
             LOG(output); 
         }
     }
     else{
-        LOG("== No SDI-12 Devices Were Discovered == ");
+        LOG(F("== No SDI-12 Devices Were Discovered == "));
     }
 
     return activeSensors;
@@ -213,7 +213,7 @@ void Loom_SDI12::getData(char addr){
     
     // If the value returned was 0 we want to re-request data
     if(String(buf).length() == 1){
-        WARNING("Invalid data received! Retrying...");
+        WARNING(F("Invalid data received! Retrying..."));
         delay(3000);
 
         // Request a measurement from the sensor at the given address
@@ -222,7 +222,7 @@ void Loom_SDI12::getData(char addr){
 
         TIMER_RESET;
 	    if(String(buf).length() == 1){
-            WARNING("Retrying for a second time...");
+            WARNING(F("Retrying for a second time..."));
             delay(3000);
 
             // Request a measurement from the sensor at the given address
@@ -261,7 +261,7 @@ void Loom_SDI12::getData(char addr){
         }
     }
     else{
-        ERROR("Failed to record new data! Using previous valid information!");
+        ERROR(F("Failed to record new data! Using previous valid information!"));
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

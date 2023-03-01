@@ -21,7 +21,7 @@ Loom_TSL2591::Loom_TSL2591(
 void Loom_TSL2591::initialize() {
     FUNCTION_START;
     if(!tsl.begin()){
-        ERROR("Failed to initialize TSL2591! Check connections and try again...");
+        ERROR(F("Failed to initialize TSL2591! Check connections and try again..."));
         moduleInitialized = false;
     }
     else{
@@ -30,7 +30,7 @@ void Loom_TSL2591::initialize() {
         tsl.setGain(gain);
         tsl.setTiming(intTime);
 
-        LOG("Successfully initialized TSL2591!");
+        LOG(F("Successfully initialized TSL2591!"));
     }
     FUNCTION_END;
 }
@@ -51,7 +51,7 @@ void Loom_TSL2591::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            ERROR("No acknowledge received from the device");
+            ERROR(F("No acknowledge received from the device"));
             return;
         }
    

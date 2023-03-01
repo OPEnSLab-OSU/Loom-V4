@@ -42,7 +42,7 @@ void Loom_MQTT::publish(){
 
         TIMER_DISABLE;
         if(mqttClient == nullptr){
-            LOG("Creating new MQTT client!");
+            LOG(F("Creating new MQTT client!"));
             mqttClient = new MqttClient(*internetClient);
         }
         
@@ -73,7 +73,7 @@ void Loom_MQTT::publish(){
 
             // If our retry limit has been reached we dont want to try to send data cause it wont work
             if(retryAttempts == 4){
-                ERROR("Retry limit exceeded!");
+                ERROR(F("Retry limit exceeded!"));
                 TIMER_ENABLE;
                 FUNCTION_END;
                 return;
@@ -82,28 +82,28 @@ void Loom_MQTT::publish(){
             retryAttempts++;
         }
         
-        LOG("Successfully connected to broker!");
-        LOG("Attempting to send data...");
+        LOG(F("Successfully connected to broker!"));
+        LOG(F("Attempting to send data..."));
 
         // Tell the broker we are still here
         mqttClient->poll();
 
         // Start a message write the data and close the message
         if(mqttClient->beginMessage(topic, false, 2) != 1){
-            ERROR("Failed to begin message!");
+            ERROR(F("Failed to begin message!"));
         }
         mqttClient->print(manInst->getJSONString());
 
         // Check to see if we are actually closing messages properly
         if(mqttClient->endMessage() != 1){
-            ERROR("Failed to close message!");
+            ERROR(F("Failed to close message!"));
         }
         else{
-            LOG("Data has been successfully sent!");
+            LOG(F("Data has been successfully sent!"));
         }   
     }
     else{
-        WARNING("Module not initialized! If using credentials from SD make sure they are loaded first.");
+        WARNING(F("Module not initialized! If using credentials from SD make sure they are loaded first."));
     }
     FUNCTION_END;
     TIMER_ENABLE;
@@ -119,7 +119,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
         TIMER_DISABLE;
 
         if(mqttClient == nullptr){
-            LOG("Creating new MQTT client!");
+            LOG(F("Creating new MQTT client!"));
             mqttClient = new MqttClient(*internetClient);
         }
 
@@ -152,7 +152,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
 
                 // If our retry limit has been reached we dont want to try to send data cause it wont work
                 if(retryAttempts == 4){
-                    ERROR("Retry limit exceeded!");
+                    ERROR(F("Retry limit exceeded!"));
                     TIMER_ENABLE;
                     FUNCTION_END;
                     return;
@@ -161,8 +161,8 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
                 retryAttempts++;
             }
             
-            LOG("Successfully connected to broker!");
-            LOG("Attempting to send data...");
+            LOG(F("Successfully connected to broker!"));
+            LOG(F("Attempting to send data..."));
 
             // Tell the broker we are still here
             mqttClient->poll();
@@ -182,7 +182,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
                 delay(500);
             }
             
-            LOG("Data has been successfully sent!");
+            LOG(F("Data has been successfully sent!"));
             
         }
         else{
@@ -191,7 +191,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
         }
     }
     else{
-        WARNING("Module not initialized! If using credentials from SD make sure they are loaded first.");
+        WARNING(F("Module not initialized! If using credentials from SD make sure they are loaded first."));
     }
     FUNCTION_END;
     TIMER_ENABLE;

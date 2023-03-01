@@ -19,7 +19,7 @@ void Loom_Servo::initialize(){
     servo.begin();
     servo.setPWMFreq(60);
 
-    LOG("Servo initialized!");
+    LOG(F("Servo initialized!"));
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
