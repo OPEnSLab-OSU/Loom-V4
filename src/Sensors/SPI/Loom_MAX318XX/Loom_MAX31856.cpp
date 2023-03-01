@@ -2,7 +2,7 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_MAX31856::Loom_MAX31856(Manager& man, int samples, int chip_select) : Module("MAX31856"), manInst(&man), maxthermo(10), num_samples(samples) {
+Loom_MAX31856::Loom_MAX31856(Manager& man, int samples, int chip_select) : Module("MAX31856"), manInst(&man), maxthermo(10,11,12,13), num_samples(samples) {
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
