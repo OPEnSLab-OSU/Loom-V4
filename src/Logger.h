@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stack>
+#include <queue>
 #include <MemoryFree.h>
 #include "Hardware/Loom_Hypnos/SDManager.h"
 
@@ -44,7 +44,8 @@ class Logger{
         };
         
         // Function call list
-        std::stack<Logger::functionInfo*> callStack;
+        std::queue<Logger::functionInfo*> callStack;
+        int indentNum = 0;
 
         static Logger* instance;
         SDManager* sdInst = nullptr;
@@ -237,9 +238,10 @@ class Logger{
             char file[260];
             char func[260];
             char output[300];
+            char indents[10];
 
-            functionInfo* info = callStack.top();
-            long memUsage = info->netMemoryUsage;
+            functionInfo* info = callStack.front();
+            int memUsage = info->netMemoryUsage;
             unsigned long time = millis() - info->time;
             int percentage = ((float)memUsage / 32000.0) * 100;
 
@@ -251,10 +253,11 @@ class Logger{
             delete(info);
             callStack.pop();
 
+        
+
             // Format the fileName and log output, this function uses 976 bytes
-            memUsage = memUsage - freeMemory;
             snprintf_P(fileName, 100,PSTR("/debug/funcSummaries_%i.log"), sdInst->getCurrentFileNumber());
-            snprintf_P(output, 300, PSTR("[%s:%s] Summary\n\tFunction Memory Usage: %i B\n\tFree Memory: %i B (%i %% Free)\n\tElapsed Time: %u MS"), file, func, memUsage, freeMemory, percentage, time);
+            snprintf_P(output, 300, PSTR("[%s:%s] Summary\n\tInitial Free Memory: %i B (%i %% Free)\n\tEnding Free Memory: %i B\n\tNet Usage: %i B\n\tElapsed Time: %u MS"), file, func, memUsage, percentage, freeMemory, memUsage-freeMemory, time);
             
             // Log as long as we have given it a SD card instance
             if(sdInst != nullptr)

@@ -76,6 +76,9 @@ void SDManager::writeHeaders(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::log(DateTime currentTime){
+    if(sdInitialized){
+        FUNCTION_START;
+    }
     char output[512];
 
     if(sdInitialized){
@@ -159,7 +162,9 @@ bool SDManager::log(DateTime currentTime){
     else{
         printModuleName("Failed to log! SD card not Initialized!");
     }
-    
+    if(sdInitialized){
+        FUNCTION_END;
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -224,6 +229,11 @@ bool SDManager::updateCurrentFileName(){
         scanningFile.close();
     }
 
+    // Account for the batch files if we are using batch logging
+    if(batch_size > 0){
+        file_count = file_count / 2;
+    }
+
     // Set all the fileNames
     snprintf_P(fileName, 260, PSTR("%s%i.csv"), device_name, getCurrentFileNumber()); 
     snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), device_name, getCurrentFileNumber()); 
@@ -273,6 +283,9 @@ char* SDManager::readFile(const char* fileName){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void SDManager::logBatch(){
+    if(sdInitialized){
+        FUNCTION_START;
+    }
     char f_name[260];
     snprintf_P(f_name, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
     // We want to clear the file after the batch size has been exceeded
@@ -294,6 +307,9 @@ void SDManager::logBatch(){
         current_batch++;
     }else{
         printModuleName("Failed to open file!");
+    }
+    if(sdInitialized){
+        FUNCTION_END;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

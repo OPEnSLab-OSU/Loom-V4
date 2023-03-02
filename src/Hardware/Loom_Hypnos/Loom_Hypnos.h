@@ -119,7 +119,7 @@ class Loom_Hypnos : public Module{
         /**
          * Log the current sensor data to a file on the SD card
          */ 
-        bool logToSD() { sdMan->log(getCurrentTime()); };
+        bool logToSD();
 
         /* Sleep Functionality */
 

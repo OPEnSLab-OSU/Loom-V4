@@ -13,7 +13,8 @@ Loom_MQTT::Loom_MQTT(
                 ) : Module("MQTT"),
                     manInst(&man), 
                     internetClient(&internet_client), 
-                    port(broker_port) 
+                    port(broker_port),
+                    mqttClient(*internetClient)
                     {
                         strncpy(this->address, broker_address, 100);
                         strncpy(this->database_name, database_name, 100);
@@ -23,14 +24,8 @@ Loom_MQTT::Loom_MQTT(
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_MQTT::Loom_MQTT(Manager& man, Client& internet_client) : Module("MQTT"), manInst(&man), internetClient(&internet_client){
+Loom_MQTT::Loom_MQTT(Manager& man, Client& internet_client) : Module("MQTT"), manInst(&man), internetClient(&internet_client), mqttClient(*internetClient){
     moduleInitialized = false;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_MQTT::~Loom_MQTT(){
-    delete mqttClient;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -41,31 +36,27 @@ void Loom_MQTT::publish(){
     if(moduleInitialized){
 
         TIMER_DISABLE;
-        if(mqttClient == nullptr){
-            LOG(F("Creating new MQTT client!"));
-            mqttClient = new MqttClient(*internetClient);
-        }
         
         // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
         snprintf(topic, 100, "%s/%s%i", database_name, manInst->get_device_name(), manInst->get_instance_num());
 
         // If we are logging in using credentials then supply them
         if(strlen(username) > 0)
-            mqttClient->setUsernamePassword(username, password);
+            mqttClient.setUsernamePassword(username, password);
 
         // Set the keepalive timer
-        mqttClient->setKeepAliveInterval(keep_alive);
+        mqttClient.setKeepAliveInterval(keep_alive);
 
         int retryAttempts = 0;
 
         // Try to connect multiple times as some may be dropped
-        while(!mqttClient->connected() && retryAttempts < 5)
+        while(!mqttClient.connected() && retryAttempts < 5)
         {
             snprintf(output, OUTPUT_SIZE, "Attempting to connect to broker: %s:%i", address, port);
             LOG(output);
 
             // Attempt to Connect to the MQTT client 
-            if(!mqttClient->connect(address, port)){
+            if(!mqttClient.connect(address, port)){
                 snprintf(output, OUTPUT_SIZE, "Attempting to connect to broker: %s:%i", address, port);
                 ERROR(output);
                 delay(5000);
@@ -86,16 +77,18 @@ void Loom_MQTT::publish(){
         LOG(F("Attempting to send data..."));
 
         // Tell the broker we are still here
-        mqttClient->poll();
+        mqttClient.poll();
 
         // Start a message write the data and close the message
-        if(mqttClient->beginMessage(topic, false, 2) != 1){
+        if(mqttClient.beginMessage(topic, false, 2) != 1){
             ERROR(F("Failed to begin message!"));
         }
-        mqttClient->print(manInst->getJSONString());
+        char* jsonStr = manInst->getJSONString();
+        mqttClient.print(jsonStr);
+        free(jsonStr);
 
         // Check to see if we are actually closing messages properly
-        if(mqttClient->endMessage() != 1){
+        if(mqttClient.endMessage() != 1){
             ERROR(F("Failed to close message!"));
         }
         else{
@@ -118,34 +111,29 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
     if(moduleInitialized ){
         TIMER_DISABLE;
 
-        if(mqttClient == nullptr){
-            LOG(F("Creating new MQTT client!"));
-            mqttClient = new MqttClient(*internetClient);
-        }
-
         if(batchSD.shouldPublish()){
 
             // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
-            snprintf(topic, 100, "%s/%s%i", database_name, manInst->get_device_name(), manInst->get_instance_num());
+            snprintf_P(topic, 100, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
             
             // If we are logging in using credentials then supply them
             if(strlen(username) > 0)
-                mqttClient->setUsernamePassword(username, password);
+                mqttClient.setUsernamePassword(username, password);
 
             // Set the keepalive time
-            mqttClient->setKeepAliveInterval(keep_alive);
+            mqttClient.setKeepAliveInterval(keep_alive);
 
             int retryAttempts = 0;
 
             // Try to connect multiple times as some may be dropped
-            while(!mqttClient->connected() && retryAttempts < 5)
+            while(!mqttClient.connected() && retryAttempts < 5)
             {
-                snprintf(output, OUTPUT_SIZE, "Attempting to connect to broker: %s:%i", address, port);
+                snprintf_P(output, OUTPUT_SIZE, PSTR("Attempting to connect to broker: %s:%i"), address, port);
                 LOG(output);
 
                 // Attempt to Connect to the MQTT client 
-                if(!mqttClient->connect(address, port)){
-                    snprintf(output, OUTPUT_SIZE, "Failed to connect to broker: %s", getMQTTError());
+                if(!mqttClient.connect(address, port)){
+                    snprintf_P(output, OUTPUT_SIZE, PSTR("Failed to connect to broker: %s"), getMQTTError());
                     ERROR(output);
                     delay(5000);
                 }
@@ -165,7 +153,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
             LOG(F("Attempting to send data..."));
 
             // Tell the broker we are still here
-            mqttClient->poll();
+            mqttClient.poll();
 
             // Pass batch vector in as a reference 
             char line[2000];
@@ -176,12 +164,12 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
             while(fileOutput->available()){
                 char c = fileOutput->read();
                 if(c == '\r'){
-                    snprintf(output, OUTPUT_SIZE, "Publishing Packet %i of %d", packetNumber+1, batchSD.getBatchSize());
-                    Serial.println(output);
+                    snprintf_P(output, OUTPUT_SIZE, PSTR("Publishing Packet %i of %d"), packetNumber+1, batchSD.getBatchSize());
+                    printModuleName(output);
                     line[index] = '\0';
-                    mqttClient->beginMessage(topic, false, 2);
-                    mqttClient->print(line);
-                    mqttClient->endMessage();
+                    mqttClient.beginMessage(topic, false, 2);
+                    mqttClient.print(line);
+                    mqttClient.endMessage();
                     delay(500);
                     index = 0;
                     packetNumber++;
@@ -198,7 +186,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
             
         }
         else{
-            snprintf(output, OUTPUT_SIZE, "Batch not ready to publish: %i/%i", batchSD.getCurrentBatch(), batchSD.getBatchSize());
+            snprintf_P(output, OUTPUT_SIZE, PSTR("Batch not ready to publish: %i/%i"), batchSD.getCurrentBatch(), batchSD.getBatchSize());
             LOG(output);
         }
     }
@@ -214,7 +202,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
 const char* Loom_MQTT::getMQTTError(){
     FUNCTION_START;
     // Convert error codes to actual descriptions
-    switch(mqttClient->connectError()){
+    switch(mqttClient.connectError()){
         case -2:
             FUNCTION_END;
             return "CONNECTION_REFUSED";
@@ -253,7 +241,7 @@ void Loom_MQTT::loadConfigFromJSON(char* json){
 
     // Check if an error occurred and if so print it
     if(deserialError != DeserializationError::Ok){
-        snprintf(output, OUTPUT_SIZE, "There was an error reading the MQTT credentials from SD: %s", deserialError.c_str());
+        snprintf_P(output, OUTPUT_SIZE, PSTR("There was an error reading the MQTT credentials from SD: %s"), deserialError.c_str());
         ERROR(output);
     }
 

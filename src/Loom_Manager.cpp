@@ -84,7 +84,7 @@ void Manager::package(){
     FUNCTION_START;
     // Clear the document so that we don't get null characters after too many updates
     doc.clear();
-    doc["type"] = "data";
+    doc[F("type")] = F("data");
     doc["id"]["name"] = get_device_name();
     doc["id"]["instance"] = get_instance_num();
 
@@ -112,7 +112,6 @@ void Manager::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 JsonObject Manager::get_data_object(const char* moduleName){
-
     // Check if the key already exists in the array
     for(JsonVariant value : contentsArray){
 
@@ -146,7 +145,8 @@ void Manager::power_up(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::power_down(){
-   for(int i = 0; i < modules.size(); i++){
+    FUNCTION_START;
+    for(int i = 0; i < modules.size(); i++){
         if(modules[i].second->moduleInitialized)
             modules[i].second->power_down();
         else{
@@ -154,6 +154,7 @@ void Manager::power_down(){
         }
         TIMER_RESET;
     }
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

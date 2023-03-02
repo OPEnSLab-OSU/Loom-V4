@@ -54,11 +54,6 @@ class Loom_MQTT : public Module{
          * @param man Reference to the manager
          */ 
         Loom_MQTT(Manager& man, Client& internet_client);
-
-        /**
-         * Deconstructor for MQTT interface 
-         */
-        ~Loom_MQTT();
         
         /**
          * Publish the current JSON data over MQTT 
@@ -86,7 +81,7 @@ class Loom_MQTT : public Module{
         Manager* manInst;                       // Instance of the manager
 
         Client* internetClient;                  // Client to supply to the MQTT client to handle internet communication
-        MqttClient* mqttClient = nullptr;       // MQTT Client to manage interactions with the MQTT broker
+        MqttClient mqttClient;                  // MQTT Client to manage interactions with the MQTT broker
 
         const char* getMQTTError();                  // Get the string representation of the MQTT error codes
         String currentLine = "";

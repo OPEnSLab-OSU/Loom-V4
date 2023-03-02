@@ -54,7 +54,7 @@ class Loom_WIFI : public Module{
          * @param name The name of the WiFi access point we are going to connect to
          * @param password The password (if applicable) to connect to the access point 
          */ 
-        Loom_WIFI(Manager& man, CommunicationMode mode, const char* name = "", const char* password = "");
+        Loom_WIFI(Manager& man, CommunicationMode mode, const char* name = "", const char* password = "", int connectionRetries = 5);
 
         /**
          * Construct a new WiFi manager, passing the credentials in as a json document
@@ -157,6 +157,7 @@ class Loom_WIFI : public Module{
 
         char wifi_name[100];                // Access point to connect to
         char wifi_password[100];          // Password to connect to the access point
+        int connectionRetries;
 
         bool usingMax = false;              // If we are using max
         CommunicationMode mode;             // Current WiFi mode we are in
