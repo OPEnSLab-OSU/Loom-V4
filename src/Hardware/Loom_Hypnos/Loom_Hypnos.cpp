@@ -272,7 +272,7 @@ void Loom_Hypnos::set_custom_time(){
 	String computer_hour = "";
 	String computer_min = "";
 	String computer_sec = "";
-    char output[100];
+    char output[OUTPUT_SIZE];
 
 	// Let the user know that they should enter local time
 	LOG(F("Please use your local time, not UTC!"));
@@ -284,7 +284,7 @@ void Loom_Hypnos::set_custom_time(){
 		computer_year = Serial.readStringUntil('\n');
 	}
 
-    snprintf(output, 100, "Year Entered: %s", computer_year.c_str());
+    snprintf(output, OUTPUT_SIZE, "Year Entered: %s", computer_year.c_str());
 	LOG(output);
 
 	// Entering the month
@@ -293,7 +293,7 @@ void Loom_Hypnos::set_custom_time(){
 	while(computer_month == ""){
 		computer_month = Serial.readStringUntil('\n');
 	}
-    snprintf(output, 100, "Month Entered: %s", computer_month.c_str());
+    snprintf(output, OUTPUT_SIZE, "Month Entered: %s", computer_month.c_str());
 	LOG(output);
 
 	// Entering the day
@@ -302,7 +302,7 @@ void Loom_Hypnos::set_custom_time(){
 	while(computer_day  == ""){
 		computer_day = Serial.readStringUntil('\n');
 	}
-    snprintf(output, 100, "Day Entered: %s", computer_day.c_str());
+    snprintf(output, OUTPUT_SIZE, "Day Entered: %s", computer_day.c_str());
 	LOG(output);
     
 
@@ -313,7 +313,7 @@ void Loom_Hypnos::set_custom_time(){
 		computer_hour = Serial.readStringUntil('\n');
 	}
 
-    snprintf(output, 100, "Hour Entered: %s", computer_hour.c_str());
+    snprintf(output, OUTPUT_SIZE, "Hour Entered: %s", computer_hour.c_str());
 	LOG(output);
 
 	// Entering the minute
@@ -322,7 +322,7 @@ void Loom_Hypnos::set_custom_time(){
 	while(computer_min == ""){
 		computer_min = Serial.readStringUntil('\n');
 	}
-    snprintf(output, 100, "Minute Entered: %s", computer_min.c_str());
+    snprintf(output, OUTPUT_SIZE, "Minute Entered: %s", computer_min.c_str());
 	LOG(output);
 
 	// Entering the second
@@ -336,7 +336,7 @@ void Loom_Hypnos::set_custom_time(){
     RTC_initialized = true;
 
     // Output
-    snprintf(output, 100, "Custom time successfully set to: %s", getCurrentTime().text());
+    snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
 	LOG(output);
     FUNCTION_END;
 }
@@ -345,7 +345,7 @@ void Loom_Hypnos::set_custom_time(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){ 
     FUNCTION_START;
-    char output[100];
+    char output[OUTPUT_SIZE];
 
     // The time in the future that the alarm will be set for
     DateTime future(RTC_DS.now() + duration);
@@ -353,10 +353,10 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 
 
     // Print the time that the next interrupt is set to trigger
-    snprintf(output, 100, PSTR("Current Time: %s"), RTC_DS.now().text());
+    snprintf(output, OUTPUT_SIZE, PSTR("Current Time: %s"), RTC_DS.now().text());
     LOG(output);
 
-    snprintf(output, 100, PSTR("Next Interrupt Alarm Set For: %s"), future.text());
+    snprintf(output, OUTPUT_SIZE, PSTR("Next Interrupt Alarm Set For: %s"), future.text());
     LOG(output);
     FUNCTION_END;
 }
@@ -429,7 +429,7 @@ TimeSpan Loom_Hypnos::getSleepIntervalFromSD(const char* fileName){
     FUNCTION_START;
     // Doc to store the JSON data from the SD card in
     StaticJsonDocument<255> doc;
-    char output[100];
+    char output[OUTPUT_SIZE];
     char* fileRead = sdMan->readFile(fileName);
     DeserializationError deserialError = deserializeJson(doc, fileRead);
     free(fileRead);
@@ -438,7 +438,7 @@ TimeSpan Loom_Hypnos::getSleepIntervalFromSD(const char* fileName){
     JsonObject json = doc.as<JsonObject>();
 
     if(deserialError != DeserializationError::Ok){
-        snprintf(output, 100, "There was an error reading the sleep interval from SD: %s", deserialError.c_str());
+        snprintf(output, OUTPUT_SIZE, "There was an error reading the sleep interval from SD: %s", deserialError.c_str());
         ERROR(output);
         return TimeSpan(0, 0, 20, 0);
     }

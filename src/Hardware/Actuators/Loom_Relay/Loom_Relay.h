@@ -24,8 +24,8 @@ class Loom_Relay : public Actuator{
         void package(JsonObject json) override;
 
         void printModuleName(const char* message) override {
-            char output[100];
-            snprintf(output, 100, "[%s] %s", moduleName, message);
+            char output[OUTPUT_SIZE];
+            snprintf(output, OUTPUT_SIZE, "[%s] %s", moduleName, message);
             Serial.print(output); 
         };
 

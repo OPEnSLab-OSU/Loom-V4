@@ -35,9 +35,9 @@ void Loom_Relay::package(JsonObject json) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Relay::setState(bool state){
     FUNCTION_START;
-    char output[100];
+    char output[OUTPUT_SIZE];
     digitalWrite(pin, state ? HIGH : LOW);
-    snprintf(output, 100, "Relay pin is set to: %s", (state ? "HIGH" : "LOW"));
+    snprintf(output, OUTPUT_SIZE, "Relay pin is set to: %s", (state ? "HIGH" : "LOW"));
     LOG(output);
     FUNCTION_END;
 }

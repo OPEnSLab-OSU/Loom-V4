@@ -37,7 +37,7 @@ Loom_MQTT::~Loom_MQTT(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MQTT::publish(){
     FUNCTION_START;
-    char output[100];
+    char output[OUTPUT_SIZE];
     if(moduleInitialized){
 
         TIMER_DISABLE;
@@ -61,12 +61,12 @@ void Loom_MQTT::publish(){
         // Try to connect multiple times as some may be dropped
         while(!mqttClient->connected() && retryAttempts < 5)
         {
-            snprintf(output, 100, "Attempting to connect to broker: %s:%i", address, port);
+            snprintf(output, OUTPUT_SIZE, "Attempting to connect to broker: %s:%i", address, port);
             LOG(output);
 
             // Attempt to Connect to the MQTT client 
             if(!mqttClient->connect(address, port)){
-                snprintf(output, 100, "Attempting to connect to broker: %s:%i", address, port);
+                snprintf(output, OUTPUT_SIZE, "Attempting to connect to broker: %s:%i", address, port);
                 ERROR(output);
                 delay(5000);
             }
@@ -114,7 +114,7 @@ void Loom_MQTT::publish(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MQTT::publish(Loom_BatchSD& batchSD){
     FUNCTION_START;
-    char output[100];
+    char output[OUTPUT_SIZE];
     if(moduleInitialized ){
         TIMER_DISABLE;
 
@@ -140,12 +140,12 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
             // Try to connect multiple times as some may be dropped
             while(!mqttClient->connected() && retryAttempts < 5)
             {
-                snprintf(output, 100, "Attempting to connect to broker: %s:%i", address, port);
+                snprintf(output, OUTPUT_SIZE, "Attempting to connect to broker: %s:%i", address, port);
                 LOG(output);
 
                 // Attempt to Connect to the MQTT client 
                 if(!mqttClient->connect(address, port)){
-                    snprintf(output, 100, "Failed to connect to broker: %s", getMQTTError());
+                    snprintf(output, OUTPUT_SIZE, "Failed to connect to broker: %s", getMQTTError());
                     ERROR(output);
                     delay(5000);
                 }
@@ -168,25 +168,37 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
             mqttClient->poll();
 
             // Pass batch vector in as a reference 
-            std::vector<String> batch;
-            batchSD.getBatch(batch);
-
-            for(int i = 0; i < batch.size(); i++){
-                snprintf(output, 100, "Publishing Packet %i of %d", i+1, batch.size());
-                LOG(output);
+            char line[2000];
+            int packetNumber = 0, index = 0;
+            
+            File* fileOutput = batchSD.getBatch();
+        
+            while(fileOutput->available()){
+                char c = fileOutput->read();
+                if(c == '\r'){
+                    snprintf(output, OUTPUT_SIZE, "Publishing Packet %i of %d", packetNumber+1, batchSD.getBatchSize());
+                    Serial.println(output);
+                    line[index] = '\0';
+                    mqttClient->beginMessage(topic, false, 2);
+                    mqttClient->print(line);
+                    mqttClient->endMessage();
+                    delay(500);
+                    index = 0;
+                    packetNumber++;
+                }
+                else{
+                    line[index] = c;
+                    index++;
+                }  
                 
-                // Start a message write the data and close the message
-                mqttClient->beginMessage(topic, false, 2);
-                mqttClient->print(batch[i]);
-                mqttClient->endMessage();
-                delay(500);
             }
+            fileOutput->close();
             
             LOG(F("Data has been successfully sent!"));
             
         }
         else{
-            snprintf(output, 100, "Batch not ready to publish: %i/%i", batchSD.getCurrentBatch(), batchSD.getBatchSize());
+            snprintf(output, OUTPUT_SIZE, "Batch not ready to publish: %i/%i", batchSD.getCurrentBatch(), batchSD.getBatchSize());
             LOG(output);
         }
     }
@@ -234,14 +246,14 @@ const char* Loom_MQTT::getMQTTError(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MQTT::loadConfigFromJSON(char* json){
     FUNCTION_START;
-    char output[100];
+    char output[OUTPUT_SIZE];
     // Doc to store the JSON data from the SD card in
     StaticJsonDocument<300> doc;
     DeserializationError deserialError = deserializeJson(doc, json);
 
     // Check if an error occurred and if so print it
     if(deserialError != DeserializationError::Ok){
-        snprintf(output, 100, "There was an error reading the MQTT credentials from SD: %s", deserialError.c_str());
+        snprintf(output, OUTPUT_SIZE, "There was an error reading the MQTT credentials from SD: %s", deserialError.c_str());
         ERROR(output);
     }
 

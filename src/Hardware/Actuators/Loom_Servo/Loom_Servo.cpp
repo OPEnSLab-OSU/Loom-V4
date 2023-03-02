@@ -43,11 +43,11 @@ void Loom_Servo::control(JsonArray json){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Servo::setDegrees(const int degrees){
     FUNCTION_START;
-    char output[100];
+    char output[OUTPUT_SIZE];
     this->degrees = degrees;
     servo.setPWM(instance, 0, map(degrees, 0, 180, SERVO_MIN, SERVO_MAX));
 
-    snprintf(output, 100, "Servo set to: %i", degrees);
+    snprintf(output, OUTPUT_SIZE, "Servo set to: %i", degrees);
     LOG(output);
     FUNCTION_END;
 }

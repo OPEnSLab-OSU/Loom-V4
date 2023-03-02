@@ -56,7 +56,7 @@ void Loom_Stepper::control(JsonArray json){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Stepper::moveSteps(const uint16_t steps, const uint8_t speed, const bool clockwise){
-    char output[100];
+    char output[OUTPUT_SIZE];
     FUNCTION_START;
     rpm = speed;
     this->clockwise = clockwise;
@@ -73,7 +73,7 @@ void Loom_Stepper::moveSteps(const uint16_t steps, const uint8_t speed, const bo
     else
         currentSteps =  currentSteps + steps;
 
-    snprintf_P(output, 100, PSTR("Stepper set to move %u steps at speed %u going %s"), steps, speed, (clockwise) ? "counterclockwise" : "clockwise");
+    snprintf_P(output, OUTPUT_SIZE, PSTR("Stepper set to move %u steps at speed %u going %s"), steps, speed, (clockwise) ? "counterclockwise" : "clockwise");
     LOG(output); 
     FUNCTION_END;
 }

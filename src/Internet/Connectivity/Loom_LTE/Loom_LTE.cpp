@@ -24,7 +24,7 @@ Loom_LTE::Loom_LTE(Manager& man) : Module("LTE"), manInst(&man), modem(SerialAT)
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::initialize(){
     FUNCTION_START;
-    char output[100];
+    char output[OUTPUT_SIZE];
     // Set the pin to output so we can write to it
     pinMode(powerPin, OUTPUT);
 
@@ -41,7 +41,7 @@ void Loom_LTE::initialize(){
         return;
     }
     else{
-        snprintf(output, 100, "Modem Information: %s", modemInfo);
+        snprintf(output, OUTPUT_SIZE, "Modem Information: %s", modemInfo);
     }
 
     // Connect to the LTE network
@@ -52,16 +52,16 @@ void Loom_LTE::initialize(){
         LOG(F("Connected!"));
 
         // Print APN
-        snprintf(output, 100, "APN: %s", APN);
+        snprintf(output, OUTPUT_SIZE, "APN: %s", APN);
         LOG(output);
 
         // Signal Quality
-        snprintf(output, 100, "Signal State: %i", modem.getSignalQuality());
+        snprintf(output, OUTPUT_SIZE, "Signal State: %i", modem.getSignalQuality());
         LOG(output);
 
         // Log IP address
         char* ip = ipToString(modem.localIP());
-        snprintf(output, 100, "Device IP Address: %s", ip);
+        snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
         free(ip);
         LOG(output);
 
@@ -140,7 +140,7 @@ void Loom_LTE::package(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::connect(){
     FUNCTION_START;
-    char output[100];
+    char output[OUTPUT_SIZE];
     uint8_t attemptCount = 1; // Tracks number of attempts, 5 is a fail
 
     TIMER_DISABLE;
@@ -161,7 +161,7 @@ bool Loom_LTE::connect(){
         LOG(F("Connected to network!"));
 
         // Connect to lte network
-        snprintf(output, 100, "Attempting to connect to LTE Network: %s", APN);
+        snprintf(output, OUTPUT_SIZE, "Attempting to connect to LTE Network: %s", APN);
         LOG(output);
         if(modem.gprsConnect(APN, gprsUser, gprsPass)){
             LOG(F("Successfully Connected!"));
@@ -170,7 +170,7 @@ bool Loom_LTE::connect(){
             return true;
         }
         else{
-            snprintf(output, 100, "Connection failed %u / 10. Retrying...", attemptCount);
+            snprintf(output, OUTPUT_SIZE, "Connection failed %u / 10. Retrying...", attemptCount);
             WARNING(output);
             delay(10000);
             attemptCount++;
@@ -201,7 +201,7 @@ void Loom_LTE::disconnect(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::verifyConnection(){
     bool returnStatus =  false;
-    char output[100];
+    char output[OUTPUT_SIZE];
     strncat(output, "Web Response\n", 100);
     LOG(F("Attempting to verify internet connection..."));
     
@@ -244,14 +244,14 @@ bool Loom_LTE::verifyConnection(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::loadConfigFromJSON(char* json){
     FUNCTION_START;
-    char output[100];
+    char output[OUTPUT_SIZE];
     // Doc to store the JSON data from the SD card in
     StaticJsonDocument<300> doc;
     DeserializationError deserialError = deserializeJson(doc, json);
 
     // Check if an error occurred and if so print it
     if(deserialError != DeserializationError::Ok){
-        snprintf(output, 100, "There was an error reading the WIFI credentials from SD: %s", deserialError.c_str());
+        snprintf(output, OUTPUT_SIZE, "There was an error reading the WIFI credentials from SD: %s", deserialError.c_str());
         ERROR(output);
     }
 

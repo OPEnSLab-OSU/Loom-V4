@@ -18,7 +18,7 @@ Loom_Multiplexer::~Loom_Multiplexer()  {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::initialize(){
     FUNCTION_START;
-    char output[100];
+    char output[OUTPUT_SIZE];
     Wire.begin();
     int moduleIndex = 0;
     // Find the multiplexer at the possible addresses
@@ -26,7 +26,7 @@ void Loom_Multiplexer::initialize(){
 
         // Check if there is a device on the current I2C device
         if(isDeviceConnected(addr)) {
-            snprintf(output, 100, "Multiplexer found at address %u", addr);
+            snprintf(output, OUTPUT_SIZE, "Multiplexer found at address %u", addr);
             LOG(output);
             activeMuxAddr = addr;
             moduleInitialized = true;
@@ -41,17 +41,17 @@ void Loom_Multiplexer::initialize(){
                     if(addr > 0){
                         // Is there any device at this address
                         if(isDeviceConnected(addr)){
-                            snprintf(output, 100, "Found I2C Device on Pin %i at address %u", i, addr);
+                            snprintf(output, OUTPUT_SIZE, "Found I2C Device on Pin %i at address %u", i, addr);
                             LOG(output);
 
                             sensors.push_back(std::make_tuple(addr, loadSensor(addr), i));
 
                             // Initialize connected sensor
-                            snprintf(output, 100, "%s_%i", std::get<1>(sensors[moduleIndex])->getModuleName(), i);
+                            snprintf(output, OUTPUT_SIZE, "%s_%i", std::get<1>(sensors[moduleIndex])->getModuleName(), i);
                             std::get<1>(sensors[moduleIndex])->setModuleName(output);
                             std::get<1>(sensors[moduleIndex])->initialize();
 
-                            snprintf(output, 100, "Loaded sensor %s on port %i", std::get<1>(sensors[moduleIndex])->getModuleName(), i);
+                            snprintf(output, OUTPUT_SIZE, "Loaded sensor %s on port %i", std::get<1>(sensors[moduleIndex])->getModuleName(), i);
                             LOG(output);
                             moduleIndex++;
                         }
@@ -76,7 +76,7 @@ void Loom_Multiplexer::initialize(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::refreshSensors(){
     FUNCTION_START;
-    char output[100];
+    char output[OUTPUT_SIZE];
     int moduleIndex = 0;
 
     // Cycle through the mux ports
@@ -95,11 +95,11 @@ void Loom_Multiplexer::refreshSensors(){
                     sensors[moduleIndex] = std::make_tuple(addr, loadSensor(addr), i);
 
                     // Initialize the new sensor
-                    snprintf(output, 100, "New sensor detected on port %i at I2C address of type %s", i, addr, std::get<1>(sensors[moduleIndex])->getModuleName());
+                    snprintf(output, OUTPUT_SIZE, "New sensor detected on port %i at I2C address of type %s", i, addr, std::get<1>(sensors[moduleIndex])->getModuleName());
                     LOG(output);
                     
                     // Update name for unique instances in the Mux
-                    snprintf(output, 100, "%s_%i", std::get<1>(sensors[moduleIndex])->getModuleName(), i);
+                    snprintf(output, OUTPUT_SIZE, "%s_%i", std::get<1>(sensors[moduleIndex])->getModuleName(), i);
                     std::get<1>(sensors[moduleIndex])->setModuleName(output);
                     std::get<1>(sensors[moduleIndex])->initialize();
                 }

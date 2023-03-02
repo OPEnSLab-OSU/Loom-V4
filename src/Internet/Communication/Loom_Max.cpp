@@ -57,11 +57,11 @@ void Loom_Max::initialize(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Max::publish(){
-    char output[100];
+    char output[OUTPUT_SIZE];
 
     // Print the device IP
     char* ip = wifiInst->ipToString(remoteIP);
-    snprintf(output, 100, "Sending packet to %s:%u", ip, sendPort);
+    snprintf(output, OUTPUT_SIZE, "Sending packet to %s:%u", ip, sendPort);
     free(ip);
     LOG(output);
 
@@ -103,7 +103,7 @@ bool Loom_Max::publish(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Max::subscribe(){
-    char output[100];
+    char output[OUTPUT_SIZE];
     // If there is a packet available
     if(udpRecv->parsePacket()){
 
@@ -112,7 +112,7 @@ bool Loom_Max::subscribe(){
 
         DeserializationError error = deserializeJson(messageJson, (*udpRecv) );
 		if (error != DeserializationError::Ok) {
-            snprintf(output, 100, "Failed to parse JSON data from UDP stream, Error: %s", error.c_str());
+            snprintf(output, OUTPUT_SIZE, "Failed to parse JSON data from UDP stream, Error: %s", error.c_str());
 			ERROR(output);
 			return false;
 		}
@@ -156,7 +156,7 @@ bool Loom_Max::subscribe(){
 
             // Print out where the packet came from
             char* ip = wifiInst->ipToString(udpRecv->remoteIP());
-            snprintf(output, 100, "Packet received from: %s", ip) ;
+            snprintf(output, OUTPUT_SIZE, "Packet received from: %s", ip) ;
             free(ip);
             LOG(output);
 
@@ -196,7 +196,7 @@ bool Loom_Max::subscribe(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Max::setUDPPort(){ 
-    char output[100];
+    char output[OUTPUT_SIZE];
     sendPort = SEND_BASE_UDP_PORT + manInst->get_instance_num();
     recvPort = RECV_BASE_UDP_PORT + manInst->get_instance_num();
 
@@ -204,7 +204,7 @@ void Loom_Max::setUDPPort(){
     udpSend->begin(sendPort);
     udpRecv->begin(recvPort);
 
-    snprintf(output, 100, "Listening for UDP Packets on %u", recvPort);
+    snprintf(output, OUTPUT_SIZE, "Listening for UDP Packets on %u", recvPort);
     LOG(output);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

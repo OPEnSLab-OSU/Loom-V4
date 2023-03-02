@@ -116,6 +116,7 @@ There are some weird idiosyncrasies with the Feather M0
     | D24, D0 | 11 |
     | D5 | 15 |
  - LoRa Must Be Configured Properly based off the selected modem configuration, see issue: https://github.com/OPEnSLab-OSU/Loom-V4/issues/54
+ - Please <b>DO NOT</b> use the Arduino String library, if at all possible to fragments the crap out of the memory and makes devices crash. I spent ~10 hours or so porting the entire library to C-strings - Will
 
 ## OPEnS Supported Projects
  - WeatherChimes (Fully Tested)

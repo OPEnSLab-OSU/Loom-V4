@@ -179,7 +179,7 @@ bool SDManager::begin(){
         if(!sd.exists("debug"))
             sd.mkdir("debug");
 
-        LOG(F("Successfully initialized SD Card!"));
+        printModuleName("Successfully initialized SD Card!");
     }
 
     
@@ -227,13 +227,13 @@ bool SDManager::updateCurrentFileName(){
     // Set all the fileNames
     snprintf_P(fileName, 260, PSTR("%s%i.csv"), device_name, getCurrentFileNumber()); 
     snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), device_name, getCurrentFileNumber()); 
-    snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), device_name);
+    snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
 
     // Close the root file after we have decided what to name the next file
     root.close();
 
-    char output[100];
-    snprintf_P(output, 100, PSTR("Data will be logged to %s"), fileName);
+    char output[OUTPUT_SIZE];
+    snprintf_P(output, OUTPUT_SIZE, PSTR("Data will be logged to %s"), fileName);
     printModuleName(output);
 
     return true;
@@ -244,8 +244,8 @@ bool SDManager::updateCurrentFileName(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 char* SDManager::readFile(const char* fileName){
     // Clear contents 
-    char* fileContents =  (char*) malloc(10000);
-    memset(fileContents, '\0', 10000);
+    char* fileContents =  (char*) malloc(5000);
+    memset(fileContents, '\0', 5000);
 
     long index = 0;
     if(sdInitialized){

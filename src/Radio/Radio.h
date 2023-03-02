@@ -51,12 +51,12 @@ class Radio : public Module{
          * Convert the message pack to json
          */ 
         bool bufferToJson(uint8_t* buffer){
-            char output[100];
+            char output[OUTPUT_SIZE];
             DeserializationError error = deserializeMsgPack(recvDoc, buffer, maxMessageLength);
 
             // Check if an error occurred 
             if(error != DeserializationError::Ok){
-                snprintf(output, 100, "Error occurred parsing MsgPack: %s", error.c_str());
+                snprintf(output, OUTPUT_SIZE, "Error occurred parsing MsgPack: %s", error.c_str());
                 ERROR(output);
                 return false;
             }

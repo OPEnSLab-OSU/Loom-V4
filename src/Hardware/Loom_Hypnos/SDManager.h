@@ -51,6 +51,14 @@ class SDManager : public Module{
          */ 
         char* readFile(const char* fileName);
 
+        /*
+        * Returns a pointer to the opened filed
+        */
+        File* getFile(const char* fileName){
+            myFile = sd.open(fileName);
+            return &myFile;
+        };
+
 
         /**
          * Write a single line to a file
@@ -68,8 +76,7 @@ class SDManager : public Module{
          * Get the current batch file name
          */ 
         const char* getBatchFilename(){
-            char* fileName = (char*) malloc(260);
-            snprintf_P(fileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+            snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
             return batchFileName;
         };
 
@@ -98,8 +105,8 @@ class SDManager : public Module{
          * Log to a different name other than one matching the device name
          */ 
         void setLogName(const char* name) { 
-            snprintf_P(fileName, 260, PSTR("%s_%i.csv"), name, getCurrentFileNumber()); 
-            snprintf_P(fileNameNoExtension, 260, PSTR("%s_%i"), name, getCurrentFileNumber()); 
+            snprintf_P(fileName, 260, PSTR("%s%i.csv"), name, getCurrentFileNumber()); 
+            snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), name, getCurrentFileNumber()); 
             snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
         };
 

@@ -166,14 +166,10 @@ void Manager::display_data(){
         // Get the json size with the null terminator
         size_t jsonSize = measureJsonPretty(doc)+1;
         char *jsonStr =  (char*) malloc(jsonSize);
-        char *output =  (char*) malloc(jsonSize+15);
         serializeJsonPretty(doc, jsonStr, jsonSize);
-        
-        // Read the jsonStr into the proper output format
-        snprintf_P(output, jsonSize+15,PSTR("Data Json: \n%s\n"), jsonStr);
+        LOG(F("Data Json: \n"));
+        LOG_LONG(jsonStr);
         free(jsonStr);
-        LOG(output);
-        free(output);
     }
     else{
         LOG(F("JSON Document is Null there is no data to display"));

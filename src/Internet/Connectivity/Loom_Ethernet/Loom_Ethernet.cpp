@@ -18,7 +18,7 @@ Loom_Ethernet::Loom_Ethernet(Manager& man) : Module("Ethernet"), manInst(&man) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Ethernet::initialize() {
-    char output[100];
+    char output[OUTPUT_SIZE];
     LOG(F("Initializing Ethernet module..."));
 
     // Call the connect class to initiate the connection
@@ -32,12 +32,12 @@ void Loom_Ethernet::initialize() {
     LOG(F("Successfully Initalized Ethernet!"));
     // Print the device IP
     char* ip = ipToString(getIPAddress());
-    snprintf(output, 100, "Device IP Address: %s", ip);
+    snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
     free(ip);
     LOG(output);
 
     ip = ipToString(getSubnetMask());
-    snprintf(output, 100, "Device Subnet Address: %s", ip);
+    snprintf(output, OUTPUT_SIZE, "Device Subnet Address: %s", ip);
     free(ip);
     LOG(output);
 }
@@ -70,12 +70,12 @@ void Loom_Ethernet::connect(){
 void Loom_Ethernet::loadConfigFromJSON(char* json){
     // Doc to store the JSON data from the SD card in
     StaticJsonDocument<300> doc;
-    char output[100];
+    char output[OUTPUT_SIZE];
     DeserializationError deserialError = deserializeJson(doc, json);
 
     // Check if an error occurred and if so print it
     if(deserialError != DeserializationError::Ok){
-        snprintf(output, 100, "There was an error reading the Ethernet credentials from SD: %s", deserialError.c_str());
+        snprintf(output, OUTPUT_SIZE, "There was an error reading the Ethernet credentials from SD: %s", deserialError.c_str());
         ERROR(output);
     }
 

@@ -9,6 +9,7 @@
 
 #define SLOG(msg) Logger::getInstance()->debugLog(msg, true, __FILE__, __func__, __LINE__)          // Log a message without printing to the serial
 #define LOG(msg) Logger::getInstance()->debugLog(msg, false, __FILE__, __func__, __LINE__)          // Log a generic message
+#define LOG_LONG(msg) Logger::getInstance()->logLong(msg, false)                                   // Log a long message
 #define ERROR(msg) Logger::getInstance()->errorLog(msg, false, __FILE__, __func__, __LINE__)        // Log an error message
 #define WARNING(msg) Logger::getInstance()->warningLog(msg, false, __FILE__, __func__, __LINE__)    // Log a warning message
 
@@ -85,9 +86,6 @@ class Logger{
             for(i = lastSlash; i < strlen(fileName); i++){
                 file[i-lastSlash] = fileName[i];
             }
-
-            // Terminate the string with \0
-            i++;
             file[i-lastSlash] = '\0';
 
             return file;
@@ -123,9 +121,9 @@ class Logger{
          * @param lineNumber The current line number this log is on
         */
         void debugLog(const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
-            char logMessage[100];
+            char logMessage[OUTPUT_SIZE];
             char* shortFileName =  truncateFileName(file);
-            snprintf_P(logMessage, 100, PSTR("[DEBUG] [%s:%s:%u] %s"), shortFileName, func, lineNumber, message);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[DEBUG] [%s:%s:%u] %s"), shortFileName, func, lineNumber, message);
             free(shortFileName);
             log(logMessage, silent);
             
@@ -138,9 +136,9 @@ class Logger{
          * @param lineNumber The current line number this log is on
         */
         void errorLog(const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
-            char logMessage[100];
+            char logMessage[OUTPUT_SIZE];
             char* shortFileName =  truncateFileName(file);
-            snprintf_P(logMessage, 100, PSTR("[ERROR] [%s:%s:%u] %s"), shortFileName, func, lineNumber, message);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[ERROR] [%s:%s:%u] %s"), shortFileName, func, lineNumber, message);
             free(shortFileName);
             log(logMessage, silent);
         };
@@ -152,9 +150,9 @@ class Logger{
          * @param lineNumber The current line number this log is on
         */
         void warningLog(const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
-            char logMessage[100];
+            char logMessage[OUTPUT_SIZE];
             char* shortFileName =  truncateFileName(file);
-            snprintf_P(logMessage, 100, PSTR("[WARNING] [%s:%s:%u] %s\0"), shortFileName, func, lineNumber, message);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[WARNING] [%s:%s:%u] %s\0"), shortFileName, func, lineNumber, message);
             free(shortFileName);
             log(logMessage, silent);
         };
@@ -166,11 +164,11 @@ class Logger{
          * @param lineNumber The current line number this log is on
         */
         void debugLog(const __FlashStringHelper* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
-            char logMessage[100];
+            char logMessage[OUTPUT_SIZE];
             char buff[50];
 		    memcpy_P(buff, message, 50);
             char* shortFileName =  truncateFileName(file);
-            snprintf_P(logMessage, 100, PSTR("[DEBUG] [%s:%s:%u] %s"), shortFileName, func, lineNumber, buff);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[DEBUG] [%s:%s:%u] %s"), shortFileName, func, lineNumber, buff);
             free(shortFileName);
             log(logMessage, silent);
         };
@@ -182,11 +180,11 @@ class Logger{
          * @param lineNumber The current line number this log is on
         */
         void warningLog(const __FlashStringHelper* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
-            char logMessage[100];
+            char logMessage[OUTPUT_SIZE];
             char buff[50];
 		    memcpy_P(buff, message, 50);
             char* shortFileName =  truncateFileName(file);
-            snprintf_P(logMessage, 100, PSTR("[WARNING] [%s:%s:%u] %s\0"), shortFileName, func, lineNumber, buff);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[WARNING] [%s:%s:%u] %s\0"), shortFileName, func, lineNumber, buff);
             free(shortFileName);
             log(logMessage, silent);
         };
@@ -198,13 +196,20 @@ class Logger{
          * @param lineNumber The current line number this log is on
         */
         void errorLog(const __FlashStringHelper* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
-            char logMessage[100];
+            char logMessage[OUTPUT_SIZE];
             char buff[50];
 		    memcpy_P(buff, message, 50);
             char* shortFileName =  truncateFileName(file);
-            snprintf_P(logMessage, 100, PSTR("[ERROR] [%s:%s:%u] %s"), shortFileName, func, lineNumber, buff);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[ERROR] [%s:%s:%u] %s"), shortFileName, func, lineNumber, buff);
             free(shortFileName);
             log(logMessage, silent);
+        };
+
+        /*
+            Log an entire char* instead of fixing it to an array you must construct your message before passing it into this function
+        */
+        void logLong(char* message, bool silent){
+            log(message, silent);
         };
 
 

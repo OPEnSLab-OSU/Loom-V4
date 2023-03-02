@@ -49,7 +49,7 @@ class EZOSensor : public I2CDevice{
 
         /* Request and read in data from the senor*/
         bool readSensor(){
-            char output[100];
+            char output[OUTPUT_SIZE];
             if(moduleInitialized){
                 // Clear the sensorData received previously
                 sensorData = "";
@@ -75,7 +75,7 @@ class EZOSensor : public I2CDevice{
                 // Check if the I2C code was not valid
                 code = Wire.read();
                 if(code != 1){
-                    snprintf(output, 100, "Unsuccessful Response Code Received: %s", responseCodes[code-1].c_str());
+                    snprintf(output, OUTPUT_SIZE, "Unsuccessful Response Code Received: %s", responseCodes[code-1].c_str());
                     ERROR(output);
                     return false;
                 } 

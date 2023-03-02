@@ -24,17 +24,17 @@ Loom_Freewave::Loom_Freewave(
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Freewave::initialize(){
-    char output[100];
+    char output[OUTPUT_SIZE];
     // Start serial communication with radio
     serial1.begin(115200);
 
     // Set timeout time
-    snprintf(output, 100, "Timeout time set to: %u", retryTimeout);
+    snprintf(output, OUTPUT_SIZE, "Timeout time set to: %u", retryTimeout);
     LOG(output);
     manager->setTimeout(retryTimeout);
 
     // Set retry attempts
-    snprintf(output, 100, "Retry count set to: %u", retryCount);
+    snprintf(output, OUTPUT_SIZE, "Retry count set to: %u", retryCount);
     LOG(output);
     manager->setRetries(retryCount);
 

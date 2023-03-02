@@ -25,9 +25,10 @@ Loom_WIFI::Loom_WIFI(Manager& man) : Module("WiFi"), manInst(&man) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::initialize() {
+    FUNCTION_START;
     // The pins on the feather M0 WiFi are different than most boards
     WiFi.setPins(8, 7, 4, 2);
-    char output[100];
+    char output[OUTPUT_SIZE];
 
     LOG(F("Initializing WiFi module..."));
 
@@ -60,28 +61,31 @@ void Loom_WIFI::initialize() {
 
             // Print the device IP
             char* ip = ipToString(getIPAddress());
-            snprintf(output, 100, "Device IP Address: %s", ip);
+            snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
             free(ip);
             LOG(output);
 
             ip = ipToString(getSubnetMask());
-            snprintf(output, 100, "Device Subnet Address: %s", ip);
+            snprintf(output, OUTPUT_SIZE, "Device Subnet Address: %s", ip);
             free(ip);
             LOG(output);
         }else{
             ERROR(F("Failed to initialize Wifi!"));
         }      
     }
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::package(){
+    FUNCTION_START;
     if(moduleInitialized && powerUp){
         JsonObject json = manInst->get_data_object(getModuleName());
         json["SSID"] = WiFi.SSID();
         json["RSSI"] = WiFi.RSSI();
     }
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -123,9 +127,9 @@ void Loom_WIFI::power_up() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::connect_to_network(){
     int retry_count = 0;
-    char output[100];
+    char output[OUTPUT_SIZE];
 
-    snprintf(output, 100, "Attempting to connect to SSID: %s", wifi_name);
+    snprintf(output, OUTPUT_SIZE, "Attempting to connect to SSID: %s", wifi_name);
     LOG(output);
     TIMER_DISABLE;
 
@@ -157,7 +161,7 @@ void Loom_WIFI::connect_to_network(){
     else{
         // While we are trying to connect to the wifi network
         while(WiFi.begin(wifi_name) != WL_CONNECTED){
-            snprintf(output, 100, "Attempting to connect to AP (Attempt %i of 10)...", retry_count+1);
+            snprintf(output, OUTPUT_SIZE, "Attempting to connect to AP (Attempt %i of 10)...", retry_count+1);
             LOG(output);
             delay(5000);
             retry_count++;
@@ -186,8 +190,8 @@ void Loom_WIFI::connect_to_network(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::start_ap(){
     TIMER_DISABLE;
-    char output[100];
-    snprintf(output, 100, "Starting access point on: %s", wifi_name);
+    char output[OUTPUT_SIZE];
+    snprintf(output, OUTPUT_SIZE, "Starting access point on: %s", wifi_name);
     LOG(output);
 
     auto status = WiFi.beginAP(wifi_name);
@@ -218,11 +222,11 @@ void Loom_WIFI::power_down(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_WIFI::verifyConnection(){
-    char output[100];
+    char output[OUTPUT_SIZE];
     if(hasInitialized && moduleInitialized && powerUp){
         int pingLatency = WiFi.ping("www.google.com");
         if(pingLatency >= 0){
-            snprintf(output, 100, "Successfully Pinged Google! Response Time: %ims", pingLatency);
+            snprintf(output, OUTPUT_SIZE, "Successfully Pinged Google! Response Time: %ims", pingLatency);
             LOG(output);
             return true;
         }
@@ -258,12 +262,12 @@ void Loom_WIFI::loadConfigFromJSON(char* json){
 
     // Doc to store the JSON data from the SD card in
     StaticJsonDocument<300> doc;
-    char output[100];
+    char output[OUTPUT_SIZE];
     DeserializationError deserialError = deserializeJson(doc, json);
 
     // Check if an error occurred and if so print it
     if(deserialError != DeserializationError::Ok){
-        snprintf(output, 100, "There was an error reading the WIFI credentials from SD: %s", deserialError.c_str());
+        snprintf(output, OUTPUT_SIZE, "There was an error reading the WIFI credentials from SD: %s", deserialError.c_str());
         ERROR(output);
     }
 

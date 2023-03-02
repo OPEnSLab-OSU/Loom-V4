@@ -22,9 +22,9 @@ class Loom_BatchSD{
         bool shouldPublish();
 
         /**
-         * Get the current batch of data as a vector of strings
+         * Return a pointer to the open memory read from arduino
          */ 
-        void getBatch( std::vector<String>& batch);
+        File* getBatch();
 
         /**
          * Get the specified size of the batch

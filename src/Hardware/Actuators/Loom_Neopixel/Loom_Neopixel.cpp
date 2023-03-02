@@ -69,7 +69,7 @@ void Loom_Neopixel::control(JsonArray json){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Neopixel::set_color(const uint8_t port, const uint8_t chain_num, const uint8_t red, const uint8_t green, const uint8_t blue){
     FUNCTION_START;
-    char output[100];
+    char output[OUTPUT_SIZE];
     if ( enabledPins[port] ) {
 		// Apply color
 		pixels[port].setPixelColor(chain_num, pixels[port].Color(red, green, blue));
@@ -77,16 +77,8 @@ void Loom_Neopixel::set_color(const uint8_t port, const uint8_t chain_num, const
 		// Update colors displayed by Neopixel
 		pixels[port].show();
 		
-		/*
-        printModuleName();
-        Serial.print("Set Neopixel on Port: " + String(port) + ", Chain #: " + String(chain_num));
-        Serial.print(" to R: " + String(red));
-        Serial.print(  ", G: " + String(green));
-        Serial.println(", B: " + String(blue));
-		*/
-		
 	} else {
-        snprintf(output, 100, "Neopixel not enabled on port %u", port);
+        snprintf(output, OUTPUT_SIZE, "Neopixel not enabled on port %u", port);
 		WARNING(output);
 	}
     FUNCTION_END;
@@ -96,12 +88,12 @@ void Loom_Neopixel::set_color(const uint8_t port, const uint8_t chain_num, const
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Neopixel::enable_pin(const uint8_t port, const bool state){
     FUNCTION_START;
-    char output[100];
+    char output[OUTPUT_SIZE];
     enabledPins[port] = state;
 	if (state) {
 		pinMode(port, OUTPUT);
 	}
-    snprintf(output, 100, "Neopixel state changed on port %u", port);
+    snprintf(output, OUTPUT_SIZE, "Neopixel state changed on port %u", port);
 	LOG(output);
     FUNCTION_END;
 }

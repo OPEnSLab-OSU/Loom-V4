@@ -18,13 +18,13 @@ Loom_STEMMA::Loom_STEMMA(
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::initialize() {
     FUNCTION_START;
-    char output[100];
+    char output[OUTPUT_SIZE];
     if(!stemma.begin(address)){
         LOG(F("Failed to initialize STEMMA! Check connections and try again..."));
         moduleInitialized = false;
     }
     else{
-        snprintf(output, 100, "Successfully initialized STEMMA Version: %u", stemma.getVersion());
+        snprintf(output, OUTPUT_SIZE, "Successfully initialized STEMMA Version: %u", stemma.getVersion());
         LOG(output);
         
     }
