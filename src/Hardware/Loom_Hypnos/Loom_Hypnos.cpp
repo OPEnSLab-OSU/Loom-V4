@@ -36,6 +36,7 @@ Loom_Hypnos::~Loom_Hypnos(){
 void Loom_Hypnos::package(){
     JsonObject json = manInst->getDocument().createNestedObject("timestamp");
     char timeStr[21];
+    char localStr[21];
 
     time = get_utc_time();
     localTime = getCurrentTime();
@@ -43,8 +44,8 @@ void Loom_Hypnos::package(){
     dateTime_toString(time, timeStr);
     json["time_utc"] = timeStr;
 
-    dateTime_toString(localTime, timeStr);
-    json["time_local"] = timeStr;
+    dateTime_toString(localTime, localStr);
+    json["time_local"] = localStr;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

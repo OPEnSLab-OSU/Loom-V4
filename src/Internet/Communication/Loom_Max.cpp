@@ -159,7 +159,7 @@ bool Loom_Max::subscribe(){
             wifiInst->ipToString(udpRecv->remoteIP(), ip);
             snprintf(output, OUTPUT_SIZE, "Packet received from: %s", ip) ;
             LOG(output);
-            char jsonStr[2000]
+            char jsonStr[2000];
 
             LOG(F("Message Json: "));
             serializeJsonPretty(messageJson, jsonStr, 2000);

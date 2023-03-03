@@ -37,14 +37,10 @@ class Logger{
             unsigned long lineNumber;
             int netMemoryUsage;
             unsigned long time;
-            functionInfo(const char* file, const char* func, unsigned int lineNumber, int mem, unsigned long time) : lineNumber(lineNumber), netMemoryUsage(mem), time(time) {
-                strncpy(fileName, file, 260);
-                strncpy(funcName, func, 260);
-            };
         };
         
         // Function call list
-        std::queue<Logger::functionInfo*> callStack;
+        std::queue<struct functionInfo*> callStack;
         int indentNum = 0;
 
         static Logger* instance;
@@ -219,11 +215,15 @@ class Logger{
         */
         void startFunction(const char* file, const char* func, unsigned long num, int freeMemory){
             // Log the start time of the function
-            unsigned long time = millis();
             char fileName[260];
             truncateFileName(file, fileName);
-            callStack.push(new functionInfo(fileName, func, num, freeMemory, time));
-
+            struct functionInfo* newFunction = (struct functionInfo*) malloc(sizeof(struct functionInfo));
+            strncpy(newFunction->fileName, fileName, 260);
+            strncpy(newFunction->funcName, func, 260);
+            newFunction->lineNumber = num;
+            newFunction->netMemoryUsage = freeMemory;
+            newFunction->time = millis();
+            callStack.push(newFunction);
         };
 
         /**
@@ -237,7 +237,7 @@ class Logger{
             char output[300];
             char indents[10];
 
-            functionInfo* info = callStack.front();
+            struct functionInfo* info = callStack.front();
             int memUsage = info->netMemoryUsage;
             unsigned long time = millis() - info->time;
             int percentage = ((float)memUsage / 32000.0) * 100;
@@ -247,7 +247,7 @@ class Logger{
             strncpy(func, info->funcName, 260);
         
             // Pop the last function off the call stack
-            delete(info);
+            free(info);
             callStack.pop();
             // Format the fileName and log output, this function uses 976 bytes
             snprintf_P(fileName, 100,PSTR("/debug/funcSummaries_%i.log"), sdInst->getCurrentFileNumber());
