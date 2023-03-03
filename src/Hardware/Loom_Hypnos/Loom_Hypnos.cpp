@@ -35,18 +35,16 @@ Loom_Hypnos::~Loom_Hypnos(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::package(){
     JsonObject json = manInst->getDocument().createNestedObject("timestamp");
+    char timeStr[21];
 
     time = get_utc_time();
     localTime = getCurrentTime();
 
-    char* timeStr = dateTime_toString(time);
-    char* localTimeStr = dateTime_toString(localTime);
+    dateTime_toString(time, timeStr);
     json["time_utc"] = timeStr;
-    json["time_local"] = localTimeStr;
 
-    free(timeStr);
-    free(localTimeStr);
-    
+    dateTime_toString(localTime, timeStr);
+    json["time_local"] = timeStr;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -253,11 +251,10 @@ DateTime Loom_Hypnos::getCurrentTime(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-char* Loom_Hypnos::dateTime_toString(DateTime time){
-    char* timeString = (char*) malloc(21);
+void Loom_Hypnos::dateTime_toString(DateTime tim, char array[21]){
+    
     // Formatted as: YYYY-MM-DDTHH:MM:SSZ
-    snprintf_P(timeString, 21, PSTR("%u-%02u-%02uT%u:%u:%uZ"), time.year(), time.month(), time.day(), time.hour(), time.minute(), time.second());
-    return timeString;
+    snprintf_P(array, 21, PSTR("%u-%02u-%02uT%u:%u:%uZ"), time.year(), time.month(), time.day(), time.hour(), time.minute(), time.second());
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

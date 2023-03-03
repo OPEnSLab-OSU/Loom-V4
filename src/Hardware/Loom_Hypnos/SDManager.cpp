@@ -76,17 +76,25 @@ void SDManager::writeHeaders(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::log(DateTime currentTime){
+    Serial.println("Log start");
     if(sdInitialized){
         FUNCTION_START;
     }
     char output[512];
-
+    
     if(sdInitialized){
-
+        Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
         // Open the file in read/write mode, create the file if we need to and append the content to the end of the file
         myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
-
+        Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
         if(myFile){
+            Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
 
             // If this file has never been written to before we need to create and write the proper headers to the file
             if(myFile.available() <= 3){
@@ -95,6 +103,9 @@ bool SDManager::log(DateTime currentTime){
                 
                 writeHeaders();
             }    
+            Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
 
             snprintf_P(output, 512, PSTR("%s,%i,"), manInst->get_device_name(), manInst->get_instance_num());
             // Write the Instance data that isn't included in the JSON packet
@@ -102,6 +113,9 @@ bool SDManager::log(DateTime currentTime){
             memset(output, '\0', 512); // Clear array
 
             JsonObject document = manInst->getDocument().as<JsonObject>();
+            Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
 
             // If there is a key that contains timestamp data when need to include that separately 
             if(document.containsKey("timestamp")){
@@ -109,6 +123,9 @@ bool SDManager::log(DateTime currentTime){
                 char localArr[19];
                 strncpy(utcArr, document["timestamp"]["time_utc"].as<const char*>(), 19);
                 strncpy(localArr, document["timestamp"]["time_local"].as<const char*>(), 19);
+                Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
 
                 // Format date with spaces when logging to SD
                 utcArr[10] = ' ';
@@ -124,6 +141,9 @@ bool SDManager::log(DateTime currentTime){
                 strncat(output, localArr, 512);
                 strncat(output, ",", 512);
             }
+            Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
 
             // Get the contents containing the reset of the sensor data
             JsonArray contentsArray = document["contents"].as<JsonArray>();
@@ -137,6 +157,9 @@ bool SDManager::log(DateTime currentTime){
                     strncat(output, ",", 512);
                 }
             }
+            Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
 
             // Write the matching data into the CSV file
             myFile.println(output);
@@ -150,21 +173,35 @@ bool SDManager::log(DateTime currentTime){
             // Inform the user that we have successfully written to the file
             snprintf_P(output, 512, PSTR("Successfully logged data to %s"), fileName);
             printModuleName(output);
+            Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
         }
         else{
             printModuleName("Failed to open log file!");
         }
-
+Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
         // If we want to log batch data do so
         if(batch_size > 0)
             logBatch();
+        Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
     }
     else{
         printModuleName("Failed to log! SD card not Initialized!");
     }
+     Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
     if(sdInitialized){
         FUNCTION_END;
     }
+    Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -283,11 +320,22 @@ char* SDManager::readFile(const char* fileName){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void SDManager::logBatch(){
+    Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
     if(sdInitialized){
         FUNCTION_START;
     }
+    Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
+    
     char f_name[260];
+    char jsonString[2000];
     snprintf_P(f_name, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+    Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
     // We want to clear the file after the batch size has been exceeded
     if(current_batch >= batch_size){
         current_batch = 0;
@@ -296,18 +344,29 @@ void SDManager::logBatch(){
     else{
         myFile = sd.open(f_name, O_WRITE | O_CREAT | O_APPEND);
     }
+    Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
 
 
     // Check if the file has been opened properly and write the JSON packet to one line
     if(myFile){
-        char* jsonString = manInst->getJSONString();
+        Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
+        manInst->getJSONString(jsonString);
         myFile.println(jsonString);
-        free(jsonString);
         myFile.close();
         current_batch++;
+        Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
     }else{
         printModuleName("Failed to open file!");
     }
+    Serial.print(__LINE__);
+        Serial.print(":");
+        Serial.println(freeMemory());
     if(sdInitialized){
         FUNCTION_END;
     }

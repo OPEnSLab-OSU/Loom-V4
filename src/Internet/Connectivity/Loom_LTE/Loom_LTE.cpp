@@ -25,6 +25,7 @@ Loom_LTE::Loom_LTE(Manager& man) : Module("LTE"), manInst(&man), modem(SerialAT)
 void Loom_LTE::initialize(){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
+    char ip[16];
     // Set the pin to output so we can write to it
     pinMode(powerPin, OUTPUT);
 
@@ -60,9 +61,8 @@ void Loom_LTE::initialize(){
         LOG(output);
 
         // Log IP address
-        char* ip = ipToString(modem.localIP());
+        ipToString(modem.localIP(), ip);
         snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
-        free(ip);
         LOG(output);
 
         verifyConnection();

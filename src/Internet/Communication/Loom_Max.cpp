@@ -58,11 +58,11 @@ void Loom_Max::initialize(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Max::publish(){
     char output[OUTPUT_SIZE];
+    char ip[16];
 
     // Print the device IP
-    char* ip = wifiInst->ipToString(remoteIP);
+    wifiInst->ipToString(remoteIP, ip);
     snprintf(output, OUTPUT_SIZE, "Sending packet to %s:%u", ip, sendPort);
-    free(ip);
     LOG(output);
 
     if(!udpSend){
@@ -104,6 +104,7 @@ bool Loom_Max::publish(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Max::subscribe(){
     char output[OUTPUT_SIZE];
+    char ip[16];
     // If there is a packet available
     if(udpRecv->parsePacket()){
 
@@ -155,17 +156,14 @@ bool Loom_Max::subscribe(){
         else{ 
 
             // Print out where the packet came from
-            char* ip = wifiInst->ipToString(udpRecv->remoteIP());
+            wifiInst->ipToString(udpRecv->remoteIP(), ip);
             snprintf(output, OUTPUT_SIZE, "Packet received from: %s", ip) ;
-            free(ip);
             LOG(output);
+            char jsonStr[2000]
 
             LOG(F("Message Json: "));
-            size_t jsonSize = measureJsonPretty(messageJson)+1;
-            char* jsonStr = (char *) malloc(jsonSize);
-            serializeJsonPretty(messageJson, jsonStr, jsonSize);
+            serializeJsonPretty(messageJson, jsonStr, 2000);
             LOG(jsonStr);
-            free(jsonStr);
 
             // If we are receiving a command for the MaxSub module
             if(strstr(messageJson["commands"][0]["module"].as<const char*>(),"MaxSub") != NULL){

@@ -75,9 +75,8 @@ class Logger{
          * 
          * @return Pointer to a malloced char*
         */
-        char* truncateFileName(const char* fileName){
-            // Get the last slash in the file name
-            char* file =  (char*) malloc(260);
+        void truncateFileName(const char* fileName, char array[260]){
+           
             int i;
             // Find the last \\ in the file path to know where the name is
             char *lastOccurance = strrchr(fileName, '\\');
@@ -85,11 +84,9 @@ class Logger{
 
             // Loop from the last slash to the end of the string
             for(i = lastSlash; i < strlen(fileName); i++){
-                file[i-lastSlash] = fileName[i];
+                array[i-lastSlash] = fileName[i];
             }
-            file[i-lastSlash] = '\0';
-
-            return file;
+            array[i-lastSlash] = '\0';
         };
 
         Logger() {};
@@ -123,9 +120,9 @@ class Logger{
         */
         void debugLog(const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
             char logMessage[OUTPUT_SIZE];
-            char* shortFileName =  truncateFileName(file);
-            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[DEBUG] [%s:%s:%u] %s"), shortFileName, func, lineNumber, message);
-            free(shortFileName);
+            char fileName[260];
+            truncateFileName(file, fileName);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[DEBUG] [%s:%s:%u] %s"), fileName, func, lineNumber, message);
             log(logMessage, silent);
             
         };
@@ -138,9 +135,9 @@ class Logger{
         */
         void errorLog(const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
             char logMessage[OUTPUT_SIZE];
-            char* shortFileName =  truncateFileName(file);
-            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[ERROR] [%s:%s:%u] %s"), shortFileName, func, lineNumber, message);
-            free(shortFileName);
+            char fileName[260];
+            truncateFileName(file, fileName);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[ERROR] [%s:%s:%u] %s"), fileName, func, lineNumber, message);
             log(logMessage, silent);
         };
 
@@ -152,9 +149,9 @@ class Logger{
         */
         void warningLog(const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
             char logMessage[OUTPUT_SIZE];
-            char* shortFileName =  truncateFileName(file);
-            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[WARNING] [%s:%s:%u] %s\0"), shortFileName, func, lineNumber, message);
-            free(shortFileName);
+            char fileName[260];
+            truncateFileName(file, fileName);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[WARNING] [%s:%s:%u] %s\0"), fileName, func, lineNumber, message);
             log(logMessage, silent);
         };
 
@@ -167,10 +164,10 @@ class Logger{
         void debugLog(const __FlashStringHelper* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
             char logMessage[OUTPUT_SIZE];
             char buff[50];
-		    memcpy_P(buff, message, 50);
-            char* shortFileName =  truncateFileName(file);
-            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[DEBUG] [%s:%s:%u] %s"), shortFileName, func, lineNumber, buff);
-            free(shortFileName);
+            memcpy_P(buff, message, 50);
+		    char fileName[260];
+            truncateFileName(file, fileName);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[DEBUG] [%s:%s:%u] %s"), fileName, func, lineNumber, buff);
             log(logMessage, silent);
         };
 
@@ -184,9 +181,9 @@ class Logger{
             char logMessage[OUTPUT_SIZE];
             char buff[50];
 		    memcpy_P(buff, message, 50);
-            char* shortFileName =  truncateFileName(file);
-            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[WARNING] [%s:%s:%u] %s\0"), shortFileName, func, lineNumber, buff);
-            free(shortFileName);
+            char fileName[260];
+            truncateFileName(file, fileName);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[WARNING] [%s:%s:%u] %s\0"), fileName, func, lineNumber, buff);
             log(logMessage, silent);
         };
 
@@ -200,9 +197,9 @@ class Logger{
             char logMessage[OUTPUT_SIZE];
             char buff[50];
 		    memcpy_P(buff, message, 50);
-            char* shortFileName =  truncateFileName(file);
-            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[ERROR] [%s:%s:%u] %s"), shortFileName, func, lineNumber, buff);
-            free(shortFileName);
+            char fileName[260];
+            truncateFileName(file, fileName);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[ERROR] [%s:%s:%u] %s"), fileName, func, lineNumber, buff);
             log(logMessage, silent);
         };
 
@@ -223,9 +220,9 @@ class Logger{
         void startFunction(const char* file, const char* func, unsigned long num, int freeMemory){
             // Log the start time of the function
             unsigned long time = millis();
-            char* shortFileName =  truncateFileName(file);
-            callStack.push(new functionInfo(shortFileName, func, num, freeMemory, time));
-            free(shortFileName);
+            char fileName[260];
+            truncateFileName(file, fileName);
+            callStack.push(new functionInfo(fileName, func, num, freeMemory, time));
 
         };
 
@@ -252,9 +249,6 @@ class Logger{
             // Pop the last function off the call stack
             delete(info);
             callStack.pop();
-
-        
-
             // Format the fileName and log output, this function uses 976 bytes
             snprintf_P(fileName, 100,PSTR("/debug/funcSummaries_%i.log"), sdInst->getCurrentFileNumber());
             snprintf_P(output, 300, PSTR("[%s:%s] Summary\n\tInitial Free Memory: %i B (%i %% Free)\n\tEnding Free Memory: %i B\n\tNet Usage: %i B\n\tElapsed Time: %u MS"), file, func, memUsage, percentage, freeMemory, memUsage-freeMemory, time);

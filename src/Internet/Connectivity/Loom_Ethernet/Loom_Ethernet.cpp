@@ -19,6 +19,7 @@ Loom_Ethernet::Loom_Ethernet(Manager& man) : Module("Ethernet"), manInst(&man) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Ethernet::initialize() {
     char output[OUTPUT_SIZE];
+    char ip[16];
     LOG(F("Initializing Ethernet module..."));
 
     // Call the connect class to initiate the connection
@@ -31,14 +32,12 @@ void Loom_Ethernet::initialize() {
     
     LOG(F("Successfully Initalized Ethernet!"));
     // Print the device IP
-    char* ip = ipToString(getIPAddress());
+    ipToString(getIPAddress(), ip);
     snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
-    free(ip);
     LOG(output);
 
-    ip = ipToString(getSubnetMask());
+    ipToString(getSubnetMask(), ip);
     snprintf(output, OUTPUT_SIZE, "Device Subnet Address: %s", ip);
-    free(ip);
     LOG(output);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

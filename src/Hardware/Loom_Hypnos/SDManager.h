@@ -54,9 +54,9 @@ class SDManager : public Module{
         /*
         * Returns a pointer to the opened filed
         */
-        File* getFile(const char* fileName){
+        File& getFile(const char* fileName){
             myFile = sd.open(fileName);
-            return &myFile;
+            return myFile;
         };
 
 

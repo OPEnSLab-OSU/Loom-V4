@@ -24,7 +24,7 @@ class Loom_BatchSD{
         /**
          * Return a pointer to the open memory read from arduino
          */ 
-        File* getBatch();
+        File& getBatch();
 
         /**
          * Get the specified size of the batch

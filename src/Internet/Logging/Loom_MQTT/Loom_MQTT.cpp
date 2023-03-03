@@ -33,6 +33,7 @@ Loom_MQTT::Loom_MQTT(Manager& man, Client& internet_client) : Module("MQTT"), ma
 void Loom_MQTT::publish(){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
+    char jsonString[2000];
     if(moduleInitialized){
 
         TIMER_DISABLE;
@@ -83,9 +84,8 @@ void Loom_MQTT::publish(){
         if(mqttClient.beginMessage(topic, false, 2) != 1){
             ERROR(F("Failed to begin message!"));
         }
-        char* jsonStr = manInst->getJSONString();
-        mqttClient.print(jsonStr);
-        free(jsonStr);
+        manInst->getJSONString(jsonString);
+        mqttClient.print(jsonString);
 
         // Check to see if we are actually closing messages properly
         if(mqttClient.endMessage() != 1){
@@ -108,35 +108,61 @@ void Loom_MQTT::publish(){
 void Loom_MQTT::publish(Loom_BatchSD& batchSD){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
+    char line[2000];
+    int packetNumber = 0, index = 0;
     if(moduleInitialized ){
         TIMER_DISABLE;
 
+        Serial.print(F("Before shouldPublish: "));
+        Serial.println(freeMemory());
         if(batchSD.shouldPublish()){
+            Serial.print(F("After shouldPublish: "));
+            Serial.println(freeMemory());
 
+            Serial.print(F("Before snprintf_P: "));
+            Serial.println(freeMemory());
             // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
             snprintf_P(topic, 100, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
+            Serial.print(F("After snprintf_P: "));
+            Serial.println(freeMemory());
             
+            Serial.print(F("Before setUsernamePassword: "));
+            Serial.println(freeMemory());
             // If we are logging in using credentials then supply them
             if(strlen(username) > 0)
                 mqttClient.setUsernamePassword(username, password);
+            
+            Serial.print(F("After setUsernamePassword: "));
+            Serial.println(freeMemory());
 
+            Serial.print(F("Before setKeepAliveInterval: "));
+            Serial.println(freeMemory());
             // Set the keepalive time
             mqttClient.setKeepAliveInterval(keep_alive);
+             Serial.print(F("After setUsernamePassword: "));
+            Serial.println(freeMemory());
+
 
             int retryAttempts = 0;
 
+            Serial.print(F("Before connected: "));
+            Serial.println(freeMemory());
             // Try to connect multiple times as some may be dropped
             while(!mqttClient.connected() && retryAttempts < 5)
             {
                 snprintf_P(output, OUTPUT_SIZE, PSTR("Attempting to connect to broker: %s:%i"), address, port);
                 LOG(output);
 
+                Serial.print(F("Before connect: "));
+                Serial.println(freeMemory());
                 // Attempt to Connect to the MQTT client 
                 if(!mqttClient.connect(address, port)){
                     snprintf_P(output, OUTPUT_SIZE, PSTR("Failed to connect to broker: %s"), getMQTTError());
                     ERROR(output);
                     delay(5000);
                 }
+                Serial.print(F("After connect: "));
+                Serial.println(freeMemory());
 
                 // If our retry limit has been reached we dont want to try to send data cause it wont work
                 if(retryAttempts == 4){
@@ -153,16 +179,20 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
             LOG(F("Attempting to send data..."));
 
             // Tell the broker we are still here
+            Serial.print(F("Before poll: "));
+            Serial.println(freeMemory());
             mqttClient.poll();
+            Serial.print(F("After poll: "));
+            Serial.println(freeMemory());
 
-            // Pass batch vector in as a reference 
-            char line[2000];
-            int packetNumber = 0, index = 0;
             
-            File* fileOutput = batchSD.getBatch();
-        
-            while(fileOutput->available()){
-                char c = fileOutput->read();
+            /* This bloc of code uses about */
+             Serial.print(F("Before Publish: "));
+            Serial.println(freeMemory());
+            File fileOutput = batchSD.getBatch();
+           
+            while(fileOutput.available()){
+                char c = fileOutput.read();
                 if(c == '\r'){
                     snprintf_P(output, OUTPUT_SIZE, PSTR("Publishing Packet %i of %d"), packetNumber+1, batchSD.getBatchSize());
                     printModuleName(output);
@@ -180,7 +210,9 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
                 }  
                 
             }
-            fileOutput->close();
+            fileOutput.close();
+            Serial.print(F("After Publish: "));
+            Serial.println(freeMemory());
             
             LOG(F("Data has been successfully sent!"));
             

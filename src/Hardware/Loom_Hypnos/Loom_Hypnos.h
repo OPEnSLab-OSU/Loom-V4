@@ -228,7 +228,7 @@ class Loom_Hypnos : public Module{
         DateTime get_utc_time();                                                            // Convert the local time to UTC, accounts for daylight savings zones
         TIME_ZONE timezone;                                                                 // Timezone the RTC was set to
        
-        char* dateTime_toString(DateTime time);                                            // Convert a DateTime object to our desired format
+        void dateTime_toString(DateTime time, char array[21]);                              // Convert a DateTime object to our desired format
 
         DateTime time;                                                                      // UTC time
         DateTime localTime;                                                                 // Local time

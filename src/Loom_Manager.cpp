@@ -160,17 +160,13 @@ void Manager::power_down(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::display_data(){
-    
+    char jsonStr[2000];
     FUNCTION_START;
     if(!doc.isNull()){
 
-        // Get the json size with the null terminator
-        size_t jsonSize = measureJsonPretty(doc)+1;
-        char *jsonStr =  (char*) malloc(jsonSize);
-        serializeJsonPretty(doc, jsonStr, jsonSize);
+        serializeJsonPretty(doc, jsonStr, 2000);
         LOG(F("Data Json: \n"));
         LOG_LONG(jsonStr);
-        free(jsonStr);
     }
     else{
         LOG(F("JSON Document is Null there is no data to display"));
@@ -203,11 +199,9 @@ void Manager::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-char* Manager::getJSONString(){
+void Manager::getJSONString(char array[2000]){
     size_t jsonSize = measureJson(doc)+1;
-    char* jsonString =  (char*) malloc(jsonSize);
-    serializeJson(doc, jsonString, jsonSize);
-    return jsonString;
+    serializeJson(doc, array, 2000);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

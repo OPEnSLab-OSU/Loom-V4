@@ -113,10 +113,8 @@ class Loom_LTE : public Module{
         /**
          * Convert an IP address to a string
          */ 
-        char* ipToString(IPAddress ip) { 
-            char* ipString = (char *) malloc(16);
-            snprintf(ipString, 16, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
-            return ipString;
+        void ipToString(IPAddress ip, char array[16]) { 
+            snprintf(array, 16, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
         };
 
     private:

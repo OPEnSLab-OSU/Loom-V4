@@ -29,6 +29,7 @@ void Loom_WIFI::initialize() {
     // The pins on the feather M0 WiFi are different than most boards
     WiFi.setPins(8, 7, 4, 2);
     char output[OUTPUT_SIZE];
+    char ip[16];
 
     LOG(F("Initializing WiFi module..."));
 
@@ -61,14 +62,12 @@ void Loom_WIFI::initialize() {
             hasInitialized = true;
 
             // Print the device IP
-            char* ip = ipToString(getIPAddress());
+            ipToString(getIPAddress(), ip);
             snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
-            free(ip);
             LOG(output);
 
-            ip = ipToString(getSubnetMask());
+            ipToString(getSubnetMask(), ip);
             snprintf(output, OUTPUT_SIZE, "Device Subnet Address: %s", ip);
-            free(ip);
             LOG(output);
         }else{
             ERROR(F("Failed to initialize Wifi!"));
@@ -80,13 +79,14 @@ void Loom_WIFI::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::package(){
+    /*
     FUNCTION_START;
     if(moduleInitialized && powerUp){
         JsonObject json = manInst->get_data_object(getModuleName());
         json[F("SSID")] = WiFi.SSID();
         json[F("RSSI")] = WiFi.RSSI();
     }
-    FUNCTION_END;
+    FUNCTION_END;*/
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

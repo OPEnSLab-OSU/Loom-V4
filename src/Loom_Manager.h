@@ -93,9 +93,9 @@ class Manager{
 
         /** 
          * Get a serialized version of the JSON packet as a string
-         * @return JSON String
+         * @param array Array to store the string in
          */
-        char* getJSONString();
+        void getJSONString(char array[2000]);
     
         /**
          * Gets the current device name set by the user
