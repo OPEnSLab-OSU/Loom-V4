@@ -201,8 +201,6 @@ void Loom_LTE::disconnect(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::verifyConnection(){
     bool returnStatus =  false;
-    char output[OUTPUT_SIZE];
-    strncat(output, "Web Response\n", 100);
     LOG(F("Attempting to verify internet connection..."));
     
     // Connect to TinyGSM's creator's website
@@ -226,12 +224,10 @@ bool Loom_LTE::verifyConnection(){
             while (client.available()) {
                 char c = client.read();
                 Serial.print(c);
-                strncat(output, &c, 100);
                 timeout = millis();
             }
         }
         Serial.println();
-        SLOG(output);
         client.stop();
         returnStatus = true;
     }
