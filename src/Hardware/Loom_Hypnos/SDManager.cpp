@@ -103,12 +103,12 @@ bool SDManager::log(DateTime currentTime){
 
             // If there is a key that contains timestamp data when need to include that separately 
             if(document.containsKey("timestamp")){
-                char utcArr[19];
-                char localArr[19];
-                memset(utcArr, '\0', 19);
-                memset(localArr, '\0', 19);
-                strncpy(utcArr, document["timestamp"]["time_utc"].as<const char*>(), 19);
-                strncpy(localArr, document["timestamp"]["time_local"].as<const char*>(), 19);
+                char utcArr[21];
+                char localArr[21];
+                memset(utcArr, '\0', 21);
+                memset(localArr, '\0', 21);
+                strncpy(utcArr, document["timestamp"]["time_utc"].as<const char*>(), 21);
+                strncpy(localArr, document["timestamp"]["time_local"].as<const char*>(), 21);
 
                 // Format date with spaces when logging to SD
                 char *indexPointer = strchr(utcArr, 'Z');
