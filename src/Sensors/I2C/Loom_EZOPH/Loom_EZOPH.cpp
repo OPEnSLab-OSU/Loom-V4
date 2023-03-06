@@ -28,7 +28,7 @@ void Loom_EZOPH::measure(){
         }
 
         // Parse the constructed string
-        ph = getSensorData().toFloat();
+        ph = atof(getSensorData());  
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

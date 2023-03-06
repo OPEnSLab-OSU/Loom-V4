@@ -50,10 +50,11 @@ class EZOSensor : public I2CDevice{
         /* Request and read in data from the senor*/
         bool readSensor(){
             char output[OUTPUT_SIZE];
+            int i;
             if(moduleInitialized){
                 // Clear the sensorData received previously
-                sensorData = "";
-
+                memset(sensorData, '\0', 32);
+            
                 // Check that the device is still present and connected
                 if(!checkDeviceConnection()){
                     ERROR(F("Failed to detect device at the specified address"));
@@ -75,33 +76,34 @@ class EZOSensor : public I2CDevice{
                 // Check if the I2C code was not valid
                 code = Wire.read();
                 if(code != 1){
-                    snprintf(output, OUTPUT_SIZE, "Unsuccessful Response Code Received: %s", responseCodes[code-1].c_str());
+                    snprintf(output, OUTPUT_SIZE, "Unsuccessful Response Code Received: %s", responseCodes[code-1]);
                     ERROR(output);
                     return false;
                 } 
 
                 // Read out only the next 32 bytes
-                for(int i = 0; i < 32; i++){
-                    currentChar = Wire.read();
+                for(i = 0; i < 32; i++){
+                    currentChar = (char)Wire.read();
 
                     // If a null char was received break out of the loop
-                    if(currentChar == 0) break;
+                    if(currentChar == '\0') break;
 
                     // If not append the current char to the string
-                    sensorData += currentChar;
+                    strncat(sensorData, &currentChar, sizeof(sensorData));
                 }
+                strncat(sensorData, "\0", sizeof(sensorData));
             }
 
             return true;
         };
 
         /* Get the most recently collected sensor data */
-        String getSensorData() { return sensorData; };
+        const char* getSensorData() { return sensorData; };
     
     private:
-        int8_t code = 0;                                                        // I2C Response Code
-        char currentChar;                                                       // Current character we have read in
-        String responseCodes[4] = {"Success", "Failed", "Pending", "No Data"};  // Stringified I2C Response codes
-        String sensorData;                                                      // Convert the char array to a string to improve parse-ability
+        int8_t code = 0;                                                            // I2C Response Code
+        char currentChar;                                                           // Current character we have read in
+        const char* responseCodes[4] = {"Success", "Failed", "Pending", "No Data"}; // Stringified I2C Response codes
+        char sensorData[33];                                                        // Convert the char array to a string to improve parse-ability
         
 };

@@ -55,10 +55,19 @@ void Loom_EZORGB::power_down() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZORGB::parseData(String sensorData){
+void Loom_EZORGB::parseData(const char* sensorData){
     // Parse out the comma separated strings
-    rgb[0] = sensorData.substring(0, sensorData.indexOf(",")).toInt();
-    rgb[1] = sensorData.substring(sensorData.indexOf(","), sensorData.indexOf(",", sensorData.indexOf(","))).toInt();
-    rgb[2] = sensorData.substring(sensorData.indexOf(",", sensorData.indexOf(",")), sensorData.indexOf(",", sensorData.indexOf(",", sensorData.indexOf(",")))).toInt();
+    char* splitPointer;
+    char response[33];
+    strncpy(response, sensorData, 33);
+    
+    splitPointer = strtok(response, ",");
+    rgb[0] = atoi(splitPointer);
+
+    splitPointer = strtok(NULL, ",");
+    rgb[1] = atoi(splitPointer);
+
+    splitPointer = strtok(NULL, ",");
+    rgb[2] = atoi(splitPointer);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -55,6 +55,7 @@ void Loom_ZXGesture::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ZXGesture::measure() {
+    
     if(moduleInitialized){
         // Get the current connection status
         bool connectionStatus = checkDeviceConnection();
@@ -104,16 +105,16 @@ void Loom_ZXGesture::measure() {
                 gestureSpeed = zx.readGestureSpeed();
 
                 switch(gesture){
-                    case RIGHT_SWIPE: gestureString = "Right Swipe"; break;
-                    case LEFT_SWIPE: gestureString = "Left Swipe"; break;
-                    case UP_SWIPE: gestureString = "Up Swipe"; break;
-                    default: gestureString = "No Gesture";
+                    case RIGHT_SWIPE:   strncpy(gestureString, "Right Swipe\0", 10); break;
+                    case LEFT_SWIPE:    strncpy(gestureString, "Left Swipe\0", 10); break;
+                    case UP_SWIPE:      strncpy(gestureString, "Up Swipe\0", 10); break;
+                    default:            strncpy(gestureString, "No Gesture\0", 10);
                 }
             }
 
             // Defaults if no gesture was detected
             else{
-                gestureString = "No Gesture";
+                strncpy(gestureString, "No Gesture\0", 10);
                 gestureSpeed = 0;
             }
         }

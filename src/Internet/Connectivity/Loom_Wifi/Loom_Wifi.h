@@ -150,7 +150,6 @@ class Loom_WIFI : public Module{
         WiFiClient wifiClient;              // Wifi client that can be used with the MQTT client or other additional objects
         Loom_BatchSD* batchSD = nullptr;
 
-        bool hasInitialized = false;        // Has the WiFi module run through the initialization process
         bool powerUp = true;                // Whether or not the WiFi should power up (used with batch uploads)
 
         char wifi_name[100];                // Access point to connect to

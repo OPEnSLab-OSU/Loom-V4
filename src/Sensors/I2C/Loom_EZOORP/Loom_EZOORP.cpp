@@ -28,7 +28,7 @@ void Loom_EZOORP::measure(){
         }
 
         // Parse the constructed string
-        orp = getSensorData().toFloat();
+        orp = atof(getSensorData());
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

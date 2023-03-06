@@ -59,7 +59,7 @@ void Loom_WIFI::initialize() {
 
         if(moduleInitialized){
             LOG(F("Successfully Initalized Wifi!"));
-            hasInitialized = true;
+
 
             // Print the device IP
             ipToString(getIPAddress(), ip);
@@ -79,14 +79,13 @@ void Loom_WIFI::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::package(){
-    /*
     FUNCTION_START;
     if(moduleInitialized && powerUp){
         JsonObject json = manInst->get_data_object(getModuleName());
         json[F("SSID")] = WiFi.SSID();
         json[F("RSSI")] = WiFi.RSSI();
     }
-    FUNCTION_END;*/
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -94,12 +93,14 @@ void Loom_WIFI::package(){
 void Loom_WIFI::power_up() {
     FUNCTION_START;
     // If batchSD is defined and our current batch is not equal to one less than the needed for publishing dont power up
-    if(hasInitialized && batchSD != nullptr && batchSD->getCurrentBatch() != batchSD->getBatchSize()-1){ 
-        WARNING(F("Not ready to publish, WIFI will not be powered up"));
-        powerUp = false;
-        return; 
-    }else{
-        powerUp = true;
+    if(batchSD != nullptr){
+        if(batchSD->getCurrentBatch() != batchSD->getBatchSize()-1){ 
+            WARNING(F("Not ready to publish, WIFI will not be powered up"));
+            powerUp = false;
+            return; 
+        }else{
+            powerUp = true;
+        }
     }
 
     if(moduleInitialized && powerUp){
@@ -223,10 +224,11 @@ void Loom_WIFI::start_ap(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::power_down(){
     FUNCTION_START;
-    if(moduleInitialized && powerUp){
+    if(moduleInitialized){
         // Disconnect and end the Wifi when we power down the device
         WiFi.disconnect();
         WiFi.end();
+        delay(1000);
     }
     FUNCTION_END;
 }
@@ -236,7 +238,7 @@ void Loom_WIFI::power_down(){
 bool Loom_WIFI::verifyConnection(){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
-    if(hasInitialized && moduleInitialized && powerUp){
+    if(moduleInitialized && powerUp){
         int pingLatency = WiFi.ping("www.google.com");
         if(pingLatency >= 0){
             snprintf(output, OUTPUT_SIZE, "Successfully Pinged Google! Response Time: %ims", pingLatency);

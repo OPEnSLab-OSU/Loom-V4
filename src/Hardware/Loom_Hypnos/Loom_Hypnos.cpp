@@ -384,14 +384,14 @@ void Loom_Hypnos::pre_sleep(){
     Serial.end();
     USBDevice.detach();
 
-    attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
-
     // Disable //Watchdog when entering sleep
     TIMER_DISABLE;
     FUNCTION_END;
 
     // Disable the power rails
     disable();
+
+    attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

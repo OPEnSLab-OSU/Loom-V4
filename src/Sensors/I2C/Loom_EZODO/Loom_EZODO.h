@@ -1,4 +1,5 @@
 #pragma once
+#include <stdlib.h>
 
 #include "../EZO/EZOSensor.h"
 #include "Loom_Manager.h"
@@ -47,6 +48,6 @@ class Loom_EZODO : public EZOSensor{
         
         float oxygen;                                                           // Reading for the DO value
         float saturation;                                                       // Get the percent saturation
-        void parseResponse(String response);
+        void parseResponse(const char* response);
        
 };

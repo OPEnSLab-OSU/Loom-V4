@@ -54,9 +54,17 @@ void Loom_EZODO::power_down() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZODO::parseResponse(String response){
-    int commaIndex = response.indexOf(",");
-    oxygen = response.substring(0, commaIndex).toFloat();
-    saturation = response.substring(commaIndex+1, response.length()).toFloat();
+void Loom_EZODO::parseResponse(const char* response){
+    char* splitResponse; 
+    char internalResponse[33];
+    strncpy(internalResponse, response, 33);
+
+    // Split response at , and store the first half in oxygen
+    splitResponse = strtok(internalResponse, ",");
+    oxygen = atof(splitResponse);
+
+    // And the second half in saturation
+    splitResponse = strtok(NULL, ",");
+    saturation = atof(splitResponse);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

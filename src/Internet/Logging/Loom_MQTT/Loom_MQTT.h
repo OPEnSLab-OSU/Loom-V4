@@ -84,8 +84,7 @@ class Loom_MQTT : public Module{
         MqttClient mqttClient;                  // MQTT Client to manage interactions with the MQTT broker
 
         const char* getMQTTError();                  // Get the string representation of the MQTT error codes
-        String currentLine = "";
-
+    
         int keep_alive = 60000;                 // How long the broker should keep the connection open, defaults to a minute
 
         char address[100];                         // Domain that the broker is running on

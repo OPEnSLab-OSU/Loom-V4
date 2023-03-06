@@ -37,6 +37,7 @@ class Logger{
             unsigned long lineNumber;
             int netMemoryUsage;
             unsigned long time;
+            int indentCount;
         };
         
         // Function call list
@@ -223,6 +224,14 @@ class Logger{
             newFunction->lineNumber = num;
             newFunction->netMemoryUsage = freeMemory;
             newFunction->time = millis();
+
+            // Set the number of indents based off the call stack size
+            if(callStack.size() <= 0){
+                newFunction->indentCount = 0;
+            }else{
+                newFunction->indentCount = callStack.back()->indentCount + 1;
+            }
+
             callStack.push(newFunction);
         };
 
@@ -237,6 +246,9 @@ class Logger{
             char output[300];
             char indents[10];
 
+            // 0 fill the indents array
+            memset(indents, '\0', 10);
+
             struct functionInfo* info = callStack.front();
             int memUsage = info->netMemoryUsage;
             unsigned long time = millis() - info->time;
@@ -245,13 +257,21 @@ class Logger{
             // Copy to internal variables
             strncpy(file, info->fileName, 260);
             strncpy(func, info->funcName, 260);
+
+            // Cap the number of inents at the size of the array
+            if(info->indentCount > 10){
+                info->indentCount = 10;
+            }
+
+            // Set the number of tab characters we need to add
+            memset(indents, '\t', info->indentCount);
         
             // Pop the last function off the call stack
             free(info);
             callStack.pop();
             // Format the fileName and log output, this function uses 976 bytes
             snprintf_P(fileName, 100,PSTR("/debug/funcSummaries_%i.log"), sdInst->getCurrentFileNumber());
-            snprintf_P(output, 300, PSTR("[%s:%s] Summary\n\tInitial Free Memory: %i B (%i %% Free)\n\tEnding Free Memory: %i B\n\tNet Usage: %i B\n\tElapsed Time: %u MS"), file, func, memUsage, percentage, freeMemory, memUsage-freeMemory, time);
+            snprintf_P(output, 300, PSTR("%s[%s:%s] Summary\n%s\tInitial Free Memory: %i B (%i %% Free)\n%s\tEnding Free Memory: %i B\n%s\tNet Usage: %i B\n%s\tElapsed Time: %u MS"), indents, file, func, indents, memUsage, percentage, indents, freeMemory, indents, memUsage-freeMemory, indents, time);
             
             // Log as long as we have given it a SD card instance
             if(sdInst != nullptr)

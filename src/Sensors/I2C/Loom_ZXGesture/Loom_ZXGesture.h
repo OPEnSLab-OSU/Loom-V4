@@ -56,7 +56,7 @@ class Loom_ZXGesture : public I2CDevice{
         /**
          * Get last recorded gesture
          */ 
-        String getGesture() {return gestureString; };
+        const char* getGesture() {return gestureString; };
 
         /**
          * Get the speed at which the last gesture has been preformed
@@ -78,6 +78,6 @@ class Loom_ZXGesture : public I2CDevice{
         Position pos;                           // Position measured by the sensor (X and Y) in mm
 
         GestureType gesture;                    // Last measured gesture
-        String gestureString;                   // String name of the last gesture
+        char gestureString[10];                 // String name of the last gesture
         uint8_t gestureSpeed;                   // The speed at which the gesture was preformed
 };

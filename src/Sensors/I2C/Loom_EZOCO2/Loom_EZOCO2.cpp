@@ -24,7 +24,7 @@ void Loom_EZOCO2::measure(){
             ERROR(F("Failed to read sensor!"));
             return;
         }
-        co2 = getSensorData().toFloat();
+        co2 = atof(getSensorData());
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
