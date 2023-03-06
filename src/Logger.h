@@ -219,7 +219,7 @@ class Logger{
          * @param num Current line number in the file of which this call is located
         */
         void startFunction(const char* file, const char* func, unsigned long num, int freeMemory){
-            if(enableFuncSummaries){
+            if(enableFunctionSummaries){
                 // Log the start time of the function
                 char fileName[260];
                 truncateFileName(file, fileName);
@@ -241,7 +241,7 @@ class Logger{
          * @param ret Openly typed variable to show the return type of the function
         */
         void endFunction(int freeMemory){
-            if(enableFuncSummaries){
+            if(enableFunctionSummaries){
                 char fileName[100];
                 char file[260];
                 char func[260];
@@ -282,9 +282,9 @@ class Logger{
         };
 
         /* Enable function summaries to view memory usage */
-        void enableFuncSummaries(){ enableFunctionSummaries = true; };
+        void enableSummaries(){ enableFunctionSummaries = true; };
 
         /* Save flash write by not logging everything to SD */
-        void enableSDLogging(){ enableSDLogging = true; };
+        void enableSD(){ enableSDLogging = true; };
 };
 

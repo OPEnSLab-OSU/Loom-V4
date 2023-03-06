@@ -81,13 +81,21 @@ class Loom_Analog : public Module{
          * Get the Millivolts of a specified pin
          * @param pin The pin to get the data from eg. A0, A1, ...
          */ 
-        float getMV(int pin) {return pinToData[pin_number_to_name(pin)].second; }
+        float getMV(int pin) {
+            char name[4];
+            pin_number_to_name(pin, name);
+            return pinToData[name].second; 
+        }
 
         /**
          * Get the analog value from a given pin
          * @param pin The pin to get the data from eg. A0, A1, ...
          */ 
-        float getAnalog(int pin) {return pinToData[pin_number_to_name(pin)].first; }
+        float getAnalog(int pin) {
+            char name[4];
+            pin_number_to_name(pin, name);
+            return pinToData[name].first; 
+        }
 
     private:
 
