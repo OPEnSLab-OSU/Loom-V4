@@ -42,8 +42,10 @@ void Loom_WIFI::initialize() {
         // Enable low power mode to conserve power
         WiFi.maxLowPowerMode();
 
+        powerUp = true;
         // Call the power up class to connect to the wifi network
         power_up();
+
 
         // Give a bit more time to initialize the module
         delay(1000);
@@ -73,6 +75,7 @@ void Loom_WIFI::initialize() {
             ERROR(F("Failed to initialize Wifi!"));
         }      
     }
+    firstInit = false;
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,9 +94,8 @@ void Loom_WIFI::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::power_up() {
-    FUNCTION_START;
     // If batchSD is defined and our current batch is not equal to one less than the needed for publishing dont power up
-    if(batchSD != nullptr){
+    if(batchSD != nullptr && !firstInit){
         if(batchSD->getCurrentBatch() != batchSD->getBatchSize()-1){ 
             WARNING(F("Not ready to publish, WIFI will not be powered up"));
             powerUp = false;
@@ -124,7 +126,6 @@ void Loom_WIFI::power_up() {
         else
             start_ap();
     }
-    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -223,14 +224,12 @@ void Loom_WIFI::start_ap(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::power_down(){
-    FUNCTION_START;
-    if(moduleInitialized){
+    if(moduleInitialized & powerUp){
         // Disconnect and end the Wifi when we power down the device
         WiFi.disconnect();
         WiFi.end();
         delay(1000);
     }
-    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

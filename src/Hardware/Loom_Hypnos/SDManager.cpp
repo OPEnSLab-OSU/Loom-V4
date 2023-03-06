@@ -76,7 +76,7 @@ void SDManager::writeHeaders(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::log(DateTime currentTime){
-    char output[512];
+    char output[2000];
     
     if(sdInitialized){
         
@@ -93,10 +93,10 @@ bool SDManager::log(DateTime currentTime){
                 writeHeaders();
             }    
             
-            snprintf_P(output, 512, PSTR("%s,%i,"), manInst->get_device_name(), manInst->get_instance_num());
+            snprintf_P(output, 2000, PSTR("%s,%i,"), manInst->get_device_name(), manInst->get_instance_num());
             // Write the Instance data that isn't included in the JSON packet
             myFile.print(output);
-            memset(output, '\0', 512); // Clear array
+            memset(output, '\0', 2000); // Clear array
 
             JsonObject document = manInst->getDocument().as<JsonObject>();
             
@@ -105,22 +105,27 @@ bool SDManager::log(DateTime currentTime){
             if(document.containsKey("timestamp")){
                 char utcArr[19];
                 char localArr[19];
+                memset(utcArr, '\0', 19);
+                memset(localArr, '\0', 19);
                 strncpy(utcArr, document["timestamp"]["time_utc"].as<const char*>(), 19);
                 strncpy(localArr, document["timestamp"]["time_local"].as<const char*>(), 19);
 
                 // Format date with spaces when logging to SD
+                char *indexPointer = strchr(utcArr, 'Z');
                 utcArr[10] = ' ';
-                utcArr[18] = '\0';
+                utcArr[indexPointer-utcArr] = '\0';
 
+                
                 // Format date with spaces when logging to SD
+                indexPointer = strchr(localArr, 'Z');
                 localArr[10] = ' ';
-                localArr[18] = '\0';
+                localArr[indexPointer-localArr] = '\0';
 
                 // Format the time stamp in the CSV file
-                strncat(output, utcArr, 512);
-                strncat(output, ",", 512);
-                strncat(output, localArr, 512);
-                strncat(output, ",", 512);
+                strncat(output, utcArr, 2000);
+                strncat(output, ",", 2000);
+                strncat(output, localArr, 2000);
+                strncat(output, ",", 2000);
             }
             
 
@@ -132,8 +137,8 @@ bool SDManager::log(DateTime currentTime){
 
                 // Get all JSON keys  
                 for(JsonPair keyValue : v.as<JsonObject>()["data"].as<JsonObject>()){
-                    strncat(output, keyValue.value().as<String>().c_str(), 512);
-                    strncat(output, ",", 512);
+                    strncat(output, keyValue.value().as<String>().c_str(), 2000);
+                    strncat(output, ",", 2000);
                 }
             }
 
@@ -147,7 +152,7 @@ bool SDManager::log(DateTime currentTime){
             myFile.close();
 
             // Inform the user that we have successfully written to the file
-            snprintf_P(output, 512, PSTR("Successfully logged data to %s"), fileName);
+            snprintf_P(output, 2000, PSTR("Successfully logged data to %s"), fileName);
             printModuleName(output);
             
         }

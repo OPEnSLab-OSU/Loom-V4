@@ -157,6 +157,7 @@ class Loom_WIFI : public Module{
         int connectionRetries;
 
         bool usingMax = false;              // If we are using max
+        bool firstInit = true;
         CommunicationMode mode;             // Current WiFi mode we are in
 
         IPAddress remoteIP;                 // IP address to send the UDP requests to 
