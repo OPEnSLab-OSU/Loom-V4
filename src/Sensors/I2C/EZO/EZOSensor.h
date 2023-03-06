@@ -15,9 +15,9 @@ class EZOSensor : public I2CDevice{
 
         
         /* General command to transmit data over I2C to the given device*/
-        bool sendTransmission(String command){
+        bool sendTransmission(const char* command){
             Wire.beginTransmission(module_address);
-            Wire.write(command.c_str());
+            Wire.write(command);
 
             // Use a ternary operator to ensure if it is 0 its true if not we are false
             return Wire.endTransmission() == 0 ? true : false;

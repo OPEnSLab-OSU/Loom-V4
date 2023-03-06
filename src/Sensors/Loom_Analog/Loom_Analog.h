@@ -110,13 +110,13 @@ class Loom_Analog : public Module{
 
         float analogToMV(int analog);               // Convert the analog voltage to mV
 
-        String pin_number_to_name(int pin);         // Convert the given to a name with the style "A0"
+        void pin_number_to_name(int pin, char name[4]);         // Convert the given to a name with the style "A0"
 
 
         Manager* manInst;                           // Instance of the manager
 
         std::vector<int> analogPins;                // Holds a list of the analog pins we want to read
-        std::map<String, std::pair<float, float>> pinToData;          // Map mapping analog pins to the data read from them
+        std::map<const char*, std::pair<float, float>> pinToData;          // Map mapping analog pins to the data read from them
         
 
 };

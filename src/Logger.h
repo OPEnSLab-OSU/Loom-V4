@@ -44,6 +44,10 @@ class Logger{
         std::queue<struct functionInfo*> callStack;
         int indentNum = 0;
 
+        // Whether or not to use the SD card or log function summaries
+        bool enableFunctionSummaries = false;
+        bool enableSDLogging = false;
+
         static Logger* instance;
         SDManager* sdInst = nullptr;
 
@@ -62,7 +66,7 @@ class Logger{
 
             snprintf_P(filePath, 100, PSTR("/debug/output_%i.log"), sdInst->getCurrentFileNumber());
             // Log as long as we have given it a SD card instance
-            if(sdInst != nullptr)
+            if(sdInst != nullptr && enableSDLogging)
                 sdInst->writeLineToFile(filePath, message);
         }
 
@@ -215,24 +219,21 @@ class Logger{
          * @param num Current line number in the file of which this call is located
         */
         void startFunction(const char* file, const char* func, unsigned long num, int freeMemory){
-            // Log the start time of the function
-            char fileName[260];
-            truncateFileName(file, fileName);
-            struct functionInfo* newFunction = (struct functionInfo*) malloc(sizeof(struct functionInfo));
-            strncpy(newFunction->fileName, fileName, 260);
-            strncpy(newFunction->funcName, func, 260);
-            newFunction->lineNumber = num;
-            newFunction->netMemoryUsage = freeMemory;
-            newFunction->time = millis();
+            if(enableFuncSummaries){
+                // Log the start time of the function
+                char fileName[260];
+                truncateFileName(file, fileName);
+                struct functionInfo* newFunction = (struct functionInfo*) malloc(sizeof(struct functionInfo));
+                strncpy(newFunction->fileName, fileName, 260);
+                strncpy(newFunction->funcName, func, 260);
+                newFunction->lineNumber = num;
+                newFunction->netMemoryUsage = freeMemory;
+                newFunction->time = millis();
+                newFunction->indentCount = callStack.size();
+                
 
-            // Set the number of indents based off the call stack size
-            if(callStack.size() <= 0){
-                newFunction->indentCount = 0;
-            }else{
-                newFunction->indentCount = callStack.back()->indentCount + 1;
+                callStack.push(newFunction);
             }
-
-            callStack.push(newFunction);
         };
 
         /**
@@ -240,42 +241,50 @@ class Logger{
          * @param ret Openly typed variable to show the return type of the function
         */
         void endFunction(int freeMemory){
-            char fileName[100];
-            char file[260];
-            char func[260];
-            char output[300];
-            char indents[10];
+            if(enableFuncSummaries){
+                char fileName[100];
+                char file[260];
+                char func[260];
+                char output[300];
+                char indents[10];
 
-            // 0 fill the indents array
-            memset(indents, '\0', 10);
+                // 0 fill the indents array
+                memset(indents, '\0', 10);
 
-            struct functionInfo* info = callStack.front();
-            int memUsage = info->netMemoryUsage;
-            unsigned long time = millis() - info->time;
-            int percentage = ((float)memUsage / 32000.0) * 100;
+                struct functionInfo* info = callStack.front();
+                int memUsage = info->netMemoryUsage;
+                unsigned long time = millis() - info->time;
+                int percentage = ((float)memUsage / 32000.0) * 100;
 
-            // Copy to internal variables
-            strncpy(file, info->fileName, 260);
-            strncpy(func, info->funcName, 260);
+                // Copy to internal variables
+                strncpy(file, info->fileName, 260);
+                strncpy(func, info->funcName, 260);
 
-            // Cap the number of inents at the size of the array
-            if(info->indentCount > 10){
-                info->indentCount = 10;
-            }
+                // Cap the number of inents at the size of the array
+                if(info->indentCount > 10){
+                    info->indentCount = 10;
+                }
 
-            // Set the number of tab characters we need to add
-            memset(indents, '\t', info->indentCount);
-        
-            // Pop the last function off the call stack
-            free(info);
-            callStack.pop();
-            // Format the fileName and log output, this function uses 976 bytes
-            snprintf_P(fileName, 100,PSTR("/debug/funcSummaries_%i.log"), sdInst->getCurrentFileNumber());
-            snprintf_P(output, 300, PSTR("%s[%s:%s] Summary\n%s\tInitial Free Memory: %i B (%i %% Free)\n%s\tEnding Free Memory: %i B\n%s\tNet Usage: %i B\n%s\tElapsed Time: %u MS"), indents, file, func, indents, memUsage, percentage, indents, freeMemory, indents, memUsage-freeMemory, indents, time);
+                // Set the number of tab characters we need to add
+                memset(indents, '\t', info->indentCount);
             
-            // Log as long as we have given it a SD card instance
-            if(sdInst != nullptr)
-                sdInst->writeLineToFile(fileName, output);
+                // Pop the last function off the call stack
+                free(info);
+                callStack.pop();
+                // Format the fileName and log output, this function uses 976 bytes
+                snprintf_P(fileName, 100,PSTR("/debug/funcSummaries_%i.log"), sdInst->getCurrentFileNumber());
+                snprintf_P(output, 300, PSTR("%s[%s:%s] Summary\n%s\tInitial Free Memory: %i B (%i %% Free)\n%s\tEnding Free Memory: %i B\n%s\tNet Usage: %i B\n%s\tElapsed Time: %u MS"), indents, file, func, indents, memUsage, percentage, indents, freeMemory, indents, memUsage-freeMemory, indents, time);
+                
+                // Log as long as we have given it a SD card instance
+                if(sdInst != nullptr && enableSDLogging)
+                    sdInst->writeLineToFile(fileName, output);
+            }
         };
+
+        /* Enable function summaries to view memory usage */
+        void enableFuncSummaries(){ enableFunctionSummaries = true; };
+
+        /* Save flash write by not logging everything to SD */
+        void enableSDLogging(){ enableSDLogging = true; };
 };
 
