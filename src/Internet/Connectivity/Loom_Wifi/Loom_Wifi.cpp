@@ -46,17 +46,15 @@ void Loom_WIFI::initialize() {
         // Call the power up class to connect to the wifi network
         power_up();
 
-
         // Give a bit more time to initialize the module
         delay(1000);
 
-        
 
         // Only try to verify if we have connected to a network
         if(mode != CommunicationMode::AP && !usingMax){
             // Verify the wifi connection after we have connected
             LOG(F("Verifying Connection to the Internet..."));
-            moduleInitialized = verifyConnection();
+            verifyConnection();
         }
 
         if(moduleInitialized){
@@ -230,7 +228,7 @@ void Loom_WIFI::start_ap(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::power_down(){
-    if(powerUp){
+    if(moduleInitialized && powerUp){
         // Disconnect and end the Wifi when we power down the device
         WiFi.disconnect();
         WiFi.end();
