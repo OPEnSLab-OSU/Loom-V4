@@ -108,7 +108,9 @@ class SDManager : public Module{
             snprintf_P(fileName, 260, PSTR("%s%i.csv"), name, getCurrentFileNumber()); 
             snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), name, getCurrentFileNumber()); 
             snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+            useOverriden = true;
         };
+        
 
         /* Get whatever number we are currently appending to the SD fileNames*/
         int getCurrentFileNumber() {return file_count;};
@@ -130,6 +132,7 @@ class SDManager : public Module{
         char batchFileName[260];                                // File name to log batches to
         char fileName[260];                                     // Current file name that data is being logged to
         char fileNameNoExtension[260];                          // Current file name that data is being logged to without the file extension
+        bool useOverriden = false;                              // Whether or not to use the override creds
 
         int batch_size = -1;                                    // How many packets to log per batch
         int current_batch = 0;                                  // Current count of the batch

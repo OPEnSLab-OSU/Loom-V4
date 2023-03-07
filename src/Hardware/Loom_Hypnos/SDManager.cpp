@@ -93,6 +93,7 @@ bool SDManager::log(DateTime currentTime){
                 writeHeaders();
             }    
             
+            if(!useOverriden)
             snprintf_P(output, 2000, PSTR("%s,%i,"), manInst->get_device_name(), manInst->get_instance_num());
             // Write the Instance data that isn't included in the JSON packet
             myFile.print(output);

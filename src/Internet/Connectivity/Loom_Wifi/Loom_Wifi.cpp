@@ -156,7 +156,7 @@ void Loom_WIFI::connect_to_network(){
 
             // If after 10 attempts we still can't connect to the network we need to stop and break so we don't hang the device
             if(retry_count >= connectionRetries){
-                ERROR(F("Failed to connect to the access point after 10 tries! Is the network in range and are your credentials correct?"));
+                ERROR(F("Failed to connect to the access point after allotted tries! Is the network in range and are your credentials correct?"));
                 
                 // Switch over to AP mode if using max
                 if(usingMax){
@@ -230,7 +230,7 @@ void Loom_WIFI::start_ap(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::power_down(){
-    if(moduleInitialized & powerUp){
+    if(moduleInitialized){
         // Disconnect and end the Wifi when we power down the device
         WiFi.disconnect();
         WiFi.end();

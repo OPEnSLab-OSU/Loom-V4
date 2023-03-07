@@ -163,7 +163,6 @@ void Manager::display_data(){
     char jsonStr[2000];
     FUNCTION_START;
     if(!doc.isNull()){
-
         serializeJsonPretty(doc, jsonStr, 2000);
         LOG(F("Data Json: \n"));
         LOG_LONG(jsonStr);
