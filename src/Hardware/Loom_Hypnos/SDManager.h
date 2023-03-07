@@ -108,6 +108,7 @@ class SDManager : public Module{
             snprintf_P(fileName, 260, PSTR("%s%i.csv"), name, getCurrentFileNumber()); 
             snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), name, getCurrentFileNumber()); 
             snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+            strncpy(device_name, name, 100);
             useOverriden = true;
         };
         

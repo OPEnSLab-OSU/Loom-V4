@@ -240,10 +240,12 @@ bool SDManager::updateCurrentFileName(){
         file_count = file_count / 2;
     }
 
-    // Set all the fileNames
-    snprintf_P(fileName, 260, PSTR("%s%i.csv"), device_name, getCurrentFileNumber()); 
-    snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), device_name, getCurrentFileNumber()); 
-    snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+    if(!useOverriden){
+        // Set all the fileNames
+        snprintf_P(fileName, 260, PSTR("%s%i.csv"), device_name, getCurrentFileNumber()); 
+        snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), device_name, getCurrentFileNumber()); 
+        snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+    }
 
     // Close the root file after we have decided what to name the next file
     root.close();
