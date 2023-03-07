@@ -83,10 +83,16 @@ void Loom_WIFI::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::package(){
     FUNCTION_START;
-    if(moduleInitialized && powerUp){
-        JsonObject json = manInst->get_data_object(getModuleName());
-        json[F("SSID")] = WiFi.SSID();
-        json[F("RSSI")] = WiFi.RSSI();
+    if(moduleInitialized){
+        if(powerUp){
+            JsonObject json = manInst->get_data_object(getModuleName());
+            json[F("SSID")] = WiFi.SSID();
+            json[F("RSSI")] = WiFi.RSSI();
+        }else{
+            JsonObject json = manInst->get_data_object(getModuleName());
+            json[F("SSID")] = wifi_name;
+            json[F("RSSI")] = 0;
+        }
     }
     FUNCTION_END;
 }
