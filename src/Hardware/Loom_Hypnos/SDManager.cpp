@@ -4,7 +4,8 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 SDManager::SDManager(Manager* man, int sd_chip_select) : manInst(man), Module("SD Manager"), chip_select(sd_chip_select) {
     strncpy(device_name, manInst->get_device_name(), 100);
- } // Disables Lora so we can use the SD card on hypnos 
+    memset(overrideFileName, '\0', 260);
+} // Disables Lora so we can use the SD card on hypnos 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -93,7 +94,6 @@ bool SDManager::log(DateTime currentTime){
                 writeHeaders();
             }    
             
-            if(!useOverriden)
             snprintf_P(output, 2000, PSTR("%s,%i,"), manInst->get_device_name(), manInst->get_instance_num());
             // Write the Instance data that isn't included in the JSON packet
             myFile.print(output);
@@ -176,6 +176,7 @@ bool SDManager::log(DateTime currentTime){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::begin(){
+
     digitalWrite(8, HIGH);  // Disable LoRa
 
     printModuleName("Initializing SD Card...");
@@ -218,6 +219,7 @@ bool SDManager::begin(){
 bool SDManager::updateCurrentFileName(){
     uint16_t indexDir = 0;
     char f_name[260];
+    char* strLocation;
 
     // What number we need to append to the file name
     file_count = 0;
@@ -226,8 +228,15 @@ bool SDManager::updateCurrentFileName(){
     while(scanningFile.openNext(&root)){
         scanningFile.getName(f_name, 25);
 
-        // Check if the substring exists
-        char* strLocation = strstr(f_name, device_name);
+        if(strlen(overrideFileName) > 0){
+            // Check if the substring exists
+            strLocation = strstr(f_name, overrideFileName);
+        }
+        else{
+            // Check if the substring exists
+            strLocation = strstr(f_name, device_name);
+        }
+        
         if(strLocation != NULL){
             // Increase the file count per loop to track what the next file should be
             file_count++;
@@ -240,7 +249,14 @@ bool SDManager::updateCurrentFileName(){
         file_count = file_count / 2;
     }
 
-    if(!useOverriden){
+    if(strlen(overrideFileName) > 0){
+        // Set all the fileNames with the override name
+        snprintf_P(fileName, 260, PSTR("%s%i.csv"), overrideFileName, getCurrentFileNumber()); 
+        snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), overrideFileName, getCurrentFileNumber()); 
+        snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+       
+    }
+    else{
         // Set all the fileNames
         snprintf_P(fileName, 260, PSTR("%s%i.csv"), device_name, getCurrentFileNumber()); 
         snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), device_name, getCurrentFileNumber()); 

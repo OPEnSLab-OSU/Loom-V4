@@ -105,11 +105,7 @@ class SDManager : public Module{
          * Log to a different name other than one matching the device name
          */ 
         void setLogName(const char* name) { 
-            snprintf_P(fileName, 260, PSTR("%s%i.csv"), name, getCurrentFileNumber()); 
-            snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), name, getCurrentFileNumber()); 
-            snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
-            strncpy(device_name, name, 100);
-            useOverriden = true;
+            strncpy(overrideFileName, name, 100);
         };
         
 
@@ -133,7 +129,7 @@ class SDManager : public Module{
         char batchFileName[260];                                // File name to log batches to
         char fileName[260];                                     // Current file name that data is being logged to
         char fileNameNoExtension[260];                          // Current file name that data is being logged to without the file extension
-        bool useOverriden = false;                              // Whether or not to use the override creds
+        char overrideFileName[260];
 
         int batch_size = -1;                                    // How many packets to log per batch
         int current_batch = 0;                                  // Current count of the batch
