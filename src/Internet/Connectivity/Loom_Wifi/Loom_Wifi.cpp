@@ -193,7 +193,7 @@ void Loom_WIFI::start_ap(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::power_down(){
-    if(moduleInitialized && powerUp){
+    if(powerUp){
         // Disconnect and end the Wifi when we power down the device
         WiFi.disconnect();
         WiFi.end();
