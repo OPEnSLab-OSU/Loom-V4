@@ -73,7 +73,7 @@ class Loom_LTE : public Module{
          * Turn on batch upload for the lte which means it will only initialize the module when we need to upload
          * @param batch BatchSD module
          */ 
-        void enableBatch(Loom_BatchSD& batch) { batch_sd = &batch; };
+        void setBatchSD(Loom_BatchSD& batch) { batch_sd = &batch; };
 
         /**
          * Connect to the cellular network
@@ -129,6 +129,7 @@ class Loom_LTE : public Module{
         TinyGsm modem;                      // LTE Modem
         TinyGsmClient client;               // LTE Client
 
+        bool powerUp = true;
         bool firstInit = true;              // First time it was initialized
         Loom_BatchSD* batch_sd = nullptr;   // If we are using batch publish
 

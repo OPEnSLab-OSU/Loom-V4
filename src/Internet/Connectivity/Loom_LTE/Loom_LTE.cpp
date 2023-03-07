@@ -83,8 +83,14 @@ void Loom_LTE::initialize(){
 void Loom_LTE::power_up(){
     FUNCTION_START;
     // If the batch_sd is initialized and the current batch is one less than the maximum so we turn on the device before the last batch
-    if((batch_sd != nullptr && (batch_sd->getCurrentBatch() != batch_sd->getBatchSize()-1)) && !firstInit){
-       return;
+    if(batch_sd != nullptr && !firstInit){
+        if(batch_sd->getCurrentBatch() != batch_sd->getBatchSize()-1){
+            powerUp = false;
+            FUNCTION_END;
+            return;
+        }else{
+            powerUp = true;
+        }
     }
         
     // If not connected to a network we want to connect
@@ -115,7 +121,7 @@ void Loom_LTE::power_up(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::power_down(){
     FUNCTION_START;
-    if(moduleInitialized){
+    if(moduleInitialized && powerUp){
         LOG(F("Powering down GPRS Modem. This should take about 5 seconds..."));
         modem.poweroff();
         digitalWrite(powerPin, HIGH);

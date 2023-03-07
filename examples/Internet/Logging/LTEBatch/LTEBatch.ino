@@ -32,7 +32,7 @@ void setup() {
   manager.beginSerial();
 
   // Sets the LTE board to use batch SD to only start when we actually need to publish data
-  lte.enableBatch(batchSD);
+  lte.setBatchSD(batchSD);
 
   // Enable the Hypnos
   hypnos.enable();
