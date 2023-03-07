@@ -164,8 +164,8 @@ class Logger{
         */
         void debugLog(const __FlashStringHelper* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
             char logMessage[OUTPUT_SIZE];
-            char buff[50];
-            memcpy_P(buff, message, 50);
+            char buff[150];
+            memcpy_P(buff, message, 150);
 		    char fileName[260];
             truncateFileName(file, fileName);
             snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[DEBUG] [%s:%s:%u] %s"), fileName, func, lineNumber, buff);
@@ -180,8 +180,8 @@ class Logger{
         */
         void warningLog(const __FlashStringHelper* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
             char logMessage[OUTPUT_SIZE];
-            char buff[50];
-		    memcpy_P(buff, message, 50);
+            char buff[150];
+		    memcpy_P(buff, message, 150);
             char fileName[260];
             truncateFileName(file, fileName);
             snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[WARNING] [%s:%s:%u] %s\0"), fileName, func, lineNumber, buff);
@@ -196,8 +196,8 @@ class Logger{
         */
         void errorLog(const __FlashStringHelper* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
             char logMessage[OUTPUT_SIZE];
-            char buff[50];
-		    memcpy_P(buff, message, 50);
+            char buff[150];
+		    memcpy_P(buff, message, 150);
             char fileName[260];
             truncateFileName(file, fileName);
             snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[ERROR] [%s:%s:%u] %s"), fileName, func, lineNumber, buff);
