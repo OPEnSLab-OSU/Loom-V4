@@ -4,17 +4,17 @@
 #include <MemoryFree.h>
 #include "Hardware/Loom_Hypnos/SDManager.h"
 
-#define FUNCTION_START Logger::getInstance()->startFunction(__FILE__, __func__, __LINE__, freeMemory())
-#define FUNCTION_END Logger::getInstance()->endFunction(freeMemory()) 
+#define FUNCTION_START Logger::getInstance()->startFunction(__FILE__, __func__, __LINE__, freeMemory())     // Marks the start of a function
+#define FUNCTION_END Logger::getInstance()->endFunction(freeMemory())                                       // Marks the end of a function
 
-#define SLOG(msg) Logger::getInstance()->debugLog(msg, true, __FILE__, __func__, __LINE__)          // Log a message without printing to the serial
-#define LOG(msg) Logger::getInstance()->debugLog(msg, false, __FILE__, __func__, __LINE__)          // Log a generic message
-#define LOG_LONG(msg) Logger::getInstance()->logLong(msg, false)                                   // Log a long message
-#define ERROR(msg) Logger::getInstance()->errorLog(msg, false, __FILE__, __func__, __LINE__)        // Log an error message
-#define WARNING(msg) Logger::getInstance()->warningLog(msg, false, __FILE__, __func__, __LINE__)    // Log a warning message
+#define SLOG(msg) Logger::getInstance()->debugLog(msg, true, __FILE__, __func__, __LINE__)                  // Log a message without printing to the serial
+#define LOG(msg) Logger::getInstance()->debugLog(msg, false, __FILE__, __func__, __LINE__)                  // Log a generic message
+#define LOG_LONG(msg) Logger::getInstance()->logLong(msg, false)                                            // Log a long message
+#define ERROR(msg) Logger::getInstance()->errorLog(msg, false, __FILE__, __func__, __LINE__)                // Log an error message
+#define WARNING(msg) Logger::getInstance()->warningLog(msg, false, __FILE__, __func__, __LINE__)            // Log a warning message
 
-#define ENABLE_SD_LOGGING Logger::getInstance()->enableSD();                                        // Enable SD logging of debug information
-#define ENABLE_FUNC_SUMMARIES Logger::getInstance()->enableSummaries();                             // Enable logging of function mem usage summaries
+#define ENABLE_SD_LOGGING Logger::getInstance()->enableSD();                                                // Enable SD logging of debug information
+#define ENABLE_FUNC_SUMMARIES Logger::getInstance()->enableSummaries();                                     // Enable logging of function mem usage summaries
 
 /**
  * Class for handling debug log information
@@ -30,8 +30,8 @@ class Logger{
          * funcName - Name of the function that we are in
          * lineNumber - The current line number of the function
          * netMemoryUsage - The amount of memory that was allocated or deallocated in that function alone (bytes)
-         * totalMemoryUsage - The total amount of RAM being used at the end of the current function (bytes)
          * time - The time the function took to return (ms)
+         * indentCount - This is allows for better formatting in the funcSummaries output
         */
         struct functionInfo{
             char fileName[260];
@@ -273,6 +273,7 @@ class Logger{
                 // Pop the last function off the call stack
                 free(info);
                 callStack.pop();
+                
                 // Format the fileName and log output, this function uses 976 bytes
                 snprintf_P(fileName, 100,PSTR("/debug/funcSummaries_%i.log"), sdInst->getCurrentFileNumber());
                 snprintf_P(output, 300, PSTR("%s[%s:%s] Summary\n%s\tInitial Free Memory: %i B (%i %% Free)\n%s\tEnding Free Memory: %i B\n%s\tNet Usage: %i B\n%s\tElapsed Time: %u MS"), indents, file, func, indents, memUsage, percentage, indents, freeMemory, indents, memUsage-freeMemory, indents, time);

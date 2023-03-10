@@ -6,6 +6,7 @@
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 #include <Loom_Manager.h>
+#include <Logger.h>
 
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 
@@ -16,6 +17,7 @@
 
 #include <Internet/Logging/Loom_MQTT/Loom_MQTT.h>
 #include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
+
 
 // Pin to have the secondary interrupt triggered from
 #define INT_PIN A0
@@ -70,7 +72,6 @@ void tipTrigger() {
 }
 
 void setup() {
-
   // Set the interrupt pin to pullup
   pinMode(INT_PIN, INPUT_PULLUP);
 

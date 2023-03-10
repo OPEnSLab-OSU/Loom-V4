@@ -10,6 +10,8 @@
 
 #include <SDI12.h>
 
+#define RESPONSE_SIZE 50
+
 
 /**
  * Provides both a loomified in addition to a standard reliable library implementation
@@ -36,11 +38,11 @@ class Loom_SDI12 : public Module{
         
         /* The following methods are intended for manual usage, outside of the Loom framework*/
 
-        String getSensorInfo(char addr);                        // Get the info of the connected sensor
+        const char* getSensorInfo(char addr);                   // Get the info of the connected sensor
         std::vector<char> getInUseAddresses();                  // Get a list of the in use addresses
 
-        String sendCommand(char addr, String command);          // Sends the given command to the given sensor on the bus and returns the result
-        String requestSensorInfo(char addr);                    // Request Information about the connected SDI12 sensor
+        void sendCommand(char response[RESPONSE_SIZE], char addr, const char* command);     // Sends the given command to the given sensor on the bus and returns the result
+        void requestSensorInfo(char response[RESPONSE_SIZE], char addr);                    // Request Information about the connected SDI12 sensor
         void getData(char addr);                                // Get the data from the connected sensor
         std::vector<char> scanAddressSpace();                   // Scans over the SDI-12 address space and returns a list of in-use addresses
 
@@ -58,9 +60,9 @@ class Loom_SDI12 : public Module{
         float sensorData[3];                                    // Array of floats to store sensor data
         std::vector<char> inUseAddresses;                       // List of address that have SDI_12 sensors connected
 
-        std::map<char, String> addressToType;                   // Maps an SDI12 device address to a device type
+        std::map<char, const char*> addressToType;              // Maps an SDI12 device address to a device type
 
-        String readResponse();                                  // Reads and returns the sensor's response to the command
+        void readResponse(char response[RESPONSE_SIZE]);                   // Reads and returns the sensor's response to the command
         bool checkActive(char addr);                            // Checks if the current address is actually being used
         
 };
