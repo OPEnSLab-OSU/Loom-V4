@@ -154,35 +154,36 @@ void Loom_Hypnos::wakeup(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::initializeRTC(){
     FUNCTION_START;
+    if(!RTC_initialized){
+        // If the RTC failed to start inform the user and hang
+        if(!RTC_DS.begin()){
+            ERROR(F("Couldn't start RTC! Check your connections... Execution will now hang as this is likely a fatal error"));
+            return;
+        }
+        
+        // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't happen with coin cell batt backup
+        if (RTC_DS.lostPower()) {
+            WARNING(F("RTC lost power, lets set the time!"));
 
-    // If the RTC failed to start inform the user and hang
-    if(!RTC_DS.begin()){
-        ERROR(F("Couldn't start RTC! Check your connections... Execution will now hang as this is likely a fatal error"));
-        return;
+            // If we want to set a custom time
+            if(Serial && custom_time){
+                set_custom_time();
+            }
+            else{
+                // Set the RTC to the date & time this sketch was compiled
+                RTC_DS.adjust(DateTime(F(__DATE__), F(__TIME__)));
+            }
+        }
+
+        // Clear any pending alarms
+        RTC_DS.clearAlarm();
+
+        RTC_DS.writeSqwPinMode(DS3231_OFF);
+
+        // We successfully started the RTC 
+        LOG(F("DS3231 Real-Time Clock Initialized Successfully!"));
+        RTC_initialized = true;
     }
-    
-    // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't happen with coin cell batt backup
-	if (RTC_DS.lostPower()) {
-		WARNING(F("RTC lost power, lets set the time!"));
-
-        // If we want to set a custom time
-        if(Serial && custom_time){
-            set_custom_time();
-        }
-        else{
-            // Set the RTC to the date & time this sketch was compiled
-            RTC_DS.adjust(DateTime(F(__DATE__), F(__TIME__)));
-        }
-	}
-
-	// Clear any pending alarms
-	RTC_DS.clearAlarm();
-
-    RTC_DS.writeSqwPinMode(DS3231_OFF);
-
-    // We successfully started the RTC 
-    LOG(F("DS3231 Real-Time Clock Initialized Successfully!"));
-    RTC_initialized = true;
     FUNCTION_END;
    
     
