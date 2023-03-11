@@ -33,8 +33,8 @@ bool SDManager::writeLineToFile(const char* filename, const char* content){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void SDManager::writeHeaders(){
-    char header1[512];
-    char header2[512];
+    char header1[513];
+    char header2[513];
 
     // Append the serial number to the top of the CSV file, reset the header1 array
     snprintf_P(header1, 512, PSTR("%s\n"), manInst->get_serial_num());
@@ -77,7 +77,7 @@ void SDManager::writeHeaders(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::log(DateTime currentTime){
-    char output[2000];
+    char output[2001];
     
     if(sdInitialized){
         
