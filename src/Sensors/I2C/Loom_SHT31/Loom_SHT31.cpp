@@ -45,6 +45,7 @@ void Loom_SHT31::measure() {
         // If we are not connected
         else if(!connectionStatus){
             ERROR(F("No acknowledge received from the device"));
+            FUNCTION_END;
             return;
         }
         // Pull the data from the sensor

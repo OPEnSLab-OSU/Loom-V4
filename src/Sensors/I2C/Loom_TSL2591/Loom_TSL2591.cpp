@@ -52,6 +52,7 @@ void Loom_TSL2591::measure() {
         // If we are not connected
         else if(!connectionStatus){
             ERROR(F("No acknowledge received from the device"));
+            FUNCTION_END;
             return;
         }
    

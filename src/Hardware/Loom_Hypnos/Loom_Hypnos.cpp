@@ -202,20 +202,12 @@ DateTime Loom_Hypnos::get_utc_time(){
     else if(timezone == AST || timezone == EST || timezone == CST || timezone == MST || timezone == AST || timezone == PST || timezone == AKST){
         // If we are in the months where daylight savings is not in affect
         if(now.month() >= 3 && now.month() <= 10){
-            
-            return now + TimeSpan(0, (timezone)-1, 0, 0);
-
-            // If in the months when it changes check if the days are correct
-            if( (now.month() == 3 && now.day() >= 13) || (now.month() == 10 && now.day() < 6)){
-                return now + TimeSpan(0, (timezone)-1, 0, 0);
-            }
-            
+            return now + TimeSpan(0, timezone-1, 0, 0);            
         }
         else{
-            return now + TimeSpan(0, (timezone), 0, 0);
+            return now + TimeSpan(0, timezone, 0, 0);
         }
     }
-    
     else{
         return now + TimeSpan(0, timezone, 0, 0);
     }

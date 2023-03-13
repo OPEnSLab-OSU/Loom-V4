@@ -224,6 +224,9 @@ class Logger{
             if(enableFunctionSummaries){
                 // Log the start time of the function
                 char fileName[260];
+                snprintf(fileName, 260, "Entering function: %s", func);
+                SLOG(fileName);
+                memset(fileName, '\0', 260);
                 truncateFileName(file, fileName);
                 struct functionInfo* newFunction = (struct functionInfo*) malloc(sizeof(struct functionInfo));
                 strncpy(newFunction->fileName, fileName, 260);
@@ -232,8 +235,6 @@ class Logger{
                 newFunction->netMemoryUsage = freeMemory;
                 newFunction->time = millis();
                 newFunction->indentCount = callStack.size();
-                
-
                 callStack.push(newFunction);
             }
         };

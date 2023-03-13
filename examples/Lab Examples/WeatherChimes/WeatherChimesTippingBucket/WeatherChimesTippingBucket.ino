@@ -72,6 +72,11 @@ void tipTrigger() {
 }
 
 void setup() {
+
+  // Enable debug SD logging and function summaires
+  ENABLE_SD_LOGGING;
+  ENABLE_FUNC_SUMMARIES;
+
   // Set the interrupt pin to pullup
   pinMode(INT_PIN, INPUT_PULLUP);
 
@@ -115,7 +120,7 @@ void loop() {
     mqtt.publish();
 
     // Set the RTC interrupt alarm to wake the device in 15 min
-    hypnos.setInterruptDuration(TimeSpan(0, 0, 15, 0));
+    hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 15));
 
     // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
     hypnos.reattachRTCInterrupt();

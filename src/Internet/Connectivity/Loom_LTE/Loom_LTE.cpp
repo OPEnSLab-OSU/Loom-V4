@@ -39,6 +39,7 @@ void Loom_LTE::initialize(){
     if(modemInfo == NULL){
         ERROR(F("LTE shield not detected! This can also be triggered if there isn't a SIM card in the board"));
         moduleInitialized = false;
+        FUNCTION_END;
         return;
     }
     else{
@@ -190,6 +191,7 @@ bool Loom_LTE::connect(){
             return false;
         }
     }while(!isConnected());
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -206,6 +208,7 @@ void Loom_LTE::disconnect(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::verifyConnection(){
+    FUNCTION_START;
     bool returnStatus =  false;
     LOG(F("Attempting to verify internet connection..."));
     
@@ -213,6 +216,7 @@ bool Loom_LTE::verifyConnection(){
     if(!client.connect("vsh.pp.ua", 80)){
         ERROR(F("Failed to contact TinyGSM example your internet connection may not be completely established!"));
         client.stop();
+        FUNCTION_END;
         return false;
     }
     else{
@@ -238,6 +242,7 @@ bool Loom_LTE::verifyConnection(){
         returnStatus = true;
     }
     TIMER_RESET;
+    FUNCTION_END;
     return true;
     
 }
