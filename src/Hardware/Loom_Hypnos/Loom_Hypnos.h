@@ -55,6 +55,14 @@ enum TIME_ZONE{
 };
 
 /**
+ * Type of interrupt to register
+ */ 
+enum InterruptType{
+    SLEEP,
+    OTHER
+};
+
+/**
  * All in one driver for the Hypnos board. This allows users to use the Hypnos board in a more modularized manner not requiring all the Loom stuff.
  * 
  * @author Will Richards
@@ -119,9 +127,10 @@ class Loom_Hypnos : public Module{
          * Enables RTC based interrupts using the DS3231 on the Hypnos
          * @param isrFunc function to callback to when the interrupt is triggered
          * @param interruptPin Defaults to RTC pin on Hypnos can be changed to reflect other interrupts
+         * @param interruptType Type of the interrupt to register (SLEEP or OTHER)
          * @param triggerState When the interrupt should trigger
          */ 
-        bool registerInterrupt(InterruptCallbackFunction isrFunc = nullptr, int interruptPin = 12, int triggerState = LOW);
+        bool registerInterrupt(InterruptCallbackFunction isrFunc = nullptr, int interruptPin = 12, InterruptType interruptType = SLEEP, int triggerState = LOW);
 
         /**
          * Called when the user wants to wake the Hypnos back out of the sleep state
@@ -201,8 +210,14 @@ class Loom_Hypnos : public Module{
 
         RTC_DS3231 RTC_DS;                                                                  // Real time clock reference
         bool RTC_initialized = false;                                                       // Did the RTC initialize correctly?
-        bool custom_time = false;                                                           // Set the RTC to a user specified time     
-        InterruptCallbackFunction isrFunc = nullptr; 
+        
+        bool custom_time = false;                                                           // Set the RTC to a user specified time
+
+        // Map the given pin to an interrupt call back
+        // 0th - ISR
+        // 1st - Interrupt Trigger
+        // 2nd - Interrupt Type (SLEEP or OTHER)
+        std::map<int, std::tuple<InterruptCallbackFunction, int, InterruptType>> pinToInterrupt;            
 
         void set_custom_time();                                                             // Set a custom time on startup for the RTC to use
         void initializeRTC();                                                               // Initialize RTC
@@ -214,7 +229,6 @@ class Loom_Hypnos : public Module{
         TIME_ZONE timezone;                                                                 // Timezone the RTC was set to
        
         void dateTime_toString(DateTime time, char array[21]);                              // Convert a DateTime object to our desired format
-        
 
         DateTime time;                                                                      // UTC time
         DateTime localTime;                                                                 // Local time

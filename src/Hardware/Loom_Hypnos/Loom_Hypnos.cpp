@@ -98,7 +98,7 @@ void Loom_Hypnos::disable(){
 /* Interrupt Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin, int triggerState){
+bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin, InterruptType interruptType, int triggerState){
     FUNCTION_START;
     pinMode(interruptPin, INPUT_PULLUP);  //  Set interrupt pin input mode
     LOG(F("Registering interrupt..."));
@@ -109,11 +109,18 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
 
     // Make sure a callback function was supplied
     if(isrFunc != nullptr){
-       
-        attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
-        attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
-        this->isrFunc = isrFunc;
-        LOG(F("Interrupt successfully attached!"));
+         // If the interrupt we registered is for sleep we should set the interrupt to wake the device from sleep
+        if(interruptType == SLEEP){
+            LowPower.attachInterruptWakeup(interruptPin, isrFunc, triggerState);
+            LOG(F("Interrupt successfully attached!"));
+        }
+        else{
+            attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
+            attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
+            LOG(F("Interrupt successfully attached!"));
+        }
+        // Add the interrupt to the list of pin to interrupts
+        pinToInterrupt.insert(std::make_pair(interruptPin, std::make_tuple(isrFunc, triggerState, interruptType)));
         FUNCTION_END;
         return true;
     } 
@@ -134,10 +141,22 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
     FUNCTION_START;
+    if(std::get<2>(pinToInterrupt[interruptPin]) != SLEEP){
 
-    attachInterrupt(digitalPinToInterrupt(interruptPin), this->isrFunc, LOW);
-    attachInterrupt(digitalPinToInterrupt(interruptPin), this->isrFunc, LOW);
-    
+        // If we haven't previously registered the interrupt we need to do this before we can reattach to an interrupt that doesn't exist
+        if(pinToInterrupt.count(interruptPin) <= 0){
+            ERROR(F("Failed to reattach interrupt! Interrupt has not previously been registered..."));
+            FUNCTION_END;
+            return false;
+        }
+
+        attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
+        attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
+        
+    }
+    else{
+        LowPower.attachInterruptWakeup(interruptPin, std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
+    }
     LOG(F("Interrupt successfully reattached!"));
     FUNCTION_END;
     return true;
@@ -147,43 +166,42 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::wakeup(){
-    detachInterrupt(12);     // Detach the interrupt so it doesn't trigger again    
+    detachInterrupt(pinToInterrupt.begin()->first);     // Detach the interrupt so it doesn't trigger again    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::initializeRTC(){
     FUNCTION_START;
-    if(!RTC_initialized){
-        // If the RTC failed to start inform the user and hang
-        if(!RTC_DS.begin()){
-            ERROR(F("Couldn't start RTC! Check your connections... Execution will now hang as this is likely a fatal error"));
-            return;
-        }
-        
-        // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't happen with coin cell batt backup
-        if (RTC_DS.lostPower()) {
-            WARNING(F("RTC lost power, lets set the time!"));
 
-            // If we want to set a custom time
-            if(Serial && custom_time){
-                set_custom_time();
-            }
-            else{
-                // Set the RTC to the date & time this sketch was compiled
-                RTC_DS.adjust(DateTime(F(__DATE__), F(__TIME__)));
-            }
-        }
-
-        // Clear any pending alarms
-        RTC_DS.clearAlarm();
-
-        RTC_DS.writeSqwPinMode(DS3231_OFF);
-
-        // We successfully started the RTC 
-        LOG(F("DS3231 Real-Time Clock Initialized Successfully!"));
-        RTC_initialized = true;
+    // If the RTC failed to start inform the user and hang
+    if(!RTC_DS.begin()){
+        ERROR(F("Couldn't start RTC! Check your connections... Execution will now hang as this is likely a fatal error"));
+        return;
     }
+    
+    // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't happen with coin cell batt backup
+	if (RTC_DS.lostPower()) {
+		WARNING(F("RTC lost power, lets set the time!"));
+
+        // If we want to set a custom time
+        if(Serial && custom_time){
+            set_custom_time();
+        }
+        else{
+            // Set the RTC to the date & time this sketch was compiled
+            RTC_DS.adjust(DateTime(F(__DATE__), F(__TIME__)));
+        }
+	}
+
+	// Clear any pending alarms
+	RTC_DS.clearAlarm();
+
+    RTC_DS.writeSqwPinMode(DS3231_OFF);
+
+    // We successfully started the RTC 
+    LOG(F("DS3231 Real-Time Clock Initialized Successfully!"));
+    RTC_initialized = true;
     FUNCTION_END;
    
     
@@ -202,12 +220,20 @@ DateTime Loom_Hypnos::get_utc_time(){
     else if(timezone == AST || timezone == EST || timezone == CST || timezone == MST || timezone == AST || timezone == PST || timezone == AKST){
         // If we are in the months where daylight savings is not in affect
         if(now.month() >= 3 && now.month() <= 10){
-            return now + TimeSpan(0, timezone-1, 0, 0);            
+            
+            return now + TimeSpan(0, (timezone)-1, 0, 0);
+
+            // If in the months when it changes check if the days are correct
+            if( (now.month() == 3 && now.day() >= 13) || (now.month() == 10 && now.day() < 6)){
+                return now + TimeSpan(0, (timezone)-1, 0, 0);
+            }
+            
         }
         else{
-            return now + TimeSpan(0, timezone, 0, 0);
+            return now + TimeSpan(0, (timezone), 0, 0);
         }
     }
+    
     else{
         return now + TimeSpan(0, timezone, 0, 0);
     }
@@ -365,7 +391,7 @@ void Loom_Hypnos::pre_sleep(){
     // Disable the power rails
     disable();
 
-    attachInterrupt(digitalPinToInterrupt(12), this->isrFunc, LOW);
+    attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

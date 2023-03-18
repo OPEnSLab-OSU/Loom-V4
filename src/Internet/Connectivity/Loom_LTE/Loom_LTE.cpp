@@ -66,7 +66,7 @@ void Loom_LTE::initialize(){
         snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
         LOG(output);
 
-        verifyConnection();
+        //verifyConnection();
 
         LOG(F("Module successfully initialized!"));
     }
