@@ -367,6 +367,7 @@ void Loom_Hypnos::sleep(bool waitForSerial){
     // Try to power down the active modules
     manInst->power_down();
     
+    disable();
     pre_sleep();                    // Pre-sleep cleanup
     LowPower.sleep();               // Go to sleep and hang
     post_sleep(waitForSerial);      // Wake up
@@ -375,30 +376,26 @@ void Loom_Hypnos::sleep(bool waitForSerial){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::pre_sleep(){
-    FUNCTION_START;
     // 50ms delay allows this last message to be sent before the bus disconnects
-    LOG(F("Entering Standby Sleep..."));
+    printModuleName("Entering Standby Sleep...");
     delay(50);
 
     // Close the serial connection and detach
     Serial.end();
     USBDevice.detach();
 
-    // Disable //Watchdog when entering sleep
-    TIMER_DISABLE;
-    FUNCTION_END;
+    // Reattach the interrupt to the RTC interrupt pin
+    attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
 
     // Disable the power rails
     disable();
 
-    attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::post_sleep(bool waitForSerial){
     // Enable the //Watchdog timer when waking up
-    FUNCTION_START;
     TIMER_ENABLE;
     USBDevice.attach();
     Serial.begin(115200);
@@ -418,7 +415,6 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
     }
 
     LOG(F("Device has awoken from sleep!"));
-    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
