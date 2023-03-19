@@ -46,7 +46,7 @@ class Loom_MQTT : public Module{
                 int broker_port, 
                 const char* database_name, 
                 const char* broker_user = "", 
-                const char* broker_pass = ""
+                const char* broker_pass = "",
             );
 
         /**
@@ -70,6 +70,12 @@ class Loom_MQTT : public Module{
          * @param time Length of time in MILLISECONDS the connection will be kept open
          */ 
         void setKeepAlive(int time) { keep_alive = time; };
+        
+        /**
+         * Set the maximum number of reconnection attempts to make before failing
+         * @param retries The number of retries we want to make
+        */
+        void setMaxRetries(int retries) { maxRetries = retries; };
 
         /**
          * Load the MQTT credentials from a JSON string, used to pull credentials from a file
@@ -86,6 +92,7 @@ class Loom_MQTT : public Module{
         const char* getMQTTError();                  // Get the string representation of the MQTT error codes
     
         int keep_alive = 60000;                 // How long the broker should keep the connection open, defaults to a minute
+        int maxRetries = 4;                         // How many times we want to retry the connection
 
         char address[100];                         // Domain that the broker is running on
         char database_name[100];                   // Database to publish the data to

@@ -34,7 +34,7 @@ void Loom_MQTT::publish(){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     char jsonString[2000];
-    if(moduleInitialized){
+    if(moduleInitialized && internetClient->connected()){
 
         TIMER_DISABLE;
         
@@ -51,7 +51,7 @@ void Loom_MQTT::publish(){
         int retryAttempts = 0;
 
         // Try to connect multiple times as some may be dropped
-        while(!mqttClient.connected() && retryAttempts < 5)
+        while(!mqttClient.connected())
         {
             snprintf_P(output, OUTPUT_SIZE, PSTR("Attempting to connect to broker: %s:%i"), address, port);
             LOG(output);
@@ -64,7 +64,7 @@ void Loom_MQTT::publish(){
             }
 
             // If our retry limit has been reached we dont want to try to send data cause it wont work
-            if(retryAttempts == 4){
+            if(retryAttempts == maxRetries){
                 ERROR(F("Retry limit exceeded!"));
                 TIMER_ENABLE;
                 FUNCTION_END;
@@ -111,7 +111,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
     char line[2000];
     int packetNumber = 0, index = 0;
     char c;
-    if(moduleInitialized ){
+    if(moduleInitialized && internetClient->connected()){
         TIMER_DISABLE;
         if(batchSD.shouldPublish()){
             // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
@@ -129,7 +129,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
             int retryAttempts = 0;
 
             // Try to connect multiple times as some may be dropped
-            while(!mqttClient.connected() && retryAttempts < 5)
+            while(!mqttClient.connected())
             {
                 snprintf_P(output, OUTPUT_SIZE, PSTR("Attempting to connect to broker: %s:%i"), address, port);
                 LOG(output);
@@ -142,7 +142,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
                 }
 
                 // If our retry limit has been reached we dont want to try to send data cause it wont work
-                if(retryAttempts == 4){
+                if(retryAttempts == maxRetries){
                     ERROR(F("Retry limit exceeded!"));
                     TIMER_ENABLE;
                     FUNCTION_END;
