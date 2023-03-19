@@ -22,7 +22,7 @@ void Loom_Analog::measure(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Analog::package(){
-    char output[20];
+    char output[21];
     memset(output, '\0', 20);
     JsonObject json = manInst->get_data_object(getModuleName());
     for ( const auto &myPair : pinToData ) {

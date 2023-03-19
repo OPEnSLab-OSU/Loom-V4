@@ -87,9 +87,9 @@ class EZOSensor : public I2CDevice{
                     if(currentChar == '\0') break;
 
                     // If not append the current char to the string
-                    strncat(sensorData, &currentChar, sizeof(sensorData));
+                    strncat(sensorData, &currentChar, 32);
                 }
-                strncat(sensorData, "\0", sizeof(sensorData));
+                strncat(sensorData, "\0", 32);
             }
 
             return true;
