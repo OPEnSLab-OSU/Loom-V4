@@ -172,14 +172,14 @@ void Loom_WIFI::connect_to_network(){
     else{
         // While we are trying to connect to the wifi network
         while(WiFi.begin(wifi_name) != WL_CONNECTED){
-            snprintf(output, OUTPUT_SIZE, "Attempting to connect to AP (Attempt %i of 10)...", retry_count+1);
+            snprintf(output, OUTPUT_SIZE, "Attempting to connect to AP (Attempt %i)...", retry_count+1);
             LOG(output);
             delay(5000);
             retry_count++;
 
             // If after 10 attempts we still can't connect to the network we need to stop and break so we don't hang the device
             if(retry_count >= connectionRetries){
-                ERROR(F("Failed to connect to the access point after 10 tries! Is the network in range and are your credentials correct?"));
+                ERROR(F("Failed to connect to the access point after allotted tries! Is the network in range and are your credentials correct?"));
 
                 // Switch over to AP mode if using max
                 if(usingMax){

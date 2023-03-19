@@ -138,6 +138,11 @@ class Loom_WIFI : public Module{
         void setBatchSD(Loom_BatchSD& batch) { batchSD = &batch; };
 
         /**
+         * Set the number of connection retries
+        */
+        void setMaxRetries(int retries) { connectionRetries = retries; };
+
+        /**
          * Convert an IP address to a string
          */ 
         void ipToString(IPAddress ip, char array[16]) { 

@@ -46,7 +46,7 @@ class Loom_MQTT : public Module{
                 int broker_port, 
                 const char* database_name, 
                 const char* broker_user = "", 
-                const char* broker_pass = "",
+                const char* broker_pass = ""
             );
 
         /**
