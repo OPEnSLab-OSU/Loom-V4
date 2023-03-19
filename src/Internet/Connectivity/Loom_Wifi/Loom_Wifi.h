@@ -125,7 +125,7 @@ class Loom_WIFI : public Module{
         /**
          * Return the current connection state of the WiFi module
          */ 
-        bool isConnected(){ return WiFi.status() == WL_CONNECTED; };
+        bool isConnected();
 
         /**
          * Called by max to ignore WiFi verification requests
