@@ -6,8 +6,6 @@
 #include "Logger.h"
 
 class EZOSensor : public I2CDevice{
-    protected:
-        byte i2c_address; // Stores the I2C device of the EZO device
     public:
 
         /* Construct a new EZO device */

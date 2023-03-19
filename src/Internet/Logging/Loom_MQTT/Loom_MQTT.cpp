@@ -34,7 +34,7 @@ void Loom_MQTT::publish(){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     char jsonString[2000];
-    if(moduleInitialized && internetClient->connected()){
+    if(moduleInitialized){
 
         TIMER_DISABLE;
         
@@ -111,7 +111,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
     char line[2000];
     int packetNumber = 0, index = 0;
     char c;
-    if(moduleInitialized && internetClient->connected()){
+    if(moduleInitialized){
         TIMER_DISABLE;
         if(batchSD.shouldPublish()){
             // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
