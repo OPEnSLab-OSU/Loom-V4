@@ -53,6 +53,14 @@ void Loom_MQTT::publish(){
         // Try to connect multiple times as some may be dropped
         while(!mqttClient.connected())
         {
+            // If our retry limit has been reached we dont want to try to send data cause it wont work
+            if(retryAttempts >= maxRetries){
+                ERROR(F("MQTT Retry limit exceeded!"));
+                TIMER_ENABLE;
+                FUNCTION_END;
+                return;
+            }
+
             snprintf_P(output, OUTPUT_SIZE, PSTR("Attempting to connect to broker: %s:%i"), address, port);
             LOG(output);
 
@@ -61,14 +69,6 @@ void Loom_MQTT::publish(){
                 snprintf_P(output, OUTPUT_SIZE, PSTR("Attempting to connect to broker: %s:%i"), address, port);
                 ERROR(output);
                 delay(5000);
-            }
-
-            // If our retry limit has been reached we dont want to try to send data cause it wont work
-            if(retryAttempts == maxRetries){
-                ERROR(F("Retry limit exceeded!"));
-                TIMER_ENABLE;
-                FUNCTION_END;
-                return;
             }
 
             retryAttempts++;
@@ -131,6 +131,14 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
             // Try to connect multiple times as some may be dropped
             while(!mqttClient.connected())
             {
+                // If our retry limit has been reached we dont want to try to send data cause it wont work
+                if(retryAttempts >= maxRetries){
+                    ERROR(F("MQTT Retry limit exceeded!"));
+                    TIMER_ENABLE;
+                    FUNCTION_END;
+                    return;
+                }
+
                 snprintf_P(output, OUTPUT_SIZE, PSTR("Attempting to connect to broker: %s:%i"), address, port);
                 LOG(output);
 
@@ -139,14 +147,6 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
                     snprintf_P(output, OUTPUT_SIZE, PSTR("Failed to connect to broker: %s"), getMQTTError());
                     ERROR(output);
                     delay(5000);
-                }
-
-                // If our retry limit has been reached we dont want to try to send data cause it wont work
-                if(retryAttempts == maxRetries){
-                    ERROR(F("Retry limit exceeded!"));
-                    TIMER_ENABLE;
-                    FUNCTION_END;
-                    return;
                 }
 
                 retryAttempts++;
