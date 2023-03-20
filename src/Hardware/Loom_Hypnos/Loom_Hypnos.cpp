@@ -100,6 +100,7 @@ void Loom_Hypnos::disable(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin, InterruptType interruptType, int triggerState){
     FUNCTION_START;
+    pinMode(interruptPin, INPUT_PULLUP);  //  Set interrupt pin input mode
     LOG(F("Registering interrupt..."));
 
     // If the RTC hasn't already been initialized then do so now if we are trying to schedule an RTC interrupt
@@ -114,7 +115,7 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
             LOG(F("Interrupt successfully attached!"));
         }
         else{
-            pinMode(interruptPin, INPUT_PULLUP);  //  Set interrupt pin input mode
+            
             attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
             attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
             LOG(F("Interrupt successfully attached!"));

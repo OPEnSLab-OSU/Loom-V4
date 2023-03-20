@@ -66,7 +66,7 @@ void Loom_MQTT::publish(){
 
             // Attempt to Connect to the MQTT client 
             if(!mqttClient.connect(address, port)){
-                snprintf_P(output, OUTPUT_SIZE, PSTR("Attempting to connect to broker: %s:%i"), address, port);
+                snprintf_P(output, OUTPUT_SIZE, PSTR("Failed to connect to broker: %s"), getMQTTError());
                 ERROR(output);
                 delay(5000);
             }
