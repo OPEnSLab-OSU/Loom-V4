@@ -222,6 +222,7 @@ class Logger{
         */
         void startFunction(const char* file, const char* func, unsigned long num, int freeMemory){
             if(enableFunctionSummaries){
+                SLOG(func);
                 // Log the start time of the function
                 char fileName[260];
                 memset(fileName, '\0', 260);

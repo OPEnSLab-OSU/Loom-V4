@@ -23,14 +23,8 @@ class EZOSensor : public I2CDevice{
 
         /* Calibrate The Device */
         bool calibrate(){
-            // Check the device is connected before calibrating
-            if(!checkDeviceConnection()){
-                ERROR(F("Failed to detect device at the specified address"));
-                return false;
-            }
-
             // Send the calibrate command
-            if(sendTransmission("cal") != 0){
+            if(!sendTransmission("Cal")){
                 ERROR(F("Failed to transmit calibration command"));
                 return false;
             }
@@ -53,11 +47,6 @@ class EZOSensor : public I2CDevice{
                 // Clear the sensorData received previously
                 memset(sensorData, '\0', 32);
             
-                // Check that the device is still present and connected
-                if(!checkDeviceConnection()){
-                    ERROR(F("Failed to detect device at the specified address"));
-                    return false;
-                }
 
                 // Attempt to send a read command to the device
                 if(!sendTransmission("r")){
