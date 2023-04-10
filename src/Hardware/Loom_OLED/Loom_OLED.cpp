@@ -48,6 +48,7 @@ void Loom_OLED::initialize(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_OLED::display_data(){
+	LOG("Attempting to display data on OLED...");
     // If we cant update the display yet return
     if(!canWrite())
         return;
@@ -126,10 +127,10 @@ void Loom_OLED::display_data(){
 
 			for (int i = 0; i < 5; i++) {
 				display->setCursor(0, i*8);
-				display->print(keys[(i+offset)%size].substring(0,8));
+				display->print(keys[(i+offset)%size].substring(0,15));
         
-				display->setCursor(64, i*8);
-				display->print(vals[(i+offset)%size].substring(0,8));
+				display->setCursor(80, i*8);
+				display->print(vals[(i+offset)%size].substring(0,10));
 			}
 
 			break;
@@ -154,6 +155,8 @@ bool Loom_OLED::canWrite(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_OLED::flattenJSONObject(JsonObject json){
+	char keyName[100];
+	memset(keyName, '\0', 100);
 
     // Get the contents array
     JsonArray contents = json["contents"].as<JsonArray>();
@@ -168,7 +171,12 @@ void Loom_OLED::flattenJSONObject(JsonObject json){
     JsonObject data;
     for (auto module_obj : contents) {
 		for (JsonPair kv : module_obj["data"].as<JsonObject>()) {
-			flatData[kv.key()] = kv.value();
+			memset(keyName, '\0', 100);
+			strncat(keyName, module_obj["module"].as<const char*>(), 100);
+			strncat(keyName, ".", 100);
+			strncat(keyName, kv.key().c_str(), 100);
+			LOG(keyName);
+			flatData[keyName] = kv.value();
 		}
 	}
 
