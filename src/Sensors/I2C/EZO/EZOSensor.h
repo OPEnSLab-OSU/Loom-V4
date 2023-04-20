@@ -18,7 +18,7 @@ class EZOSensor : public I2CDevice{
             Wire.write(command);
 
             // Use a ternary operator to ensure if it is 0 its true if not we are false
-            return Wire.endTransmission() == 0 ? true : false;
+            return Wire.endTransmission() == 0;
         };
 
         /* Calibrate The Device */
@@ -46,7 +46,6 @@ class EZOSensor : public I2CDevice{
             if(moduleInitialized){
                 // Clear the sensorData received previously
                 memset(sensorData, '\0', 32);
-            
 
                 // Attempt to send a read command to the device
                 if(!sendTransmission("r")){
@@ -55,13 +54,14 @@ class EZOSensor : public I2CDevice{
                 }
                 
                 // Wait the desired warm-up period
-                delay(600);  
+                delay(600);
 
                 // Request 32 bytes of data from the device
                 Wire.requestFrom(module_address, 32, 1);
 
                 // Check if the I2C code was not valid
                 code = Wire.read();
+                Serial.println(code);
                 if(code != 1){
                     snprintf(output, OUTPUT_SIZE, "Unsuccessful Response Code Received: %s", responseCodes[code-1]);
                     ERROR(output);
