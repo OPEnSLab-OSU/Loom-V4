@@ -1,0 +1,23 @@
+<map id="src/Sensors/I2C" name="src/Sensors/I2C">
+<area shape="rect" id="node2" href="dir_b05b4bfea037669245d5b8e78682ecd2.html" title="EZO" alt="" coords="2469,63,2517,88"/>
+<area shape="rect" id="node3" href="dir_d88688344708810e84cf73f7cdbc0388.html" title="Loom_ADS1115" alt="" coords="2329,63,2445,88"/>
+<area shape="rect" id="node4" href="dir_c24e8690b3af478b3e76540d74ceabb3.html" title="Loom_AS7262" alt="" coords="2197,63,2304,88"/>
+<area shape="rect" id="node5" href="dir_8435981060e49d6f8f0fba79a03a60d3.html" title="Loom_AS7263" alt="" coords="2067,63,2173,88"/>
+<area shape="rect" id="node6" href="dir_57f32e37d0797912e0418649deef5e9b.html" title="Loom_AS7265X" alt="" coords="1928,63,2043,88"/>
+<area shape="rect" id="node7" href="dir_e4e51eaa2f4e5021758cd8473d6584a6.html" title="Loom_EZOCO2" alt="" coords="1790,63,1903,88"/>
+<area shape="rect" id="node8" href="dir_77653f9694485992f6422cacfb6c80b9.html" title="Loom_EZODO" alt="" coords="1659,63,1765,88"/>
+<area shape="rect" id="node9" href="dir_a51e4b46a0024fb0415a43c91dba9182.html" title="Loom_EZOORP" alt="" coords="1520,63,1635,88"/>
+<area shape="rect" id="node10" href="dir_201909f3c4554d171f582003c6affefa.html" title="Loom_EZOPH" alt="" coords="1390,63,1495,88"/>
+<area shape="rect" id="node11" href="dir_f8c143006f758ec35bb2bc149556a6d1.html" title="Loom_EZORGB" alt="" coords="1251,63,1365,88"/>
+<area shape="rect" id="node12" href="dir_2a63a2872b5796833c78d66572e18d45.html" title="Loom_K30" alt="" coords="1142,63,1226,88"/>
+<area shape="rect" id="node13" href="dir_dabbc85524257e3959a79cfe20602694.html" title="Loom_MB1232" alt="" coords="1008,63,1117,88"/>
+<area shape="rect" id="node14" href="dir_331a831cd633383fd0c3ea902e53e694.html" title="Loom_MMA8451" alt="" coords="864,63,984,88"/>
+<area shape="rect" id="node15" href="dir_d0040025ef8a11f6a42b25bdd2b58027.html" title="Loom_MPU6050" alt="" coords="721,63,839,88"/>
+<area shape="rect" id="node16" href="dir_5f5e7d00ffadbb48997a63af8fb6a0ce.html" title="Loom_MS5803" alt="" coords="587,63,696,88"/>
+<area shape="rect" id="node17" href="dir_41e749e0321b08a718257619bb47177b.html" title="Loom_SHT31" alt="" coords="462,63,562,88"/>
+<area shape="rect" id="node18" href="dir_e78de03ae66dde2ca804f4658667e5d1.html" title="Loom_STEMMA" alt="" coords="320,63,437,88"/>
+<area shape="rect" id="node19" href="dir_4d2df6ef0d0874d02b123d557b36bb97.html" title="Loom_TSL2591" alt="" coords="184,63,296,88"/>
+<area shape="rect" id="node20" href="dir_bb9b7c214b1891e7a940786125c69518.html" title="Loom_ZXGesture" alt="" coords="38,63,159,88"/>
+<area shape="rect" id="clust2" href="dir_abc44327bd9a62eb36f446d48ca760f8.html" alt="" coords="27,52,2595,99"/>
+<area shape="rect" id="clust1" href="dir_afe58f6d0ef7eec69c2706509daaefe7.html" title="Sensors" alt="" coords="16,16,2605,109"/>
+</map>

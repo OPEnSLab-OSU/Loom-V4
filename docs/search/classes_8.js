@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['wifiinfo_0',['WifiInfo',['../struct_wifi_info.html',1,'']]]
+  ['udpdeletor_0',['UDPDeletor',['../struct_loom___max_1_1_u_d_p_deletor.html',1,'Loom_Max']]]
 ];

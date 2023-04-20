@@ -1,17 +1,23 @@
 <map id="I2CDevice" name="I2CDevice">
-<area shape="rect" id="node1" title=" " alt="" coords="117,301,196,327"/>
-<area shape="rect" id="node3" href="$class_loom___a_d_s1115.html" title=" " alt="" coords="247,5,363,31"/>
-<area shape="rect" id="node4" href="$class_loom___a_s7262.html" title=" " alt="" coords="251,55,358,80"/>
-<area shape="rect" id="node5" href="$class_loom___a_s7263.html" title=" " alt="" coords="251,104,358,129"/>
-<area shape="rect" id="node6" href="$class_loom___a_s7265_x.html" title=" " alt="" coords="247,153,362,179"/>
-<area shape="rect" id="node7" href="$class_loom___k30.html" title=" " alt="" coords="263,203,347,228"/>
-<area shape="rect" id="node8" href="$class_loom___m_b1232.html" title=" " alt="" coords="250,252,359,277"/>
-<area shape="rect" id="node9" href="$class_loom___m_m_a8451.html" title=" " alt="" coords="245,301,365,327"/>
-<area shape="rect" id="node10" href="$class_loom___m_p_u6050.html" title=" " alt="" coords="245,351,364,376"/>
-<area shape="rect" id="node11" href="$class_loom___m_s5803.html" title=" " alt="" coords="250,400,359,425"/>
-<area shape="rect" id="node12" href="$class_loom___s_h_t31.html" title=" " alt="" coords="255,449,355,475"/>
-<area shape="rect" id="node13" href="$class_loom___s_t_e_m_m_a.html" title=" " alt="" coords="246,499,363,524"/>
-<area shape="rect" id="node14" href="$class_loom___t_s_l2591.html" title=" " alt="" coords="249,548,361,573"/>
-<area shape="rect" id="node15" href="$class_loom___z_x_gesture.html" title=" " alt="" coords="244,597,365,623"/>
-<area shape="rect" id="node2" href="$class_module.html" title=" " alt="" coords="5,301,69,327"/>
+<area shape="rect" id="node1" title=" " alt="" coords="117,425,196,451"/>
+<area shape="rect" id="node3" href="$class_e_z_o_sensor.html" title=" " alt="" coords="260,104,349,129"/>
+<area shape="rect" id="node9" href="$class_loom___a_d_s1115.html" title=" " alt="" coords="247,153,363,179"/>
+<area shape="rect" id="node10" href="$class_loom___a_s7262.html" title=" " alt="" coords="251,203,358,228"/>
+<area shape="rect" id="node11" href="$class_loom___a_s7263.html" title=" " alt="" coords="251,252,358,277"/>
+<area shape="rect" id="node12" href="$class_loom___a_s7265_x.html" title=" " alt="" coords="247,301,362,327"/>
+<area shape="rect" id="node13" href="$class_loom___k30.html" title=" " alt="" coords="263,351,347,376"/>
+<area shape="rect" id="node14" href="$class_loom___m_b1232.html" title=" " alt="" coords="250,400,359,425"/>
+<area shape="rect" id="node15" href="$class_loom___m_m_a8451.html" title=" " alt="" coords="245,449,365,475"/>
+<area shape="rect" id="node16" href="$class_loom___m_p_u6050.html" title=" " alt="" coords="245,499,364,524"/>
+<area shape="rect" id="node17" href="$class_loom___m_s5803.html" title=" " alt="" coords="250,548,359,573"/>
+<area shape="rect" id="node18" href="$class_loom___s_h_t31.html" title=" " alt="" coords="255,597,355,623"/>
+<area shape="rect" id="node19" href="$class_loom___s_t_e_m_m_a.html" title=" " alt="" coords="246,647,363,672"/>
+<area shape="rect" id="node20" href="$class_loom___t_s_l2591.html" title=" " alt="" coords="249,696,361,721"/>
+<area shape="rect" id="node21" href="$class_loom___z_x_gesture.html" title=" " alt="" coords="244,745,365,771"/>
+<area shape="rect" id="node2" href="$class_module.html" title=" " alt="" coords="5,425,69,451"/>
+<area shape="rect" id="node4" href="$class_loom___e_z_o_c_o2.html" title=" " alt="" coords="414,5,527,31"/>
+<area shape="rect" id="node5" href="$class_loom___e_z_o_d_o.html" title=" " alt="" coords="417,55,524,80"/>
+<area shape="rect" id="node6" href="$class_loom___e_z_o_o_r_p.html" title=" " alt="" coords="413,104,528,129"/>
+<area shape="rect" id="node7" href="$class_loom___e_z_o_p_h.html" title=" " alt="" coords="418,153,523,179"/>
+<area shape="rect" id="node8" href="$class_loom___e_z_o_r_g_b.html" title=" " alt="" coords="413,203,528,228"/>
 </map>

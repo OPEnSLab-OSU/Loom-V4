@@ -1,5 +1,5 @@
 var searchData=
 [
   ['actuator_0',['Actuator',['../class_actuator.html',1,'']]],
-  ['adddata_1',['addData',['../class_manager.html#a447012934ee05877f48b9218d9ea576d',1,'Manager']]]
+  ['adddata_1',['addData',['../class_manager.html#a944ae6ba25646ec601d2682048801734',1,'Manager']]]
 ];

@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['i2cdevice_0',['I2CDevice',['../class_i2_c_device.html',1,'']]]
+  ['ezosensor_0',['EZOSensor',['../class_e_z_o_sensor.html',1,'']]]
 ];
