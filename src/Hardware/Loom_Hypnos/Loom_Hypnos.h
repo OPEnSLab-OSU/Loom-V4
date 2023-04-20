@@ -119,7 +119,7 @@ class Loom_Hypnos : public Module{
         /**
          * Log the current sensor data to a file on the SD card
          */ 
-        bool logToSD() { sdMan->log(getCurrentTime()); };
+        bool logToSD();
 
         /* Sleep Functionality */
 
@@ -160,6 +160,11 @@ class Loom_Hypnos : public Module{
          * Get the current time from the RTC
          */ 
         DateTime getCurrentTime(); 
+
+        /**
+         * Set a custom time on startup for the RTC to use
+        */
+        void set_custom_time();
     
         /**
          * Get a custom sleep interval specified in a file on the SD card
@@ -167,24 +172,24 @@ class Loom_Hypnos : public Module{
          * @param fileName Name of the file to pull information from
          * @return TimeSpan with the parsed data
          */ 
-        TimeSpan getSleepIntervalFromSD(String fileName);
+        TimeSpan getSleepIntervalFromSD(const char* fileName);
 
         /**
          * Get and set the timezone for the Hypnos from the SD card
          * @param fileName Name of the file to pull information from
          */ 
-        void getTimeZoneFromSD(String fileName);
+        void getTimeZoneFromSD(const char* fileName);
 
         /**
          * Read file from SD
          * @param fileName File to read from
          */ 
-        String readFile(String fileName) { return sdMan->readFile(fileName); };
+        char* readFile(const char* fileName) { return sdMan->readFile(fileName); };
 
         /**
          * Get the default SD card file name 
          */
-        String getDefaultFilename(){ return sdMan->getDefaultFilename(); };
+        const char* getDefaultFilename(){ return sdMan->getDefaultFilename(); };
 
         /**
          * Get an instance of the SD manager, used for batch SD
@@ -194,7 +199,7 @@ class Loom_Hypnos : public Module{
         /**
          * Set an alternative name to log data to
          */ 
-        void setLogName(String name) { sdMan->setLogName(name); };
+        void setLogName(const char* name) { sdMan->setLogName(name); };
 
     private:
 
@@ -219,16 +224,16 @@ class Loom_Hypnos : public Module{
         // 2nd - Interrupt Type (SLEEP or OTHER)
         std::map<int, std::tuple<InterruptCallbackFunction, int, InterruptType>> pinToInterrupt;            
 
-        void set_custom_time();                                                             // Set a custom time on startup for the RTC to use
+        
         void initializeRTC();                                                               // Initialize RTC
 
         void createTimezoneMap();                                                           // Map Timezone Strings to Timezone enum
-        std::map<String, TIME_ZONE> timezoneMap;                                            // String to Timezone enum
+        std::map<const char*, TIME_ZONE> timezoneMap;                                       // String to Timezone enum
 
         DateTime get_utc_time();                                                            // Convert the local time to UTC, accounts for daylight savings zones
         TIME_ZONE timezone;                                                                 // Timezone the RTC was set to
        
-        String dateTime_toString(DateTime time);                                            // Convert a DateTime object to our desired format
+        void dateTime_toString(DateTime time, char array[21]);                              // Convert a DateTime object to our desired format
 
         DateTime time;                                                                      // UTC time
         DateTime localTime;                                                                 // Local time

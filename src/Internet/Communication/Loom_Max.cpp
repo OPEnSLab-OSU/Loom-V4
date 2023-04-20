@@ -31,7 +31,7 @@ void Loom_Max::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Max::initialize(){
-    LOG("Initializing Max Communication....");
+    LOG(F("Initializing Max Communication...."));
 
     udpSend = UDPPtr(wifiInst->getUDP());
     udpRecv = UDPPtr(wifiInst->getUDP());
@@ -40,33 +40,39 @@ void Loom_Max::initialize(){
     setIP();
     setUDPPort();
 
-    LOG("Connections Opened!");
+    LOG(F("Connections Opened!"));
 
     /**
      * Initialize each actuator
      */ 
     if(actuators.size() > 0){
-        LOG("Initializing desired actuators...");
+        LOG(F("Initializing desired actuators..."));
         for(int i = 0; i < actuators.size(); i++){
             actuators[i]->initialize();
         }
-        LOG("Successfully initialized actuators!");
+        LOG(F("Successfully initialized actuators!"));
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Max::publish(){
-    LOG("Sending packet to " + Loom_WIFI::IPtoString(remoteIP) + ":" + String(sendPort));
+    char output[OUTPUT_SIZE];
+    char ip[16];
+
+    // Print the device IP
+    wifiInst->ipToString(remoteIP, ip);
+    snprintf(output, OUTPUT_SIZE, "Sending packet to %s:%u", ip, sendPort);
+    LOG(output);
 
     if(!udpSend){
-        ERROR("Sender UDP instance not set!");
+        ERROR(F("Sender UDP instance not set!"));
         return false;
     }
 
     // Attempt to start a new packet
     if(udpSend->beginPacket(remoteIP, sendPort) != 1){
-        ERROR("The IP address or port were invalid!");
+        ERROR(F("The IP address or port were invalid!"));
         return false;
     }
 
@@ -80,16 +86,16 @@ bool Loom_Max::publish(){
     size_t size = serializeJson(manInst->getDocument(), (*udpSend));
 
     if(size <= 0){
-        ERROR("An error occurred when attempting to write the JSON packet to the UDP stream");
+        ERROR(F("An error occurred when attempting to write the JSON packet to the UDP stream"));
         return false;
     }
 
     if(udpSend->endPacket() != 1){
-        ERROR("An error occurred when attempting to close the current packet!");
+        ERROR(F("An error occurred when attempting to close the current packet!"));
         return false;
     }
 
-    LOG("Packet successfully sent!");
+    LOG(F("Packet successfully sent!"));
 
     return true;
 }
@@ -97,6 +103,8 @@ bool Loom_Max::publish(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Max::subscribe(){
+    char output[OUTPUT_SIZE];
+    char ip[16];
     // If there is a packet available
     if(udpRecv->parsePacket()){
 
@@ -105,7 +113,8 @@ bool Loom_Max::subscribe(){
 
         DeserializationError error = deserializeJson(messageJson, (*udpRecv) );
 		if (error != DeserializationError::Ok) {
-			ERROR("Failed to parse JSON data from UDP stream, Error: " + String(error.c_str()));
+            snprintf(output, OUTPUT_SIZE, "Failed to parse JSON data from UDP stream, Error: %s", error.c_str());
+			ERROR(output);
 			return false;
 		}
 
@@ -114,22 +123,23 @@ bool Loom_Max::subscribe(){
         if(actuators.size() > 0){
 
             // Is the packet actually a command
-            if(messageJson["type"].as<String>() == "command"){
+            if(strcmp(messageJson["type"].as<const char*>(), "command") == 0){
 
                 // Loop over each command being sent to the device
                 for(int j = 0; j < messageJson["commands"].as<JsonArray>().size(); j++){
 
                     // Loop over each actuator to find the right one
-                    String type = messageJson["commands"][j]["module"].as<String>();
+                    const char* type = messageJson["commands"][j]["module"].as<const char*>();
                     int instanceNum = messageJson["commands"][j]["params"][0].as<int>();
                     
                     // Loop over each actuator
                     for(int i = 0; i < actuators.size(); i++){
+
                         // If the current actuator is the one we want to control
-                        if(actuators[i]->typeToString() == type){
+                        if(strcmp(actuators[i]->typeToString(), type) == 0){
 
                             // If the type we are trying to control doesn't have an instance number
-                            if(type.startsWith("Relay") || type.startsWith("Neopixel")){
+                            if(strstr(type, "Relay") != NULL || strstr(type, "Neopixel") != NULL){
                                 actuators[i]->control(messageJson["commands"][j]["params"].as<JsonArray>());
                             }
 
@@ -143,22 +153,27 @@ bool Loom_Max::subscribe(){
                 }
             }
         }
-        else{            
-            LOG("Packet received from: " + Loom_WIFI::IPtoString(udpRecv->remoteIP()));
-            LOG("Message Json: ");
-            String jsonStr = "";
-            serializeJsonPretty(messageJson, jsonStr);
-            LOG(jsonStr + "\n");
+        else{ 
+
+            // Print out where the packet came from
+            wifiInst->ipToString(udpRecv->remoteIP(), ip);
+            snprintf(output, OUTPUT_SIZE, "Packet received from: %s", ip) ;
+            LOG(output);
+            char jsonStr[2000];
+
+            LOG(F("Message Json: "));
+            serializeJsonPretty(messageJson, jsonStr, 2000);
+            LOG(jsonStr);
 
             // If we are receiving a command for the MaxSub module
-            if(messageJson["commands"][0]["module"].as<String>().startsWith("MaxSub")){
+            if(strstr(messageJson["commands"][0]["module"].as<const char*>(),"MaxSub") != NULL){
 
                 // Then we are trying to set the WiFi credentials
                 if(messageJson["commands"][0]["func"].as<int>() == 99){
 
                     // Get the name and password out of the parameters and then power cycle the board
-                    String name = messageJson["commands"][0]["params"][0].as<String>();
-                    String password = messageJson["commands"][0]["params"][1].as<String>();
+                    const char* name = messageJson["commands"][0]["params"][0].as<const char*>();
+                    const char* password = messageJson["commands"][0]["params"][1].as<const char*>();
                     wifiInst->storeNewWiFiCreds(name, password);
                     return true;
                 }
@@ -170,7 +185,7 @@ bool Loom_Max::subscribe(){
         return true;
     }
 
-    WARNING("No message received!");
+    WARNING(F("No message received!"));
 
     return false;
     
@@ -179,6 +194,7 @@ bool Loom_Max::subscribe(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Max::setUDPPort(){ 
+    char output[OUTPUT_SIZE];
     sendPort = SEND_BASE_UDP_PORT + manInst->get_instance_num();
     recvPort = RECV_BASE_UDP_PORT + manInst->get_instance_num();
 
@@ -186,7 +202,8 @@ void Loom_Max::setUDPPort(){
     udpSend->begin(sendPort);
     udpRecv->begin(recvPort);
 
-    LOG("Listening for UDP Packets on " + String(recvPort));
+    snprintf(output, OUTPUT_SIZE, "Listening for UDP Packets on %u", recvPort);
+    LOG(output);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

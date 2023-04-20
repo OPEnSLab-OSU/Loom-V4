@@ -33,11 +33,11 @@ void Loom_MB1232::initialize() {
 
     // If we have less than 2 bytes of data from the sensor
     if(Wire.available() < 2){
-        ERROR("Failed to initialize MB1232! Check connections and try again...");
+        ERROR(F("Failed to initialize MB1232! Check connections and try again..."));
         moduleInitialized = false;
     }
     else{
-        LOG("Successfully initialized MB1232!");
+        LOG(F("Successfully initialized MB1232!"));
 
     }
 }
@@ -57,7 +57,7 @@ void Loom_MB1232::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            ERROR("No acknowledge received from the device");
+            ERROR(F("No acknowledge received from the device"));
             return;
         }
     
@@ -82,7 +82,7 @@ void Loom_MB1232::measure() {
 
             range = (high * 256) + low;
         } else {
-            ERROR("Error reading from MB1232");
+            ERROR(F("Error reading from MB1232"));
         }
     }
     

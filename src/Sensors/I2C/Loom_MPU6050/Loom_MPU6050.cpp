@@ -18,7 +18,7 @@ void Loom_MPU6050::initialize(){
         calibrate();
     }
 
-    LOG("Successfully initialized sensor!");
+    LOG(F("Successfully initialized sensor!"));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -69,7 +69,7 @@ void Loom_MPU6050::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MPU6050::calibrate(){
-    LOG("Calibrating Gyroscope...");
+    LOG(F("Calibrating Gyroscope..."));
 
     mpu.calcGyroOffsets(true);
     Serial.println();

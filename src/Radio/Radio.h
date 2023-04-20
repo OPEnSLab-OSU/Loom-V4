@@ -51,12 +51,13 @@ class Radio : public Module{
          * Convert the message pack to json
          */ 
         bool bufferToJson(uint8_t* buffer){
-
+            char output[OUTPUT_SIZE];
             DeserializationError error = deserializeMsgPack(recvDoc, buffer, maxMessageLength);
 
             // Check if an error occurred 
             if(error != DeserializationError::Ok){
-                ERROR("Error occurred parsing MsgPack: " + String(error.c_str()));
+                snprintf(output, OUTPUT_SIZE, "Error occurred parsing MsgPack: %s", error.c_str());
+                ERROR(output);
                 return false;
             }
 
@@ -79,5 +80,5 @@ class Radio : public Module{
          * @param moduleName Name of the module
          * @param maxLength The maximum length a packet can be
          */ 
-        Radio(String moduleName) : Module(moduleName) {};
+        Radio(const char* moduleName) : Module(moduleName) {};
 };

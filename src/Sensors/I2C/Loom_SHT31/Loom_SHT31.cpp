@@ -19,13 +19,13 @@ Loom_SHT31::Loom_SHT31(
 void Loom_SHT31::initialize() {
     FUNCTION_START;
     if(!sht.begin(i2c_address)){
-        ERROR("Failed to initialize SHT31! Check connections and try again...");
+        ERROR(F("Failed to initialize SHT31! Check connections and try again..."));
         moduleInitialized = false;
     }
     else{
-        LOG("Successfully initialized SHT31!");
+        LOG(F("Successfully initialized SHT31!"));
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -44,7 +44,8 @@ void Loom_SHT31::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            ERROR("No acknowledge received from the device");
+            ERROR(F("No acknowledge received from the device"));
+            FUNCTION_END;
             return;
         }
         // Pull the data from the sensor
@@ -57,10 +58,10 @@ void Loom_SHT31::measure() {
             sensorData[1] = humid;
         }
         else{
-            WARNING("Collected information was invalid, the previous collected data will be published again.");
+            WARNING(F("Collected information was invalid, the previous collected data will be published again."));
         }
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -72,6 +73,6 @@ void Loom_SHT31::package() {
         json["Temperature"] = sensorData[0];
         json["Humidity"] = sensorData[1];
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

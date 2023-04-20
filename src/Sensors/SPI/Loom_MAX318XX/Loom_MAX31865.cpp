@@ -24,12 +24,12 @@ void Loom_MAX31865::measure(){
         // Check and print any faults
         uint8_t fault = max.readFault();
         if (fault) {
-            if (fault & MAX31865_FAULT_HIGHTHRESH)  ERROR("RTD High Threshold"); 
-            if (fault & MAX31865_FAULT_LOWTHRESH)   ERROR("RTD Low Threshold"); 
-            if (fault & MAX31865_FAULT_REFINLOW)    ERROR("REFIN- > 0.85 x Bias"); 
-            if (fault & MAX31865_FAULT_REFINHIGH)   ERROR("REFIN- < 0.85 x Bias - FORCE- open"); 
-            if (fault & MAX31865_FAULT_RTDINLOW)    ERROR("RTDIN- < 0.85 x Bias - FORCE- open"); 
-            if (fault & MAX31865_FAULT_OVUV)        ERROR("Under/Over voltage"); 
+            if (fault & MAX31865_FAULT_HIGHTHRESH)  ERROR(F("RTD High Threshold")); 
+            if (fault & MAX31865_FAULT_LOWTHRESH)   ERROR(F("RTD Low Threshold")); 
+            if (fault & MAX31865_FAULT_REFINLOW)    ERROR(F("REFIN- > 0.85 x Bias")); 
+            if (fault & MAX31865_FAULT_REFINHIGH)   ERROR(F("REFIN- < 0.85 x Bias - FORCE- open")); 
+            if (fault & MAX31865_FAULT_RTDINLOW)    ERROR(F("RTDIN- < 0.85 x Bias - FORCE- open")); 
+            if (fault & MAX31865_FAULT_OVUV)        ERROR(F("Under/Over voltage")); 
             break;
         }
     }

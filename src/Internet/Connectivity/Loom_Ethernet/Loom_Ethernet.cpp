@@ -18,8 +18,9 @@ Loom_Ethernet::Loom_Ethernet(Manager& man) : Module("Ethernet"), manInst(&man) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Ethernet::initialize() {
-
-    LOG("Initializing Ethernet module...");
+    char output[OUTPUT_SIZE];
+    char ip[16];
+    LOG(F("Initializing Ethernet module..."));
 
     // Call the connect class to initiate the connection
     connect();
@@ -29,9 +30,15 @@ void Loom_Ethernet::initialize() {
 
     moduleInitialized = true;
     
-    LOG("Successfully Initalized Ethernet!");
-    LOG("Device IP Address: " + Loom_Ethernet::IPtoString(getIPAddress()));
-    LOG("Device Subnet Address: " + Loom_Ethernet::IPtoString(getSubnetMask()));
+    LOG(F("Successfully Initalized Ethernet!"));
+    // Print the device IP
+    ipToString(getIPAddress(), ip);
+    snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
+    LOG(output);
+
+    ipToString(getSubnetMask(), ip);
+    snprintf(output, OUTPUT_SIZE, "Device Subnet Address: %s", ip);
+    LOG(output);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -46,7 +53,7 @@ void Loom_Ethernet::connect(){
 
        // No DHCP server
        if(Ethernet.begin(mac) == 0){
-        WARNING("Failed to configure using DHCP");
+        WARNING(F("Failed to configure using DHCP"));
 
         // Attempt to assign a static IP
         Ethernet.begin(mac, ip);
@@ -59,14 +66,16 @@ void Loom_Ethernet::connect(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Ethernet::loadConfigFromJSON(String json){
+void Loom_Ethernet::loadConfigFromJSON(char* json){
     // Doc to store the JSON data from the SD card in
     StaticJsonDocument<300> doc;
+    char output[OUTPUT_SIZE];
     DeserializationError deserialError = deserializeJson(doc, json);
 
     // Check if an error occurred and if so print it
     if(deserialError != DeserializationError::Ok){
-        ERROR("There was an error reading the sleep interval from SD: " + String(deserialError.c_str()));
+        snprintf(output, OUTPUT_SIZE, "There was an error reading the Ethernet credentials from SD: %s", deserialError.c_str());
+        ERROR(output);
     }
 
     JsonArray macJson = doc["mac"].as<JsonArray>();
@@ -78,6 +87,8 @@ void Loom_Ethernet::loadConfigFromJSON(String json){
     }
 
     ip = IPAddress(ipJson[0], ipJson[1], ipJson[2], ipJson[3]);
+
+    free(json);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

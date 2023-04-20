@@ -83,7 +83,7 @@ class Loom_Freewave : public Radio{
     private:
         Manager* manInst;                       // Instance of the manager
 
-        String recvData = "";
+        char* recvData;
 
         HardwareSerial& serial1;                // Serial reference
         RH_Serial driver;                       // Freewave Driver

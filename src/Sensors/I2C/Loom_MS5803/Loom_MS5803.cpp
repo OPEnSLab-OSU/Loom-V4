@@ -15,16 +15,16 @@ void Loom_MS5803::initialize(){
     FUNCTION_START;
     // Setup is backwards apparently
     if(inst.initializeMS_5803(false)){
-        ERROR("Failed to initialize sensor!");
+        ERROR(F("Failed to initialize sensor!"));
         moduleInitialized = false;
     }
     else{
-        LOG("Successfully Initialized!");
+        LOG(F("Successfully Initialized!"));
         
         // Wait 3 seconds after initializing
         delay(3000);
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -44,7 +44,8 @@ void Loom_MS5803::measure(){
 
         // If we are not connected
         else if(!connectionStatus){
-            ERROR("No acknowledge received from the device");
+            ERROR(F("No acknowledge received from the device"));
+            FUNCTION_END;
             return;
         }
     
@@ -56,7 +57,7 @@ void Loom_MS5803::measure(){
         sensorData[0] = inst.temperature();
         sensorData[1] = inst.pressure();
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -69,7 +70,7 @@ void Loom_MS5803::package(){
         json["Temperature"] = sensorData[0];
         json["Pressure"] = sensorData[1];
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -77,6 +78,6 @@ void Loom_MS5803::package(){
 void Loom_MS5803::power_up(){
     FUNCTION_START;
     initialize();
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

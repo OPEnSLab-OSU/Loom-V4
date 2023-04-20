@@ -21,12 +21,14 @@ class Loom_Neopixel : public Actuator{
          * @param enableA0 Enable the first Neopixel
          * @param enableA1 Enable the second Neopixel
          * @param enableA2 Enable the third Neopixel
+         * @param colorType specify the color configuration of the neopixel
          */ 
         Loom_Neopixel(
                     Manager& man,
                     const bool enableA0 = false, 
                     const bool enableA1 = false, 
-                    const bool enableA2 = true
+                    const bool enableA2 = true,
+                    const neoPixelType colorType = NEO_RGB
                 );
         
         /**
@@ -35,11 +37,13 @@ class Loom_Neopixel : public Actuator{
          * @param enableA0 Enable the first Neopixel
          * @param enableA1 Enable the second Neopixel
          * @param enableA2 Enable the third Neopixel
+         * @param colorType specify the color configuration of the neopixel
          */ 
         Loom_Neopixel(
                     const bool enableA0 = false, 
                     const bool enableA1 = false, 
-                    const bool enableA2 = true
+                    const bool enableA2 = true,
+                    const neoPixelType colorType = NEO_RGB
                 );
         
         /* Initialize the module per the manager */

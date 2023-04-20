@@ -50,9 +50,12 @@ class Loom_Ethernet : public Module{
 
         /**
          * Load the Ethernet connection information from JSON
+         * 
+         * This frees the input parameter
+         * 
          * @param jsonString JSON formatted string containing the mac address and IP
          */
-        void loadConfigFromJSON(String json);
+        void loadConfigFromJSON(char* json);
 
         /**
          * Attempt to connect to the configured network 
@@ -89,11 +92,12 @@ class Loom_Ethernet : public Module{
          *  Get the broadcast IP of the network
          */ 
         IPAddress getBroadcast();
-
         /**
          * Convert an IP address to a string
          */ 
-        static String IPtoString(IPAddress ip) { return String(ip[0]) + "." + String(ip[1]) + "." + String(ip[2]) + "." + String(ip[3]); };
+        void ipToString(IPAddress ip, char array[16]) { 
+            snprintf(array, 16, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+        };
 
     private:
         Manager* manInst;                   // Pointer to the manager

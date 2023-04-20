@@ -15,9 +15,11 @@ void Loom_Digital::measure(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Digital::package(){
+    char name[5];
     JsonObject json = manInst->get_data_object(getModuleName());
     for ( const auto &myPair : pinToData ) {
-       json[String(myPair.first)] = pinToData[myPair.first];
+        snprintf_P(name, 5, PSTR("%i"), myPair.first);
+       json[name] = pinToData[myPair.first];
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

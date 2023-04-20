@@ -42,11 +42,11 @@ class Loom_MQTT : public Module{
         Loom_MQTT(
                 Manager& man,
                 Client& internet_client, 
-                String broker_address, 
+                const char* broker_address, 
                 int broker_port, 
-                String database_name, 
-                String broker_user = "", 
-                String broker_pass = ""
+                const char* database_name, 
+                const char* broker_user = "", 
+                const char* broker_pass = ""
             );
 
         /**
@@ -54,11 +54,6 @@ class Loom_MQTT : public Module{
          * @param man Reference to the manager
          */ 
         Loom_MQTT(Manager& man, Client& internet_client);
-
-        /**
-         * Deconstructor for MQTT interface 
-         */
-        ~Loom_MQTT();
         
         /**
          * Publish the current JSON data over MQTT 
@@ -75,29 +70,36 @@ class Loom_MQTT : public Module{
          * @param time Length of time in MILLISECONDS the connection will be kept open
          */ 
         void setKeepAlive(int time) { keep_alive = time; };
+        
+        /**
+         * Set the maximum number of reconnection attempts to make before failing
+         * @param retries The number of retries we want to make
+        */
+        void setMaxRetries(int retries) { maxRetries = retries; };
 
         /**
          * Load the MQTT credentials from a JSON string, used to pull credentials from a file
-         * @param jsonString JSON formatted string containing the login credentials
+         * @param jsonString JSON formatted string containing the login credentials, this is freed at the end
          */
-        void loadConfigFromJSON(String json);
+        void loadConfigFromJSON(char* json);
     
     private:
         Manager* manInst;                       // Instance of the manager
 
         Client* internetClient;                  // Client to supply to the MQTT client to handle internet communication
-        MqttClient* mqttClient = nullptr;       // MQTT Client to manage interactions with the MQTT broker
+        MqttClient mqttClient;                  // MQTT Client to manage interactions with the MQTT broker
 
-        String getMQTTError();                  // Get the string representation of the MQTT error codes
-
+        const char* getMQTTError();                  // Get the string representation of the MQTT error codes
+    
         int keep_alive = 60000;                 // How long the broker should keep the connection open, defaults to a minute
+        int maxRetries = 4;                         // How many times we want to retry the connection
 
-        String address;                         // Domain that the broker is running on
-        String database_name;                   // Database to publish the data to
-        int port;                               // Port the broker is listening on
-        String topic;                           // Where to publish the data to
-        String username;                        // Username to log into the broker
-        String password;                        // Password to log into the broker
+        char address[100];                         // Domain that the broker is running on
+        char database_name[100];                   // Database to publish the data to
+        int port;                                   // Port the broker is listening on
+        char topic[100];                           // Where to publish the data to
+        char username[100];                        // Username to log into the broker
+        char password[100];                        // Password to log into the broker
 
         
 

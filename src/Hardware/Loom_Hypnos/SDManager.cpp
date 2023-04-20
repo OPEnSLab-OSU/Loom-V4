@@ -3,12 +3,13 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 SDManager::SDManager(Manager* man, int sd_chip_select) : manInst(man), Module("SD Manager"), chip_select(sd_chip_select) {
-    device_name = manInst->get_device_name();
- } // Disables Lora so we can use the SD card on hypnos 
+    strncpy(device_name, manInst->get_device_name(), 100);
+    memset(overrideFileName, '\0', 260);
+} // Disables Lora so we can use the SD card on hypnos 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool SDManager::writeLineToFile(String filename, String content){
+bool SDManager::writeLineToFile(const char* filename, const char* content){
 
     // Check if the SD card is actually functional
     if(sdInitialized){
@@ -31,20 +32,26 @@ bool SDManager::writeLineToFile(String filename, String content){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void SDManager::createHeaders(){
+void SDManager::writeHeaders(){
+    char header1[513];
+    char header2[513];
 
-    // Append the serial number to the top of the CSV file
-    headers[0] = manInst->get_serial_num() + "\n";
+    // Append the serial number to the top of the CSV file, reset the header1 array
+    snprintf_P(header1, 512, PSTR("%s\n"), manInst->get_serial_num());
+    myFile.println(header1);
+
+    // Clear both arrays
+    memset(header1, '\0', 512);
+    memset(header2, '\0', 512);
+
     JsonObject document = manInst->getDocument().as<JsonObject>();
-
-    // Constants not pulled from the JSON
-    headers[0] += "ID,,";
-    headers[1] += "name,instance,";
+    strncat(header1, "ID,,", 512);
+    strncat(header2, "name,instance,", 512);
     
     // If there is a key that contains timestamp data when need to include that separately 
     if(document.containsKey("timestamp")){
-        headers[0] += "timestamp,,";
-        headers[1] += "time_utc,time_local,";
+        strncat(header1, "timestamp,,", 512);
+        strncat(header2, "time_utc,time_local,", 512);
     }
     
     // Get the contents containing the reset of the sensor data
@@ -53,61 +60,75 @@ void SDManager::createHeaders(){
     // Loop over each 
     for(JsonVariant v : contentsArray) {
         // Get the module name
-        headers[0] += v.as<JsonObject>()["module"].as<String>();
+        strncat(header1, v.as<JsonObject>()["module"].as<const char*>(), 512);
 
         // Get all JSON keys  
         for(JsonPair keyValue : v.as<JsonObject>()["data"].as<JsonObject>()){
-            headers[1] += String(keyValue.key().c_str()) + ",";
-            headers[0] += ",";
+            strncat(header2, keyValue.key().c_str(), 512);
+            strncat(header2, ",", 512);
+            strncat(header1, ",", 512);
         }
     }
 
-    
+    // Write the headers to the file
+    myFile.println(header1);
+    myFile.println(header2);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::log(DateTime currentTime){
-
-    // String representing all the sensor data in a csv format
-    String data = "";
-
+    char output[2001];
+    
     if(sdInitialized){
-
+        
         // Open the file in read/write mode, create the file if we need to and append the content to the end of the file
         myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
-
+        
         if(myFile){
-
+            
             // If this file has never been written to before we need to create and write the proper headers to the file
             if(myFile.available() <= 3){
                 // Set the date created timestamp of the File
                 myFile.timestamp(T_CREATE, currentTime.year(), currentTime.month(), currentTime.day(), currentTime.hour(), currentTime.minute(), currentTime.second());
                 
-                createHeaders();
-                myFile.println(headers[0]);
-                myFile.println(headers[1]);
+                writeHeaders();
             }    
-
+            
+            snprintf_P(output, 2000, PSTR("%s,%i,"), manInst->get_device_name(), manInst->get_instance_num());
             // Write the Instance data that isn't included in the JSON packet
-            myFile.print(manInst->get_device_name() + "," + String(manInst->get_instance_num()) + ",");
+            myFile.print(output);
+            memset(output, '\0', 2000); // Clear array
+
             JsonObject document = manInst->getDocument().as<JsonObject>();
+            
 
             // If there is a key that contains timestamp data when need to include that separately 
             if(document.containsKey("timestamp")){
-                String utc = document["timestamp"]["time_utc"].as<String>();
-                String local = document["timestamp"]["time_local"].as<String>();
+                char utcArr[21];
+                char localArr[21];
+                memset(utcArr, '\0', 21);
+                memset(localArr, '\0', 21);
+                strncpy(utcArr, document["timestamp"]["time_utc"].as<const char*>(), 21);
+                strncpy(localArr, document["timestamp"]["time_local"].as<const char*>(), 21);
 
                 // Format date with spaces when logging to SD
-                utc.replace("T", " ");
-                utc.replace("Z", "");
+                char *indexPointer = strchr(utcArr, 'Z');
+                utcArr[10] = ' ';
+                utcArr[indexPointer-utcArr] = '\0';
 
+                
                 // Format date with spaces when logging to SD
-                local.replace("T", " ");
-                local.replace("Z", "");
+                indexPointer = strchr(localArr, 'Z');
+                localArr[10] = ' ';
+                localArr[indexPointer-localArr] = '\0';
 
-                data += utc + ",";
-                data += local + ",";
+                // Format the time stamp in the CSV file
+                strncat(output, utcArr, 2000);
+                strncat(output, ",", 2000);
+                strncat(output, localArr, 2000);
+                strncat(output, ",", 2000);
             }
+            
 
             // Get the contents containing the reset of the sensor data
             JsonArray contentsArray = document["contents"].as<JsonArray>();
@@ -117,12 +138,13 @@ bool SDManager::log(DateTime currentTime){
 
                 // Get all JSON keys  
                 for(JsonPair keyValue : v.as<JsonObject>()["data"].as<JsonObject>()){
-                    data += String(keyValue.value().as<String>()) + ",";
+                    strncat(output, keyValue.value().as<String>().c_str(), 2000);
+                    strncat(output, ",", 2000);
                 }
             }
 
             // Write the matching data into the CSV file
-            myFile.println(data);
+            myFile.println(output);
 
             // Set the last modified date
             myFile.timestamp(T_WRITE , currentTime.year(), currentTime.month(), currentTime.day(), currentTime.hour(), currentTime.minute(), currentTime.second());
@@ -131,7 +153,9 @@ bool SDManager::log(DateTime currentTime){
             myFile.close();
 
             // Inform the user that we have successfully written to the file
-            printModuleName("Successfully logged data to " + fileName);
+            snprintf_P(output, 2000, PSTR("Successfully logged data to %s"), fileName);
+            printModuleName(output);
+            
         }
         else{
             printModuleName("Failed to open log file!");
@@ -140,16 +164,19 @@ bool SDManager::log(DateTime currentTime){
         // If we want to log batch data do so
         if(batch_size > 0)
             logBatch();
+        
     }
     else{
         printModuleName("Failed to log! SD card not Initialized!");
     }
+     
     
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::begin(){
+
     digitalWrite(8, HIGH);  // Disable LoRa
 
     printModuleName("Initializing SD Card...");
@@ -164,7 +191,7 @@ bool SDManager::begin(){
         if(!sd.exists("debug"))
             sd.mkdir("debug");
 
-        LOG("Successfully initialized SD Card!");
+        printModuleName("Successfully initialized SD Card!");
     }
 
     
@@ -173,7 +200,7 @@ bool SDManager::begin(){
     if(!sdInitialized){
         // Try to open the root of the file system so we can get the files on the device
         if(!root.open("/", O_RDONLY)){
-            ERROR("Failed to open root file system on SD Card!");
+            ERROR(F("Failed to open root file system on SD Card!"));
             return false;
         }
         updateCurrentFileName();
@@ -191,7 +218,8 @@ bool SDManager::begin(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::updateCurrentFileName(){
     uint16_t indexDir = 0;
-    char f_name[25];
+    char f_name[260];
+    char* strLocation;
 
     // What number we need to append to the file name
     file_count = 0;
@@ -199,24 +227,48 @@ bool SDManager::updateCurrentFileName(){
     // While there is a next file to open, open it
     while(scanningFile.openNext(&root)){
         scanningFile.getName(f_name, 25);
-        if(String(f_name).startsWith(device_name)){
+
+        if(strlen(overrideFileName) > 0){
+            // Check if the substring exists
+            strLocation = strstr(f_name, overrideFileName);
+        }
+        else{
+            // Check if the substring exists
+            strLocation = strstr(f_name, device_name);
+        }
+        
+        if(strLocation != NULL){
             // Increase the file count per loop to track what the next file should be
             file_count++;
         }
         scanningFile.close();
     }
 
-    // Check if we set an override name or not
-    if(overrideName.length() <= 0)
-        fileNameNoExtension = device_name + String(file_count);
-    else
-        fileNameNoExtension = overrideName + String(file_count);
+    // Account for the batch files if we are using batch logging
+    if(batch_size > 0){
+        file_count = file_count / 2;
+    }
 
-    fileName = fileNameNoExtension + ".csv";
+    if(strlen(overrideFileName) > 0){
+        // Set all the fileNames with the override name
+        snprintf_P(fileName, 260, PSTR("%s%i.csv"), overrideFileName, getCurrentFileNumber()); 
+        snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), overrideFileName, getCurrentFileNumber()); 
+        snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+       
+    }
+    else{
+        // Set all the fileNames
+        snprintf_P(fileName, 260, PSTR("%s%i.csv"), device_name, getCurrentFileNumber()); 
+        snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), device_name, getCurrentFileNumber()); 
+        snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+    }
 
     // Close the root file after we have decided what to name the next file
     root.close();
-    printModuleName("Data will be logged to " + fileName);
+
+    char output[OUTPUT_SIZE];
+    snprintf_P(output, OUTPUT_SIZE, PSTR("Data will be logged to %s"), fileName);
+    printModuleName(output);
 
     return true;
 
@@ -224,23 +276,23 @@ bool SDManager::updateCurrentFileName(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-String SDManager::readFile(String fileName){
-    char output[6000];
+char* SDManager::readFile(const char* fileName){
+    // Clear contents 
+    char* fileContents =  (char*) malloc(5000);
+    memset(fileContents, '\0', 5000);
+
     long index = 0;
     if(sdInitialized){
-
-    myFile = sd.open(fileName);
+        myFile = sd.open(fileName);
 
         if(myFile){
             // read from the file until there's nothing else in it:
             while (myFile.available()) {
-                output[index] = (char)(myFile.read());
+                fileContents[index] = (char)(myFile.read());
                 index++;
             }
-            output[index] = '\0';
-            // close the file:
+            fileContents[index] = '\0';
             myFile.close();
-            return String(output);
         }
         else{
             printModuleName("Failed to open file!");
@@ -249,28 +301,31 @@ String SDManager::readFile(String fileName){
     else{
         printModuleName("Failed to read! SD card not Initialized!");
     }
-    return "";
+    return fileContents;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void SDManager::logBatch(){
-
+    char f_name[260];
+    char jsonString[2000];
+    snprintf_P(f_name, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
     // We want to clear the file after the batch size has been exceeded
     if(current_batch >= batch_size){
         current_batch = 0;
-        myFile = sd.open(fileNameNoExtension + "-Batch.txt", O_WRITE | O_TRUNC | O_APPEND);
+        myFile = sd.open(f_name, O_WRITE | O_TRUNC | O_APPEND);
     }
     else{
-        myFile = sd.open(fileNameNoExtension + "-Batch.txt", O_WRITE | O_CREAT | O_APPEND);
+        myFile = sd.open(f_name, O_WRITE | O_CREAT | O_APPEND);
     }
-
-
     // Check if the file has been opened properly and write the JSON packet to one line
     if(myFile){
-        myFile.println(manInst->getJSONString());
+      
+        manInst->getJSONString(jsonString);
+        myFile.println(jsonString);
         myFile.close();
         current_batch++;
+        
     }else{
         printModuleName("Failed to open file!");
     }

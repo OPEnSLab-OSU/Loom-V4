@@ -2,8 +2,7 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_EZOPH::Loom_EZOPH(Manager& man, byte address, bool useMux) : EZOSensor("EZO-PH"), manInst(&man){
-    i2c_address = address;
-    module_address = i2c_address;
+    module_address = address;
 
     if(!useMux)
         manInst->registerModule(this);
@@ -13,7 +12,6 @@ Loom_EZOPH::Loom_EZOPH(Manager& man, byte address, bool useMux) : EZOSensor("EZO
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_EZOPH::initialize(){
     Wire.begin();
-    moduleInitialized = calibrate();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -23,12 +21,12 @@ void Loom_EZOPH::measure(){
 
         // Attempt to read data from the sensor
         if(!readSensor()){
-            ERROR("Failed to read sensor!");
+            ERROR(F("Failed to read sensor!"));
             return;
         }
 
         // Parse the constructed string
-        ph = getSensorData().toFloat();
+        ph = atof(getSensorData());  
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -46,7 +44,7 @@ void Loom_EZOPH::package(){
 void Loom_EZOPH::power_down() {
     if(moduleInitialized){
         if(!sendTransmission("sleep")){
-            ERROR("Failed to send 'sleep' command to device");
+            ERROR(F("Failed to send 'sleep' command to device"));
         }
     }
 }

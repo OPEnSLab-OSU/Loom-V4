@@ -1,17 +1,20 @@
 #pragma once
 
-#include <stack>
+#include <queue>
 #include <MemoryFree.h>
 #include "Hardware/Loom_Hypnos/SDManager.h"
 
-#define FUNCTION_START Logger::getInstance()->startFunction(__FILE__, __func__, __LINE__)
-#define FUNCTION_END(ret) Logger::getInstance()->endFunction(ret) 
+#define FUNCTION_START Logger::getInstance()->startFunction(__FILE__, __func__, __LINE__, freeMemory())     // Marks the start of a function
+#define FUNCTION_END Logger::getInstance()->endFunction(freeMemory())                                       // Marks the end of a function
 
-#define SLOG(msg) Logger::getInstance()->debugLog(String(msg), true, __FILE__, __func__, __LINE__)          // Log a message without printing to the serial
-#define LOG(msg) Logger::getInstance()->debugLog(String(msg), false, __FILE__, __func__, __LINE__)          // Log a generic message
-#define ERROR(msg) Logger::getInstance()->errorLog(String(msg), false, __FILE__, __func__, __LINE__)        // Log an error message
-#define WARNING(msg) Logger::getInstance()->warningLog(String(msg), false, __FILE__, __func__, __LINE__)    // Log a warning message
+#define SLOG(msg) Logger::getInstance()->debugLog(msg, true, __FILE__, __func__, __LINE__)                  // Log a message without printing to the serial
+#define LOG(msg) Logger::getInstance()->debugLog(msg, false, __FILE__, __func__, __LINE__)                  // Log a generic message
+#define LOG_LONG(msg) Logger::getInstance()->logLong(msg, false)                                            // Log a long message
+#define ERROR(msg) Logger::getInstance()->errorLog(msg, false, __FILE__, __func__, __LINE__)                // Log an error message
+#define WARNING(msg) Logger::getInstance()->warningLog(msg, false, __FILE__, __func__, __LINE__)            // Log a warning message
 
+#define ENABLE_SD_LOGGING Logger::getInstance()->enableSD();                                                // Enable SD logging of debug information
+#define ENABLE_FUNC_SUMMARIES Logger::getInstance()->enableSummaries();                                     // Enable logging of function mem usage summaries
 
 /**
  * Class for handling debug log information
@@ -27,21 +30,25 @@ class Logger{
          * funcName - Name of the function that we are in
          * lineNumber - The current line number of the function
          * netMemoryUsage - The amount of memory that was allocated or deallocated in that function alone (bytes)
-         * totalMemoryUsage - The total amount of RAM being used at the end of the current function (bytes)
          * time - The time the function took to return (ms)
+         * indentCount - This is allows for better formatting in the funcSummaries output
         */
         struct functionInfo{
-            String fileName;
-            String funcName;
-            unsigned int lineNumber;
+            char fileName[260];
+            char funcName[260];
+            unsigned long lineNumber;
             int netMemoryUsage;
-            int totalMemoryUsage;
             unsigned long time;
-            functionInfo(String fileName, String funcName, unsigned int lineNumber, int mem, unsigned long time) : fileName(fileName), funcName(funcName), lineNumber(lineNumber), netMemoryUsage(mem), time(time) {};
+            int indentCount;
         };
         
         // Function call list
-        std::stack<Logger::functionInfo*> callStack;
+        std::queue<struct functionInfo*> callStack;
+        int indentNum = 0;
+
+        // Whether or not to use the SD card or log function summaries
+        bool enableFunctionSummaries = false;
+        bool enableSDLogging = false;
 
         static Logger* instance;
         SDManager* sdInst = nullptr;
@@ -51,27 +58,38 @@ class Logger{
          * 
          * @param message The message we want to log
          * @param silent Wether or not the message gets print to the serial monitor
-         * @param lineNumber The lineNumber the log took place on
         */
-        void log(String message, bool silent, long lineNumber){
+        void log(char* message, bool silent){
+            char filePath[100];
             
             // If we want to actually print to serial
             if(!silent)
                 Serial.println(message);
 
+            snprintf_P(filePath, 100, PSTR("/debug/output_%i.log"), sdInst->getCurrentFileNumber());
             // Log as long as we have given it a SD card instance
-            if(sdInst != nullptr)
-                sdInst->writeLineToFile("/debug/output_" + String(sdInst->getCurrentFileNumber()) + ".log", String(message));
+            if(sdInst != nullptr && enableSDLogging)
+                sdInst->writeLineToFile(filePath, message);
         }
 
         /**
          * Truncate the __FILE__ output to just show the name instead of the whole path
          * @param fileName String to truncate
+         * 
+         * @return Pointer to a malloced char*
         */
-        String truncateFileName(String fileName){
-             // Get the last slash in the file name
-            int lastSlash = fileName.lastIndexOf('\\')+1;
-            return fileName.substring(lastSlash, fileName.length());
+        void truncateFileName(const char* fileName, char array[260]){
+           
+            int i;
+            // Find the last \\ in the file path to know where the name is
+            char *lastOccurance = strrchr(fileName, '\\');
+            int lastSlash = lastOccurance-fileName+1;
+
+            // Loop from the last slash to the end of the string
+            for(i = lastSlash; i < strlen(fileName); i++){
+                array[i-lastSlash] = fileName[i];
+            }
+            array[i-lastSlash] = '\0';
         };
 
         Logger() {};
@@ -103,9 +121,13 @@ class Logger{
          * @param silent If set to silent it will not appear in the serial monitor
          * @param lineNumber The current line number this log is on
         */
-        void debugLog(String message, bool silent, String file, String func, long lineNumber){
-            String banner = "[DEBUG] [" + truncateFileName(file) + ":" + func + ":" + String(lineNumber) + "] ";
-            log(banner + message, silent, lineNumber);
+        void debugLog(const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
+            char logMessage[OUTPUT_SIZE];
+            char fileName[260];
+            truncateFileName(file, fileName);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[DEBUG] [%s:%s:%u] %s"), fileName, func, lineNumber, message);
+            log(logMessage, silent);
+            
         };
 
         /**
@@ -114,21 +136,83 @@ class Logger{
          * @param silent If set to silent it will not appear in the serial monitor
          * @param lineNumber The current line number this log is on
         */
-        void errorLog(String message, bool silent, String file, String func, long lineNumber){
-            String banner = "[ERROR] [" + truncateFileName(file) + ":" + func + ":" + String(lineNumber) + "] ";
-            log(banner + message, silent, lineNumber);
+        void errorLog(const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
+            char logMessage[OUTPUT_SIZE];
+            char fileName[260];
+            truncateFileName(file, fileName);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[ERROR] [%s:%s:%u] %s"), fileName, func, lineNumber, message);
+            log(logMessage, silent);
         };
 
-        /**
+         /**
          * Logs a Warning Message to the SD card and the serial monitor
          * @param message Message to log
          * @param silent If set to silent it will not appear in the serial monitor
          * @param lineNumber The current line number this log is on
         */
-        void warningLog(String message, bool silent, String file, String func, long lineNumber){
-            String banner = "[WARNING] [" + truncateFileName(file) + ":" + func + ":" + String(lineNumber) + "] ";
-            log(banner + message, silent, lineNumber);
+        void warningLog(const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
+            char logMessage[OUTPUT_SIZE];
+            char fileName[260];
+            truncateFileName(file, fileName);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[WARNING] [%s:%s:%u] %s\0"), fileName, func, lineNumber, message);
+            log(logMessage, silent);
         };
+
+        /**
+         * Logs a Debug Message to the SD card and the serial monitor
+         * @param message Message to log
+         * @param silent If set to silent it will not appear in the serial monitor
+         * @param lineNumber The current line number this log is on
+        */
+        void debugLog(const __FlashStringHelper* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
+            char logMessage[OUTPUT_SIZE];
+            char buff[150];
+            memcpy_P(buff, message, 150);
+		    char fileName[260];
+            truncateFileName(file, fileName);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[DEBUG] [%s:%s:%u] %s"), fileName, func, lineNumber, buff);
+            log(logMessage, silent);
+        };
+
+         /**
+         * Logs a Warning Message to the SD card and the serial monitor
+         * @param message Message to log
+         * @param silent If set to silent it will not appear in the serial monitor
+         * @param lineNumber The current line number this log is on
+        */
+        void warningLog(const __FlashStringHelper* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
+            char logMessage[OUTPUT_SIZE];
+            char buff[150];
+		    memcpy_P(buff, message, 150);
+            char fileName[260];
+            truncateFileName(file, fileName);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[WARNING] [%s:%s:%u] %s\0"), fileName, func, lineNumber, buff);
+            log(logMessage, silent);
+        };
+
+         /**
+         * Logs an Error Message to the SD card and the serial monitor
+         * @param message Message to log
+         * @param silent If set to silent it will not appear in the serial monitor
+         * @param lineNumber The current line number this log is on
+        */
+        void errorLog(const __FlashStringHelper* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
+            char logMessage[OUTPUT_SIZE];
+            char buff[150];
+		    memcpy_P(buff, message, 150);
+            char fileName[260];
+            truncateFileName(file, fileName);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[ERROR] [%s:%s:%u] %s"), fileName, func, lineNumber, buff);
+            log(logMessage, silent);
+        };
+
+        /*
+            Log an entire char* instead of fixing it to an array you must construct your message before passing it into this function
+        */
+        void logLong(char* message, bool silent){
+            log(message, silent);
+        };
+
 
         /**
          * Marks the start of a new function
@@ -136,39 +220,74 @@ class Logger{
          * @param func Function name that this call is in
          * @param num Current line number in the file of which this call is located
         */
-        void startFunction(String file, String func, unsigned int num){
-            // Log the start time of the function
-            int netMemoryUsage = freeMemory();
-            unsigned long time = millis();
-            
-            // Get the last slash in the file name
-            int lastSlash = file.lastIndexOf('\\')+1;
-
-            callStack.push(new functionInfo(truncateFileName(file), func, num, netMemoryUsage, time));
+        void startFunction(const char* file, const char* func, unsigned long num, int freeMemory){
+            if(enableFunctionSummaries){
+                SLOG(func);
+                // Log the start time of the function
+                char fileName[260];
+                memset(fileName, '\0', 260);
+                truncateFileName(file, fileName);
+                struct functionInfo* newFunction = (struct functionInfo*) malloc(sizeof(struct functionInfo));
+                strncpy(newFunction->fileName, fileName, 260);
+                strncpy(newFunction->funcName, func, 260);
+                newFunction->lineNumber = num;
+                newFunction->netMemoryUsage = freeMemory;
+                newFunction->time = millis();
+                newFunction->indentCount = callStack.size();
+                callStack.push(newFunction);
+            }
         };
 
         /**
          * Marks the end of a function, logs summary to SD card
          * @param ret Openly typed variable to show the return type of the function
         */
-        template<class T>
-        void endFunction(T ret){
-            // Log the start time of the function
-            functionInfo* info = callStack.top();
-            info->netMemoryUsage = info->netMemoryUsage - freeMemory();
-            info->totalMemoryUsage = freeMemory();
-            info->time = millis() - info->time;
-            float percentage = ((float)info->totalMemoryUsage / 32000.0) * 100;
-            
-            // Delete the top most function on the call stack
-            String banner = "[" + info->fileName + ":" + info->funcName + "]";
+        void endFunction(int freeMemory){
+            if(enableFunctionSummaries){
+                char fileName[100];
+                char file[260];
+                char func[260];
+                char output[300];
+                char indents[10];
 
-            // Log as long as we have given it a SD card instance
-            if(sdInst != nullptr)
-                sdInst->writeLineToFile("/debug/funcSummaries_" + String(sdInst->getCurrentFileNumber()) + ".log", String(banner + " Summary\n\tFunction Memory Usage: " + String(info->netMemoryUsage) + "\n\tFree Memory: " + String(info->totalMemoryUsage) + " B (" + String(percentage) + "\% Free)\n\tElapsed Time: " + String(info->time) + " MS\n\tReturn Status: " + String(ret)));
+                // 0 fill the indents array
+                memset(indents, '\0', 10);
+
+                struct functionInfo* info = callStack.front();
+                int memUsage = info->netMemoryUsage;
+                unsigned long time = millis() - info->time;
+                int percentage = ((float)memUsage / 32000.0) * 100;
+
+                // Copy to internal variables
+                strncpy(file, info->fileName, 260);
+                strncpy(func, info->funcName, 260);
+
+                // Cap the number of inents at the size of the array
+                if(info->indentCount > 10){
+                    info->indentCount = 10;
+                }
+
+                // Set the number of tab characters we need to add
+                memset(indents, '\t', info->indentCount);
             
-            delete(info);
-            callStack.pop();
+                // Pop the last function off the call stack
+                free(info);
+                callStack.pop();
+                
+                // Format the fileName and log output, this function uses 976 bytes
+                snprintf_P(fileName, 100,PSTR("/debug/funcSummaries_%i.log"), sdInst->getCurrentFileNumber());
+                snprintf_P(output, 300, PSTR("%s[%s:%s] Summary\n%s\tInitial Free Memory: %i B (%i %% Free)\n%s\tEnding Free Memory: %i B\n%s\tNet Usage: %i B\n%s\tElapsed Time: %u MS"), indents, file, func, indents, memUsage, percentage, indents, freeMemory, indents, memUsage-freeMemory, indents, time);
+                
+                // Log as long as we have given it a SD card instance
+                if(sdInst != nullptr && enableSDLogging)
+                    sdInst->writeLineToFile(fileName, output);
+            }
         };
+
+        /* Enable function summaries to view memory usage */
+        void enableSummaries(){ enableFunctionSummaries = true; };
+
+        /* Save flash write by not logging everything to SD */
+        void enableSD(){ enableSDLogging = true; };
 };
 

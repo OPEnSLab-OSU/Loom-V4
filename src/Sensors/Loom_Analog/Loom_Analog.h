@@ -81,13 +81,21 @@ class Loom_Analog : public Module{
          * Get the Millivolts of a specified pin
          * @param pin The pin to get the data from eg. A0, A1, ...
          */ 
-        float getMV(int pin) {return pinToData[pin_number_to_name(pin)].second; }
+        float getMV(int pin) {
+            char name[4];
+            pin_number_to_name(pin, name);
+            return pinToData[name].second; 
+        }
 
         /**
          * Get the analog value from a given pin
          * @param pin The pin to get the data from eg. A0, A1, ...
          */ 
-        float getAnalog(int pin) {return pinToData[pin_number_to_name(pin)].first; }
+        float getAnalog(int pin) {
+            char name[4];
+            pin_number_to_name(pin, name);
+            return pinToData[name].first; 
+        }
 
     private:
 
@@ -110,13 +118,13 @@ class Loom_Analog : public Module{
 
         float analogToMV(int analog);               // Convert the analog voltage to mV
 
-        String pin_number_to_name(int pin);         // Convert the given to a name with the style "A0"
+        void pin_number_to_name(int pin, char name[4]);         // Convert the given to a name with the style "A0"
 
 
         Manager* manInst;                           // Instance of the manager
 
         std::vector<int> analogPins;                // Holds a list of the analog pins we want to read
-        std::map<String, std::pair<float, float>> pinToData;          // Map mapping analog pins to the data read from them
+        std::map<const char*, std::pair<float, float>> pinToData;          // Map mapping analog pins to the data read from them
         
 
 };

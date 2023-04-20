@@ -3,6 +3,7 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Analog::measure(){
+    char name[4];
 
     // Clear the map before adding new data
     pinToData.clear();
@@ -10,7 +11,8 @@ void Loom_Analog::measure(){
     // Read the data from the given analog pin
     for(int i = 0; i < analogPins.size(); i++){
         int analogData = analogRead(analogPins[i]);
-        pinToData.insert(std::make_pair(pin_number_to_name(analogPins[i]), std::make_pair(analogData, analogToMV(analogData))));
+        pin_number_to_name(analogPins[i], name);
+        pinToData.insert(std::make_pair(name, std::make_pair(analogData, analogToMV(analogData))));
     }
 
     // Pull the battery voltage and add it to the top of 
@@ -20,10 +22,14 @@ void Loom_Analog::measure(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Analog::package(){
+    char output[21];
+    memset(output, '\0', 20);
     JsonObject json = manInst->get_data_object(getModuleName());
     for ( const auto &myPair : pinToData ) {
        json[myPair.first] = pinToData[myPair.first].first;
-       json[String(myPair.first) + "_MV"] = pinToData[myPair.first].second;
+       strncat(output, myPair.first, 20);
+       strncat(output, "_MV", 20);
+       json[output] = pinToData[myPair.first].second;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -39,8 +45,9 @@ float Loom_Analog::get_battery_voltage(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-String Loom_Analog::pin_number_to_name(int pin){
-    return "A" + String((pin - 14));
+void Loom_Analog::pin_number_to_name(int pin, char name[4]){
+    memset(name, '\0', 4);
+    snprintf_P(name, 4, PSTR("A%i"), pin - 14);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

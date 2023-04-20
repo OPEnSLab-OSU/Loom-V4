@@ -44,9 +44,20 @@ class SDManager : public Module{
 
         /**
          * Read the contents of a given file on the SD card and return them as a string
+         * 
+         * YOU MUST FREE THIS BLOCK OF MEMORY AS IT IS 10kb
+         * 
          * @param fileName Name of the file to read from
          */ 
-        String readFile(String fileName);
+        char* readFile(const char* fileName);
+
+        /*
+        * Returns a pointer to the opened filed
+        */
+        File& getFile(const char* fileName){
+            myFile = sd.open(fileName);
+            return myFile;
+        };
 
 
         /**
@@ -54,17 +65,20 @@ class SDManager : public Module{
          * @param filename File to write to
          * @param content String to write to the line
         */
-        bool writeLineToFile(String filename, String content); 
+        bool writeLineToFile(const char* filename, const char* content); 
 
         /**
          * Get the default SD card file name
          */ 
-        String getDefaultFilename(){ return fileName; };
+        const char* getDefaultFilename(){ return this->fileName; };
 
         /**
          * Get the current batch file name
          */ 
-        String getBatchFilename(){ return (fileNameNoExtension + "-Batch.txt"); };
+        const char* getBatchFilename(){
+            snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+            return batchFileName;
+        };
 
         /**
          * Has the SD card been initialized previously
@@ -75,7 +89,7 @@ class SDManager : public Module{
          * Checks if a file exists
          * @param fileName The name of the file to check
          */ 
-        bool fileExists(String fileName) { return sd.exists(fileName.c_str()); };
+        bool fileExists(const char* fileName) { return sd.exists(fileName); };
 
         /**
          * Sets the batch size and thus enables batch loggin
@@ -90,7 +104,10 @@ class SDManager : public Module{
         /**
          * Log to a different name other than one matching the device name
          */ 
-        void setLogName(String name) { overrideName = name; };
+        void setLogName(const char* name) { 
+            strncpy(overrideFileName, name, 100);
+        };
+        
 
         /* Get whatever number we are currently appending to the SD fileNames*/
         int getCurrentFileNumber() {return file_count;};
@@ -107,22 +124,23 @@ class SDManager : public Module{
         SdFat sd;                                               // SD Card Object
 
         int chip_select;                                        // Chip select pin for the SD card
-        String device_name;                                     // Device name of the whole thing used as the starting point of the SD file name
+        char device_name[100];                                  // Device name of the whole thing used as the starting point of the SD file name
 
-        String fileName;                                        // Current file name that data is being logged to
-        String fileNameNoExtension;                             // Current file name that data is being logged to without the file extension
-        String overrideName = "";                               // Name to use if we don't want to use the device name
+        char batchFileName[260];                                // File name to log batches to
+        char fileName[260];                                     // Current file name that data is being logged to
+        char fileNameNoExtension[260];                          // Current file name that data is being logged to without the file extension
+        char overrideFileName[260];
 
         int batch_size = -1;                                    // How many packets to log per batch
         int current_batch = 0;                                  // Current count of the batch
         int file_count = 0;                                     // What file number are we logging to
 
         bool sdInitialized = false;                             // If the SD card actually initialized
-        String headers[2] = {"", ""};                           // Contains the main and sub headers that are added to the top of the CSV files
+        char* headers[2];                                       // Contains the main and sub headers that are added to the top of the CSV files
 
 
         void logBatch();                                        // Log data in batch format
         
-        void createHeaders();                                   // Create the headers for the CSV file based off what info we are storing
+        void writeHeaders();                                   // Create the headers for the CSV file based off what info we are storing
         bool updateCurrentFileName();                           // Update the current file name to log to based on files already existing on the SD card
 };

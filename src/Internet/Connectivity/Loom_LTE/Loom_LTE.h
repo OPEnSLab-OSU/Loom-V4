@@ -38,9 +38,9 @@ class Loom_LTE : public Module{
          */ 
         Loom_LTE(
             Manager& man, 
-            const String apn, 
-            const String user, 
-            const String pass, 
+            const char* apn, 
+            const char* user, 
+            const char* pass, 
             const int powerPin = A5
         );
 
@@ -65,14 +65,15 @@ class Loom_LTE : public Module{
 
         /**
          * Load the config to connect to the LTE network from a JSON string
+         * @param json Json file read, this is freed before returning
          */ 
-        void loadConfigFromJSON(String json);
+        void loadConfigFromJSON(char* json);
 
         /**
          * Turn on batch upload for the lte which means it will only initialize the module when we need to upload
          * @param batch BatchSD module
          */ 
-        void enableBatch(Loom_BatchSD& batch) { batch_sd = &batch; };
+        void setBatchSD(Loom_BatchSD& batch) { batch_sd = &batch; };
 
         /**
          * Connect to the cellular network
@@ -112,20 +113,23 @@ class Loom_LTE : public Module{
         /**
          * Convert an IP address to a string
          */ 
-        static String IPtoString(IPAddress ip) { return String(ip[0]) + "." + String(ip[1]) + "." + String(ip[2]) + "." + String(ip[3]); };
+        void ipToString(IPAddress ip, char array[16]) { 
+            snprintf(array, 16, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+        };
 
     private:
         Manager* manInst;                   // Instance of the manager
 
-        String APN;                         // LTE Network Name
-        String gprsUser;                    // GPRS Username
-        String gprsPass;                    // GPRS Password
+        char APN[100];                         // LTE Network Name
+        char gprsUser[100];                    // GPRS Username
+        char gprsPass[100];                    // GPRS Password
 
         int powerPin = A5;                  // Analog pin to power the LTE board
 
         TinyGsm modem;                      // LTE Modem
         TinyGsmClient client;               // LTE Client
 
+        bool powerUp = true;
         bool firstInit = true;              // First time it was initialized
         Loom_BatchSD* batch_sd = nullptr;   // If we are using batch publish
 

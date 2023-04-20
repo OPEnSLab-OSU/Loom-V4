@@ -3,27 +3,38 @@
 Logger* Logger::instance = nullptr;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Manager::Manager(String devName, uint32_t instanceNum) : deviceName(devName), instanceNumber(instanceNum), doc(2000) { Logger::getInstance();};
+Manager::Manager(const char* devName, uint32_t instanceNum) : instanceNumber(instanceNum), doc(2000) {
+    strncpy(this->deviceName, devName, 100);
+    Logger::getInstance();
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
  void Manager::registerModule(Module* module){
+    char* location;
     // If there are no duplicates proceed as normal
     for(int i = 0; i < modules.size(); i++){
+        // Find the pointer to the module name
+        location = strstr(modules[i].first, module->getModuleName());
         
         // Check if the module name contains the base string to make sure this works past 2 modules of the same type
-        if(modules[i].first.startsWith(module->getModuleName())){
-            
+        if(location != NULL){
             // Append the address to the name
-            modules[i].second->setModuleName(modules[i].second->getModuleName() + String("_") + String(modules[i].second->module_address));
-            module->setModuleName(module->getModuleName() + String("_") + String(module->module_address));
+            char modifiedName[100];
+
+            // Format first module name
+            snprintf_P(modifiedName, 100, PSTR("%s_%i"), modules[i].second->getModuleName(), modules[i].second->module_address);
+            modules[i].second->setModuleName(modifiedName);
+
+            // Format second string using the same array
+            snprintf_P(modifiedName, 100, PSTR("%s_%i"), module->getModuleName(), module->module_address);
+            module->setModuleName(modifiedName);
 
             // Once we find a module of this type we want to break out to avoid redundant name changes
             break;
         }
     }
 
-    
     modules.push_back(std::make_pair(module->getModuleName(), module));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -62,9 +73,9 @@ void Manager::measure() {
         }
     }
     else{
-            ERROR("Unable to collect data as the manager and thus all sensors connected to it have not been initialized! Call manager.initialize() to fix this.");
+            ERROR(F("Unable to collect data as the manager and thus all sensors connected to it have not been initialized! Call manager.initialize() to fix this."));
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -73,7 +84,7 @@ void Manager::package(){
     FUNCTION_START;
     // Clear the document so that we don't get null characters after too many updates
     doc.clear();
-    doc["type"] = "data";
+    doc[F("type")] = F("data");
     doc["id"]["name"] = get_device_name();
     doc["id"]["instance"] = get_instance_num();
 
@@ -95,18 +106,17 @@ void Manager::package(){
         TIMER_RESET;
     }
     packetNumber++;
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-JsonObject Manager::get_data_object(String moduleName){
-
+JsonObject Manager::get_data_object(const char* moduleName){
     // Check if the key already exists in the array
     for(JsonVariant value : contentsArray){
 
         // If the data already exists
-        if(value.as<JsonObject>()["module"].as<String>() == moduleName){
+        if(strcmp(value.as<JsonObject>()["module"].as<const char*>(), moduleName) == 0){
             return value.as<JsonObject>()["data"];
         }
     }
@@ -129,13 +139,14 @@ void Manager::power_up(){
         }
         TIMER_RESET;
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::power_down(){
-   for(int i = 0; i < modules.size(); i++){
+    FUNCTION_START;
+    for(int i = 0; i < modules.size(); i++){
         if(modules[i].second->moduleInitialized)
             modules[i].second->power_down();
         else{
@@ -143,21 +154,30 @@ void Manager::power_down(){
         }
         TIMER_RESET;
     }
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::display_data(){
+    char jsonStr[2000];
     FUNCTION_START;
     if(!doc.isNull()){
-        String jsonStr = "";
-        serializeJsonPretty(doc, jsonStr);
-        LOG("Data Json: \n" + jsonStr + "\n");
+
+        // Display data for modules that support it
+        for(int i = 0; i < modules.size(); i++){
+            modules[i].second->display_data();
+        }
+
+        serializeJsonPretty(doc, jsonStr, 2000);
+        LOG(F("Data Json: \n"));
+        LOG_LONG(jsonStr);
     }
     else{
-        LOG("JSON Document is Null there is no data to display");
+        LOG(F("JSON Document is Null there is no data to display"));
     }
-    FUNCTION_END("void");
+    
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -166,35 +186,33 @@ void Manager::initialize() {
     FUNCTION_START;
     // If you are using a hypnos board that has not been enabled, this needs to occur before initializing sensors
     if(usingHypnos && !hypnosEnabled){
-        LOG("Your sketch is set to use a Hypnos board which has not been enabled before attempting to initialize sensors. \nThis will causing hanging please enable the board before initialization. Continuing but know this may cause issues!"); 
+        LOG(F("Your sketch is set to use a Hypnos board which has not been enabled before attempting to initialize sensors. \nThis will causing hanging please enable the board before initialization. Continuing but know this may cause issues!")); 
     }
 
-    LOG("** Initializing Modules **");
+    LOG(F("** Initializing Modules **"));
     read_serial_num();
     for(int i = 0; i < modules.size(); i++){
         modules[i].second->initialize();
     }
     hasInitialized = true;
-    LOG("** Setup Complete ** ");
+    LOG(F("** Setup Complete ** "));
 
 
     TIMER_ENABLE;
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-String Manager::getJSONString(){
-    String jsonString ="";
-    serializeJson(doc, jsonString);
-    return jsonString;
+void Manager::getJSONString(char array[2000]){
+    size_t jsonSize = measureJson(doc)+1;
+    serializeJson(doc, array, 2000);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::read_serial_num(){
     char serial_no[33];
-    serial_num = "";
     // Serial numbers are made up of four words located at these specific registers (see datasheet)
 	uint32_t sn_words[4];
 	sn_words[0] = *(volatile uint32_t *)(0x0080A00C);
@@ -205,11 +223,12 @@ void Manager::read_serial_num(){
     // Take these raw values and convert them into a string of hex characters
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
-			sprintf(serial_no + (i * 8) + (j * 2), "%02X", (uint8_t)(sn_words[i] >> ((3 - j) * 8)));
+			snprintf_P(serial_no + (i * 8) + (j * 2), 33, PSTR("%02X"), (uint8_t)(sn_words[i] >> ((3 - j) * 8)));
 		}
 	}
 
-    serial_num = String(serial_no);
+    // Copy the contents of the calculated char array into the member variable
+    strncpy(serial_num, serial_no, 33);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -219,13 +238,5 @@ void Manager::pause(const uint32_t ms) const {
     int waitTime = millis() + ms;
     while (millis() < waitTime);
     TIMER_ENABLE;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Manager::setLogCallback(SDLogDebug func){
-    for(int i = 0; i < modules.size(); i++){
-        modules[i].second->setLogCallback(func);
-    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

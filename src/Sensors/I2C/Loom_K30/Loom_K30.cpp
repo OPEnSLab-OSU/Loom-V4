@@ -18,21 +18,21 @@ void Loom_K30::initialize(){
     // Check if the sensor is actually connected
     Wire.beginTransmission(addr);
     if(Wire.endTransmission() != 0){
-        ERROR("Failed to initialize sensor!");
+        ERROR(F("Failed to initialize sensor!"));
         moduleInitialized = false;
         return;
     }
 
     // If we want to wait for the sensor to warmup do so here
     if(warmUp){
-        LOG("Warm-up was enabled for this sensor. Initialization will now pause for 6 minutes");
+        LOG(F("Warm-up was enabled for this sensor. Initialization will now pause for 6 minutes"));
 
         // Pause for 6 minutes
         manInst->pause(60000 * 6);
         warmUp = false;
     }
 
-    LOG("Initialized successfully!");
+    LOG(F("Initialized successfully!"));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -50,7 +50,7 @@ void Loom_K30::measure(){
 
     // If we are not connected
     else if(!connectionStatus){
-        ERROR("No acknowledge received from the device");
+        ERROR(F("No acknowledge received from the device"));
         return;
     } 
     delay(1);
@@ -105,6 +105,6 @@ void Loom_K30::getCO2Level() {
         CO2Levels |= buffer[2] & 0xFF;
     }
     else{
-        ERROR("Failed to validate checksum! Using previously recorded data.");
+        ERROR(F("Failed to validate checksum! Using previously recorded data."));
     }
 }

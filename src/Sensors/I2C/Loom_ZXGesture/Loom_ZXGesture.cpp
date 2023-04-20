@@ -17,8 +17,9 @@ Loom_ZXGesture::Loom_ZXGesture(
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ZXGesture::initialize() {
+    char output[OUTPUT_SIZE];
     if(!zx.init()){
-        ERROR("Failed to initialize ZX Gesture Sensor! Check connections and try again...");
+        ERROR(F("Failed to initialize ZX Gesture Sensor! Check connections and try again..."));
     }
     else{
 
@@ -26,10 +27,12 @@ void Loom_ZXGesture::initialize() {
         uint8_t ver = zx.getModelVersion();
         if (ver != ZX_MODEL_VER) {
             moduleInitialized = false;
-            ERROR("Incorrect Model Version. Expected Version: " + String(ZX_MODEL_VER) + " Actual Version: " + String(ver));
+            snprintf(output, OUTPUT_SIZE, "Incorrect Model Version. Expected Version: %u Actual Version: %u", ZX_MODEL_VER, ver);
+            ERROR(output);
             return;
         } else {
-            LOG("Model Version: " + String(ver));
+            snprintf(output, OUTPUT_SIZE, "Model Version: %u", ver);
+            LOG(output);
         }
 
         // Read the register map version and ensure the library will work
@@ -37,19 +40,22 @@ void Loom_ZXGesture::initialize() {
         //printModuleName();
         if (ver != ZX_REG_MAP_VER) {
             moduleInitialized = false;
-            ERROR("Incorrect Register Map Version. Expected Version: " + String(ZX_REG_MAP_VER) + " Actual Version: " + String(ver));
+            snprintf(output, OUTPUT_SIZE, "Incorrect Register Map Version. Expected Version: %u Actual Version: %u", ZX_REG_MAP_VER, ver);
+            ERROR(output);
             return;
         } else {
-            LOG("Register Map Version: " + String(ver));
+            snprintf(output, OUTPUT_SIZE, "Register Map Version: %u", ver);
+            LOG(output);
         }
 
-        LOG("Successfully initialized ZX Gesture Sensor!");
+        LOG(F("Successfully initialized ZX Gesture Sensor!"));
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ZXGesture::measure() {
+    
     if(moduleInitialized){
         // Get the current connection status
         bool connectionStatus = checkDeviceConnection();
@@ -62,7 +68,7 @@ void Loom_ZXGesture::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            ERROR("No acknowledge received from the device");
+            ERROR(F("No acknowledge received from the device"));
             return;
         }
 
@@ -81,7 +87,7 @@ void Loom_ZXGesture::measure() {
                     pos.z = z;
                 }
                 else {
-                    ERROR("Error occurred while reading position data");
+                    ERROR(F("Error occurred while reading position data"));
                 }
             }
             
@@ -99,16 +105,16 @@ void Loom_ZXGesture::measure() {
                 gestureSpeed = zx.readGestureSpeed();
 
                 switch(gesture){
-                    case RIGHT_SWIPE: gestureString = "Right Swipe"; break;
-                    case LEFT_SWIPE: gestureString = "Left Swipe"; break;
-                    case UP_SWIPE: gestureString = "Up Swipe"; break;
-                    default: gestureString = "No Gesture";
+                    case RIGHT_SWIPE:   strncpy(gestureString, "Right Swipe\0", 10); break;
+                    case LEFT_SWIPE:    strncpy(gestureString, "Left Swipe\0", 10); break;
+                    case UP_SWIPE:      strncpy(gestureString, "Up Swipe\0", 10); break;
+                    default:            strncpy(gestureString, "No Gesture\0", 10);
                 }
             }
 
             // Defaults if no gesture was detected
             else{
-                gestureString = "No Gesture";
+                strncpy(gestureString, "No Gesture\0", 10);
                 gestureSpeed = 0;
             }
         }

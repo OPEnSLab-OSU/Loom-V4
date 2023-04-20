@@ -18,15 +18,17 @@ Loom_STEMMA::Loom_STEMMA(
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::initialize() {
     FUNCTION_START;
+    char output[OUTPUT_SIZE];
     if(!stemma.begin(address)){
-        LOG("Failed to initialize STEMMA! Check connections and try again...");
+        LOG(F("Failed to initialize STEMMA! Check connections and try again..."));
         moduleInitialized = false;
     }
     else{
-        LOG("Successfully initialized STEMMA Version: " + String(stemma.getVersion()));
+        snprintf(output, OUTPUT_SIZE, "Successfully initialized STEMMA Version: %u", stemma.getVersion());
+        LOG(output);
         
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -45,7 +47,7 @@ void Loom_STEMMA::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            LOG("No acknowledge received from the device");
+            LOG(F("No acknowledge received from the device"));
             return;
         }
         
@@ -54,7 +56,7 @@ void Loom_STEMMA::measure() {
         temperature = stemma.getTemp();
         cap = stemma.touchRead(0);
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
     
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -67,6 +69,6 @@ void Loom_STEMMA::package() {
         json["Temperature"] = temperature;
         json["Capacitive"] = cap;
     }
-    FUNCTION_END("void");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

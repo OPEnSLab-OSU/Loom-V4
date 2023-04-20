@@ -2,8 +2,7 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_EZORGB::Loom_EZORGB(Manager& man, byte address, bool useMux) : EZOSensor("EZO-RGB"), manInst(&man){
-    i2c_address = address;
-    module_address = i2c_address;
+    module_address = address;
 
     if(!useMux)
         manInst->registerModule(this);
@@ -13,7 +12,6 @@ Loom_EZORGB::Loom_EZORGB(Manager& man, byte address, bool useMux) : EZOSensor("E
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_EZORGB::initialize(){
     Wire.begin();
-    moduleInitialized = calibrate();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -23,7 +21,7 @@ void Loom_EZORGB::measure(){
 
         // Attempt to read data from the sensor
         if(!readSensor()){
-            ERROR("Failed to read sensor!");
+            ERROR(F("Failed to read sensor!"));
             return;
         }
 
@@ -48,17 +46,26 @@ void Loom_EZORGB::package(){
 void Loom_EZORGB::power_down() {
     if(moduleInitialized){
         if(!sendTransmission("sleep")){
-            ERROR("Failed to send 'sleep' command to device");
+            ERROR(F("Failed to send 'sleep' command to device"));
         }
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZORGB::parseData(String sensorData){
+void Loom_EZORGB::parseData(const char* sensorData){
     // Parse out the comma separated strings
-    rgb[0] = sensorData.substring(0, sensorData.indexOf(",")).toInt();
-    rgb[1] = sensorData.substring(sensorData.indexOf(","), sensorData.indexOf(",", sensorData.indexOf(","))).toInt();
-    rgb[2] = sensorData.substring(sensorData.indexOf(",", sensorData.indexOf(",")), sensorData.indexOf(",", sensorData.indexOf(",", sensorData.indexOf(",")))).toInt();
+    char* splitPointer;
+    char response[33];
+    strncpy(response, sensorData, 33);
+    
+    splitPointer = strtok(response, ",");
+    rgb[0] = atoi(splitPointer);
+
+    splitPointer = strtok(NULL, ",");
+    rgb[1] = atoi(splitPointer);
+
+    splitPointer = strtok(NULL, ",");
+    rgb[2] = atoi(splitPointer);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

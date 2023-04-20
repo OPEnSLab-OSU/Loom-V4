@@ -2,8 +2,7 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_EZODO::Loom_EZODO(Manager& man, byte address, bool useMux) : EZOSensor("EZO-DO"), manInst(&man){
-    i2c_address = address;
-    module_address = i2c_address;
+    module_address = address;
 
     if(!useMux)
         manInst->registerModule(this);
@@ -13,7 +12,6 @@ Loom_EZODO::Loom_EZODO(Manager& man, byte address, bool useMux) : EZOSensor("EZO
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_EZODO::initialize(){
     Wire.begin();
-    moduleInitialized = calibrate();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -23,7 +21,7 @@ void Loom_EZODO::measure(){
 
         // Attempt to read data from the sensor
         if(!readSensor()){
-            ERROR("Failed to read sensor!");
+            ERROR(F("Failed to read sensor!"));
             return;
         }
 
@@ -47,16 +45,24 @@ void Loom_EZODO::package(){
 void Loom_EZODO::power_down() {
     if(moduleInitialized){
         if(!sendTransmission("sleep")){
-            ERROR("Failed to send 'sleep' command to device");
+            ERROR(F("Failed to send 'sleep' command to device"));
         }
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZODO::parseResponse(String response){
-    int commaIndex = response.indexOf(",");
-    oxygen = response.substring(0, commaIndex).toFloat();
-    saturation = response.substring(commaIndex+1, response.length()).toFloat();
+void Loom_EZODO::parseResponse(const char* response){
+    char* splitResponse; 
+    char internalResponse[33];
+    strncpy(internalResponse, response, 33);
+
+    // Split response at , and store the first half in oxygen
+    splitResponse = strtok(internalResponse, ",");
+    oxygen = atof(splitResponse);
+
+    // And the second half in saturation
+    splitResponse = strtok(NULL, ",");
+    saturation = atof(splitResponse);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

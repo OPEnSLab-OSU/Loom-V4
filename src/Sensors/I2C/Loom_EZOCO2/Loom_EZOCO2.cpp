@@ -2,8 +2,7 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_EZOCO2::Loom_EZOCO2(Manager& man, byte address, bool useMux) : EZOSensor("EZO-CO2"), manInst(&man){
-    i2c_address = address;
-    module_address = i2c_address;
+    module_address = address;
 
     if(!useMux)
         manInst->registerModule(this);
@@ -21,10 +20,10 @@ void Loom_EZOCO2::initialize(){
 void Loom_EZOCO2::measure(){
     if(moduleInitialized){
         if(!readSensor()){
-            ERROR("Failed to read sensor!");
+            ERROR(F("Failed to read sensor!"));
             return;
         }
-        co2 = getSensorData().toFloat();
+        co2 = atof(getSensorData());
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -43,7 +42,7 @@ void Loom_EZOCO2::package(){
 void Loom_EZOCO2::power_down() {
     if(moduleInitialized){
         if(!sendTransmission("sleep")){
-            ERROR("Failed to send 'sleep' command to device");
+            ERROR(F("Failed to send 'sleep' command to device"));
         }
     }
 }

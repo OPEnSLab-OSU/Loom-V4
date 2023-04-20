@@ -28,12 +28,12 @@ void Loom_MMA8451::initialize() {
 
     // If we have less than 2 bytes of data from the sensor
     if(!mma.begin(address)){
-        ERROR("Failed to initialize MMA8451! Check connections and try again...");
+        ERROR(F("Failed to initialize MMA8451! Check connections and try again..."));
         moduleInitialized = false;
         return;
     }
     else{
-        LOG("Successfully initialized MMA8451!");
+        LOG(F("Successfully initialized MMA8451!"));
         mma.setRange(range);
     }
 
@@ -48,7 +48,7 @@ void Loom_MMA8451::initialize() {
         mma.writeRegister8(MMA8451_REG_TRANSIENT_THS, sensitivity);
         mma.writeRegister8(MMA8451_REG_TRANSIENT_CT, REG_TRANS_CT);
         attachInterrupt(digitalPinToInterrupt(interruptPin), IMU_ISR, FALLING);
-        LOG("Interrupt Configured!");
+        LOG(F("Interrupt Configured!"));
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -67,7 +67,7 @@ void Loom_MMA8451::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            ERROR("No acknowledge received from the device");
+            ERROR(F("No acknowledge received from the device"));
             return;
         }
         
@@ -92,21 +92,20 @@ void Loom_MMA8451::measure() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MMA8451::package() {
+    char orientationString[25];
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
         json["X_Acc"] = accel[2];
 
-        // Convert the orientation to a string
-        String orientationString = "";
         switch (orientation) {
-            case MMA8451_PL_PUF: orientationString = "Portrait_Up_Front";       break;
-            case MMA8451_PL_PUB: orientationString = "Portrait_Up_Back";		break;
-            case MMA8451_PL_PDF: orientationString = "Portrait_Down_Front";	    break;
-            case MMA8451_PL_PDB: orientationString = "Portrait_Down_Back";		break;
-            case MMA8451_PL_LRF: orientationString = "Landscape_Right_Front";	break;
-            case MMA8451_PL_LRB: orientationString = "Landscape_Right_Back";	break;
-            case MMA8451_PL_LLF: orientationString = "Landscape_Left_Front";	break;
-            case MMA8451_PL_LLB: orientationString = "Landscape_Left_Back";	    break;
+            case MMA8451_PL_PUF: strncpy(orientationString, "Portrait_Up_Front\0", 25);       break;
+            case MMA8451_PL_PUB: strncpy(orientationString, "Portrait_Up_Back\0" , 25);		break;
+            case MMA8451_PL_PDF: strncpy(orientationString, "Portrait_Down_Front\0",25);	    break;
+            case MMA8451_PL_PDB: strncpy(orientationString, "Portrait_Down_Back\0",25);		break;
+            case MMA8451_PL_LRF: strncpy(orientationString, "Landscape_Right_Front\0",25);	break;
+            case MMA8451_PL_LRB: strncpy(orientationString, "Landscape_Right_Back\0",25);	    break;
+            case MMA8451_PL_LLF: strncpy(orientationString, "Landscape_Left_Front\0",25);	    break;
+            case MMA8451_PL_LLB: strncpy(orientationString, "Landscape_Left_Back\0",25);	    break;
         }
         
         // Package the orientation string
