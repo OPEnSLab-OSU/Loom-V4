@@ -13,11 +13,11 @@
 #define ERROR(msg) Logger::getInstance()->errorLog(msg, false, __FILE__, __func__, __LINE__)                // Log an error message
 #define WARNING(msg) Logger::getInstance()->warningLog(msg, false, __FILE__, __func__, __LINE__)            // Log a warning message
 
-#define ENABLE_SD_LOGGING Logger::getInstance()->enableSD();                                                // Enable SD logging of debug information
-#define ENABLE_FUNC_SUMMARIES Logger::getInstance()->enableSummaries();                                     // Enable logging of function mem usage summaries
+#define ENABLE_SD_LOGGING Logger::getInstance()->enableSD()                                                 // Enable SD logging of debug information
+#define ENABLE_FUNC_SUMMARIES Logger::getInstance()->enableSummaries()                                      // Enable logging of function mem usage summaries
 
 /**
- * Class for handling debug log information
+ * Arduino Logger class that allows for standardized log outputs as well as function memory usage summaries to find memory leaks that may lead to unexpected crashing
  * 
  * @author Will Richards 
  */ 

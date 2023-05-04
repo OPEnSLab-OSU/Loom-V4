@@ -22,7 +22,6 @@ class Loom_LoRa : public Radio{
     protected:
         /* These aren't used with this module */
         void measure() override {};                               
-        
              
 
     public:
@@ -96,7 +95,9 @@ class Loom_LoRa : public Radio{
         bool transmit(JsonObject json, int destination);     // Internal method for sending JSON data over radio
         bool recv(int waitTime);                             // Internal method for reading data in from radio
 
-        char recvData[256];
+        String recvData = "";
+
+        //StaticJsonDocument<255> tempDoc;                   // Temporary document to help reconstruct the fragmented packets
 
         bool sendFull(const uint8_t destinationAddress);                                                    // Send the full packet with no fragmentation
         bool sendPartial(const uint8_t destinationAddress);                                                 // Fragment the packet when needed

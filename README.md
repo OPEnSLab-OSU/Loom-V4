@@ -89,8 +89,8 @@ You will also need to install Developet Tools, which requires Admin access.
   - *Note: may disregard orange-color warning text regarding nRF*
 
 ## Troubleshooting
-If you get permissions error accessing the library folder, abnd are using a Mac, see note in the installation section above.
-If you are updating from an old version of Loom, you may need to do a "clean install" by removing the Arduino15 folder, and starting the process from the begining to install again.
+If you get permissions error accessing the library folder, and are using a Mac, see note in the installation section above.
+If you are updating from an old version of Loom, you may need to do a "clean install" by removing the Arduino15 folder, and starting the process from the beginning to install again.
 
 ## Issues
 If you are experiencing issues, please click the "Issues" tab on this repo and choose the template that best fits your needs. Please supply as much information as possible. This helps us to better understand a fix issues quickly
@@ -116,7 +116,7 @@ There are some weird idiosyncrasies with the Feather M0
     | D24, D0 | 11 |
     | D5 | 15 |
  - LoRa Must Be Configured Properly based off the selected modem configuration, see issue: https://github.com/OPEnSLab-OSU/Loom-V4/issues/54
- - Please <b>DO NOT</b> use the Arduino String library, if at all possible to fragments the crap out of the memory and makes devices crash. I spent ~10 hours or so porting the entire library to C-strings - Will
+ - Please <b>DO NOT</b> use the Arduino String library, if at all possible it fragments the crap out of the memory and makes devices crash. I spent ~40 hours or so porting the entire library to C-strings - Will
 
 ## OPEnS Supported Projects
  - WeatherChimes (Fully Tested)

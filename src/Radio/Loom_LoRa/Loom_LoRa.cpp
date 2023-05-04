@@ -19,14 +19,15 @@ Loom_LoRa::Loom_LoRa(
         this->retryCount = retryCount;
         this->retryTimeout = retryTimeout;
         this->maxMessageLength = max_message_len;
+        recvData.reserve(300);
         manInst->registerModule(this);
     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LoRa::initialize(){
-    // Set CS pin as pull up
     char output[OUTPUT_SIZE];
+    // Set CS pin as pull up
     pinMode(RFM95_CS, INPUT_PULLUP);
     
     // Reset the radio
@@ -35,60 +36,52 @@ void Loom_LoRa::initialize(){
 
     // Initialize the radio manager
     if(manager->init()){
-        LOG(F("Radio manager successfully initialized!"));
+        LOG("Radio manager successfully initialized!");
     }
     else{
-        ERROR(F("Radio manager failed to initialize!"));
+        LOG("Radio manager failed to initialize!");
         moduleInitialized = false;
         return;
     }
 
     // Set the radio frequency
     if(driver.setFrequency(RF95_FREQ)){
-        snprintf(output, OUTPUT_SIZE, "Radio frequency successfully set to:%f", RF95_FREQ);
+        snprintf(output, OUTPUT_SIZE, "Radio frequency successfully set to: %i", RF95_FREQ);
         LOG(output);
     }
     else{
-        ERROR(F("Failed to set frequency!"));
+        LOG("Failed to set frequency!");
         moduleInitialized = false;
         return;
     }
 
     // Set radio power level
-    snprintf(output, OUTPUT_SIZE, "Setting device power level to: %u", powerLevel);
+    snprintf(output, OUTPUT_SIZE, "Setting device power level to: %i", powerLevel);
     LOG(output);
     driver.setTxPower(powerLevel, false);
 
     // Set timeout time
-    snprintf(output, OUTPUT_SIZE, "Timeout time set to: %u", retryTimeout);
+    snprintf(output, OUTPUT_SIZE, "Timeout time set to: %i,", retryTimeout);
     LOG(output);
     manager->setTimeout(retryTimeout);
 
     // Set retry attempts
-    snprintf(output, OUTPUT_SIZE, "Retry count set to: %u", retryCount);
+    snprintf(output, OUTPUT_SIZE, "Retry count set to: %i", retryCount);
     LOG(output);
     manager->setRetries(retryCount);
 
     // Print the set address of the device
-    snprintf(output, OUTPUT_SIZE, "Address set to: %u", manager->thisAddress());
+    snprintf(output, OUTPUT_SIZE, "Address set to: %i", manager->thisAddress());
     LOG(output);
     
-
     /* 
         https://cdn.sparkfun.com/assets/a/e/7/e/b/RFM95_96_97_98W.pdf, Page 22
-    */
-
-    /**
-     * Default Modem Configuration
-     * BW: 125000
-     * SF: 7
-     * CR: 5
     */
 
     // Set bandwidth
     driver.setSignalBandwidth(125000);
 
-    // Higher spreading factors give us more range, HOWEVER SPREADING FACTOR 12 will cause hangs
+    // Higher spreading factors give us more range
     driver.setSpreadingFactor(7); 
 
     // Coding rate should be 4/5
@@ -126,7 +119,7 @@ bool Loom_LoRa::send(const uint8_t destinationAddress){
         }
     }
     else{
-        ERROR(F("Module not initialized!"));
+        printModuleName("Module not initialized!");
         return false;
     }
 }
@@ -138,7 +131,7 @@ bool Loom_LoRa::receive(uint maxWaitTime){
 
         // Wait for packet to arrive
         if(recv(maxWaitTime)){
-            LOG(F("Packet Received!"));
+            printModuleName("Packet Received!");
             manInst->set_device_name(recvDoc["id"]["name"].as<const char*>());
             manInst->set_instance_num(recvDoc["id"]["instance"].as<int>());
             
@@ -161,7 +154,7 @@ bool Loom_LoRa::receive(uint maxWaitTime){
         }
 
     }else{
-        ERROR(F("Module not initialized!"));
+        printModuleName("Module not initialized!");
         return false;
     }
 }
@@ -169,9 +162,10 @@ bool Loom_LoRa::receive(uint maxWaitTime){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::receivePartial(uint waitTime){
+    char output[OUTPUT_SIZE];
+
     if(moduleInitialized){
         // Gets the number of additional packets the hub should expect
-        char output[OUTPUT_SIZE];
         int numPackets = manInst->getDocument()["numPackets"].as<int>();
         JsonArray contents = manInst->getDocument()["contents"].as<JsonArray>();
         StaticJsonDocument<300> tempDoc;
@@ -179,27 +173,26 @@ bool Loom_LoRa::receivePartial(uint waitTime){
 
         // Loop for the given number of packets we are expecting
         for(int i = 0; i < numPackets; i++){
-            snprintf(output, OUTPUT_SIZE, "Waiting for packet %i/%i", i+1, numPackets);
+            snprintf(output, OUTPUT_SIZE, "Waiting for packet %i / %i",i+1, numPackets);
             LOG(output);
 
             // If a packet was received 
             if(recv(waitTime)){
-                snprintf(output, OUTPUT_SIZE, "Fragment received %i/%i", i+1, numPackets);
+                snprintf(output, OUTPUT_SIZE, "Fragment received %i / %i", i+1, numPackets);
                 LOG(output);
-
+                
                 deserializeJson(tempDoc, recvData);
-
                 // Add the current module to the overall contents array
                 contents.add(tempDoc);
             }
             else{
-                ERROR(F("No Packet Received"));
+                printModuleName("No Packet Received");
             }
         }
 
         return true;
     }else{
-        ERROR(F("Module not initialized!"));
+        printModuleName("Module not initialized!");
         return false;
     }
 }
@@ -213,7 +206,7 @@ bool Loom_LoRa::sendFull(const uint8_t destinationAddress){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
-    LOG(F("Packet was greater than the maximum packet length the packet will be fragmented"));
+    printModuleName("Packet was greater than the maximum packet length the packet will be fragmented");
     sendDoc.clear();
    
    /* 
@@ -254,7 +247,7 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
     }
    
     if(!transmit(sendDoc.as<JsonObject>(), destinationAddress)){
-        ERROR(F("Unable to transmit initial packet fragmentation notice! Split packets will not be sent"));
+        printModuleName("Unable to transmit initial packet fragmentation notice! Split packets will not be sent");
         return false;
     }
 
@@ -280,20 +273,20 @@ bool Loom_LoRa::sendModules(JsonObject json, int numModules, const uint8_t desti
     // Loop through the number of packets we need to send
     for(int i = 0; i < numModules; i++){
         sendDoc.clear();
-        TIMER_RESET;
 
         // Set the module key to whatever the main one is
         JsonArray contents = manInst->getDocument()["contents"].as<JsonArray>();
         sendDoc.set(contents[i].as<JsonObject>());
+
         snprintf(output, OUTPUT_SIZE, "Fragmented Packet Being Sent (%i/%i)", i+1, numModules);
         LOG(output);
+        
 
         // Attempt to transmit the document to the other device
         if(!transmit(sendDoc.as<JsonObject>(), destinationAddress)){
-            ERROR(F("Failed to transmit fragmented packet!"));
+            printModuleName("Failed to transmit fragmented packet!");
         }
         delay(500);
-        TIMER_RESET;
     }
     return true;
 }
@@ -316,22 +309,22 @@ bool Loom_LoRa::transmit(JsonObject json, int destination){
     // Buffer of the data being sent
     bool returnState = false;
     uint8_t buffer[maxMessageLength];
+    memset(buffer, '\0', maxMessageLength);
 
     // Try to write the JSON to the buffer
     if(!jsonToBuffer(buffer, json)){
-        ERROR(F("Failed to convert JSON to MsgPack"));
+        printModuleName("Failed to convert JSON to MsgPack");
         return false;
     }
 
-    TIMER_DISABLE;
+
     if(!manager->sendtoWait(buffer, sizeof(buffer), destination)){
-        ERROR(F("Failed to send packet to specified address!"));
+        printModuleName("Failed to send packet to specified address!");
 
     }else{
-        LOG(F("Successfully transmitted packet!"));
+        printModuleName("Successfully transmitted packet!");
         returnState = true;
     }
-    TIMER_ENABLE;
 
     signalStrength = driver.lastRssi();
     driver.sleep();
@@ -348,28 +341,27 @@ bool Loom_LoRa::recv(int waitTime){
     uint8_t buffer[maxMessageLength];
     uint8_t len = sizeof(buffer);
 
-    LOG(F("Waiting for packet..."));
+    printModuleName("Waiting for packet...");
 
     // Non-blocking receive if time is set to 0
     if(waitTime == 0){
         recvStatus = manager->recvfromAck(buffer, &len, &fromAddress);
     }
     else{
-        TIMER_DISABLE;
         recvStatus = manager->recvfromAckTimeout(buffer, &len, waitTime, &fromAddress);
-        TIMER_ENABLE;
         
     }
+
 
     // If a packet was received 
     if(recvStatus){
         signalStrength = driver.lastRssi();
         recvStatus = bufferToJson(buffer);
-        memset(recvData, '\0', 256);
+        recvData = "";
         serializeJson(recvDoc, recvData);
     }
     else{
-        WARNING(F("No Packet Received"));
+        printModuleName("No Packet Received");
     }
     driver.sleep();
     return recvStatus;
