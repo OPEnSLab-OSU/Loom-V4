@@ -18,7 +18,6 @@ Loom_LoRa::Loom_LoRa(
         this->retryCount = retryCount;
         this->retryTimeout = retryTimeout;
         this->maxMessageLength = RH_RF95_MAX_MESSAGE_LEN;
-        recvData.reserve(300);
         manInst->registerModule(this);
     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -133,7 +132,7 @@ bool Loom_LoRa::receive(uint maxWaitTime){
             LOG(F("Packet Received!"));
             manInst->set_device_name(recvDoc["id"]["name"].as<const char*>());
             manInst->set_instance_num(recvDoc["id"]["instance"].as<int>());
-            deserializeJson(manInst->getDocument(), recvData);
+            deserializeJson(manInst->getDocument(), (const char*)recvData, RECV_DATA_SIZE); //must cast to const char* to avoid no-copy behavior
         
             // Check if we have a numPackets field which tells us we should expect more packets
             if(!manInst->getDocument()["numPackets"].isNull()){
@@ -179,7 +178,7 @@ bool Loom_LoRa::receivePartial(uint waitTime){
                 snprintf(output, OUTPUT_SIZE, "Fragment received %i / %i", i+1, numPackets);
                 LOG(output);
                 
-                deserializeJson(tempDoc, recvData);
+                deserializeJson(tempDoc, (const char*)recvData, RECV_DATA_SIZE); //must cast to const char* to avoid no-copy behavior
                 // Add the current module to the overall contents array
                 contents.add(tempDoc);
             }
@@ -355,8 +354,8 @@ bool Loom_LoRa::recv(int waitTime){
     if(recvStatus){
         signalStrength = driver.lastRssi();
         recvStatus = bufferToJson(buffer);
-        recvData = "";
-        serializeJson(recvDoc, recvData);
+        memset(recvData, '\0', RECV_DATA_SIZE);
+        serializeJson(recvDoc, recvData, RECV_DATA_SIZE);
     }
     else{
         WARNING(F("No Packet Received"));
