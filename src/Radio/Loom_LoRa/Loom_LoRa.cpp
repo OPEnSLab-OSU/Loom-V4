@@ -6,8 +6,7 @@ Loom_LoRa::Loom_LoRa(
         const int address, 
         const uint8_t powerLevel, 
         const uint8_t retryCount, 
-        const uint16_t retryTimeout,
-        const uint16_t max_message_len
+        const uint16_t retryTimeout
     ) : Radio("LoRa"), manInst(&man), driver{RFM95_CS, RFM95_INT}
     {
         // If an address was not set manually use the instance number
@@ -18,7 +17,7 @@ Loom_LoRa::Loom_LoRa(
         this->powerLevel = powerLevel;
         this->retryCount = retryCount;
         this->retryTimeout = retryTimeout;
-        this->maxMessageLength = max_message_len;
+        this->maxMessageLength = RH_RF95_MAX_MESSAGE_LEN;
         recvData.reserve(300);
         manInst->registerModule(this);
     }
@@ -36,10 +35,10 @@ void Loom_LoRa::initialize(){
 
     // Initialize the radio manager
     if(manager->init()){
-        LOG("Radio manager successfully initialized!");
+        LOG(F("Radio manager successfully initialized!"));
     }
     else{
-        LOG("Radio manager failed to initialize!");
+        ERROR(F("Radio manager failed to initialize!"));
         moduleInitialized = false;
         return;
     }
@@ -50,7 +49,7 @@ void Loom_LoRa::initialize(){
         LOG(output);
     }
     else{
-        LOG("Failed to set frequency!");
+        ERROR(F("Failed to set frequency!"));
         moduleInitialized = false;
         return;
     }
@@ -119,7 +118,7 @@ bool Loom_LoRa::send(const uint8_t destinationAddress){
         }
     }
     else{
-        LOG("Module not initialized!");
+        ERROR(F("Module not initialized!"));
         return false;
     }
 }
@@ -131,7 +130,7 @@ bool Loom_LoRa::receive(uint maxWaitTime){
 
         // Wait for packet to arrive
         if(recv(maxWaitTime)){
-            LOG("Packet Received!");
+            LOG(F("Packet Received!"));
             manInst->set_device_name(recvDoc["id"]["name"].as<const char*>());
             manInst->set_instance_num(recvDoc["id"]["instance"].as<int>());
             deserializeJson(manInst->getDocument(), recvData);
@@ -153,7 +152,7 @@ bool Loom_LoRa::receive(uint maxWaitTime){
         }
 
     }else{
-        LOG("Module not initialized!");
+        ERROR(F("Module not initialized!"));
         return false;
     }
 }
@@ -185,13 +184,13 @@ bool Loom_LoRa::receivePartial(uint waitTime){
                 contents.add(tempDoc);
             }
             else{
-                LOG("No Packet Received");
+                ERROR(F("No Packet Received"));
             }
         }
 
         return true;
     }else{
-        LOG("Module not initialized!");
+        ERROR(F("Module not initialized!"));
         return false;
     }
 }
@@ -205,7 +204,7 @@ bool Loom_LoRa::sendFull(const uint8_t destinationAddress){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
-    LOG("Packet was greater than the maximum packet length the packet will be fragmented");
+    LOG(F("Packet was greater than the maximum packet length the packet will be fragmented"));
     sendDoc.clear();
    
    /* 
@@ -246,7 +245,7 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress){
     }
    
     if(!transmit(sendDoc.as<JsonObject>(), destinationAddress)){
-        LOG("Unable to transmit initial packet fragmentation notice! Split packets will not be sent");
+        ERROR(F("Unable to transmit initial packet fragmentation notice! Split packets will not be sent"));
         return false;
     }
 
@@ -283,7 +282,7 @@ bool Loom_LoRa::sendModules(JsonObject json, int numModules, const uint8_t desti
 
         // Attempt to transmit the document to the other device
         if(!transmit(sendDoc.as<JsonObject>(), destinationAddress)){
-            LOG("Failed to transmit fragmented packet!");
+            ERROR(F("Failed to transmit fragmented packet!"));
         }
         delay(500);
     }
@@ -312,16 +311,16 @@ bool Loom_LoRa::transmit(JsonObject json, int destination){
 
     // Try to write the JSON to the buffer
     if(!jsonToBuffer(buffer, json)){
-        LOG("Failed to convert JSON to MsgPack");
+        ERROR(F("Failed to convert JSON to MsgPack"));
         return false;
     }
 
 
     if(!manager->sendtoWait(buffer, sizeof(buffer), destination)){
-        LOG("Failed to send packet to specified address!");
+        ERROR(F("Failed to send packet to specified address!"));
 
     }else{
-        LOG("Successfully transmitted packet!");
+        LOG(F("Successfully transmitted packet!"));
         returnState = true;
     }
 
@@ -340,7 +339,7 @@ bool Loom_LoRa::recv(int waitTime){
     uint8_t buffer[maxMessageLength];
     uint8_t len = sizeof(buffer);
 
-    LOG("Waiting for packet...");
+    LOG(F("Waiting for packet..."));
 
     // Non-blocking receive if time is set to 0
     if(waitTime == 0){
@@ -360,7 +359,7 @@ bool Loom_LoRa::recv(int waitTime){
         serializeJson(recvDoc, recvData);
     }
     else{
-        LOG("No Packet Received");
+        WARNING(F("No Packet Received"));
     }
     driver.sleep();
     return recvStatus;

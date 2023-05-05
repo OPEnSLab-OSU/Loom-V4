@@ -40,8 +40,7 @@ class Loom_LoRa : public Radio{
             const int address = -1,
             const uint8_t powerLevel = 23,
             const uint8_t retryCount = 3,
-            const uint16_t retryTimeout = 200,
-            const uint16_t max_message_len = RH_RF95_MAX_MESSAGE_LEN
+            const uint16_t retryTimeout = 200
         );
 
         /* Destructor for the manager to prevent memory leaks */
