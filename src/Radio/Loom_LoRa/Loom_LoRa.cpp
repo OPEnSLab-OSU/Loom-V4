@@ -334,8 +334,8 @@ bool Loom_LoRa::recv(int waitTime){
     bool recvStatus = false;
     uint8_t fromAddress;
     
-    // Write all null bytes to the buffer
     uint8_t buffer[maxMessageLength];
+    memset(buffer, '\0', RECV_DATA_SIZE); // Write all null bytes to the buffer
     uint8_t len = sizeof(buffer);
 
     LOG(F("Waiting for packet..."));

@@ -50,7 +50,7 @@ class Radio : public Module{
          */ 
         bool bufferToJson(uint8_t* buffer){
             char output[OUTPUT_SIZE];
-            DeserializationError error = deserializeMsgPack(recvDoc, buffer, maxMessageLength);
+            DeserializationError error = deserializeMsgPack(recvDoc, (const char*)buffer, maxMessageLength);
 
             // Check if an error occurred 
             if(error != DeserializationError::Ok){
