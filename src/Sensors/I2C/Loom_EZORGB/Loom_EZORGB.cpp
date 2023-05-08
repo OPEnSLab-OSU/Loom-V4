@@ -20,7 +20,7 @@ void Loom_EZORGB::measure(){
     if(moduleInitialized){
 
         // Attempt to read data from the sensor
-        if(!readSensor()){
+        if(!readSensor(400)){
             ERROR(F("Failed to read sensor!"));
             return;
         }

@@ -28,12 +28,6 @@
  * @author Will Richards
  */ 
 class Loom_Multiplexer : public Module{
-	protected:
-
-        /* These aren't used with the Mux */
-        
-       
-
     public:
 
 		/* Loomified generalized calls*/

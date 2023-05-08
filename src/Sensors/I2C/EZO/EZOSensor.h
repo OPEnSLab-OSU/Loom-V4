@@ -40,7 +40,7 @@ class EZOSensor : public I2CDevice{
         };
 
         /* Request and read in data from the senor*/
-        bool readSensor(){
+        bool readSensor(int waitTime){
             char output[OUTPUT_SIZE];
             int i;
             if(moduleInitialized){
@@ -54,24 +54,23 @@ class EZOSensor : public I2CDevice{
                 }
                 
                 // Wait the desired warm-up period
-                delay(600);
+                delay(waitTime);
 
                 // Request 32 bytes of data from the device
                 Wire.requestFrom(module_address, 32, 1);
 
                 // Check if the I2C code was not valid
                 code = Wire.read();
-                Serial.println(code);
+                
                 if(code != 1){
                     snprintf(output, OUTPUT_SIZE, "Unsuccessful Response Code Received: %s", responseCodes[code-1]);
                     ERROR(output);
                     return false;
-                } 
+                }
 
                 // Read out only the next 32 bytes
                 for(i = 0; i < 32; i++){
                     currentChar = (char)Wire.read();
-
                     // If a null char was received break out of the loop
                     if(currentChar == '\0') break;
 

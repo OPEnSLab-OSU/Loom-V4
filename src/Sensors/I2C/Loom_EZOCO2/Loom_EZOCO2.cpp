@@ -19,7 +19,7 @@ void Loom_EZOCO2::initialize(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_EZOCO2::measure(){
     if(moduleInitialized){
-        if(!readSensor()){
+        if(!readSensor(1000)){
             ERROR(F("Failed to read sensor!"));
             return;
         }
