@@ -18,10 +18,11 @@
 
 - [Table of Contents](#table-of-contents)
 - [Introduction](#introduction)
-- [Installation](#Install)
+- [Installation](#install)
     - [Arduino Install](#install-arduino)
     - [Board Profile Install](#install-board-profiles)
     - [If Using Mac](#if-you-use-mac)
+    - [Getting Started Resources](#getting-started-resources)
 - [Using Examples](#run-an-example)
 - [Troubleshooting](#troubleshooting)
 - [Opening Issues](#issues)
