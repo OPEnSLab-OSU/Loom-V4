@@ -16,7 +16,7 @@ Manager manager("Device", 1);
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 
 Loom_LTE lte(manager, NETWORK_NAME, NETWORK_USER, NETWORK_PASS);
-Loom_MQTT mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
+Loom_MQTT mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS, PROJECT);
 
 // Enables batch logging with a batch size of 15
 Loom_BatchSD batchSD(hypnos, 15);

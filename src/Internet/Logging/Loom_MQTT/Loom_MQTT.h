@@ -46,7 +46,8 @@ class Loom_MQTT : public Module{
                 int broker_port, 
                 const char* database_name, 
                 const char* broker_user = "", 
-                const char* broker_pass = ""
+                const char* broker_pass = "",
+                const char* projectServer = ""
             );
 
         /**
@@ -96,7 +97,8 @@ class Loom_MQTT : public Module{
 
         char address[100];                         // Domain that the broker is running on
         char database_name[100];                   // Database to publish the data to
-        int port;                                   // Port the broker is listening on
+        char projectServer[100];                   // Project 
+        int port;                                  // Port the broker is listening on
         char topic[100];                           // Where to publish the data to
         char username[100];                        // Username to log into the broker
         char password[100];                        // Password to log into the broker

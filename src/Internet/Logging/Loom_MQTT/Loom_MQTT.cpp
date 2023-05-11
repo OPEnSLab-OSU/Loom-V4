@@ -9,7 +9,8 @@ Loom_MQTT::Loom_MQTT(
                     int broker_port, 
                     const char* database_name, 
                     const char* broker_user, 
-                    const char* broker_pass
+                    const char* broker_pass,
+                    const char* projectServer
                 ) : Module("MQTT"),
                     manInst(&man), 
                     internetClient(&internet_client), 
@@ -20,6 +21,7 @@ Loom_MQTT::Loom_MQTT(
                         strncpy(this->database_name, database_name, 100);
                         strncpy(this->username, broker_user, 100);
                         strncpy(this->password, broker_pass, 100);
+                        strncpy(this->projectServer, projectServer, 100);
                     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -38,8 +40,12 @@ void Loom_MQTT::publish(){
 
         TIMER_DISABLE;
         
-        // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
-        snprintf(topic, 100, "%s/%s%i", database_name, manInst->get_device_name(), manInst->get_instance_num());
+        if(strlen(projectServer) > 0)
+            // Formulate a topic to publish on with the format "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
+            snprintf_P(topic, 100, PSTR("%s/%s/%s%i"), projectServer, database_name, manInst->get_device_name(), manInst->get_instance_num());
+        else
+            // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
+            snprintf_P(topic, 100, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
 
         // If we are logging in using credentials then supply them
         if(strlen(username) > 0)
@@ -114,8 +120,13 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
     if(moduleInitialized){
         TIMER_DISABLE;
         if(batchSD.shouldPublish()){
-            // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
-            snprintf_P(topic, 100, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
+
+            if(strlen(projectServer) > 0)
+                // Formulate a topic to publish on with the format "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
+                snprintf_P(topic, 100, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
+            else
+                // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
+                snprintf_P(topic, 100, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
             
             // If we are logging in using credentials then supply them
             if(strlen(username) > 0)
@@ -249,11 +260,17 @@ void Loom_MQTT::loadConfigFromJSON(char* json){
         strncpy(database_name, doc["database"].as<const char*>(), 100);
         strncpy(username, doc["username"].as<const char*>(), 100);
         strncpy(password, doc["password"].as<const char*>(), 100);
+        strncpy(projectServer, doc["project"].as<const char*>(), 100);
         port = doc["port"].as<int>();
     }
     
-    // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
-    snprintf(topic, 100, "%s/%s%i", database_name, manInst->get_device_name(), manInst->get_instance_num());
+    if(strlen(projectServer) > 0)
+            // Formulate a topic to publish on with the format "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
+            snprintf_P(topic, 100, PSTR("%s/%s/%s%i"), projectServer, database_name, manInst->get_device_name(), manInst->get_instance_num());
+        else
+            // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
+            snprintf_P(topic, 100, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
+    
     moduleInitialized = true;
     free(json);
     FUNCTION_END;

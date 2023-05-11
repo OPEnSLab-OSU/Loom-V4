@@ -6,3 +6,4 @@
 #define DATABASE ""
 #define BROKER_USER ""
 #define BROKER_PASS ""
+#define PROJECT ""
