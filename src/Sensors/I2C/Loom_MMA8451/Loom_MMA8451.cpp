@@ -96,7 +96,9 @@ void Loom_MMA8451::package() {
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
         json["X_Acc"] = accel[2];
-
+        json["Y_Acc"] = accel[0];
+        json["Z_Acc"] = accel[1];
+        
         switch (orientation) {
             case MMA8451_PL_PUF: strncpy(orientationString, "Portrait_Up_Front\0", 25);       break;
             case MMA8451_PL_PUB: strncpy(orientationString, "Portrait_Up_Back\0" , 25);		break;
