@@ -201,6 +201,9 @@ class Loom_Hypnos : public Module{
          */ 
         void setLogName(const char* name) { sdMan->setLogName(name); };
 
+        /* Disable power up for the next cycle ONLY */
+        void disablePowerUp() { shouldPowerUp = false; };
+
     private:
 
         Manager* manInst = nullptr;                                                         // Instance of the manager
@@ -242,7 +245,7 @@ class Loom_Hypnos : public Module{
 
         void pre_sleep();                                                                   // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
         void post_sleep(bool waitForSerial);                                                // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
-
+        volatile bool shouldPowerUp = true;                                                          // Whether or not we should power up after sleep
         
 
 };

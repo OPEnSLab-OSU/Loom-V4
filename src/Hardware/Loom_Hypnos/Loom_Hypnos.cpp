@@ -366,7 +366,13 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::sleep(bool waitForSerial){
     // Try to power down the active modules
-    manInst->power_down();
+
+    /* If we want to power up do so, if not set shouldPowerUp to true for the next cycle*/
+    if(shouldPowerUp){
+        manInst->power_down();
+    }else{
+        shouldPowerUp = true;
+    }
     
     disable();
     pre_sleep();                    // Pre-sleep cleanup
@@ -403,7 +409,8 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
     enable();
 
     // Re-init the modules that need it
-    manInst->power_up();  
+    if(shouldPowerUp)
+        manInst->power_up();  
       
     // Clear any pending RTC alarms
     RTC_DS.clearAlarm();
