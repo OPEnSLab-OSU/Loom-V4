@@ -39,7 +39,12 @@ class EZOSensor : public I2CDevice{
             return true;
         };
 
-        /* Request and read in data from the senor*/
+        /**
+         * Request and read in data from the senor
+         * 
+         * @param waitTime This is the length of time we will wait between requesting a read and actually reading the data
+         * @return Whether or not the read was successfully
+         * */
         bool readSensor(int waitTime){
             char output[OUTPUT_SIZE];
             int i;
