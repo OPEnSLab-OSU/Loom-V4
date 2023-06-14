@@ -30,7 +30,7 @@ volatile int counter = 0;
 unsigned long tip_time = 0;
 unsigned long last_tip_time = 0;
 
-Manager manager("Chime", 11);
+Manager manager("Chime", 3);
 
 // Create a new Hypnos object
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, true);
@@ -57,18 +57,15 @@ float calculateWaterHeight(){
 // Called when the interrupt is triggered 
 void isrTrigger(){
   sampleFlag = true;
+  detachInterrupt(INT_PIN);
   hypnos.wakeup();
+  hypnos.enablePowerUp();
 }
 
 void tipTrigger() {
-  tip_time = millis();
-
-  // Check if the time of the last tip is more than 250 ms to debounce the switch
-  if(tip_time - last_tip_time > 250){
-    counter++;
-    tipFlag = true;
-    detachInterrupt(INT_PIN);
-  }
+  tipFlag = true;
+  detachInterrupt(INT_PIN);
+  hypnos.disablePowerUp();
 }
 
 void setup() {
@@ -120,14 +117,18 @@ void loop() {
     mqtt.publish();
 
     // Set the RTC interrupt alarm to wake the device in 15 min
-    hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 15));
+    hypnos.setInterruptDuration(TimeSpan(0, 0, 15, 0));
 
     // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
     hypnos.reattachRTCInterrupt();
+    attachInterrupt(INT_PIN, tipTrigger, FALLING);
+    attachInterrupt(INT_PIN, tipTrigger, FALLING);
     sampleFlag = false;
   }
 
   if(tipFlag){
+    delay(20);
+    counter++;
     tipFlag = false;
     attachInterrupt(INT_PIN, tipTrigger, FALLING);
     attachInterrupt(INT_PIN, tipTrigger, FALLING);

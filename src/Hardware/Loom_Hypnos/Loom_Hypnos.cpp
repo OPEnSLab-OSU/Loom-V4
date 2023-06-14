@@ -104,8 +104,10 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
     LOG(F("Registering interrupt..."));
 
     // If the RTC hasn't already been initialized then do so now if we are trying to schedule an RTC interrupt
-    if(!RTC_initialized && interruptPin == 12)
+    if(!RTC_initialized && interruptPin == 12){
+        LOG(F("RTC was not yet initialized initializing now..."));
         initializeRTC();
+    }
 
     // Make sure a callback function was supplied
     if(isrFunc != nullptr){
@@ -175,6 +177,7 @@ void Loom_Hypnos::wakeup(){
 void Loom_Hypnos::initializeRTC(){
     FUNCTION_START;
 
+    LOG(F("Attempting to initialize RTC..."));
     // If the RTC failed to start inform the user and hang
     if(!RTC_DS.begin()){
         ERROR(F("Couldn't start RTC! Check your connections... Execution will now hang as this is likely a fatal error"));
@@ -368,11 +371,9 @@ void Loom_Hypnos::sleep(bool waitForSerial){
     // Try to power down the active modules
 
     /* If we want to power up do so, if not set shouldPowerUp to true for the next cycle*/
-    if(shouldPowerUp){
+    if(shouldPowerUp)
         manInst->power_down();
-    }else{
-        shouldPowerUp = true;
-    }
+   
     
     disable();
     pre_sleep();                    // Pre-sleep cleanup

@@ -201,8 +201,11 @@ class Loom_Hypnos : public Module{
          */ 
         void setLogName(const char* name) { sdMan->setLogName(name); };
 
-        /* Disable power up for the next cycle ONLY */
+        /* Disable power up */
         void disablePowerUp() { shouldPowerUp = false; };
+
+        /* Re-enable power up*/
+        void enablePowerUp() { shouldPowerUp = true; };
 
     private:
 
