@@ -55,42 +55,49 @@ void Loom_Hypnos::package(){
 void Loom_Hypnos::enable(bool enable33, bool enable5){
 
     // Enable the 3.3v and 5v rails on the Hypnos
-    digitalWrite(5, (enable33) ? LOW : HIGH);
-    digitalWrite(6, (enable5) ? HIGH : LOW);
-    digitalWrite(LED_BUILTIN, HIGH);
+    if(shouldPowerUp){
+        digitalWrite(5, (enable33) ? LOW : HIGH);
+        digitalWrite(6, (enable5) ? HIGH : LOW);
 
-    if(enableSD){
-        // Enable SPI pins
-        pinMode(23, OUTPUT);
-        pinMode(24, OUTPUT);
-        pinMode(sd_chip_select, OUTPUT);
+        if(enableSD){
+            // Enable SPI pins
+            pinMode(23, OUTPUT);
+            pinMode(24, OUTPUT);
+            pinMode(sd_chip_select, OUTPUT);
 
-        sdMan->begin();
+            sdMan->begin();
+        }
+
+        // If the RTC hasn't already been initialized then do so now
+        if(!RTC_initialized)
+            initializeRTC();
+
+        manInst->setEnableState(true);
     }
-
-    // If the RTC hasn't already been initialized then do so now
-    if(!RTC_initialized)
-        initializeRTC();
-
-    manInst->setEnableState(true);
+    digitalWrite(LED_BUILTIN, HIGH);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::disable(){
-    // Disable the 3.3v and 5v rails on the Hypnos
-    digitalWrite(5, HIGH);
-    digitalWrite(6, LOW);
-    digitalWrite(LED_BUILTIN, LOW); 
 
-    if(enableSD){
-        // Disable SPI pins/SD chip select to save power
-        pinMode(23, INPUT);
-        pinMode(24, INPUT);
-        pinMode(sd_chip_select, INPUT);
+    if(shouldPowerUp){
+        // Disable the 3.3v and 5v rails on the Hypnos
+        digitalWrite(5, HIGH);
+        digitalWrite(6, LOW);
+        
+
+        if(enableSD){
+            // Disable SPI pins/SD chip select to save power
+            pinMode(23, INPUT);
+            pinMode(24, INPUT);
+            pinMode(sd_chip_select, INPUT);
+        }
+
+        manInst->setEnableState(false);
     }
 
-    manInst->setEnableState(false);
+    digitalWrite(LED_BUILTIN, LOW); 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -377,6 +384,7 @@ void Loom_Hypnos::sleep(bool waitForSerial){
     
     disable();
     pre_sleep();                    // Pre-sleep cleanup
+    delay(10);                      // Added delay before sleep, maybe this? https://github.com/arduino-libraries/RTCZero/issues/33#issuecomment-454792743
     LowPower.sleep();               // Go to sleep and hang
     post_sleep(waitForSerial);      // Wake up
 }
