@@ -165,6 +165,7 @@ const char* Loom_SDI12::getSensorInfo(char addr){
 void Loom_SDI12::sendCommand(char response[RESPONSE_SIZE], char addr, const char* command){
     // Send a request to the sensor at the given address and then wait 30ms before continuing
     char output[25];
+    memset(output, '\0', 25);
     snprintf(output, 25, "%c%s", addr, command);
     sdiInterface.sendCommand(output);
     delay(30);
@@ -175,6 +176,7 @@ void Loom_SDI12::sendCommand(char response[RESPONSE_SIZE], char addr, const char
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::readResponse(char response[RESPONSE_SIZE]){
     int index = 0;
+    memset(response, '\0', RESPONSE_SIZE);
     // While data is available to be read read until an end line character appears.
     while(sdiInterface.available()){
         char c = sdiInterface.read();
@@ -216,7 +218,6 @@ void Loom_SDI12::getData(char addr){
 
     // Request a measurement from the sensor at the given address
     sendCommand(response, addr, "M!");
-    memset(response, '\0', RESPONSE_SIZE);
     sendCommand(response, addr, "D0!");
     
     // If the value returned was 0 we want to re-request data
@@ -226,7 +227,6 @@ void Loom_SDI12::getData(char addr){
 
         // Request a measurement from the sensor at the given address
         sendCommand(response, addr, "M!");
-        memset(response, '\0', RESPONSE_SIZE);
         sendCommand(response, addr, "D0!");
 
         TIMER_RESET;
@@ -236,7 +236,6 @@ void Loom_SDI12::getData(char addr){
 
             // Request a measurement from the sensor at the given address
             sendCommand(response, addr, "M!");
-            memset(response, '\0', RESPONSE_SIZE);
             sendCommand(response, addr, "D0!");
             TIMER_RESET;
             

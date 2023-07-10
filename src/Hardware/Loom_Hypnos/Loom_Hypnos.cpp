@@ -83,7 +83,7 @@ void Loom_Hypnos::disable(){
 
     if(shouldPowerUp){
         // Disable the 3.3v and 5v rails on the Hypnos
-        digitalWrite(5, HIGH);
+        digitalWrite(5, HIGH);  
         digitalWrite(6, LOW);
         
 

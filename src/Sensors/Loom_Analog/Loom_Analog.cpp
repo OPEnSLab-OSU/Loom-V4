@@ -12,7 +12,9 @@ void Loom_Analog::measure(){
     for(int i = 0; i < analogPins.size(); i++){
         int analogData = analogRead(analogPins[i]);
         pin_number_to_name(analogPins[i], name);
-        pinToData.insert(std::make_pair(name, std::make_pair(analogData, analogToMV(analogData))));
+
+        // Needs to be cast to a const char* so that the name stays in memory 
+        pinToData.insert(std::make_pair((const char*)name, std::make_pair(analogData, analogToMV(analogData))));
     }
 
     // Pull the battery voltage and add it to the top of 
@@ -23,13 +25,13 @@ void Loom_Analog::measure(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Analog::package(){
     char output[21];
-    memset(output, '\0', 20);
     JsonObject json = manInst->get_data_object(getModuleName());
     for ( const auto &myPair : pinToData ) {
-       json[myPair.first] = pinToData[myPair.first].first;
-       strncat(output, myPair.first, 20);
-       strncat(output, "_MV", 20);
-       json[output] = pinToData[myPair.first].second;
+        memset(output, '\0', 20);
+        json[myPair.first] = pinToData[myPair.first].first;
+        strncat(output, myPair.first, 20);
+        strncat(output, "_MV", 20);
+        json[(const char*)output] = pinToData[myPair.first].second;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
