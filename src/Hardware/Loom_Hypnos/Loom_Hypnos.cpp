@@ -107,7 +107,6 @@ void Loom_Hypnos::disable(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin, InterruptType interruptType, int triggerState){
     FUNCTION_START;
-    pinMode(interruptPin, INPUT_PULLUP);  //  Set interrupt pin input mode
     LOG(F("Registering interrupt..."));
 
     // If the RTC hasn't already been initialized then do so now if we are trying to schedule an RTC interrupt
@@ -124,7 +123,7 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
             LOG(F("Interrupt successfully attached!"));
         }
         else{
-            
+            pinMode(interruptPin, INPUT_PULLUP);  //  Set interrupt pin input mode
             attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
             attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
             LOG(F("Interrupt successfully attached!"));
@@ -378,8 +377,9 @@ void Loom_Hypnos::sleep(bool waitForSerial){
     // Try to power down the active modules
 
     /* If we want to power up do so, if not set shouldPowerUp to true for the next cycle*/
-    if(shouldPowerUp)
+    if(shouldPowerUp){
         manInst->power_down();
+    }
    
     
     disable();
@@ -418,11 +418,12 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
     enable();
 
     // Re-init the modules that need it
-    if(shouldPowerUp)
-        manInst->power_up();  
+    if(shouldPowerUp){
+        manInst->power_up();
+        RTC_DS.clearAlarm();
+    }
       
-    // Clear any pending RTC alarms
-    RTC_DS.clearAlarm();
+    
 
     // We want to wait for the user to re-open the serial monitor before continuing to see readouts
     if(waitForSerial){

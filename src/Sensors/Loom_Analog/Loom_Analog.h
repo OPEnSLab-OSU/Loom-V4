@@ -6,6 +6,22 @@
 #include "Module.h"
 #include "Loom_Manager.h"
 
+/* Contain all the information regarding the analog pin that we want to use*/
+struct AnalogMapping{
+    int pinNumber;
+    const char* name;
+    float analog;
+    float analog_mv;
+
+    /* Construct a new analog mapping */
+    AnalogMapping(int pinNumber, const char* name, float analog, float analog_mv){
+        this->pinNumber = pinNumber;
+        this->name = name;
+        this->analog = analog;
+        this->analog_mv = analog_mv;
+    }
+};
+
 /**
  * Used to read Analog voltages from the analog pins on the feather M0
  * 
@@ -20,6 +36,10 @@ class Loom_Analog : public Module{
         
 
     public:
+
+        void measure() override;                               
+        void package() override;
+
         /**
          * Templated constructor that uses more than 1 analog pin
          * @param man Reference to the manager
@@ -29,6 +49,7 @@ class Loom_Analog : public Module{
         template<typename T, typename... Args>
         Loom_Analog(Manager& man, T firstPin , Args... additionalPins) : Module("Analog"){
            get_variadic_parameters(firstPin, additionalPins...);
+           pinMappings.push_back(new AnalogMapping(A7, "Vbat", getBatteryVoltage(), getBatteryVoltage() * 1000));
            manInst = &man;
 
            // Set 12-bit analog read resolution
@@ -45,7 +66,8 @@ class Loom_Analog : public Module{
          */ 
         template<typename T>
         Loom_Analog(Manager& man, T firstPin) : Module("Analog"){
-           analogPins.push_back(firstPin);
+           pinMappings.push_back(new AnalogMapping(firstPin, pinNumberToName(firstPin), 0, 0));
+           pinMappings.push_back(new AnalogMapping(A7, "Vbat", getBatteryVoltage(), getBatteryVoltage() * 1000));
            manInst = &man;
 
            // Set 12-bit analog read resolution
@@ -61,6 +83,7 @@ class Loom_Analog : public Module{
          */ 
         Loom_Analog(Manager& man) : Module("Analog"){
            manInst = &man;
+           pinMappings.push_back(new AnalogMapping(A7, "Vbat", getBatteryVoltage(), getBatteryVoltage() * 1000));
 
            // Set 12-bit analog read resolution
            analogReadResolution(12);
@@ -72,30 +95,19 @@ class Loom_Analog : public Module{
         /**
          * Get the current voltage of the battery
          */ 
-        float get_battery_voltage();
-
-        void measure() override;                               
-        void package() override;
+        float getBatteryVoltage();
 
         /**
          * Get the Millivolts of a specified pin
          * @param pin The pin to get the data from eg. A0, A1, ...
          */ 
-        float getMV(int pin) {
-            char name[4];
-            pin_number_to_name(pin, name);
-            return pinToData[name].second; 
-        }
+        float getMV(int pin);
 
         /**
          * Get the analog value from a given pin
          * @param pin The pin to get the data from eg. A0, A1, ...
          */ 
-        float getAnalog(int pin) {
-            char name[4];
-            pin_number_to_name(pin, name);
-            return pinToData[name].first; 
-        }
+        float getAnalog(int pin);
 
     private:
 
@@ -106,25 +118,22 @@ class Loom_Analog : public Module{
          */
         template<typename T>
         T get_variadic_parameters(T v) {
-            analogPins.push_back(v);
+            /* Push the pin number to vector */
+            pinMappings.push_back(new AnalogMapping(v, pinNumberToName(v), 0, 0));
             return v;
         };
 
         template<typename T, typename... Args>
         T get_variadic_parameters(T first, Args... args) {
-           analogPins.push_back(first);
+            pinMappings.push_back(new AnalogMapping(first, pinNumberToName(first), 0, 0));
             return get_variadic_parameters(args...);
         };
 
         float analogToMV(int analog);               // Convert the analog voltage to mV
-
-        void pin_number_to_name(int pin, char name[4]);         // Convert the given to a name with the style "A0"
-
+        char* pinNumberToName(int pin);             // Convert the given to a name with the style "A0"
 
         Manager* manInst;                           // Instance of the manager
-
-        std::vector<int> analogPins;                // Holds a list of the analog pins we want to read
-        std::map<const char*, std::pair<float, float>> pinToData;          // Map mapping analog pins to the data read from them
+        std::vector<AnalogMapping*> pinMappings;    // Contains a struct for each pin we are monitoring 
         
 
 };
