@@ -82,6 +82,8 @@ class Loom_Hypnos : public Module{
         void package() override;                           
     public:
 
+        volatile bool shouldPowerUp = true;
+
         /**
          * Constructs a new Hypnos Instance using the manager to hold information about the device
          * @param man Reference to the manager
@@ -201,12 +203,6 @@ class Loom_Hypnos : public Module{
          */ 
         void setLogName(const char* name) { sdMan->setLogName(name); };
 
-        /* Disable power up */
-        void disablePowerUp() { shouldPowerUp = false; };
-
-        /* Re-enable power up*/
-        void enablePowerUp() { shouldPowerUp = true; };
-
     private:
 
         Manager* manInst = nullptr;                                                         // Instance of the manager
@@ -248,7 +244,7 @@ class Loom_Hypnos : public Module{
 
         void pre_sleep();                                                                   // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
         void post_sleep(bool waitForSerial);                                                // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
-        volatile bool shouldPowerUp = true;                                                          // Whether or not we should power up after sleep
+
         
 
 };

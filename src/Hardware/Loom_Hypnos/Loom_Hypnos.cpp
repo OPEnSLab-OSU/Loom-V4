@@ -55,49 +55,42 @@ void Loom_Hypnos::package(){
 void Loom_Hypnos::enable(bool enable33, bool enable5){
 
     // Enable the 3.3v and 5v rails on the Hypnos
-    if(shouldPowerUp){
-        digitalWrite(5, (enable33) ? LOW : HIGH);
-        digitalWrite(6, (enable5) ? HIGH : LOW);
-
-        if(enableSD){
-            // Enable SPI pins
-            pinMode(23, OUTPUT);
-            pinMode(24, OUTPUT);
-            pinMode(sd_chip_select, OUTPUT);
-
-            sdMan->begin();
-        }
-
-        // If the RTC hasn't already been initialized then do so now
-        if(!RTC_initialized)
-            initializeRTC();
-
-        manInst->setEnableState(true);
-    }
+    digitalWrite(5, (enable33) ? LOW : HIGH);
+    digitalWrite(6, (enable5) ? HIGH : LOW);
     digitalWrite(LED_BUILTIN, HIGH);
+
+    if(enableSD){
+        // Enable SPI pins
+        pinMode(23, OUTPUT);
+        pinMode(24, OUTPUT);
+        pinMode(sd_chip_select, OUTPUT);
+
+        sdMan->begin();
+    }
+
+    // If the RTC hasn't already been initialized then do so now
+    if(!RTC_initialized)
+        initializeRTC();
+
+    manInst->setEnableState(true);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::disable(){
+    // Disable the 3.3v and 5v rails on the Hypnos
+    digitalWrite(5, HIGH);
+    digitalWrite(6, LOW);
+    digitalWrite(LED_BUILTIN, LOW); 
 
-    if(shouldPowerUp){
-        // Disable the 3.3v and 5v rails on the Hypnos
-        digitalWrite(5, HIGH);  
-        digitalWrite(6, LOW);
-        
-
-        if(enableSD){
-            // Disable SPI pins/SD chip select to save power
-            pinMode(23, INPUT);
-            pinMode(24, INPUT);
-            pinMode(sd_chip_select, INPUT);
-        }
-
-        manInst->setEnableState(false);
+    if(enableSD){
+        // Disable SPI pins/SD chip select to save power
+        pinMode(23, INPUT);
+        pinMode(24, INPUT);
+        pinMode(sd_chip_select, INPUT);
     }
 
-    digitalWrite(LED_BUILTIN, LOW); 
+    manInst->setEnableState(false);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -107,13 +100,12 @@ void Loom_Hypnos::disable(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin, InterruptType interruptType, int triggerState){
     FUNCTION_START;
+    pinMode(interruptPin, INPUT_PULLUP);  //  Set interrupt pin input mode
     LOG(F("Registering interrupt..."));
 
     // If the RTC hasn't already been initialized then do so now if we are trying to schedule an RTC interrupt
-    if(!RTC_initialized && interruptPin == 12){
-        LOG(F("RTC was not yet initialized initializing now..."));
+    if(!RTC_initialized && interruptPin == 12)
         initializeRTC();
-    }
 
     // Make sure a callback function was supplied
     if(isrFunc != nullptr){
@@ -123,7 +115,7 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
             LOG(F("Interrupt successfully attached!"));
         }
         else{
-            pinMode(interruptPin, INPUT_PULLUP);  //  Set interrupt pin input mode
+            
             attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
             attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
             LOG(F("Interrupt successfully attached!"));
@@ -182,8 +174,8 @@ void Loom_Hypnos::wakeup(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::initializeRTC(){
     FUNCTION_START;
+    LOG("Initializing DS3231....");
 
-    LOG(F("Attempting to initialize RTC..."));
     // If the RTC failed to start inform the user and hang
     if(!RTC_DS.begin()){
         ERROR(F("Couldn't start RTC! Check your connections... Execution will now hang as this is likely a fatal error"));
@@ -375,16 +367,12 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::sleep(bool waitForSerial){
     // Try to power down the active modules
-
-    /* If we want to power up do so, if not set shouldPowerUp to true for the next cycle*/
-    if(shouldPowerUp){
+    if(shouldPowerUp)
         manInst->power_down();
-    }
-   
     
     disable();
     pre_sleep();                    // Pre-sleep cleanup
-    delay(10);                      // Added delay before sleep, maybe this? https://github.com/arduino-libraries/RTCZero/issues/33#issuecomment-454792743
+    shouldPowerUp = true;
     LowPower.sleep();               // Go to sleep and hang
     post_sleep(waitForSerial);      // Wake up
 }
@@ -413,26 +401,27 @@ void Loom_Hypnos::pre_sleep(){
 void Loom_Hypnos::post_sleep(bool waitForSerial){
     // Enable the //Watchdog timer when waking up
     TIMER_ENABLE;
-    USBDevice.attach();
-    Serial.begin(115200);
-    enable();
-
-    // Re-init the modules that need it
     if(shouldPowerUp){
-        manInst->power_up();
+        USBDevice.attach();
+        Serial.begin(115200);
+        
+        enable();
+
+        // Re-init the modules that need it
+        manInst->power_up();  
+        
+        // Clear any pending RTC alarms
         RTC_DS.clearAlarm();
-    }
-      
-    
 
-    // We want to wait for the user to re-open the serial monitor before continuing to see readouts
-    if(waitForSerial){
-        TIMER_DISABLE;
-        while(!Serial);
-        TIMER_ENABLE;
-    }
+        // We want to wait for the user to re-open the serial monitor before continuing to see readouts
+        if(waitForSerial){
+            TIMER_DISABLE;
+            while(!Serial);
+            TIMER_ENABLE;
+        }
 
-    LOG(F("Device has awoken from sleep!"));
+        LOG(F("Device has awoken from sleep!"));
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

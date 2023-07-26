@@ -59,13 +59,12 @@ void isrTrigger(){
   sampleFlag = true;
   detachInterrupt(INT_PIN);
   hypnos.wakeup();
-  hypnos.enablePowerUp();
 }
 
 void tipTrigger() {
+  hypnos.shouldPowerUp = false;
   tipFlag = true;
   detachInterrupt(INT_PIN);
-  hypnos.disablePowerUp();
 }
 
 void setup() {
@@ -127,11 +126,13 @@ void loop() {
   }
 
   if(tipFlag){
+    digitalWrite(LED_BUILTIN, HIGH);
     delay(20);
     counter++;
     tipFlag = false;
     attachInterrupt(INT_PIN, tipTrigger, FALLING);
     attachInterrupt(INT_PIN, tipTrigger, FALLING);
+    digitalWrite(LED_BUILTIN, LOW);
   }
   
   // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
