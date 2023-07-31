@@ -14,7 +14,6 @@ Loom_SDI12::Loom_SDI12(const int pinNumber) : Module("SDI12"), sdiInterface(pinN
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::initialize(){
-    char response[RESPONSE_SIZE];
     LOG(F("Initializing SDI-12 Sensors..."));
 
     // On init we set the SDI pin to OUTPUT so we can request data
@@ -29,6 +28,7 @@ void Loom_SDI12::initialize(){
 
     // Request the sensor data from all connected devices to pull the sensor name
     for(int i = 0; i < inUseAddresses.size(); i++){
+        char* response = (char*) malloc(sizeof(char) * RESPONSE_SIZE);
         memset(response, '\0', RESPONSE_SIZE);
         requestSensorInfo(response, inUseAddresses[i]);
         addressToType.insert(std::pair<char, const char*>(inUseAddresses[i], response));
