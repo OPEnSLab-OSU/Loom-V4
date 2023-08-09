@@ -4,22 +4,32 @@
  * @author Will Richards
  */ 
 
+/** !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Before doing anything make sure to uncomment one of the following to enable the specific carrier !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!**/
+//#define USE_ROGERS
+//#define USE_ATT
+
 #include <SparkFun_LTE_Shield_Arduino_Library.h>
+
+// Enables power up of module when connect to a Hypnos board
+#define USING_HYPNOS true
+#define LTEShieldSerial Serial1
 
 // Create a LTE_Shield object to be used throughout the sketch:
 LTE_Shield lte;
 
-#define LTEShieldSerial Serial1
 
 // Network operator can be set to either:
-// MNO_SW_DEFAULT -- DEFAULT
 // MNO_ATT -- AT&T 
-// MNO_VERIZON -- Verizon
-// MNO_TELSTRA -- Telstra
-// MNO_TMO -- T-Mobile
-const mobile_network_operator_t MOBILE_NETWORK_OPERATOR = MNO_ATT;
+// MNO_ROGERS -- Rogers
+
+#if defined(USE_ATT)
+  const mobile_network_operator_t MOBILE_NETWORK_OPERATOR = MNO_ATT;
+#elif defined(USE_ROGERS)
+  const mobile_network_operator_t MOBILE_NETWORK_OPERATOR = MNO_ROGERS;
+#endif
+
 const String MOBILE_NETWORK_STRINGS[] = {"Default", "SIM_ICCD", "AT&T", "VERIZON", 
-  "TELSTRA", "T-Mobile", "CT"};
+  "TELSTRA", "T-Mobile", "CT", "Rogers"};
 
 // Map registration status messages to more readable strings
 String registrationString[] = {
@@ -50,8 +60,17 @@ void setup() {
   Serial.begin(9600);
   while (!Serial) ; // For boards with built-in USB
 
-  // Turn the board on
-  powerUp();
+  #if (!defined(USE_ROGERS) and !defined(USE_ATT))
+  while(1){
+    Serial.println("You didn't specify USE_ATT or USE_ROGERS at the beginning of the INO....hanging");
+  }
+  #endif
+
+  if(USING_HYPNOS){
+    // Turn the board on
+    powerUp();
+  }
+  
 
   Serial.println(F("Initializing the LTE Shield..."));
   Serial.println(F("...this may take ~25 seconds if the shield is off."));
@@ -84,7 +103,9 @@ void setup() {
     Serial.println(F("Setting mobile-network operator"));
     if (lte.setNetwork(MOBILE_NETWORK_OPERATOR)) {
       Serial.print(F("Set mobile network operator to "));
-      Serial.println(MOBILE_NETWORK_STRINGS[MOBILE_NETWORK_OPERATOR] + "\r\n");
+
+      // Use ternary to pick the right name
+      Serial.println(MOBILE_NETWORK_STRINGS[(MOBILE_NETWORK_OPERATOR != 43) ? MOBILE_NETWORK_OPERATOR : 7] + "\r\n");
     } else {
       Serial.println(F("Error setting MNO. Try cycling power to the shield/Arduino."));
       while (1) ;
@@ -99,12 +120,40 @@ void setup() {
       while (1) ;
     }
 
-    // Manually create an operator that matches our standard AT&T operator
-    op.stat = 1;
-    op.shortOp = "AT&T";
-    op.longOp = "AT&T";
-    op.numOp = 310410;
-    op.act = 7;
+    // Manually create an operator that matches our either or standard AT&T operator (US) or Rogers (CA)
+    /**
+     * Operator Format (* indicate what should always be used)
+     * <stat> Number 
+     *    • 0: unknown
+     *    • 1: available*
+     *    • 2: current
+     *    • 3: forbidden
+     * 
+     * 
+     * <shortOp & longOp> These aren't really used to register the sim
+     * <numOp>  - This is the most important it tells the board what network we will be connecting to, this number can be made by combining the MCC and MNC into one number, list here https://mcc-mnc-list.com/list
+     * <Act> Indicates the radio access technology:
+     *    • 0: GSM
+     *    • 3: GSM/GPRS with EDGE availability
+     *    • 7: LTE*
+     *    • 8: EC-GSM-IoT (A/Gb mode)
+     *    • 9: E-UTRAN (NB-S1 mode)
+     *
+     */
+    if(MOBILE_NETWORK_OPERATOR == 43){
+      op.stat = 1;
+      op.shortOp = "Rogers";
+      op.longOp = "Rogers Wireless";
+      op.numOp = 302320;
+      op.act = 7;
+    }else{
+      op.stat = 1;
+      op.shortOp = "AT&T";
+      op.longOp = "AT&T";
+      op.numOp = 310410;
+      op.act = 7;
+    }
+    
 
     if (lte.registerOperator(op) == LTE_SHIELD_SUCCESS) {
       Serial.println("Network " + op.longOp + " registered\r\n");
@@ -163,22 +212,22 @@ void printInfo() {
   if (regStatus > 0) {
     Serial.println(F("All set. Go to the next example!"));
   }
-
-  
 }
 
-/**
- * Turn the LTE Board On
- */ 
-void powerUp(){
-  // Turn on the LTE Board, Manually power the hypnos rails on
-  Serial.println("Powering up LTE Board, this will take about 10 seconds...");
-  pinMode(5, OUTPUT);                     // 3.3v power rail
-  pinMode(6, OUTPUT);                     // 5v power rail
-  pinMode(A5, OUTPUT);                    // LTE Power Pin
-  digitalWrite(5, LOW);                   // Enable the 3.3v Rail
-  digitalWrite(6, HIGH);                  // Enable the 5v Rail
-  digitalWrite(A5, LOW);                  // Request that the board power on
-  delay(10000);
-  Serial.println("Board power up complete!");
-}
+#if(USING_HYPNOS == true)
+  /**
+   * Turn the LTE Board On
+   */ 
+  void powerUp(){
+    // Turn on the LTE Board, Manually power the hypnos rails on
+    Serial.println("Powering up LTE Board, this will take about 10 seconds...");
+    pinMode(5, OUTPUT);                     // 3.3v power rail
+    pinMode(6, OUTPUT);                     // 5v power rail
+    pinMode(A5, OUTPUT);                    // LTE Power Pin
+    digitalWrite(5, LOW);                   // Enable the 3.3v Rail
+    digitalWrite(6, HIGH);                  // Enable the 5v Rail
+    digitalWrite(A5, LOW);                  // Request that the board power on
+    delay(10000);
+    Serial.println("Board power up complete!");
+  }
+#endif
