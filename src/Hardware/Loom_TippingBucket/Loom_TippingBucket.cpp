@@ -1,13 +1,14 @@
 #include "Loom_TippingBucket.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_TippingBucket::Loom_TippingBucket(Manager& man) : Module("TippingBucket"), manInst(&man), module_address(COUNTER_ADDRESS) {
+Loom_TippingBucket::Loom_TippingBucket(Manager& man) : Module("TippingBucket"), manInst(&man) {
+    module_address = COUNTER_ADDRESS;
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_TippingBucket::Loom_TippingBucket(Manager& man, int pin) : Module("TippingBucket"), manInst(&man) interruptPin(pin), module_address(-1) {
+Loom_TippingBucket::Loom_TippingBucket(Manager& man, int pin) : Module("TippingBucket"), manInst(&man), interruptPin(pin){
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

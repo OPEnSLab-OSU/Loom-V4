@@ -2,7 +2,7 @@
 
 #include "Module.h"
 #include "Loom_Manager.h"
-#include "Loom_Hypnos.h"
+#include "../Loom_Hypnos/Loom_Hypnos.h"
 
 #define COUNTER_ADDRESS 0x32
 

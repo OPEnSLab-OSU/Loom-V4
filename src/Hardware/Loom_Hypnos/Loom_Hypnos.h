@@ -4,7 +4,6 @@
 #include <OPEnS_RTC.h>
 #include <ArduinoLowPower.h>
 #include <map>
-#include <tuple>
 
 #include "Arduino.h"
 #include "Module.h"
@@ -52,14 +51,6 @@ enum TIME_ZONE{
     ACST = -9, // Half an hour off so its -9.5
     AEST = -10
 
-};
-
-/**
- * Type of interrupt to register
- */ 
-enum InterruptType{
-    SLEEP,
-    OTHER
 };
 
 /**
@@ -132,7 +123,7 @@ class Loom_Hypnos : public Module{
          * @param interruptType Type of the interrupt to register (SLEEP or OTHER)
          * @param triggerState When the interrupt should trigger
          */ 
-        bool registerInterrupt(InterruptCallbackFunction isrFunc = nullptr, int interruptPin = 12, InterruptType interruptType = SLEEP, int triggerState = LOW);
+        bool registerInterrupt(InterruptCallbackFunction isrFunc = nullptr, int interruptPin = 12, int triggerState = LOW);
 
         /**
          * Called when the user wants to wake the Hypnos back out of the sleep state
@@ -219,12 +210,7 @@ class Loom_Hypnos : public Module{
         bool RTC_initialized = false;                                                       // Did the RTC initialize correctly?
         
         bool custom_time = false;                                                           // Set the RTC to a user specified time
-
-        // Map the given pin to an interrupt call back
-        // 0th - ISR
-        // 1st - Interrupt Trigger
-        // 2nd - Interrupt Type (SLEEP or OTHER)
-        std::map<int, std::tuple<InterruptCallbackFunction, int, InterruptType>> pinToInterrupt;            
+        InterruptCallbackFunction callbackFunc = nullptr;                                   // ISR call back for the RTC interrupt
 
         
         void initializeRTC();                                                               // Initialize RTC
