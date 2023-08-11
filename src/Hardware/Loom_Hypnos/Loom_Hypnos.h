@@ -159,7 +159,7 @@ class Loom_Hypnos : public Module{
         /**
          * Set a custom time on startup for the RTC to use
         */
-        void set_custom_time();
+        bool set_custom_time();
     
         /**
          * Get a custom sleep interval specified in a file on the SD card
