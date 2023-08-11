@@ -11,6 +11,8 @@
 #include "Hardware/Loom_Hypnos/SDManager.h"
 #include "Loom_Manager.h"
 
+#define CUSTOM_TIME_TIMEOUT 10 // The timeout length in seconds
+
 // Used to pass along the user defined interrupt callback
 using InterruptCallbackFunction = void (*)();
 

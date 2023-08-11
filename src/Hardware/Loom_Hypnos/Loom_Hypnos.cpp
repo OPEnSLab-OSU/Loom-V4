@@ -256,8 +256,13 @@ void Loom_Hypnos::set_custom_time(){
 	// Entering the year
 	LOG(F("Enter the Year (Four digits, e.g. 2020)"));
   
+    int startTime = millis();
 	while(computer_year == ""){
 		computer_year = Serial.readStringUntil('\n');
+        if(millis() >= startTime + (CUSTOM_TIME_TIMEOUT * 1000)){
+            WARNING("Custom time setting took too long and has timed out, the current time has not been updated");
+            return;
+        }
 	}
 
     snprintf(output, OUTPUT_SIZE, "Year Entered: %s", computer_year.c_str());
@@ -266,8 +271,13 @@ void Loom_Hypnos::set_custom_time(){
 	// Entering the month
 	LOG(F("Enter the Month (1 ~ 12)"));
 
+    startTime = millis();
 	while(computer_month == ""){
 		computer_month = Serial.readStringUntil('\n');
+        if(millis() >= startTime + (CUSTOM_TIME_TIMEOUT * 1000)){
+            WARNING("Custom time setting took too long and has timed out, the current time has not been updated");
+            return;
+        }
 	}
     snprintf(output, OUTPUT_SIZE, "Month Entered: %s", computer_month.c_str());
 	LOG(output);
@@ -275,8 +285,13 @@ void Loom_Hypnos::set_custom_time(){
 	// Entering the day
 	LOG(F("Enter the Day (1 ~ 31)"));
 
+    startTime = millis();
 	while(computer_day  == ""){
 		computer_day = Serial.readStringUntil('\n');
+        if(millis() >= startTime + (CUSTOM_TIME_TIMEOUT * 1000)){
+            WARNING("Custom time setting took too long and has timed out, the current time has not been updated");
+            return;
+        }
 	}
     snprintf(output, OUTPUT_SIZE, "Day Entered: %s", computer_day.c_str());
 	LOG(output);
@@ -285,8 +300,13 @@ void Loom_Hypnos::set_custom_time(){
 	// Entering the hour
 	LOG(F("Enter the Hour (0 ~ 23)"));
 
+    startTime = millis();
 	while(computer_hour == ""){
 		computer_hour = Serial.readStringUntil('\n');
+        if(millis() >= startTime + (CUSTOM_TIME_TIMEOUT * 1000)){
+            WARNING("Custom time setting took too long and has timed out, the current time has not been updated");
+            return;
+        }
 	}
 
     snprintf(output, OUTPUT_SIZE, "Hour Entered: %s", computer_hour.c_str());
@@ -295,16 +315,26 @@ void Loom_Hypnos::set_custom_time(){
 	// Entering the minute
 	LOG(F("Enter the Minute (0 ~ 59)"));
 
+    startTime = millis();
 	while(computer_min == ""){
 		computer_min = Serial.readStringUntil('\n');
+        if(millis() >= startTime + (CUSTOM_TIME_TIMEOUT * 1000)){
+            WARNING("Custom time setting took too long and has timed out, the current time has not been updated");
+            return;
+        }
 	}
     snprintf(output, OUTPUT_SIZE, "Minute Entered: %s", computer_min.c_str());
 	LOG(output);
 
 	// Entering the second
 	LOG(F("Enter the Second (0 ~ 59)"));
+    startTime = millis();
 	while(computer_sec == ""){
 		computer_sec = Serial.readStringUntil('\n');
+        if(millis() >= startTime + (CUSTOM_TIME_TIMEOUT * 1000)){
+            WARNING("Custom time setting took too long and has timed out, the current time has not been updated");
+            return;
+        }
 	}
 
     // Set the RTC to the custom time
@@ -313,7 +343,8 @@ void Loom_Hypnos::set_custom_time(){
 
     // Output
     snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
-	LOG(output);
+    LOG(output);
+    
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
