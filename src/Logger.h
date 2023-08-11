@@ -119,11 +119,11 @@ class Logger{
 
         /**
          * Set the instance of the Hypnos, this should be used if you want the current timestamp added to the front of the logger output
-         * @param hypnos Reference to the hypnos object this also sets the sdInst
+         * @param hypnos Pointer to the hypnos object this also sets the sdInst
         */
-        void setHypnos(Loom_Hypnos& hypnos) { 
-            hypnosInst = &hypnos; 
-            sdInst = hypnos.getSDManager();
+        void setHypnos(Loom_Hypnos* hypnos) { 
+            hypnosInst = hypnos; 
+            sdInst = hypnos->getSDManager();
         };
 
         /**
