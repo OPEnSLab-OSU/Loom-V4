@@ -238,7 +238,7 @@ DateTime Loom_Hypnos::getCurrentTime(){
 void Loom_Hypnos::dateTime_toString(DateTime time, char array[21]){
     
     // Formatted as: YYYY-MM-DDTHH:MM:SSZ
-    snprintf_P(array, 21, PSTR("%u-%02u-%02uT%u:%u:%uZ"), time.year(), time.month(), time.day(), time.hour(), time.minute(), time.second());
+    snprintf_P(array, 21, PSTR("%u-%02u-%02uT%02u:%02u:%02uZ"), time.year(), time.month(), time.day(), time.hour(), time.minute(), time.second());
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

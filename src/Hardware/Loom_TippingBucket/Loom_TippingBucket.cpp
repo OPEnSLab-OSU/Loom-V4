@@ -30,7 +30,7 @@ void Loom_TippingBucket::measure() {
 
     unsigned long lastTipCount = tipCount;
     if(module_address != -1){
-        Wire.requestFrom(COUNTER_ADDRESS, 3);
+        Wire.requestFrom(COUNTER_ADDRESS, 3, false);
         unsigned int byte1 = Wire.read();
         unsigned int byte2 = Wire.read();
         unsigned int byte3 = Wire.read();
