@@ -44,7 +44,7 @@ void Loom_LoRa::initialize(){
 
     // Set the radio frequency
     if(driver.setFrequency(RF95_FREQ)){
-        snprintf(output, OUTPUT_SIZE, "Radio frequency successfully set to: %i", RF95_FREQ);
+        snprintf(output, OUTPUT_SIZE, "Radio frequency successfully set to: %f", RF95_FREQ);
         LOG(output);
     }
     else{
