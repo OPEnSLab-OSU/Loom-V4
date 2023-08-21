@@ -16,8 +16,7 @@ volatile bool isrTriggered = false;
 
 Manager manager("Device", 1);
 
-// Reads the battery voltage
-// Manger Instance, Address, Range, Interrupt Pin, Interrupt Trigger Sensitivity 
+// Manger Instance, Address, Multiplexer in use, Range, Interrupt Pin, Interrupt Trigger Sensitivity 
 Loom_MMA8451 mma(manager, 0x1D, false, MMA8451_RANGE_2_G, INTERRUPT_PIN, 0x10);
 
 void ISR(){
