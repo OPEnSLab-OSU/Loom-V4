@@ -16,11 +16,6 @@ Loom_TippingBucket::Loom_TippingBucket(Manager& man, int pin, float inchesPerTip
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TippingBucket::initialize() {
     Wire.begin();
-
-    /* If we are using the hypnos we want to set the start datetime now */
-    if(hypnosInst != nullptr){
-        
-    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -34,8 +29,11 @@ void Loom_TippingBucket::measure() {
         unsigned int byte1 = Wire.read();
         unsigned int byte2 = Wire.read();
         unsigned int byte3 = Wire.read();
-
-        tipCount = byte3 + (byte2 << 8) + (byte1 << 16);
+        Wire.endTransmission();
+        
+        // Possible bit hack for counting by 2?
+        tipCount = 0;
+        tipCount |= (byte1 << 16) + (byte2 << 8) + byte3;
     }
     else{
         /* Do some interrupt stuff */
@@ -69,7 +67,6 @@ void Loom_TippingBucket::measure() {
         for(int i = 0; i < tips.size(); i++){
             hourlyTips += tips[i] - oldest;
         }
-        
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
