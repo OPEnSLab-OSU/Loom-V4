@@ -212,7 +212,6 @@ void Loom_SDI12::requestSensorInfo(char response[RESPONSE_SIZE], char addr){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::getData(char addr){
-    char		buf[20];
 	char*		p;
     char        response[RESPONSE_SIZE];
 
