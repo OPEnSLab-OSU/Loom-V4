@@ -1,5 +1,5 @@
 /**
- * This is an example use case for LoRa communication
+ * This is an example use case for long range LoRa transmit
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
@@ -10,7 +10,7 @@
 Manager manager("Device", 1);
 
 // Do we want to use the instance number as the LoRa address
-Loom_LoRa lora(manager);
+Loom_LoRa lora(manager, LORA_RANGE::LONG);
 
 void setup() {
   manager.beginSerial();
@@ -24,6 +24,6 @@ void loop() {
   // Send the current JSON document to address 0
   lora.send(0);
 
-  // Wait 5 seconds between transmits
-  manager.pause(5000);
+  // Wait 20 seconds between transmits
+  manager.pause(20000);
 }

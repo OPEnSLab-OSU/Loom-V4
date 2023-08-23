@@ -15,6 +15,11 @@
 
 #define RECV_DATA_SIZE 256
 
+enum LORA_RANGE{
+    SHORT,
+    LONG
+};
+
 /**
  * Used to communicate with LoRa type radios
  * 
@@ -39,6 +44,7 @@ class Loom_LoRa : public Radio{
          */ 
         Loom_LoRa(
             Manager& man,
+            const LORA_RANGE range = LORA_RANGE::SHORT,
             const int address = -1,
             const uint8_t powerLevel = 23,
             const uint8_t retryCount = 3,
@@ -92,6 +98,7 @@ class Loom_LoRa : public Radio{
 
         RH_RF95 driver;                                     // Underlying radio driver
         RHReliableDatagram* manager;                        // Manager for driver
+        LORA_RANGE range;
         
         bool transmit(JsonObject json, int destination);     // Internal method for sending JSON data over radio
         bool recv(int waitTime);                             // Internal method for reading data in from radio

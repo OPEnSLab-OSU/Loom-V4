@@ -1,5 +1,5 @@
 /**
- * This is an example use case for LoRa communication
+ * This is an example use case for short range LoRa receive
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */

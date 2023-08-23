@@ -3,6 +3,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_LoRa::Loom_LoRa(
         Manager& man,
+        const LORA_RANGE range,
         const int address, 
         const uint8_t powerLevel, 
         const uint8_t retryCount, 
@@ -18,6 +19,7 @@ Loom_LoRa::Loom_LoRa(
         this->retryCount = retryCount;
         this->retryTimeout = retryTimeout;
         this->maxMessageLength = RH_RF95_MAX_MESSAGE_LEN;
+        this->range = range;
         manInst->registerModule(this);
     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -78,12 +80,20 @@ void Loom_LoRa::initialize(){
 
     // Set bandwidth
     driver.setSignalBandwidth(125000);
+    
+    if(range == LORA_RANGE::SHORT){
+        // Higher spreading factors give us more range
+        driver.setSpreadingFactor(7); 
 
-    // Higher spreading factors give us more range
-    driver.setSpreadingFactor(7); 
+        // Coding rate should be 4/5
+        driver.setCodingRate4(5);	
+    }else{
+        // Set the driver to use long range configuration with a spreading factor of 12 and a coding rate of 4/8
+        driver.setModemConfig(RH_RF95::ModemConfigChoice::Bw125Cr48Sf4096);
+        driver.setSpreadingFactor(12);
+        driver.setCodingRate4(8);
+    }
 
-    // Coding rate should be 4/5
-	driver.setCodingRate4(5);	
 	driver.sleep();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -126,6 +136,11 @@ bool Loom_LoRa::send(const uint8_t destinationAddress){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::receive(uint maxWaitTime){
     if(moduleInitialized){
+        
+        /* If we are using long range mode with a wait of less than 13 seconds this likely wont work so we should tell the user*/
+        if(range == LORA_RANGE::LONG && maxWaitTime < 13000){
+            WARNING("Using long range mode with a timeout time less than 13 seconds can lead to weird behavior where the packet may not be completely received.");
+        }
 
         // Wait for packet to arrive
         if(recv(maxWaitTime)){
