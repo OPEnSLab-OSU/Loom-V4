@@ -22,9 +22,7 @@ Loom_AS7265X::Loom_AS7265X(
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7265X::initialize() {
-
-    // If we have less than 2 bytes of json from the sensor
-    if(!asInst.begin()){
+    if(asInst.begin() == false){
         ERROR(F("Failed to initialize AS7265X! Check connections and try again..."));
         moduleInitialized = false;
         return;

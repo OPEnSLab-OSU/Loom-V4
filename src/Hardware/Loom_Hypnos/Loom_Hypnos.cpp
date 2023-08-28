@@ -98,7 +98,7 @@ void Loom_Hypnos::disable(){
 /* Interrupt Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin, InterruptType interruptType, int triggerState){
+bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin, HypnosInterruptType interruptType, int triggerState){
     FUNCTION_START;
     pinMode(interruptPin, INPUT_PULLUP);  //  Set interrupt pin input mode
     LOG(F("Registering interrupt..."));
