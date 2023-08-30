@@ -25,6 +25,9 @@ void setup() {
   // Start the serial interface and wait for the user to open the serial monitor
   manager.beginSerial();
 
+  // If using the hypnos we need to enable it before we continue 
+  hypnos.enable();
+
   // Set an instance of the hypnos inside the tipping bucket object so we can reference the current time
   bucket.setHypnosInstance(hypnos);
 
