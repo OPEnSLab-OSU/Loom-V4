@@ -2,7 +2,7 @@
 
 #include <queue>
 #include <MemoryFree.h>
-#include "Hardware/Loom_Hypnos/Loom_Hypnos.h"
+#include "Hardware/Loom_Hypnos/SDManager.h"
 
 #define FUNCTION_START Logger::getInstance()->startFunction(__FILE__, __func__, __LINE__, freeMemory())     // Marks the start of a function
 #define FUNCTION_END Logger::getInstance()->endFunction(freeMemory())                                       // Marks the end of a function
@@ -52,7 +52,6 @@ class Logger{
 
         static Logger* instance;
         SDManager* sdInst = nullptr;
-        Loom_Hypnos* hypnosInst = nullptr;
 
         /**
          * Generic Log Function prints to Serial and Logs to SD
@@ -84,7 +83,6 @@ class Logger{
             int i;
             // Find the last \\ in the file path to know where the name is
             char *lastOccurance = strrchr(fileName, '\\');
-            
             int lastSlash = lastOccurance-fileName+1;
 
             // Loop from the last slash to the end of the string
@@ -118,22 +116,18 @@ class Logger{
         void setSDManager(SDManager* manager) { sdInst = manager; };
 
         /**
-         * Set the instance of the Hypnos, this should be used if you want the current timestamp added to the front of the logger output
-         * @param hypnos Pointer to the hypnos object this also sets the sdInst
-        */
-        void setHypnos(Loom_Hypnos* hypnos) { 
-            hypnosInst = hypnos; 
-            sdInst = hypnos->getSDManager();
-        };
-
-        /**
          * Logs a Debug Message to the SD card and the serial monitor
          * @param message Message to log
          * @param silent If set to silent it will not appear in the serial monitor
          * @param lineNumber The current line number this log is on
         */
         void debugLog(const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
-            genericLog("DEBUG", message, silent, file, func, lineNumber);
+            char logMessage[OUTPUT_SIZE];
+            char fileName[260];
+            truncateFileName(file, fileName);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[DEBUG] [%s:%s:%u] %s"), fileName, func, lineNumber, message);
+            log(logMessage, silent);
+            
         };
 
         /**
@@ -143,7 +137,11 @@ class Logger{
          * @param lineNumber The current line number this log is on
         */
         void errorLog(const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
-            genericLog("ERROR", message, silent, file, func, lineNumber);
+            char logMessage[OUTPUT_SIZE];
+            char fileName[260];
+            truncateFileName(file, fileName);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[ERROR] [%s:%s:%u] %s"), fileName, func, lineNumber, message);
+            log(logMessage, silent);
         };
 
          /**
@@ -153,7 +151,11 @@ class Logger{
          * @param lineNumber The current line number this log is on
         */
         void warningLog(const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
-            genericLog("WARNING", message, silent, file, func, lineNumber);
+            char logMessage[OUTPUT_SIZE];
+            char fileName[260];
+            truncateFileName(file, fileName);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[WARNING] [%s:%s:%u] %s\0"), fileName, func, lineNumber, message);
+            log(logMessage, silent);
         };
 
         /**
@@ -163,9 +165,13 @@ class Logger{
          * @param lineNumber The current line number this log is on
         */
         void debugLog(const __FlashStringHelper* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
+            char logMessage[OUTPUT_SIZE];
             char buff[150];
             memcpy_P(buff, message, 150);
-            genericLog("DEBUG", buff, silent, file, func, lineNumber);
+		    char fileName[260];
+            truncateFileName(file, fileName);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[DEBUG] [%s:%s:%u] %s"), fileName, func, lineNumber, buff);
+            log(logMessage, silent);
         };
 
          /**
@@ -175,9 +181,13 @@ class Logger{
          * @param lineNumber The current line number this log is on
         */
         void warningLog(const __FlashStringHelper* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
+            char logMessage[OUTPUT_SIZE];
             char buff[150];
 		    memcpy_P(buff, message, 150);
-            genericLog("WARNING", buff, silent, file, func, lineNumber);
+            char fileName[260];
+            truncateFileName(file, fileName);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[WARNING] [%s:%s:%u] %s\0"), fileName, func, lineNumber, buff);
+            log(logMessage, silent);
         };
 
          /**
@@ -187,30 +197,14 @@ class Logger{
          * @param lineNumber The current line number this log is on
         */
         void errorLog(const __FlashStringHelper* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
+            char logMessage[OUTPUT_SIZE];
             char buff[150];
 		    memcpy_P(buff, message, 150);
-            genericLog("ERROR", buff, silent, file, func, lineNumber);
-        };
-
-        /**
-         * Generic logging function to cut down on redundant code in each log function
-         * @param level Strings representing different log levels eg. DEBUG, WARNING, ERROR
-         * @param message The actual message we want to log
-         * @param silent Whether or not we want to actually print the data to the Serial monitor or just log it to the SD card
-         * @param file Name of the file in which the log was called
-         * @param func Name of the function in which the log was called
-         * @param lineNumber The line number that the log was called on
-        */
-        void genericLog(const char* level, const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
-            char logMessage[OUTPUT_SIZE];
             char fileName[260];
             truncateFileName(file, fileName);
-            if(hypnosInst == nullptr)
-                snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s:%s:%u] %s"), level, fileName, func, lineNumber, message);
-            else
-                snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s] [%s:%s:%u] %s"), hypnosInst->getCurrentTime().text(), level, fileName, func, lineNumber, message);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[ERROR] [%s:%s:%u] %s"), fileName, func, lineNumber, buff);
             log(logMessage, silent);
-        }
+        };
 
         /*
             Log an entire char* instead of fixing it to an array you must construct your message before passing it into this function
@@ -296,4 +290,3 @@ class Logger{
         /* Save flash write by not logging everything to SD */
         void enableSD(){ enableSDLogging = true; };
 };
-
