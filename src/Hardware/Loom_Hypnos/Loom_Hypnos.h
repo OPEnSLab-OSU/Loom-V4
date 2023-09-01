@@ -12,9 +12,6 @@
 #include "Hardware/Loom_Hypnos/SDManager.h"
 #include "Loom_Manager.h"
 
-// Used to pass along the user defined interrupt callback
-using InterruptCallbackFunction = void (*)();
-
 /**
  * Tracks the hypnos version and matches the version with the correct chip select pin
  */ 

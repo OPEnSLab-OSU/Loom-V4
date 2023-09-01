@@ -14,6 +14,7 @@
 #include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h>
 #include <Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h>
 #include <Sensors/I2C/Loom_MS5803/Loom_MS5803.h>
+#include <Hardware/Loom_TippingBucket/Loom_TippingBucket.h>
 
 #include <Internet/Logging/Loom_MQTT/Loom_MQTT.h>
 #include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
@@ -43,6 +44,7 @@ Loom_SHT31 sht(manager);
 Loom_TSL2591 tsl(manager);
 Loom_MS5803 ms_water(manager, 119); // 119(0x77) if CSB=LOW external, 118(0x76) if CSB=HIGH on WC PCB
 Loom_MS5803 ms_air(manager, 118); // 118(0x76) if CSB=HIGH on WC PCB
+Loom_TippingBucket bucket(manager, COUNTER_TYPE::MANUAL, 0.01f);
 
 
 Loom_LTE lte(manager, "hologram", "", "");
@@ -82,6 +84,9 @@ void setup() {
   // Enable the hypnos rails
   hypnos.enable();
 
+  // Give the bucket an instance of the hypnos
+  bucket.setHypnosInstance(hypnos);
+
   // Read the MQTT creds file to supply the device with MQTT credentials
   mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
 
@@ -100,8 +105,6 @@ void loop() {
     // Measure and package the data
     manager.measure();
     manager.package();
-
-    manager.addData("Tip_Bucket", "Tip_Count", counter);
 
     // Add the water height calculation to the data
     manager.addData("Water", "Height_(m)", calculateWaterHeight());
@@ -128,7 +131,7 @@ void loop() {
   if(tipFlag){
     digitalWrite(LED_BUILTIN, HIGH);
     delay(20);
-    counter++;
+    bucket.tipCount++;
     tipFlag = false;
     attachInterrupt(INT_PIN, tipTrigger, FALLING);
     attachInterrupt(INT_PIN, tipTrigger, FALLING);

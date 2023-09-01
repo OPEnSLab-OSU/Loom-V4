@@ -1,21 +1,29 @@
 #include "Loom_TippingBucket.h"
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_TippingBucket::Loom_TippingBucket(Manager& man, float inchesPerTip) : Module("TippingBucket"), manInst(&man), inchesPerTip(inchesPerTip) {
-    module_address = COUNTER_ADDRESS;
-    manInst->registerModule(this);
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+int Loom_TippingBucket::volatileTipCount = 0;
+int Loom_TippingBucket::wasTip = false;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_TippingBucket::Loom_TippingBucket(Manager& man, int pin, float inchesPerTip) : Module("TippingBucket"), manInst(&man), interruptPin(pin), inchesPerTip(inchesPerTip) {
+Loom_TippingBucket::Loom_TippingBucket(Manager& man, COUNTER_TYPE type, float inchesPerTip = 0.01) : Module("TippingBucket"), manInst(&man), inchesPerTip(inchesPerTip) {
+    if(type == COUNTER_TYPE::I2C)
+        module_address = COUNTER_ADDRESS;
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TippingBucket::initialize() {
-    Wire.begin();
+    if(module_address != -1)
+        Wire.begin();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_TippingBucket::power_down() {
+    if(module_address == -1){
+        attachInterrupt(interruptPin, callbackFunc, FALLING);
+        attachInterrupt(interruptPin, callbackFunc, FALLING);
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -35,10 +43,8 @@ void Loom_TippingBucket::measure() {
         tipCount = 0;
         tipCount |= (byte1 << 16) + (byte2 << 8) + byte3;
     }
-    else{
-        /* Do some interrupt stuff */
-    }
-
+    
+    
     /* If we are using the hypnos we want to check the RTC to calculate how many tips occurred in the last hour*/
     if(hypnosInst != nullptr){
         if(times.size() <= 1){
@@ -63,10 +69,13 @@ void Loom_TippingBucket::measure() {
         // Set the hourly tips back to zero so we can re-calculate it with the new data
         hourlyTips = 0;
 
-        // Loop over all elements in the queue, accumulate the amount in the last hour and subtract the oldest tip value to get the change in the last hour
-        for(int i = 0; i < tips.size(); i++){
-            hourlyTips += tips[i] - oldest;
+        /* Loop over the last hour to accumlate the number of tips that occured within the last hour and we want to subtract the current value minus the last to get the difference and add that*/
+        hourlyTips += tips[0];
+        for(int i = 1; i < tips.size(); i++){
+            hourlyTips += tips[i] - tips[i-1];
         }
+
+        hourlyTips -= oldest;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

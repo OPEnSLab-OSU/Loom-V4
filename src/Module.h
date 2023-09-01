@@ -22,6 +22,9 @@
 
 #define OUTPUT_SIZE 200
 
+// Used to pass along the user defined interrupt callback
+using InterruptCallbackFunction = void (*)();
+
 /**
  *  General overarching interface to provide basic unified functionality
  * 
