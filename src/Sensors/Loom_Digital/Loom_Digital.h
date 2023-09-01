@@ -33,7 +33,7 @@ class Loom_Digital : public Module{
 
            // Set pin mode on digital pins
            for(int i = 0; i < digitalPins.size(); i++){
-                pinMode(digitalPins[i], INPUT_PULLUP);
+                pinMode(digitalPins[i], INPUT);
            }
 
            // Register the module with the manager
@@ -51,7 +51,7 @@ class Loom_Digital : public Module{
            manInst = &man;
 
            for(int i = 0; i < digitalPins.size(); i++){
-                pinMode(digitalPins[i], INPUT_PULLUP);
+                pinMode(digitalPins[i], INPUT);
            }
 
            // Register the module with the manager
