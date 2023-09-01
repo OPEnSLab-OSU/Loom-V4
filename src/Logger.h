@@ -205,10 +205,7 @@ class Logger{
             char logMessage[OUTPUT_SIZE];
             char fileName[260];
             truncateFileName(file, fileName);
-            if(hypnosInst == nullptr)
-                snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s:%s:%u] %s"), level, fileName, func, lineNumber, message);
-            else
-                snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s] [%s:%s:%u] %s"), hypnosInst->getCurrentTime().text(), level, fileName, func, lineNumber, message);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s:%s:%u] %s"), level, fileName, func, lineNumber, message);
             log(logMessage, silent);
         }
 
