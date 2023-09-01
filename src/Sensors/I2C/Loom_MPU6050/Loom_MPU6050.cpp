@@ -56,8 +56,8 @@ void Loom_MPU6050::package(){
     json["az"] = acc[2];
 
     // Rotation Rate
-    json["gx"] = rate[0];
-    json["gy"] = rate[1];
+    json["gx"] = rate[1];
+    json["gy"] = rate[0];
     json["gz"] = rate[2];
 
     // Angle

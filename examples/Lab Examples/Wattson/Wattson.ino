@@ -17,7 +17,7 @@
 Manager manager("Device", 1);
 //Loom_WIFI wifi(manager, CommunicationMode::AP); // For AP
 Loom_WIFI wifi(manager, CommunicationMode::CLIENT, SECRET_SSID, SECRET_PASS); // For Client
-Loom_Max maxMsp(manager, wifi new Loom_Neopixel());
+Loom_Max maxMsp(manager, wifi, new Loom_Neopixel());
 
 Loom_MPU6050 mpu(manager);
 // Read the battery voltage and A0 and A1
