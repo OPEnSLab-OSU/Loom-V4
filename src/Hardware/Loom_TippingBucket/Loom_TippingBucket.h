@@ -44,8 +44,8 @@ class Loom_TippingBucket : public Module{
         Loom_Hypnos* hypnosInst = nullptr;              // Instance of the hypnos for using RTC
         unsigned long hourlyTips = 0;                   // Number of tips recorded in the last hour
         const float inchesPerTip;                       // 
-        std::deque<uint32_t> times;                          // Track the UNIX times of each log to be able to determine when we want to shift our double ended queue
-        std::deque<unsigned long> tips;                      // Track the number of total tips per each sample
+        std::deque<uint32_t> times;                     // Track the UNIX times of each log to be able to determine when we want to shift our double ended queue
+        std::deque<unsigned long> tips;                 // Track the number of total tips per each sample
 
         float tipsToInches(unsigned long tips);         // Convert the number of tips of a bucket to inches of rainfall
 };

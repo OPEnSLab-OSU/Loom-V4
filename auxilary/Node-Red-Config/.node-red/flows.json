@@ -1,0 +1,257 @@
+[
+    {
+        "id": "6a28d8d6c0894321",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "04e7dfc10a310bcd",
+        "type": "mongodb",
+        "hostname": "127.0.0.1",
+        "topology": "direct",
+        "connectOptions": "",
+        "port": "27017",
+        "db": "",
+        "name": "INSERT ALPHA (Leave Database blank)"
+    },
+    {
+        "id": "45181c49191f36ec",
+        "type": "mongodb",
+        "hostname": "127.0.0.1",
+        "topology": "direct",
+        "connectOptions": "",
+        "port": "27017",
+        "db": "",
+        "name": "INSERT OLD SRV (LEAVE DATABASE BLANK)"
+    },
+    {
+        "id": "1d1c86688881dba8",
+        "type": "mqtt-broker",
+        "name": "MQTT_BROKER",
+        "broker": "",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "25de379ab8b6d0e9",
+        "type": "mongodb out",
+        "z": "6a28d8d6c0894321",
+        "mongodb": "04e7dfc10a310bcd",
+        "name": "",
+        "collection": "",
+        "payonly": true,
+        "upsert": false,
+        "multi": false,
+        "operation": "insert",
+        "x": 1000,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "326e86682c229751",
+        "type": "mqtt in",
+        "z": "6a28d8d6c0894321",
+        "name": "",
+        "topic": "PROJECT_NAME/+/+",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "1d1c86688881dba8",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 200,
+        "y": 140,
+        "wires": [
+            [
+                "34112591c7654142"
+            ]
+        ]
+    },
+    {
+        "id": "34112591c7654142",
+        "type": "json",
+        "z": "6a28d8d6c0894321",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 370,
+        "y": 140,
+        "wires": [
+            [
+                "04ba7e0fbd98b13a"
+            ]
+        ]
+    },
+    {
+        "id": "dc307b31c0d27eb4",
+        "type": "function",
+        "z": "6a28d8d6c0894321",
+        "name": "get_contents",
+        "func": "sensor_set = {};\ncontents = msg.payload[\"contents\"];\ncontents.forEach(element => {\n    sensor_set[element.module] = element.data;\n})\nsensor_set[\"Timestamp\"] = msg.payload[\"timestamp\"];\nreturn {payload: sensor_set, collection: msg.collection, database: msg.database};",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 710,
+        "y": 140,
+        "wires": [
+            [
+                "25de379ab8b6d0e9"
+            ]
+        ]
+    },
+    {
+        "id": "04ba7e0fbd98b13a",
+        "type": "function",
+        "z": "6a28d8d6c0894321",
+        "name": "parse_packet",
+        "func": "var newMsg = { \n    payload: msg.payload,\n    database: msg.topic.split(\"/\")[1],\n    collection: msg.topic.split(\"/\")[2] \n};\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 140,
+        "wires": [
+            [
+                "dc307b31c0d27eb4"
+            ]
+        ]
+    },
+    {
+        "id": "04eba37307dfbbf2",
+        "type": "mqtt in",
+        "z": "6a28d8d6c0894321",
+        "name": "",
+        "topic": "+/+",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "1d1c86688881dba8",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 150,
+        "y": 360,
+        "wires": [
+            [
+                "dc4c51b218b1f937"
+            ]
+        ]
+    },
+    {
+        "id": "dc4c51b218b1f937",
+        "type": "json",
+        "z": "6a28d8d6c0894321",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 310,
+        "y": 360,
+        "wires": [
+            [
+                "33a74e8fac554cf7"
+            ]
+        ]
+    },
+    {
+        "id": "2396aff7a47444e3",
+        "type": "function",
+        "z": "6a28d8d6c0894321",
+        "name": "get_contents",
+        "func": "sensor_set = {};\ncontents = msg.payload[\"contents\"];\ncontents.forEach(element => {\n    sensor_set[element.module] = element.data;\n})\nsensor_set[\"Timestamp\"] = msg.payload[\"timestamp\"];\nreturn {payload: sensor_set, collection: msg.collection, database: msg.database};",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 650,
+        "y": 360,
+        "wires": [
+            [
+                "eb476961a86696e1"
+            ]
+        ]
+    },
+    {
+        "id": "eb476961a86696e1",
+        "type": "mongodb out",
+        "z": "6a28d8d6c0894321",
+        "mongodb": "45181c49191f36ec",
+        "name": "",
+        "collection": "",
+        "payonly": true,
+        "upsert": false,
+        "multi": false,
+        "operation": "insert",
+        "x": 960,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "33a74e8fac554cf7",
+        "type": "function",
+        "z": "6a28d8d6c0894321",
+        "name": "parse_packet",
+        "func": "var newMsg = { \n    payload: msg.payload,\n    database: msg.topic.split(\"/\")[1],\n    collection: msg.topic.split(\"/\")[2] \n};\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 460,
+        "y": 360,
+        "wires": [
+            [
+                "2396aff7a47444e3"
+            ]
+        ]
+    },
+    {
+        "id": "d3d601e592b2ade7",
+        "type": "comment",
+        "z": "6a28d8d6c0894321",
+        "name": "This format is for projects with their own cluster",
+        "info": "",
+        "x": 280,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "3539d60e5269d059",
+        "type": "comment",
+        "z": "6a28d8d6c0894321",
+        "name": "This format is for general passthrouth to the OPENS_Broker",
+        "info": "",
+        "x": 320,
+        "y": 320,
+        "wires": []
+    }
+]

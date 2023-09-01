@@ -1,0 +1,454 @@
+[
+    {
+        "id": "6a28d8d6c0894321",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "ee813af972bb7d19",
+        "type": "mqtt-broker",
+        "name": "OPEnS Lab Broker",
+        "broker": "cas-mosquitto.biossys.oregonstate.edu",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "sessionExpiry": ""
+    },
+    {
+        "id": "bb57db2276d07287",
+        "type": "mongodb",
+        "hostname": "remotetest.cls7o.mongodb.net",
+        "topology": "dnscluster",
+        "connectOptions": "",
+        "port": "27017",
+        "db": "",
+        "name": "OPEnS Lab"
+    },
+    {
+        "id": "4336b221927a921b",
+        "type": "mqtt-broker",
+        "name": "OPENs Alpha Broker",
+        "broker": "opens-alpha.biossys.oregonstate.edu",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "sessionExpiry": ""
+    },
+    {
+        "id": "aff26bc7622c28cf",
+        "type": "mongodb",
+        "hostname": "pearce.1k2b79u.mongodb.net",
+        "topology": "dnscluster",
+        "connectOptions": "",
+        "port": "27017",
+        "db": "",
+        "name": "Pearce"
+    },
+    {
+        "id": "5c87740d4f043a20",
+        "type": "mongodb",
+        "hostname": "alpha.z5dp0sb.mongodb.net",
+        "topology": "dnscluster",
+        "connectOptions": "",
+        "port": "27017",
+        "db": "",
+        "name": "OPEnS Alpha"
+    },
+    {
+        "id": "65a9acd75fdb5108",
+        "type": "mongodb",
+        "hostname": "hia.ilmk4tl.mongodb.net",
+        "topology": "dnscluster",
+        "connectOptions": "",
+        "port": "27017",
+        "db": "",
+        "name": "Hoonah"
+    },
+    {
+        "id": "25de379ab8b6d0e9",
+        "type": "mongodb out",
+        "z": "6a28d8d6c0894321",
+        "mongodb": "5c87740d4f043a20",
+        "name": "",
+        "collection": "",
+        "payonly": true,
+        "upsert": false,
+        "multi": false,
+        "operation": "insert",
+        "x": 920,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "0dfc23089a37a74d",
+        "type": "mqtt in",
+        "z": "6a28d8d6c0894321",
+        "name": "",
+        "topic": "LilyPad/+/+",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "4336b221927a921b",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 160,
+        "y": 280,
+        "wires": [
+            [
+                "e61f745bc0494124"
+            ]
+        ]
+    },
+    {
+        "id": "e61f745bc0494124",
+        "type": "json",
+        "z": "6a28d8d6c0894321",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 310,
+        "y": 280,
+        "wires": [
+            [
+                "3dd5a65b3c18e298"
+            ]
+        ]
+    },
+    {
+        "id": "7d0f4b4d15c6c7ef",
+        "type": "function",
+        "z": "6a28d8d6c0894321",
+        "name": "get_contents",
+        "func": "sensor_set = {};\ncontents = msg.payload[\"contents\"];\ncontents.forEach(element => {\n    sensor_set[element.module] = element.data;\n})\nsensor_set[\"Timestamp\"] = msg.payload[\"timestamp\"];\nreturn {payload: sensor_set, collection: msg.collection, database: msg.database};",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 650,
+        "y": 280,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "326e86682c229751",
+        "type": "mqtt in",
+        "z": "6a28d8d6c0894321",
+        "name": "",
+        "topic": "WeatherChimes/+/+",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "4336b221927a921b",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 200,
+        "wires": [
+            [
+                "34112591c7654142"
+            ]
+        ]
+    },
+    {
+        "id": "34112591c7654142",
+        "type": "json",
+        "z": "6a28d8d6c0894321",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 370,
+        "y": 200,
+        "wires": [
+            [
+                "04ba7e0fbd98b13a"
+            ]
+        ]
+    },
+    {
+        "id": "dc307b31c0d27eb4",
+        "type": "function",
+        "z": "6a28d8d6c0894321",
+        "name": "get_contents",
+        "func": "sensor_set = {};\ncontents = msg.payload[\"contents\"];\ncontents.forEach(element => {\n    sensor_set[element.module] = element.data;\n})\nsensor_set[\"Timestamp\"] = msg.payload[\"timestamp\"];\nreturn {payload: sensor_set, collection: msg.collection, database: msg.database};",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 710,
+        "y": 200,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "87464f99f6b208ac",
+        "type": "mongodb out",
+        "z": "6a28d8d6c0894321",
+        "mongodb": "aff26bc7622c28cf",
+        "name": "",
+        "collection": "",
+        "payonly": true,
+        "upsert": false,
+        "multi": false,
+        "operation": "insert",
+        "x": 840,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "7b0c8896370b2a52",
+        "type": "mongodb out",
+        "z": "6a28d8d6c0894321",
+        "mongodb": "65a9acd75fdb5108",
+        "name": "",
+        "collection": "",
+        "payonly": true,
+        "upsert": false,
+        "multi": false,
+        "operation": "insert",
+        "x": 900,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "d271b02b9d881bd9",
+        "type": "mqtt in",
+        "z": "6a28d8d6c0894321",
+        "name": "",
+        "topic": "Hoonah/+/+",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "4336b221927a921b",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 170,
+        "y": 120,
+        "wires": [
+            [
+                "4a04f44e3fde0d8e"
+            ]
+        ]
+    },
+    {
+        "id": "4a04f44e3fde0d8e",
+        "type": "json",
+        "z": "6a28d8d6c0894321",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 370,
+        "y": 120,
+        "wires": [
+            [
+                "72a8a80e6c1beaaa"
+            ]
+        ]
+    },
+    {
+        "id": "72a8a80e6c1beaaa",
+        "type": "function",
+        "z": "6a28d8d6c0894321",
+        "name": "parse_packet",
+        "func": "var newMsg = { \n    payload: msg.payload,\n    database: msg.topic.split(\"/\")[1],\n    collection: msg.topic.split(\"/\")[2] \n};\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 120,
+        "wires": [
+            [
+                "1a1171b6c550ea50"
+            ]
+        ]
+    },
+    {
+        "id": "1a1171b6c550ea50",
+        "type": "function",
+        "z": "6a28d8d6c0894321",
+        "name": "get_contents",
+        "func": "sensor_set = {};\ncontents = msg.payload[\"contents\"];\ncontents.forEach(element => {\n    sensor_set[element.module] = element.data;\n})\nsensor_set[\"Timestamp\"] = msg.payload[\"timestamp\"];\nreturn {payload: sensor_set, collection: msg.collection, database: msg.database};",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 710,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "04ba7e0fbd98b13a",
+        "type": "function",
+        "z": "6a28d8d6c0894321",
+        "name": "parse_packet",
+        "func": "var newMsg = { \n    payload: msg.payload,\n    database: msg.topic.split(\"/\")[1],\n    collection: msg.topic.split(\"/\")[2] \n};\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 200,
+        "wires": [
+            [
+                "dc307b31c0d27eb4"
+            ]
+        ]
+    },
+    {
+        "id": "3dd5a65b3c18e298",
+        "type": "function",
+        "z": "6a28d8d6c0894321",
+        "name": "parse_packet",
+        "func": "var newMsg = { \n    payload: msg.payload,\n    database: msg.topic.split(\"/\")[1],\n    collection: msg.topic.split(\"/\")[2] \n};\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 460,
+        "y": 280,
+        "wires": [
+            [
+                "7d0f4b4d15c6c7ef"
+            ]
+        ]
+    },
+    {
+        "id": "04eba37307dfbbf2",
+        "type": "mqtt in",
+        "z": "6a28d8d6c0894321",
+        "name": "",
+        "topic": "+/+",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "4336b221927a921b",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 150,
+        "y": 360,
+        "wires": [
+            [
+                "dc4c51b218b1f937"
+            ]
+        ]
+    },
+    {
+        "id": "dc4c51b218b1f937",
+        "type": "json",
+        "z": "6a28d8d6c0894321",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 310,
+        "y": 360,
+        "wires": [
+            [
+                "33a74e8fac554cf7"
+            ]
+        ]
+    },
+    {
+        "id": "2396aff7a47444e3",
+        "type": "function",
+        "z": "6a28d8d6c0894321",
+        "name": "get_contents",
+        "func": "sensor_set = {};\ncontents = msg.payload[\"contents\"];\ncontents.forEach(element => {\n    sensor_set[element.module] = element.data;\n})\nsensor_set[\"Timestamp\"] = msg.payload[\"timestamp\"];\nreturn {payload: sensor_set, collection: msg.collection, database: msg.database};",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 650,
+        "y": 360,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "eb476961a86696e1",
+        "type": "mongodb out",
+        "z": "6a28d8d6c0894321",
+        "mongodb": "bb57db2276d07287",
+        "name": "",
+        "collection": "",
+        "payonly": true,
+        "upsert": false,
+        "multi": false,
+        "operation": "insert",
+        "x": 850,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "33a74e8fac554cf7",
+        "type": "function",
+        "z": "6a28d8d6c0894321",
+        "name": "parse_packet",
+        "func": "var newMsg = { \n    payload: msg.payload,\n    database: msg.topic.split(\"/\")[1],\n    collection: msg.topic.split(\"/\")[2] \n};\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 460,
+        "y": 360,
+        "wires": [
+            [
+                "2396aff7a47444e3"
+            ]
+        ]
+    }
+]
