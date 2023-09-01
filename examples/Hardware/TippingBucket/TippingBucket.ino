@@ -12,6 +12,8 @@
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 
 Manager manager("Device", 1);
+
+// We want this or we have to use 10k pullups on the I2C line
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 
 // (This one uses a I2C counter on the PCB) Manger Instance, Inches of rainfall per tip

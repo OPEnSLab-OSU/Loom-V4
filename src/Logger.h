@@ -202,7 +202,11 @@ class Logger{
 		    memcpy_P(buff, message, 150);
             char fileName[260];
             truncateFileName(file, fileName);
-            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[ERROR] [%s:%s:%u] %s"), fileName, func, lineNumber, buff);
+            Serial.println("In generic log");
+            if(hypnosInst == nullptr || !hypnosInst->isRTCInitialized())
+                snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s:%s:%u] %s"), level, fileName, func, lineNumber, message);
+            else
+                snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s] [%s:%s:%u] %s"), hypnosInst->getCurrentTime().text(), level, fileName, func, lineNumber, message);
             log(logMessage, silent);
         };
 

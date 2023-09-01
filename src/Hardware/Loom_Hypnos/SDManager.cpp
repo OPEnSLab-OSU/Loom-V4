@@ -200,7 +200,9 @@ bool SDManager::begin(){
     if(!sdInitialized){
         // Try to open the root of the file system so we can get the files on the device
         if(!root.open("/", O_RDONLY)){
+            printModuleName("ERROR");
             ERROR(F("Failed to open root file system on SD Card!"));
+            printModuleName("After ERROR");
             return false;
         }
         updateCurrentFileName();
@@ -210,6 +212,8 @@ bool SDManager::begin(){
     
     // Once the SD card has initialized the first round through we don't want to update the file name
     sdInitialized = true;
+
+    printModuleName("Hello");
 
     return true;
 }
