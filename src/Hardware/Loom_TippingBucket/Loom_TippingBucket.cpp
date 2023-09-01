@@ -1,10 +1,7 @@
 #include "Loom_TippingBucket.h"
 
-int Loom_TippingBucket::volatileTipCount = 0;
-int Loom_TippingBucket::wasTip = false;
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_TippingBucket::Loom_TippingBucket(Manager& man, COUNTER_TYPE type, float inchesPerTip = 0.01) : Module("TippingBucket"), manInst(&man), inchesPerTip(inchesPerTip) {
+Loom_TippingBucket::Loom_TippingBucket(Manager& man, COUNTER_TYPE type, float inchesPerTip) : Module("TippingBucket"), manInst(&man), inchesPerTip(inchesPerTip) {
     if(type == COUNTER_TYPE::I2C)
         module_address = COUNTER_ADDRESS;
     manInst->registerModule(this);
@@ -15,15 +12,6 @@ Loom_TippingBucket::Loom_TippingBucket(Manager& man, COUNTER_TYPE type, float in
 void Loom_TippingBucket::initialize() {
     if(module_address != -1)
         Wire.begin();
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_TippingBucket::power_down() {
-    if(module_address == -1){
-        attachInterrupt(interruptPin, callbackFunc, FALLING);
-        attachInterrupt(interruptPin, callbackFunc, FALLING);
-    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -62,20 +50,14 @@ void Loom_TippingBucket::measure() {
             times.push_front(hypnosInst->getCurrentTime().unixtime());          
             tips.push_front(tipCount);
         }
-
-        // Get the initial number of tips at the start of the hour
-        int oldest = tips.back();
         
         // Set the hourly tips back to zero so we can re-calculate it with the new data
         hourlyTips = 0;
 
         /* Loop over the last hour to accumlate the number of tips that occured within the last hour and we want to subtract the current value minus the last to get the difference and add that*/
-        hourlyTips += tips[0];
         for(int i = 1; i < tips.size(); i++){
             hourlyTips += tips[i] - tips[i-1];
         }
-
-        hourlyTips -= oldest;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

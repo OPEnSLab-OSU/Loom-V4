@@ -13,7 +13,7 @@ Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, b
     // Create the SD Manager if we want to use SD
     if(useSD){
         sdMan = new SDManager(manInst, sd_chip_select);
-        Logger::getInstance()->setSDManager(sdMan);
+        Logger::getInstance()->setHypnos(this);
     }
 
     // Create the map of timezone strings to actual timezones
@@ -73,9 +73,6 @@ void Loom_Hypnos::enable(bool enable33, bool enable5){
     // If the RTC hasn't already been initialized then do so now
     if(!RTC_initialized)
         initializeRTC();
-    
-
-    
 
     manInst->setEnableState(true);
 }
@@ -179,16 +176,14 @@ void Loom_Hypnos::wakeup(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::initializeRTC(){
     FUNCTION_START;
-    printModuleName("start of init");
     LOG("Initializing DS3231....");
 
     // If the RTC failed to start inform the user and hang''
-    printModuleName("RTC begin");
     if(!RTC_DS.begin()){
         ERROR(F("Couldn't start RTC! Check your connections... Execution will now hang as this is likely a fatal error"));
         return;
     }
-    printModuleName("lost power");
+    
     // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't happen with coin cell batt backup
 	if (RTC_DS.lostPower()) {
 		WARNING(F("RTC lost power, lets set the time!"));

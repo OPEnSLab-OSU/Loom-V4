@@ -205,7 +205,6 @@ class Logger{
             char logMessage[OUTPUT_SIZE];
             char fileName[260];
             truncateFileName(file, fileName);
-            Serial.println("In generic log");
             if(hypnosInst == nullptr || !hypnosInst->isRTCInitialized())
                 snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s:%s:%u] %s"), level, fileName, func, lineNumber, message);
             else

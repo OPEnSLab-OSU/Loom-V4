@@ -213,8 +213,6 @@ bool SDManager::begin(){
     // Once the SD card has initialized the first round through we don't want to update the file name
     sdInitialized = true;
 
-    printModuleName("Hello");
-
     return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
