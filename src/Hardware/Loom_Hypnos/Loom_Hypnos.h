@@ -196,6 +196,9 @@ class Loom_Hypnos : public Module{
          */ 
         void setLogName(const char* name) { sdMan->setLogName(name); };
 
+        /* Return the current state of the RTC*/
+        bool isRTCInitialized() { return RTC_initialized; };
+
     private:
 
         Manager* manInst = nullptr;                                                         // Instance of the manager
