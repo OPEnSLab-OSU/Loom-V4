@@ -26,7 +26,9 @@ bool SDManager::writeLineToFile(const char* filename, const char* content){
         return false;
     }
 
+    /* Wait for a bit so the user has time to read it */
     printModuleName("SD Card was improperly initialized and as such this functionality was disabled!");
+    delay(5000);
     return false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -154,7 +156,7 @@ bool SDManager::log(DateTime currentTime){
 
             // Inform the user that we have successfully written to the file
             snprintf_P(output, 2000, PSTR("Successfully logged data to %s"), fileName);
-            printModuleName(output);
+            LOG(output);
             
         }
         else{
@@ -200,7 +202,9 @@ bool SDManager::begin(){
     if(!sdInitialized){
         // Try to open the root of the file system so we can get the files on the device
         if(!root.open("/", O_RDONLY)){
+            printModuleName("ERROR");
             ERROR(F("Failed to open root file system on SD Card!"));
+            printModuleName("After ERROR");
             return false;
         }
         updateCurrentFileName();

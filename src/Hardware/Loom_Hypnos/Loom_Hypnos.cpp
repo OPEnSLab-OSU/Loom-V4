@@ -13,7 +13,7 @@ Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, b
     // Create the SD Manager if we want to use SD
     if(useSD){
         sdMan = new SDManager(manInst, sd_chip_select);
-        Logger::getInstance()->setSDManager(sdMan);
+        Logger::getInstance()->setHypnos(this);
     }
 
     // Create the map of timezone strings to actual timezones
@@ -184,7 +184,7 @@ void Loom_Hypnos::initializeRTC(){
     
     // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't happen with coin cell batt backup
 	if (RTC_DS.lostPower()) {
-		WARNING(F("RTC lost power, lets set the time!"));
+		WARNING(F("RTC lost power, let's set the time!"));
 
         // If we want to set a custom time
         if(Serial && custom_time){
@@ -367,8 +367,15 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::sleep(bool waitForSerial){
     // Try to power down the active modules
-    if(shouldPowerUp)
+    if(shouldPowerUp){
         manInst->power_down();
+        // 50ms delay allows this last message to be sent before the bus disconnects
+        LOG("Entering Standby Sleep...");
+        delay(50);
+    }
+
+
+    
     
     disable();
     pre_sleep();                    // Pre-sleep cleanup
@@ -380,10 +387,6 @@ void Loom_Hypnos::sleep(bool waitForSerial){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::pre_sleep(){
-    // 50ms delay allows this last message to be sent before the bus disconnects
-    printModuleName("Entering Standby Sleep...");
-    delay(50);
-
     // Close the serial connection and detach
     Serial.end();
     USBDevice.detach();
