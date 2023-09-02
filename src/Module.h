@@ -20,7 +20,7 @@
     #define TIMER_RESET
 #endif
 
-#define OUTPUT_SIZE 200
+#define OUTPUT_SIZE 255
 
 // Used to pass along the user defined interrupt callback
 using InterruptCallbackFunction = void (*)();

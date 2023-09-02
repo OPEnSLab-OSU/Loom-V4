@@ -160,7 +160,7 @@ void Loom_Hypnos::initializeRTC(){
     
     // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't happen with coin cell batt backup
 	if (RTC_DS.lostPower()) {
-		WARNING(F("RTC lost power, lets set the time!"));
+		WARNING(F("RTC lost power, let's set the time!"));
 
         // If we want to set a custom time
         if(Serial && custom_time){
