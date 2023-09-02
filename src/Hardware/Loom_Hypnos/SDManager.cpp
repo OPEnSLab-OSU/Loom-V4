@@ -154,7 +154,7 @@ bool SDManager::log(DateTime currentTime){
 
             // Inform the user that we have successfully written to the file
             snprintf_P(output, 2000, PSTR("Successfully logged data to %s"), fileName);
-            printModuleName(output);
+            LOG(output);
             
         }
         else{
@@ -270,7 +270,7 @@ bool SDManager::updateCurrentFileName(){
 
     char output[OUTPUT_SIZE];
     snprintf_P(output, OUTPUT_SIZE, PSTR("Data will be logged to %s"), fileName);
-    printModuleName(output);
+    LOG(output);
 
     return true;
 

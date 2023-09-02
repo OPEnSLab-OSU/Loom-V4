@@ -204,13 +204,31 @@ class Logger{
         void genericLog(const char* level, const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
             char logMessage[OUTPUT_SIZE];
             char fileName[260];
-            truncateFileName(file, fileName);
+            truncateFileName(file, fileName);      
             
             /* If the hypnos is not included or the hypnos is included but the RTC hasn't been initialized yet we want to print without the time */
             if(hypnosInst == nullptr || (hypnosInst != nullptr && !hypnosInst->isRTCInitialized()))
-                snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s:%s:%u] %s"), level, fileName, func, lineNumber, message);
+                snprintf_P( logMessage, 
+                            OUTPUT_SIZE, 
+                            PSTR("[%s] [%s:%s:%u] %s"), 
+                            level, 
+                            fileName, 
+                            func, 
+                            lineNumber, 
+                            message
+                        );
             else
-                snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s] [%s:%s:%u] %s"), hypnosInst->getCurrentTime().text(), level, fileName, func, lineNumber, message);
+                snprintf_P( logMessage, 
+                            OUTPUT_SIZE, 
+                            PSTR("[%s] [%s] [%s:%s:%u] %s"), 
+                            hypnosInst->getCurrentTime().text(), 
+                            level, 
+                            fileName, 
+                            func, 
+                            lineNumber, 
+                            message
+                        );
+            /* Log the message*/          
             log(logMessage, silent);
         }
 

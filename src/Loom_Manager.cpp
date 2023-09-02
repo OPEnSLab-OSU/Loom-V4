@@ -62,12 +62,19 @@ void Manager::beginSerial(bool waitForSerial){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::measure() {
     FUNCTION_START;
+    
+    char noInitLog[50];
     if(hasInitialized){
+       LOG(F("** Measuring **"));
        for(int i = 0; i < modules.size(); i++){
             if(modules[i].second->moduleInitialized)
                 modules[i].second->measure();
             else{
-                modules[i].second->printModuleName("Not initialized!");
+
+                /* Converted warning from printModuleName to logger*/
+                memset(noInitLog, '\0', 50);
+                snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
+                WARNING(noInitLog);
             }
             TIMER_RESET;
         }
@@ -75,6 +82,7 @@ void Manager::measure() {
     else{
             ERROR(F("Unable to collect data as the manager and thus all sensors connected to it have not been initialized! Call manager.initialize() to fix this."));
     }
+    LOG(F("** Measuring Complete **"));
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -82,6 +90,10 @@ void Manager::measure() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::package(){
     FUNCTION_START;
+    char noInitLog[50];
+
+    LOG(F("** Packaging **"));
+    
     // Clear the document so that we don't get null characters after too many updates
     doc.clear();
     doc[F("type")] = F("data");
@@ -101,11 +113,16 @@ void Manager::package(){
         if(modules[i].second->moduleInitialized){
             modules[i].second->package();
         } else{
-            modules[i].second->printModuleName("Not initialized!");
+            /* Converted warning from printModuleName to logger*/
+            memset(noInitLog, '\0', 50);
+            snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
+            WARNING(noInitLog);
         }
         TIMER_RESET;
     }
     packetNumber++;
+    
+    LOG(F("** Packaging Complete **"));
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -131,11 +148,15 @@ JsonObject Manager::get_data_object(const char* moduleName){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::power_up(){
     FUNCTION_START;
+    char noInitLog[50];
     for(int i = 0; i < modules.size(); i++){
         if(modules[i].second->moduleInitialized)
             modules[i].second->power_up();
         else{
-            modules[i].second->printModuleName("Not initialized!");
+            /* Converted warning from printModuleName to logger*/
+            memset(noInitLog, '\0', 50);
+            snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
+            WARNING(noInitLog);
         }
         TIMER_RESET;
     }
@@ -146,11 +167,15 @@ void Manager::power_up(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::power_down(){
     FUNCTION_START;
+    char noInitLog[50];
     for(int i = 0; i < modules.size(); i++){
         if(modules[i].second->moduleInitialized)
             modules[i].second->power_down();
         else{
-            modules[i].second->printModuleName("Not initialized!");
+            /* Converted warning from printModuleName to logger*/
+            memset(noInitLog, '\0', 50);
+            snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
+            WARNING(noInitLog);
         }
         TIMER_RESET;
     }

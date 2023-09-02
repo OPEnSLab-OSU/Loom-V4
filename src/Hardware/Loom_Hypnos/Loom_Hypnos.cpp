@@ -383,6 +383,10 @@ void Loom_Hypnos::sleep(bool waitForSerial){
     if(shouldPowerUp)
         manInst->power_down();
     
+    LOG("Entering Standby Sleep...");
+    // 50ms delay allows this last message to be sent before the bus disconnects
+    delay(50);
+
     disable();
     pre_sleep();                    // Pre-sleep cleanup
     shouldPowerUp = true;
@@ -393,9 +397,6 @@ void Loom_Hypnos::sleep(bool waitForSerial){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::pre_sleep(){
-    // 50ms delay allows this last message to be sent before the bus disconnects
-    printModuleName("Entering Standby Sleep...");
-    delay(50);
 
     // Close the serial connection and detach
     Serial.end();
