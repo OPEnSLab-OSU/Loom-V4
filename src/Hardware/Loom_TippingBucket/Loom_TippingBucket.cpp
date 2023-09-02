@@ -68,6 +68,7 @@ void Loom_TippingBucket::measure() {
 void Loom_TippingBucket::package() {
     JsonObject json = manInst->get_data_object(getModuleName());
     json["Tips"] = tipCount;
+    json["Total_Rainfall(in)"] = tipsToInches(tipCount);
 
     if(hypnosInst != nullptr)
         json["Hourly_Tips"] = hourlyTips;
