@@ -120,9 +120,10 @@ There are some weird idiosyncrasies with the Feather M0
  - Please <b>DO NOT</b> use the Arduino String library, if at all possible it fragments the crap out of the memory and makes devices crash. I spent ~40 hours or so porting the entire library to C-strings - Will
 
 ## OPEnS Supported Projects
- - WeatherChimes (Fully Tested)
- - FloDar (Appears Stable)
- - Smart Rock (Appears Stable)
- - Evaporometer (Fully Tested)
- - Dendrometer_Hub (Untested)
- - Lily Pad (Untested)
+ - WeatherChimes (Stable :white_check_mark:)
+ - Lily Pad (Stable :white_check_mark:)
+ - FloDar (Stable :white_check_mark:)
+ - Smart Rock (Stable :white_check_mark:)
+ - Evaporometer (Stable :white_check_mark:)
+ - Dendrometer (Stable :white_check_mark:)
+
