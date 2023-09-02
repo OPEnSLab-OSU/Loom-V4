@@ -25,7 +25,6 @@
 
 volatile bool sampleFlag = true; // Sample flag set to 1 so we sample in the first cycle, set to 1 in the ISR, set ot 0 end of sample loop
 volatile bool tipFlag = false;
-volatile int counter = 0;
 
 // Used to track timing for debounce
 unsigned long tip_time = 0;
@@ -131,7 +130,7 @@ void loop() {
   if(tipFlag){
     digitalWrite(LED_BUILTIN, HIGH);
     delay(20);
-    bucket.tipCount++;
+    bucket.incrementCount();
     tipFlag = false;
     attachInterrupt(INT_PIN, tipTrigger, FALLING);
     attachInterrupt(INT_PIN, tipTrigger, FALLING);

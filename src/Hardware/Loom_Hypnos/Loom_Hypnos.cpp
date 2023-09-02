@@ -66,8 +66,6 @@ void Loom_Hypnos::enable(bool enable33, bool enable5){
         pinMode(sd_chip_select, OUTPUT);
 
         sdMan->begin();
-
-        
     }
 
     // If the RTC hasn't already been initialized then do so now
@@ -100,7 +98,7 @@ void Loom_Hypnos::disable(){
 /* Interrupt Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin, HypnosInterruptType interruptType, int triggerState){
+bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin, int triggerState){
     FUNCTION_START;
     pinMode(interruptPin, INPUT_PULLUP);  //  Set interrupt pin input mode
     LOG(F("Registering interrupt..."));
@@ -111,19 +109,10 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
 
     // Make sure a callback function was supplied
     if(isrFunc != nullptr){
-         // If the interrupt we registered is for sleep we should set the interrupt to wake the device from sleep
-        if(interruptType == SLEEP){
-            LowPower.attachInterruptWakeup(interruptPin, isrFunc, triggerState);
-            LOG(F("Interrupt successfully attached!"));
-        }
-        else{
-            
-            attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
-            attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
-            LOG(F("Interrupt successfully attached!"));
-        }
-        // Add the interrupt to the list of pin to interrupts
-        pinToInterrupt.insert(std::make_pair(interruptPin, std::make_tuple(isrFunc, triggerState, interruptType)));
+         
+        LowPower.attachInterruptWakeup(interruptPin, isrFunc, triggerState);
+        callbackFunc = isrFunc;
+        LOG(F("Interrupt successfully attached!"));
         FUNCTION_END;
         return true;
     } 
@@ -144,22 +133,7 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
     FUNCTION_START;
-    if(std::get<2>(pinToInterrupt[interruptPin]) != SLEEP){
-
-        // If we haven't previously registered the interrupt we need to do this before we can reattach to an interrupt that doesn't exist
-        if(pinToInterrupt.count(interruptPin) <= 0){
-            ERROR(F("Failed to reattach interrupt! Interrupt has not previously been registered..."));
-            FUNCTION_END;
-            return false;
-        }
-
-        attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
-        attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
-        
-    }
-    else{
-        LowPower.attachInterruptWakeup(interruptPin, std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
-    }
+    LowPower.attachInterruptWakeup(interruptPin, callbackFunc, LOW);
     LOG(F("Interrupt successfully reattached!"));
     FUNCTION_END;
     return true;
@@ -169,7 +143,7 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::wakeup(){
-    detachInterrupt(pinToInterrupt.begin()->first);     // Detach the interrupt so it doesn't trigger again    
+    detachInterrupt(12);     // Detach the interrupt so it doesn't trigger again    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -178,7 +152,7 @@ void Loom_Hypnos::initializeRTC(){
     FUNCTION_START;
     LOG("Initializing DS3231....");
 
-    // If the RTC failed to start inform the user and hang''
+    // If the RTC failed to start inform the user and hang
     if(!RTC_DS.begin()){
         ERROR(F("Couldn't start RTC! Check your connections... Execution will now hang as this is likely a fatal error"));
         return;
@@ -190,7 +164,12 @@ void Loom_Hypnos::initializeRTC(){
 
         // If we want to set a custom time
         if(Serial && custom_time){
-            set_custom_time();
+
+            // If we timed out and didn't update our time set the compile time
+            if(!set_custom_time()){
+                // Set the RTC to the date & time this sketch was compiled
+                RTC_DS.adjust(DateTime(F(__DATE__), F(__TIME__)));
+            }
         }
         else{
             // Set the RTC to the date & time this sketch was compiled
@@ -259,12 +238,12 @@ DateTime Loom_Hypnos::getCurrentTime(){
 void Loom_Hypnos::dateTime_toString(DateTime time, char array[21]){
     
     // Formatted as: YYYY-MM-DDTHH:MM:SSZ
-    snprintf_P(array, 21, PSTR("%u-%02u-%02uT%u:%u:%uZ"), time.year(), time.month(), time.day(), time.hour(), time.minute(), time.second());
+    snprintf_P(array, 21, PSTR("%u-%02u-%02uT%02u:%02u:%02uZ"), time.year(), time.month(), time.day(), time.hour(), time.minute(), time.second());
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::set_custom_time(){
+bool Loom_Hypnos::set_custom_time(){
     FUNCTION_START;
 
    	// initialized variable for user input
@@ -282,8 +261,13 @@ void Loom_Hypnos::set_custom_time(){
 	// Entering the year
 	LOG(F("Enter the Year (Four digits, e.g. 2020)"));
   
+    int startTime = millis();
 	while(computer_year == ""){
 		computer_year = Serial.readStringUntil('\n');
+        if(millis() >= startTime + (CUSTOM_TIME_TIMEOUT * 1000)){
+            WARNING("Custom time setting took too long and has timed out, the current time has not been updated");
+            return false;
+        }
 	}
 
     snprintf(output, OUTPUT_SIZE, "Year Entered: %s", computer_year.c_str());
@@ -292,8 +276,13 @@ void Loom_Hypnos::set_custom_time(){
 	// Entering the month
 	LOG(F("Enter the Month (1 ~ 12)"));
 
+    startTime = millis();
 	while(computer_month == ""){
 		computer_month = Serial.readStringUntil('\n');
+        if(millis() >= startTime + (CUSTOM_TIME_TIMEOUT * 1000)){
+            WARNING("Custom time setting took too long and has timed out, the current time has not been updated");
+            return false;
+        }
 	}
     snprintf(output, OUTPUT_SIZE, "Month Entered: %s", computer_month.c_str());
 	LOG(output);
@@ -301,8 +290,13 @@ void Loom_Hypnos::set_custom_time(){
 	// Entering the day
 	LOG(F("Enter the Day (1 ~ 31)"));
 
+    startTime = millis();
 	while(computer_day  == ""){
 		computer_day = Serial.readStringUntil('\n');
+        if(millis() >= startTime + (CUSTOM_TIME_TIMEOUT * 1000)){
+            WARNING("Custom time setting took too long and has timed out, the current time has not been updated");
+            return false;
+        }
 	}
     snprintf(output, OUTPUT_SIZE, "Day Entered: %s", computer_day.c_str());
 	LOG(output);
@@ -311,8 +305,13 @@ void Loom_Hypnos::set_custom_time(){
 	// Entering the hour
 	LOG(F("Enter the Hour (0 ~ 23)"));
 
+    startTime = millis();
 	while(computer_hour == ""){
 		computer_hour = Serial.readStringUntil('\n');
+        if(millis() >= startTime + (CUSTOM_TIME_TIMEOUT * 1000)){
+            WARNING("Custom time setting took too long and has timed out, the current time has not been updated");
+            return false;
+        }
 	}
 
     snprintf(output, OUTPUT_SIZE, "Hour Entered: %s", computer_hour.c_str());
@@ -321,16 +320,26 @@ void Loom_Hypnos::set_custom_time(){
 	// Entering the minute
 	LOG(F("Enter the Minute (0 ~ 59)"));
 
+    startTime = millis();
 	while(computer_min == ""){
 		computer_min = Serial.readStringUntil('\n');
+        if(millis() >= startTime + (CUSTOM_TIME_TIMEOUT * 1000)){
+            WARNING("Custom time setting took too long and has timed out, the current time has not been updated");
+            return false;
+        }
 	}
     snprintf(output, OUTPUT_SIZE, "Minute Entered: %s", computer_min.c_str());
 	LOG(output);
 
 	// Entering the second
 	LOG(F("Enter the Second (0 ~ 59)"));
+    startTime = millis();
 	while(computer_sec == ""){
 		computer_sec = Serial.readStringUntil('\n');
+        if(millis() >= startTime + (CUSTOM_TIME_TIMEOUT * 1000)){
+            WARNING("Custom time setting took too long and has timed out, the current time has not been updated");
+            return false;
+        }
 	}
 
     // Set the RTC to the custom time
@@ -339,8 +348,10 @@ void Loom_Hypnos::set_custom_time(){
 
     // Output
     snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
-	LOG(output);
+    LOG(output);
+    
     FUNCTION_END;
+    return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -391,7 +402,7 @@ void Loom_Hypnos::pre_sleep(){
     USBDevice.detach();
 
     // Reattach the interrupt to the RTC interrupt pin
-    attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
+    attachInterrupt(digitalPinToInterrupt(12), callbackFunc, LOW);
 
     // Disable the power rails
     disable();

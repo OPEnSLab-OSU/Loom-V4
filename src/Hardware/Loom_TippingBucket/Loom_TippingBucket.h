@@ -35,7 +35,7 @@ class Loom_TippingBucket : public Module{
         void setHypnosInstance(Loom_Hypnos& hypnos) { this->hypnosInst = &hypnos; };
     
         /* Increase the tip count variable by one */
-        void increaseCount() { tipCount++; };
+        void incrementCount() { tipCount++; };
     private:
         Manager* manInst = nullptr;                                 // Instance of the manager
         unsigned long tipCount = 0;                                 // The number of tips accumulated by the counter

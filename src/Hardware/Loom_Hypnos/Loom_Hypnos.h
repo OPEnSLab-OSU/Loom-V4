@@ -4,13 +4,17 @@
 #include <OPEnS_RTC.h>
 #include <ArduinoLowPower.h>
 #include <map>
-#include <tuple>
 
 #include "Arduino.h"
 #include "Module.h"
 
 #include "Hardware/Loom_Hypnos/SDManager.h"
 #include "Loom_Manager.h"
+
+#define CUSTOM_TIME_TIMEOUT 20 // The timeout length in seconds
+
+// Used to pass along the user defined interrupt callback
+using InterruptCallbackFunction = void (*)();
 
 /**
  * Tracks the hypnos version and matches the version with the correct chip select pin
@@ -49,14 +53,6 @@ enum TIME_ZONE{
     ACST = -9, // Half an hour off so its -9.5
     AEST = -10
 
-};
-
-/**
- * Type of interrupt to register
- */ 
-enum HypnosInterruptType{
-    SLEEP,
-    OTHER
 };
 
 /**
@@ -129,7 +125,7 @@ class Loom_Hypnos : public Module{
          * @param interruptType Type of the interrupt to register (SLEEP or OTHER)
          * @param triggerState When the interrupt should trigger
          */ 
-        bool registerInterrupt(InterruptCallbackFunction isrFunc = nullptr, int interruptPin = 12, HypnosInterruptType interruptType = SLEEP, int triggerState = LOW);
+        bool registerInterrupt(InterruptCallbackFunction isrFunc = nullptr, int interruptPin = 12, int triggerState = LOW);
 
         /**
          * Called when the user wants to wake the Hypnos back out of the sleep state
@@ -163,7 +159,7 @@ class Loom_Hypnos : public Module{
         /**
          * Set a custom time on startup for the RTC to use
         */
-        void set_custom_time();
+        bool set_custom_time();
     
         /**
          * Get a custom sleep interval specified in a file on the SD card
@@ -200,7 +196,7 @@ class Loom_Hypnos : public Module{
          */ 
         void setLogName(const char* name) { sdMan->setLogName(name); };
 
-        /* Return the current state of the RTC*/
+        /* Return the current RTC initialization state*/
         bool isRTCInitialized() { return RTC_initialized; };
 
     private:
@@ -219,12 +215,7 @@ class Loom_Hypnos : public Module{
         bool RTC_initialized = false;                                                       // Did the RTC initialize correctly?
         
         bool custom_time = false;                                                           // Set the RTC to a user specified time
-
-        // Map the given pin to an interrupt call back
-        // 0th - ISR
-        // 1st - Interrupt Trigger
-        // 2nd - Interrupt Type (SLEEP or OTHER)
-        std::map<int, std::tuple<InterruptCallbackFunction, int, HypnosInterruptType>> pinToInterrupt;            
+        InterruptCallbackFunction callbackFunc = nullptr;                                   // ISR call back for the RTC interrupt
 
         
         void initializeRTC();                                                               // Initialize RTC
@@ -244,7 +235,5 @@ class Loom_Hypnos : public Module{
 
         void pre_sleep();                                                                   // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
         void post_sleep(bool waitForSerial);                                                // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
-
-        
 
 };
