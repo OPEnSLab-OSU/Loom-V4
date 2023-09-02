@@ -19,7 +19,6 @@ void Loom_TippingBucket::initialize() {
 void Loom_TippingBucket::measure() {
     /* First check if we are actually meant to be reading the values from our I2C device, this shouldn't occur if we are using interrupts */
 
-    unsigned long lastTipCount = tipCount;
     if(module_address != -1){
         Wire.requestFrom(COUNTER_ADDRESS, 3, false);
         unsigned int byte1 = Wire.read();
@@ -37,7 +36,7 @@ void Loom_TippingBucket::measure() {
     if(hypnosInst != nullptr){
         if(times.size() <= 1){
             times.push_front(hypnosInst->getCurrentTime().unixtime());          // Push the start time onto the front of the queue
-            tips.push_front(tipCount);                                          // Push the current number of tips onto the front of the queue
+            tips.push_front(tipCount- lastTipCount);                            // Push the current number of tips onto the front of the queue
         }
         else{
             // If it has been more than one hour since the oldest tip, we want to remove the oldest data
@@ -48,17 +47,20 @@ void Loom_TippingBucket::measure() {
 
             // Always push new data in
             times.push_front(hypnosInst->getCurrentTime().unixtime());          
-            tips.push_front(tipCount);
+            tips.push_front(tipCount - lastTipCount);
         }
         
         // Set the hourly tips back to zero so we can re-calculate it with the new data
         hourlyTips = 0;
 
         /* Loop over the last hour to accumlate the number of tips that occured within the last hour and we want to subtract the current value minus the last to get the difference and add that*/
-        for(int i = 1; i < tips.size(); i++){
-            hourlyTips += tips[i] - tips[i-1];
+        for(int i = 0; i < tips.size(); i++){
+            hourlyTips += tips[i];
         }
     }
+
+    lastTipCount = tipCount;
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

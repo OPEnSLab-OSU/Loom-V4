@@ -33,10 +33,12 @@ class Loom_TippingBucket : public Module{
 
         /* Set an instance of the Hypnos inside the tipping bucket class so we can read RTC data*/
         void setHypnosInstance(Loom_Hypnos& hypnos) { this->hypnosInst = &hypnos; };
-
-        volatile unsigned long tipCount = 0;                                 // The number of tips accumulated by the counter
+    
+        /* Increase the tip count variable by one */
+        void increaseCount() { tipCount++; };
     private:
         Manager* manInst = nullptr;                                 // Instance of the manager
+        unsigned long tipCount = 0;                                 // The number of tips accumulated by the counter
 
         /* Hourly Tips Tracker*/
         Loom_Hypnos* hypnosInst = nullptr;              // Instance of the hypnos for using RTC
