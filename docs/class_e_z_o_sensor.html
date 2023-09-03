@@ -21,7 +21,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Loom 4<span id="projectnumber">&#160;V4.0.7</span>
+   <div id="projectname">Loom 4<span id="projectnumber">&#160;v4.5</span>
    </div>
    <div id="projectbrief">Arduino library for Internet of Things Rapid Prototyping in environmental sensing</div>
   </td>
@@ -113,9 +113,8 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>sendTransmission</b> 
 <tr class="memitem:a153c048d481445a5ae219785e3e2bac0"><td class="memItemLeft" align="right" valign="top"><a id="a153c048d481445a5ae219785e3e2bac0" name="a153c048d481445a5ae219785e3e2bac0"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>calibrate</b> ()</td></tr>
 <tr class="separator:a153c048d481445a5ae219785e3e2bac0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a23740fe9a93b1f8b2bbf4034e100b5c6"><td class="memItemLeft" align="right" valign="top"><a id="a23740fe9a93b1f8b2bbf4034e100b5c6" name="a23740fe9a93b1f8b2bbf4034e100b5c6"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>readSensor</b> ()</td></tr>
-<tr class="separator:a23740fe9a93b1f8b2bbf4034e100b5c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0adb25fdead279445765aaab47c93d5c"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_e_z_o_sensor.html#a0adb25fdead279445765aaab47c93d5c">readSensor</a> (int waitTime)</td></tr>
+<tr class="separator:a0adb25fdead279445765aaab47c93d5c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2fa0fa1c7198c9b9e83835858b0f5e60"><td class="memItemLeft" align="right" valign="top"><a id="a2fa0fa1c7198c9b9e83835858b0f5e60" name="a2fa0fa1c7198c9b9e83835858b0f5e60"></a>
 const char *&#160;</td><td class="memItemRight" valign="bottom"><b>getSensorData</b> ()</td></tr>
 <tr class="separator:a2fa0fa1c7198c9b9e83835858b0f5e60"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -168,8 +167,43 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>moduleInitialized</b>
 int&#160;</td><td class="memItemRight" valign="bottom"><b>module_address</b> = -1</td></tr>
 <tr class="separator:a1bf541e6262bc0fd5b9269d3a55f4ad6 inherit pub_attribs_class_module"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<h2 class="groupheader">Member Function Documentation</h2>
+<a id="a0adb25fdead279445765aaab47c93d5c" name="a0adb25fdead279445765aaab47c93d5c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0adb25fdead279445765aaab47c93d5c">&#9670;&#160;</a></span>readSensor()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool EZOSensor::readSensor </td>
+          <td>(</td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>waitTime</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Request and read in data from the senor</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">waitTime</td><td>This is the length of time we will wait between requesting a read and actually reading the data </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Whether or not the read was successfully </dd></dl>
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following file:<ul>
-<li>src/Sensors/I2C/EZO/<a class="el" href="_e_z_o_sensor_8h_source.html">EZOSensor.h</a></li>
+<li>C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.5/libraries/Loom/src/Sensors/I2C/EZO/<a class="el" href="_e_z_o_sensor_8h_source.html">EZOSensor.h</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

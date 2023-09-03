@@ -1,4 +1,4 @@
-<map id="src/Sensors/I2C" name="src/Sensors/I2C">
+<map id="C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.5/libraries/Loom/src/Sensors/I2C" name="C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.5/libraries/Loom/src/Sensors/I2C">
 <area shape="rect" id="node2" href="dir_b05b4bfea037669245d5b8e78682ecd2.html" title="EZO" alt="" coords="2469,63,2517,88"/>
 <area shape="rect" id="node3" href="dir_d88688344708810e84cf73f7cdbc0388.html" title="Loom_ADS1115" alt="" coords="2329,63,2445,88"/>
 <area shape="rect" id="node4" href="dir_c24e8690b3af478b3e76540d74ceabb3.html" title="Loom_AS7262" alt="" coords="2197,63,2304,88"/>

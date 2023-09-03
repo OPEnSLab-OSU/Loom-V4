@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.6"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Loom 4: src/Radio/Radio.h Source File</title>
+<title>Loom 4: C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.5/libraries/Loom/src/Radio/Radio.h Source File</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -21,7 +21,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Loom 4<span id="projectnumber">&#160;V4.0.7</span>
+   <div id="projectname">Loom 4<span id="projectnumber">&#160;v4.5</span>
    </div>
    <div id="projectbrief">Arduino library for Internet of Things Rapid Prototyping in environmental sensing</div>
   </td>
@@ -94,35 +94,35 @@ $(function() {
 <div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span>        uint8_t retryCount;                     <span class="comment">// Number transmission retries allowed</span></div>
 <div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span>        uint16_t retryTimeout;                  <span class="comment">// Delay between retries (MS)</span></div>
 <div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span> </div>
-<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span>        StaticJsonDocument&lt;255&gt; recvDoc;        <span class="comment">// Individual Document Representing what is being received</span></div>
-<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span>        StaticJsonDocument&lt;255&gt; sendDoc;        <span class="comment">// Individual Document Representing what is being sent</span></div>
-<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span>        </div>
-<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span>        StaticJsonDocument&lt;2000&gt; messageJson;   <span class="comment">// Where to store the received message</span></div>
-<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span> </div>
-<div class="line"><a id="l00031" name="l00031"></a><span class="lineno"><a class="line" href="class_radio.html#a4c1b43a4a0de4c6e088bb097f353c23b">   31</a></span>        uint8_t <a class="code hl_function" href="class_radio.html#a4c1b43a4a0de4c6e088bb097f353c23b">getAddress</a>()<span class="keyword"> const </span>{ <span class="keywordflow">return</span> deviceAddress; };</div>
-<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span> </div>
-<div class="line"><a id="l00036" name="l00036"></a><span class="lineno"><a class="line" href="class_radio.html#a3f7fb7c237e4949911397b440935c788">   36</a></span>        int16_t <a class="code hl_function" href="class_radio.html#a3f7fb7c237e4949911397b440935c788">getSignalStrength</a>() { <span class="keywordflow">return</span> signalStrength; };</div>
-<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span> </div>
-<div class="line"><a id="l00042" name="l00042"></a><span class="lineno"><a class="line" href="class_radio.html#acd8465efa324b755ece506069b917922">   42</a></span>        <span class="keyword">virtual</span> <span class="keywordtype">bool</span> <a class="code hl_function" href="class_radio.html#acd8465efa324b755ece506069b917922">receive</a>(uint maxWaitTime) = 0;</div>
-<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span> </div>
-<div class="line"><a id="l00048" name="l00048"></a><span class="lineno"><a class="line" href="class_radio.html#ad23303c5cc1d65127314466aa9a03fdb">   48</a></span>        <span class="keyword">virtual</span> <span class="keywordtype">bool</span> <a class="code hl_function" href="class_radio.html#ad23303c5cc1d65127314466aa9a03fdb">send</a>(<span class="keyword">const</span> uint8_t destinationAddress) = 0;</div>
-<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span> </div>
-<div class="line"><a id="l00053" name="l00053"></a><span class="lineno"><a class="line" href="class_radio.html#a13bce71e5e792e7c985c3c250f979f55">   53</a></span>        <span class="keywordtype">bool</span> <a class="code hl_function" href="class_radio.html#a13bce71e5e792e7c985c3c250f979f55">bufferToJson</a>(uint8_t* buffer){</div>
-<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span>            <span class="keywordtype">char</span> output[OUTPUT_SIZE];</div>
-<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>            DeserializationError error = deserializeMsgPack(recvDoc, buffer, maxMessageLength);</div>
-<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span> </div>
-<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>            <span class="comment">// Check if an error occurred </span></div>
-<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>            <span class="keywordflow">if</span>(error != DeserializationError::Ok){</div>
-<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>                snprintf(output, OUTPUT_SIZE, <span class="stringliteral">&quot;Error occurred parsing MsgPack: %s&quot;</span>, error.c_str());</div>
-<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span>                ERROR(output);</div>
-<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>                <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
-<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>            }</div>
-<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span> </div>
-<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span>            <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
-<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span>        };</div>
-<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span> </div>
-<div class="line"><a id="l00070" name="l00070"></a><span class="lineno"><a class="line" href="class_radio.html#a63cd7aeb81a70cc2dc16c5325505c829">   70</a></span>        <span class="keywordtype">bool</span> <a class="code hl_function" href="class_radio.html#a63cd7aeb81a70cc2dc16c5325505c829">jsonToBuffer</a>(uint8_t* buffer, JsonObjectConst json){</div>
-<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>            <span class="keywordtype">bool</span> status = serializeMsgPack(json, buffer, maxMessageLength);</div>
+<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span>        StaticJsonDocument&lt;300&gt; recvDoc;        <span class="comment">// Individual Document Representing what is being received</span></div>
+<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span>        StaticJsonDocument&lt;300&gt; sendDoc;        <span class="comment">// Individual Document Representing what is being sent</span></div>
+<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span>    </div>
+<div class="line"><a id="l00029" name="l00029"></a><span class="lineno"><a class="line" href="class_radio.html#a4c1b43a4a0de4c6e088bb097f353c23b">   29</a></span>        uint8_t <a class="code hl_function" href="class_radio.html#a4c1b43a4a0de4c6e088bb097f353c23b">getAddress</a>()<span class="keyword"> const </span>{ <span class="keywordflow">return</span> deviceAddress; };</div>
+<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span> </div>
+<div class="line"><a id="l00034" name="l00034"></a><span class="lineno"><a class="line" href="class_radio.html#a3f7fb7c237e4949911397b440935c788">   34</a></span>        int16_t <a class="code hl_function" href="class_radio.html#a3f7fb7c237e4949911397b440935c788">getSignalStrength</a>() { <span class="keywordflow">return</span> signalStrength; };</div>
+<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span> </div>
+<div class="line"><a id="l00040" name="l00040"></a><span class="lineno"><a class="line" href="class_radio.html#acd8465efa324b755ece506069b917922">   40</a></span>        <span class="keyword">virtual</span> <span class="keywordtype">bool</span> <a class="code hl_function" href="class_radio.html#acd8465efa324b755ece506069b917922">receive</a>(uint maxWaitTime) = 0;</div>
+<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span> </div>
+<div class="line"><a id="l00046" name="l00046"></a><span class="lineno"><a class="line" href="class_radio.html#ad23303c5cc1d65127314466aa9a03fdb">   46</a></span>        <span class="keyword">virtual</span> <span class="keywordtype">bool</span> <a class="code hl_function" href="class_radio.html#ad23303c5cc1d65127314466aa9a03fdb">send</a>(<span class="keyword">const</span> uint8_t destinationAddress) = 0;</div>
+<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span> </div>
+<div class="line"><a id="l00051" name="l00051"></a><span class="lineno"><a class="line" href="class_radio.html#a13bce71e5e792e7c985c3c250f979f55">   51</a></span>        <span class="keywordtype">bool</span> <a class="code hl_function" href="class_radio.html#a13bce71e5e792e7c985c3c250f979f55">bufferToJson</a>(uint8_t* buffer){</div>
+<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span>            <span class="keywordtype">char</span> output[OUTPUT_SIZE];</div>
+<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span>            DeserializationError error = deserializeMsgPack(recvDoc, (<span class="keyword">const</span> <span class="keywordtype">char</span>*)buffer, maxMessageLength);</div>
+<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span> </div>
+<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>            <span class="comment">// Check if an error occurred </span></div>
+<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span>            <span class="keywordflow">if</span>(error != DeserializationError::Ok){</div>
+<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>                snprintf(output, OUTPUT_SIZE, <span class="stringliteral">&quot;Error occurred parsing MsgPack: %s&quot;</span>, error.c_str());</div>
+<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>                ERROR(output);</div>
+<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>                <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
+<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span>            }</div>
+<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span> </div>
+<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>            <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
+<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span>        };</div>
+<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span> </div>
+<div class="line"><a id="l00068" name="l00068"></a><span class="lineno"><a class="line" href="class_radio.html#a63cd7aeb81a70cc2dc16c5325505c829">   68</a></span>        <span class="keywordtype">bool</span> <a class="code hl_function" href="class_radio.html#a63cd7aeb81a70cc2dc16c5325505c829">jsonToBuffer</a>(uint8_t* buffer, JsonObjectConst json){</div>
+<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span> </div>
+<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>            <span class="keywordtype">bool</span> status = serializeMsgPack(json, buffer, maxMessageLength);</div>
+<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>            Serial.println();</div>
 <div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span> </div>
 <div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span>            <span class="keywordflow">return</span> status;</div>
 <div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span>        };</div>
@@ -133,10 +133,10 @@ $(function() {
 <div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span>};</div>
 <div class="ttc" id="aclass_module_html"><div class="ttname"><a href="class_module.html">Module</a></div><div class="ttdef"><b>Definition:</b> Module.h:30</div></div>
 <div class="ttc" id="aclass_radio_html"><div class="ttname"><a href="class_radio.html">Radio</a></div><div class="ttdef"><b>Definition:</b> Radio.h:13</div></div>
-<div class="ttc" id="aclass_radio_html_a13bce71e5e792e7c985c3c250f979f55"><div class="ttname"><a href="class_radio.html#a13bce71e5e792e7c985c3c250f979f55">Radio::bufferToJson</a></div><div class="ttdeci">bool bufferToJson(uint8_t *buffer)</div><div class="ttdef"><b>Definition:</b> Radio.h:53</div></div>
-<div class="ttc" id="aclass_radio_html_a3f7fb7c237e4949911397b440935c788"><div class="ttname"><a href="class_radio.html#a3f7fb7c237e4949911397b440935c788">Radio::getSignalStrength</a></div><div class="ttdeci">int16_t getSignalStrength()</div><div class="ttdef"><b>Definition:</b> Radio.h:36</div></div>
-<div class="ttc" id="aclass_radio_html_a4c1b43a4a0de4c6e088bb097f353c23b"><div class="ttname"><a href="class_radio.html#a4c1b43a4a0de4c6e088bb097f353c23b">Radio::getAddress</a></div><div class="ttdeci">uint8_t getAddress() const</div><div class="ttdef"><b>Definition:</b> Radio.h:31</div></div>
-<div class="ttc" id="aclass_radio_html_a63cd7aeb81a70cc2dc16c5325505c829"><div class="ttname"><a href="class_radio.html#a63cd7aeb81a70cc2dc16c5325505c829">Radio::jsonToBuffer</a></div><div class="ttdeci">bool jsonToBuffer(uint8_t *buffer, JsonObjectConst json)</div><div class="ttdef"><b>Definition:</b> Radio.h:70</div></div>
+<div class="ttc" id="aclass_radio_html_a13bce71e5e792e7c985c3c250f979f55"><div class="ttname"><a href="class_radio.html#a13bce71e5e792e7c985c3c250f979f55">Radio::bufferToJson</a></div><div class="ttdeci">bool bufferToJson(uint8_t *buffer)</div><div class="ttdef"><b>Definition:</b> Radio.h:51</div></div>
+<div class="ttc" id="aclass_radio_html_a3f7fb7c237e4949911397b440935c788"><div class="ttname"><a href="class_radio.html#a3f7fb7c237e4949911397b440935c788">Radio::getSignalStrength</a></div><div class="ttdeci">int16_t getSignalStrength()</div><div class="ttdef"><b>Definition:</b> Radio.h:34</div></div>
+<div class="ttc" id="aclass_radio_html_a4c1b43a4a0de4c6e088bb097f353c23b"><div class="ttname"><a href="class_radio.html#a4c1b43a4a0de4c6e088bb097f353c23b">Radio::getAddress</a></div><div class="ttdeci">uint8_t getAddress() const</div><div class="ttdef"><b>Definition:</b> Radio.h:29</div></div>
+<div class="ttc" id="aclass_radio_html_a63cd7aeb81a70cc2dc16c5325505c829"><div class="ttname"><a href="class_radio.html#a63cd7aeb81a70cc2dc16c5325505c829">Radio::jsonToBuffer</a></div><div class="ttdeci">bool jsonToBuffer(uint8_t *buffer, JsonObjectConst json)</div><div class="ttdef"><b>Definition:</b> Radio.h:68</div></div>
 <div class="ttc" id="aclass_radio_html_acd8465efa324b755ece506069b917922"><div class="ttname"><a href="class_radio.html#acd8465efa324b755ece506069b917922">Radio::receive</a></div><div class="ttdeci">virtual bool receive(uint maxWaitTime)=0</div></div>
 <div class="ttc" id="aclass_radio_html_ad23303c5cc1d65127314466aa9a03fdb"><div class="ttname"><a href="class_radio.html#ad23303c5cc1d65127314466aa9a03fdb">Radio::send</a></div><div class="ttdeci">virtual bool send(const uint8_t destinationAddress)=0</div></div>
 <div class="ttc" id="aclass_radio_html_ad8e78121e0ef4e072a475e7499073a39"><div class="ttname"><a href="class_radio.html#ad8e78121e0ef4e072a475e7499073a39">Radio::Radio</a></div><div class="ttdeci">Radio(const char *moduleName)</div><div class="ttdef"><b>Definition:</b> Radio.h:83</div></div>

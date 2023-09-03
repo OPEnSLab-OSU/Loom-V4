@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.6"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Loom 4: src/Sensors/I2C/EZO/EZOSensor.h Source File</title>
+<title>Loom 4: C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.5/libraries/Loom/src/Sensors/I2C/EZO/EZOSensor.h Source File</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -21,7 +21,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Loom 4<span id="projectnumber">&#160;V4.0.7</span>
+   <div id="projectname">Loom 4<span id="projectnumber">&#160;v4.5</span>
    </div>
    <div id="projectbrief">Arduino library for Internet of Things Rapid Prototyping in environmental sensing</div>
   </td>
@@ -118,62 +118,61 @@ $(function() {
 <div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span>            <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
 <div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span>        };</div>
 <div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span> </div>
-<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span>        <span class="comment">/* Request and read in data from the senor*/</span></div>
-<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span>        <span class="keywordtype">bool</span> readSensor(){</div>
-<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span>            <span class="keywordtype">char</span> output[OUTPUT_SIZE];</div>
-<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span>            <span class="keywordtype">int</span> i;</div>
-<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span>            <span class="keywordflow">if</span>(moduleInitialized){</div>
-<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span>                <span class="comment">// Clear the sensorData received previously</span></div>
-<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span>                memset(sensorData, <span class="charliteral">&#39;\0&#39;</span>, 32);</div>
-<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span> </div>
-<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>                <span class="comment">// Attempt to send a read command to the device</span></div>
-<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>                <span class="keywordflow">if</span>(!sendTransmission(<span class="stringliteral">&quot;r&quot;</span>)){</div>
-<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span>                    ERROR(F(<span class="stringliteral">&quot;Failed to send &#39;read&#39; command to device&quot;</span>));</div>
-<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span>                    <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
-<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span>                }</div>
-<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>                </div>
-<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span>                <span class="comment">// Wait the desired warm-up period</span></div>
-<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>                delay(600);</div>
-<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span> </div>
-<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>                <span class="comment">// Request 32 bytes of data from the device</span></div>
-<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span>                Wire.requestFrom(module_address, 32, 1);</div>
-<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span> </div>
-<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>                <span class="comment">// Check if the I2C code was not valid</span></div>
-<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span>                code = Wire.read();</div>
-<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span>                Serial.println(code);</div>
-<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span>                <span class="keywordflow">if</span>(code != 1){</div>
-<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>                    snprintf(output, OUTPUT_SIZE, <span class="stringliteral">&quot;Unsuccessful Response Code Received: %s&quot;</span>, responseCodes[code-1]);</div>
-<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>                    ERROR(output);</div>
-<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>                    <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
-<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>                } </div>
-<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span> </div>
-<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>                <span class="comment">// Read out only the next 32 bytes</span></div>
-<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>                <span class="keywordflow">for</span>(i = 0; i &lt; 32; i++){</div>
-<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span>                    currentChar = (char)Wire.read();</div>
-<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span> </div>
-<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span>                    <span class="comment">// If a null char was received break out of the loop</span></div>
-<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span>                    <span class="keywordflow">if</span>(currentChar == <span class="charliteral">&#39;\0&#39;</span>) <span class="keywordflow">break</span>;</div>
-<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span> </div>
-<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span>                    <span class="comment">// If not append the current char to the string</span></div>
-<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span>                    strncat(sensorData, &amp;currentChar, 32);</div>
-<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>                }</div>
-<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span>                strncat(sensorData, <span class="stringliteral">&quot;\0&quot;</span>, 32);</div>
-<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span>            }</div>
-<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span> </div>
-<div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span>            <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
-<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span>        };</div>
-<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span> </div>
-<div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span>        <span class="comment">/* Get the most recently collected sensor data */</span></div>
-<div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span>        <span class="keyword">const</span> <span class="keywordtype">char</span>* getSensorData() { <span class="keywordflow">return</span> sensorData; };</div>
-<div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span>    </div>
-<div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span>    <span class="keyword">private</span>:</div>
-<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span>        int8_t code = 0;                                                            <span class="comment">// I2C Response Code</span></div>
-<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span>        <span class="keywordtype">char</span> currentChar;                                                           <span class="comment">// Current character we have read in</span></div>
-<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span>        <span class="keyword">const</span> <span class="keywordtype">char</span>* responseCodes[4] = {<span class="stringliteral">&quot;Success&quot;</span>, <span class="stringliteral">&quot;Failed&quot;</span>, <span class="stringliteral">&quot;Pending&quot;</span>, <span class="stringliteral">&quot;No Data&quot;</span>}; <span class="comment">// Stringified I2C Response codes</span></div>
-<div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span>        <span class="keywordtype">char</span> sensorData[33];                                                        <span class="comment">// Convert the char array to a string to improve parse-ability</span></div>
-<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span>        </div>
-<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span>};</div>
+<div class="line"><a id="l00048" name="l00048"></a><span class="lineno"><a class="line" href="class_e_z_o_sensor.html#a0adb25fdead279445765aaab47c93d5c">   48</a></span>        <span class="keywordtype">bool</span> <a class="code hl_function" href="class_e_z_o_sensor.html#a0adb25fdead279445765aaab47c93d5c">readSensor</a>(<span class="keywordtype">int</span> waitTime){</div>
+<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>            <span class="keywordtype">char</span> output[OUTPUT_SIZE];</div>
+<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>            <span class="keywordtype">int</span> i;</div>
+<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>            <span class="keywordflow">if</span>(moduleInitialized){</div>
+<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span>                <span class="comment">// Clear the sensorData received previously</span></div>
+<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span>                memset(sensorData, <span class="charliteral">&#39;\0&#39;</span>, 32);</div>
+<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span> </div>
+<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>                <span class="comment">// Attempt to send a read command to the device</span></div>
+<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span>                <span class="keywordflow">if</span>(!sendTransmission(<span class="stringliteral">&quot;r&quot;</span>)){</div>
+<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>                    ERROR(F(<span class="stringliteral">&quot;Failed to send &#39;read&#39; command to device&quot;</span>));</div>
+<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>                    <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
+<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>                }</div>
+<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span>                </div>
+<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>                <span class="comment">// Wait the desired warm-up period</span></div>
+<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>                delay(waitTime);</div>
+<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span> </div>
+<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span>                <span class="comment">// Request 32 bytes of data from the device</span></div>
+<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span>                Wire.requestFrom(module_address, 32, 1);</div>
+<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span> </div>
+<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>                <span class="comment">// Check if the I2C code was not valid</span></div>
+<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>                code = Wire.read();</div>
+<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>                </div>
+<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>                <span class="keywordflow">if</span>(code != 1){</div>
+<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>                    snprintf(output, OUTPUT_SIZE, <span class="stringliteral">&quot;Unsuccessful Response Code Received: %s&quot;</span>, responseCodes[code-1]);</div>
+<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>                    ERROR(output);</div>
+<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span>                    <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
+<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span>                }</div>
+<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span> </div>
+<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span>                <span class="comment">// Read out only the next 32 bytes</span></div>
+<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span>                <span class="keywordflow">for</span>(i = 0; i &lt; 32; i++){</div>
+<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span>                    currentChar = (char)Wire.read();</div>
+<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span>                    <span class="comment">// If a null char was received break out of the loop</span></div>
+<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>                    <span class="keywordflow">if</span>(currentChar == <span class="charliteral">&#39;\0&#39;</span>) <span class="keywordflow">break</span>;</div>
+<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span> </div>
+<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span>                    <span class="comment">// If not append the current char to the string</span></div>
+<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span>                    strncat(sensorData, &amp;currentChar, 32);</div>
+<div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span>                }</div>
+<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span>                strncat(sensorData, <span class="stringliteral">&quot;\0&quot;</span>, 32);</div>
+<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span>            }</div>
+<div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span> </div>
+<div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span>            <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
+<div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span>        };</div>
+<div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span> </div>
+<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span>        <span class="comment">/* Get the most recently collected sensor data */</span></div>
+<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span>        <span class="keyword">const</span> <span class="keywordtype">char</span>* getSensorData() { <span class="keywordflow">return</span> sensorData; };</div>
+<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span>    </div>
+<div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span>    <span class="keyword">private</span>:</div>
+<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span>        int8_t code = 0;                                                            <span class="comment">// I2C Response Code</span></div>
+<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span>        <span class="keywordtype">char</span> currentChar;                                                           <span class="comment">// Current character we have read in</span></div>
+<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span>        <span class="keyword">const</span> <span class="keywordtype">char</span>* responseCodes[4] = {<span class="stringliteral">&quot;Success&quot;</span>, <span class="stringliteral">&quot;Failed&quot;</span>, <span class="stringliteral">&quot;Pending&quot;</span>, <span class="stringliteral">&quot;No Data&quot;</span>}; <span class="comment">// Stringified I2C Response codes</span></div>
+<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>        <span class="keywordtype">char</span> sensorData[33];                                                        <span class="comment">// Convert the char array to a string to improve parse-ability</span></div>
+<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span>        </div>
+<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span>};</div>
 <div class="ttc" id="aclass_e_z_o_sensor_html"><div class="ttname"><a href="class_e_z_o_sensor.html">EZOSensor</a></div><div class="ttdef"><b>Definition:</b> EZOSensor.h:8</div></div>
+<div class="ttc" id="aclass_e_z_o_sensor_html_a0adb25fdead279445765aaab47c93d5c"><div class="ttname"><a href="class_e_z_o_sensor.html#a0adb25fdead279445765aaab47c93d5c">EZOSensor::readSensor</a></div><div class="ttdeci">bool readSensor(int waitTime)</div><div class="ttdef"><b>Definition:</b> EZOSensor.h:48</div></div>
 <div class="ttc" id="aclass_i2_c_device_html"><div class="ttname"><a href="class_i2_c_device.html">I2CDevice</a></div><div class="ttdef"><b>Definition:</b> I2CDevice.h:6</div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->

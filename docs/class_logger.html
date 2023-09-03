@@ -21,7 +21,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Loom 4<span id="projectnumber">&#160;V4.0.7</span>
+   <div id="projectname">Loom 4<span id="projectnumber">&#160;v4.5</span>
    </div>
    <div id="projectbrief">Arduino library for Internet of Things Rapid Prototyping in environmental sensing</div>
   </td>
@@ -88,6 +88,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a59cf806e9c72de2f5258808124f9ea7e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a59169be17662fc63a6c37db762236aa7"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_logger.html#a59169be17662fc63a6c37db762236aa7">setSDManager</a> (<a class="el" href="class_s_d_manager.html">SDManager</a> *manager)</td></tr>
 <tr class="separator:a59169be17662fc63a6c37db762236aa7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa1b2ef6137340784cdbc91d53a693ac0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_logger.html#aa1b2ef6137340784cdbc91d53a693ac0">setHypnos</a> (<a class="el" href="class_loom___hypnos.html">Loom_Hypnos</a> *hypnos)</td></tr>
+<tr class="separator:aa1b2ef6137340784cdbc91d53a693ac0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a015157a17ba84596c4f0df2152de906f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_logger.html#a015157a17ba84596c4f0df2152de906f">debugLog</a> (const char *message, bool silent, const char *file, const char *func, unsigned long lineNumber)</td></tr>
 <tr class="separator:a015157a17ba84596c4f0df2152de906f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aca9a4a1bc7080d2c55dd6e0bea88866f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_logger.html#aca9a4a1bc7080d2c55dd6e0bea88866f">errorLog</a> (const char *message, bool silent, const char *file, const char *func, unsigned long lineNumber)</td></tr>
@@ -100,6 +102,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a682880f5066404de919457c36390764d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a31ce4f3979a2b90928b0577f4e06c14d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_logger.html#a31ce4f3979a2b90928b0577f4e06c14d">errorLog</a> (const __FlashStringHelper *message, bool silent, const char *file, const char *func, unsigned long lineNumber)</td></tr>
 <tr class="separator:a31ce4f3979a2b90928b0577f4e06c14d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aedf6912e82051666416ae72b8298737a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_logger.html#aedf6912e82051666416ae72b8298737a">genericLog</a> (const char *level, const char *message, bool silent, const char *file, const char *func, unsigned long lineNumber)</td></tr>
+<tr class="separator:aedf6912e82051666416ae72b8298737a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a73dacb3090ac3858a31df9ca560fd57b"><td class="memItemLeft" align="right" valign="top"><a id="a73dacb3090ac3858a31df9ca560fd57b" name="a73dacb3090ac3858a31df9ca560fd57b"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>logLong</b> (char *message, bool silent)</td></tr>
 <tr class="separator:a73dacb3090ac3858a31df9ca560fd57b"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -121,7 +125,7 @@ static <a class="el" href="class_logger.html">Logger</a> *&#160;</td><td class="
 <tr class="separator:ab34b3a7fd8a65cb2bbad722b4f6ec3d0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Class for handling debug log information</p>
+<div class="textblock"><p>Arduino <a class="el" href="class_logger.html">Logger</a> class that allows for standardized log outputs as well as function memory usage summaries to find memory leaks that may lead to unexpected crashing</p>
 <dl class="section author"><dt>Author</dt><dd>Will Richards </dd></dl>
 </div><h2 class="groupheader">Member Function Documentation</h2>
 <a id="a177ac359927d1078696ed933804f0435" name="a177ac359927d1078696ed933804f0435"></a>
@@ -404,6 +408,109 @@ static <a class="el" href="class_logger.html">Logger</a> *&#160;</td><td class="
 
 </div>
 </div>
+<a id="aedf6912e82051666416ae72b8298737a" name="aedf6912e82051666416ae72b8298737a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aedf6912e82051666416ae72b8298737a">&#9670;&#160;</a></span>genericLog()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Logger::genericLog </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>level</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>message</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>silent</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>file</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>func</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">unsigned long&#160;</td>
+          <td class="paramname"><em>lineNumber</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Generic logging function to cut down on redundant code in each log function </p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">level</td><td>Strings representing different log levels eg. DEBUG, WARNING, ERROR </td></tr>
+    <tr><td class="paramname">message</td><td>The actual message we want to log </td></tr>
+    <tr><td class="paramname">silent</td><td>Whether or not we want to actually print the data to the Serial monitor or just log it to the SD card </td></tr>
+    <tr><td class="paramname">file</td><td>Name of the file in which the log was called </td></tr>
+    <tr><td class="paramname">func</td><td>Name of the function in which the log was called </td></tr>
+    <tr><td class="paramname">lineNumber</td><td>The line number that the log was called on </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="aa1b2ef6137340784cdbc91d53a693ac0" name="aa1b2ef6137340784cdbc91d53a693ac0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa1b2ef6137340784cdbc91d53a693ac0">&#9670;&#160;</a></span>setHypnos()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Logger::setHypnos </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="class_loom___hypnos.html">Loom_Hypnos</a> *&#160;</td>
+          <td class="paramname"><em>hypnos</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Set the instance of the Hypnos, this should be used if you want the current timestamp added to the front of the logger output </p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">hypnos</td><td>Pointer to the hypnos object this also sets the sdInst </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <a id="a59169be17662fc63a6c37db762236aa7" name="a59169be17662fc63a6c37db762236aa7"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a59169be17662fc63a6c37db762236aa7">&#9670;&#160;</a></span>setSDManager()</h2>
 
@@ -617,8 +724,8 @@ static <a class="el" href="class_logger.html">Logger</a> *&#160;</td><td class="
 </div>
 </div>
 <hr/>The documentation for this class was generated from the following files:<ul>
-<li>src/<a class="el" href="_logger_8h_source.html">Logger.h</a></li>
-<li>src/Loom_Manager.cpp</li>
+<li>C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.5/libraries/Loom/src/<a class="el" href="_logger_8h_source.html">Logger.h</a></li>
+<li>C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.5/libraries/Loom/src/Loom_Manager.cpp</li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

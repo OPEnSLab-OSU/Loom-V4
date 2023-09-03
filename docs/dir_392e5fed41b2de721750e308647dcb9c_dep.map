@@ -1,9 +1,10 @@
-<map id="src/Hardware" name="src/Hardware">
-<area shape="rect" id="node2" href="dir_7bb0596ba49a786aca769c5aca051782.html" title="Actuators" alt="" coords="573,63,651,88"/>
-<area shape="rect" id="node3" href="dir_4af8332cc2c7a9240ab23b2dd0c128af.html" title="Loom_BatchSD" alt="" coords="435,63,549,88"/>
-<area shape="rect" id="node4" href="dir_8d9a8275e6687e2afc5d7f63a8089a9d.html" title="Loom_Hypnos" alt="" coords="306,63,411,88"/>
-<area shape="rect" id="node5" href="dir_06e23fdcd4ea618f9894e6179dc8911a.html" title="Loom_Multiplexer" alt="" coords="158,63,282,88"/>
-<area shape="rect" id="node6" href="dir_563bf93d852a61811a03db7da7f291df.html" title="Loom_OLED" alt="" coords="37,63,133,88"/>
-<area shape="rect" id="clust2" href="dir_392e5fed41b2de721750e308647dcb9c.html" alt="" coords="27,52,763,99"/>
-<area shape="rect" id="clust1" href="dir_68267d1309a1af8e8297ef4c3efbcdba.html" title="src" alt="" coords="16,16,773,109"/>
+<map id="C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.5/libraries/Loom/src/Hardware" name="C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.5/libraries/Loom/src/Hardware">
+<area shape="rect" id="node2" href="dir_7bb0596ba49a786aca769c5aca051782.html" title="Actuators" alt="" coords="741,63,819,88"/>
+<area shape="rect" id="node3" href="dir_4af8332cc2c7a9240ab23b2dd0c128af.html" title="Loom_BatchSD" alt="" coords="603,63,717,88"/>
+<area shape="rect" id="node4" href="dir_8d9a8275e6687e2afc5d7f63a8089a9d.html" title="Loom_Hypnos" alt="" coords="474,63,579,88"/>
+<area shape="rect" id="node5" href="dir_06e23fdcd4ea618f9894e6179dc8911a.html" title="Loom_Multiplexer" alt="" coords="326,63,450,88"/>
+<area shape="rect" id="node6" href="dir_563bf93d852a61811a03db7da7f291df.html" title="Loom_OLED" alt="" coords="205,63,301,88"/>
+<area shape="rect" id="node7" href="dir_68a955f0e0bd6684db0e339400cb31d4.html" title="Loom_TippingBucket" alt="" coords="38,63,181,88"/>
+<area shape="rect" id="clust2" href="dir_392e5fed41b2de721750e308647dcb9c.html" alt="" coords="27,52,931,99"/>
+<area shape="rect" id="clust1" href="dir_68267d1309a1af8e8297ef4c3efbcdba.html" title="src" alt="" coords="16,16,941,109"/>
 </map>

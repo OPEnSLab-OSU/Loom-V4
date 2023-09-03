@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.6"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Loom 4: src/Internet/Logging/Loom_MQTT/Loom_MQTT.h Source File</title>
+<title>Loom 4: C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.5/libraries/Loom/src/Internet/Logging/Loom_MQTT/Loom_MQTT.h Source File</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -21,7 +21,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Loom 4<span id="projectnumber">&#160;V4.0.7</span>
+   <div id="projectname">Loom 4<span id="projectnumber">&#160;v4.5</span>
    </div>
    <div id="projectbrief">Arduino library for Internet of Things Rapid Prototyping in environmental sensing</div>
   </td>
@@ -108,48 +108,50 @@ $(function() {
 <div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span>                <span class="keywordtype">int</span> broker_port, </div>
 <div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span>                <span class="keyword">const</span> <span class="keywordtype">char</span>* database_name, </div>
 <div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span>                <span class="keyword">const</span> <span class="keywordtype">char</span>* broker_user = <span class="stringliteral">&quot;&quot;</span>, </div>
-<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>                <span class="keyword">const</span> <span class="keywordtype">char</span>* broker_pass = <span class="stringliteral">&quot;&quot;</span></div>
-<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>            );</div>
-<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span> </div>
-<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span>        <a class="code hl_class" href="class_loom___m_q_t_t.html">Loom_MQTT</a>(<a class="code hl_class" href="class_manager.html">Manager</a>&amp; man, Client&amp; internet_client);</div>
-<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>        </div>
-<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>        <span class="keywordtype">void</span> <a class="code hl_function" href="class_loom___m_q_t_t.html#aec53de002ca74a7c57676487b0101a67">publish</a>();</div>
-<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span> </div>
-<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>        <span class="keywordtype">void</span> <a class="code hl_function" href="class_loom___m_q_t_t.html#aec53de002ca74a7c57676487b0101a67">publish</a>(<a class="code hl_class" href="class_loom___batch_s_d.html">Loom_BatchSD</a>&amp; batchSD);</div>
-<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span> </div>
-<div class="line"><a id="l00072" name="l00072"></a><span class="lineno"><a class="line" href="class_loom___m_q_t_t.html#a2d5628eed583d94d94d81dedefb9f3fb">   72</a></span>        <span class="keywordtype">void</span> <a class="code hl_function" href="class_loom___m_q_t_t.html#a2d5628eed583d94d94d81dedefb9f3fb">setKeepAlive</a>(<span class="keywordtype">int</span> time) { keep_alive = time; };</div>
-<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span>        </div>
-<div class="line"><a id="l00078" name="l00078"></a><span class="lineno"><a class="line" href="class_loom___m_q_t_t.html#aa83e4838d3e68ab97cde1cca79145938">   78</a></span>        <span class="keywordtype">void</span> <a class="code hl_function" href="class_loom___m_q_t_t.html#aa83e4838d3e68ab97cde1cca79145938">setMaxRetries</a>(<span class="keywordtype">int</span> retries) { maxRetries = retries; };</div>
-<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span> </div>
-<div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span>        <span class="keywordtype">void</span> <a class="code hl_function" href="class_loom___m_q_t_t.html#ae57b7d22cdca13dba1a85ddcb56b0823">loadConfigFromJSON</a>(<span class="keywordtype">char</span>* json);</div>
-<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span>    </div>
-<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span>    <span class="keyword">private</span>:</div>
-<div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span>        <a class="code hl_class" href="class_manager.html">Manager</a>* manInst;                       <span class="comment">// Instance of the manager</span></div>
-<div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span> </div>
-<div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span>        Client* internetClient;                  <span class="comment">// Client to supply to the MQTT client to handle internet communication</span></div>
-<div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span>        MqttClient mqttClient;                  <span class="comment">// MQTT Client to manage interactions with the MQTT broker</span></div>
-<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span> </div>
-<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span>        <span class="keyword">const</span> <span class="keywordtype">char</span>* getMQTTError();                  <span class="comment">// Get the string representation of the MQTT error codes</span></div>
-<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span>    </div>
-<div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span>        <span class="keywordtype">int</span> keep_alive = 60000;                 <span class="comment">// How long the broker should keep the connection open, defaults to a minute</span></div>
-<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span>        <span class="keywordtype">int</span> maxRetries = 4;                         <span class="comment">// How many times we want to retry the connection</span></div>
-<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span> </div>
-<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span>        <span class="keywordtype">char</span> address[100];                         <span class="comment">// Domain that the broker is running on</span></div>
-<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>        <span class="keywordtype">char</span> database_name[100];                   <span class="comment">// Database to publish the data to</span></div>
-<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span>        <span class="keywordtype">int</span> port;                                   <span class="comment">// Port the broker is listening on</span></div>
-<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span>        <span class="keywordtype">char</span> topic[100];                           <span class="comment">// Where to publish the data to</span></div>
-<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span>        <span class="keywordtype">char</span> username[100];                        <span class="comment">// Username to log into the broker</span></div>
-<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span>        <span class="keywordtype">char</span> password[100];                        <span class="comment">// Password to log into the broker</span></div>
-<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span> </div>
-<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span>        </div>
+<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>                <span class="keyword">const</span> <span class="keywordtype">char</span>* broker_pass = <span class="stringliteral">&quot;&quot;</span>,</div>
+<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>                <span class="keyword">const</span> <span class="keywordtype">char</span>* projectServer = <span class="stringliteral">&quot;&quot;</span></div>
+<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>            );</div>
+<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span> </div>
+<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>        <a class="code hl_class" href="class_loom___m_q_t_t.html">Loom_MQTT</a>(<a class="code hl_class" href="class_manager.html">Manager</a>&amp; man, Client&amp; internet_client);</div>
+<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>        </div>
+<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>        <span class="keywordtype">void</span> <a class="code hl_function" href="class_loom___m_q_t_t.html#aec53de002ca74a7c57676487b0101a67">publish</a>();</div>
+<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span> </div>
+<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>        <span class="keywordtype">void</span> <a class="code hl_function" href="class_loom___m_q_t_t.html#aec53de002ca74a7c57676487b0101a67">publish</a>(<a class="code hl_class" href="class_loom___batch_s_d.html">Loom_BatchSD</a>&amp; batchSD);</div>
+<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span> </div>
+<div class="line"><a id="l00073" name="l00073"></a><span class="lineno"><a class="line" href="class_loom___m_q_t_t.html#a2d5628eed583d94d94d81dedefb9f3fb">   73</a></span>        <span class="keywordtype">void</span> <a class="code hl_function" href="class_loom___m_q_t_t.html#a2d5628eed583d94d94d81dedefb9f3fb">setKeepAlive</a>(<span class="keywordtype">int</span> time) { keep_alive = time; };</div>
+<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span>        </div>
+<div class="line"><a id="l00079" name="l00079"></a><span class="lineno"><a class="line" href="class_loom___m_q_t_t.html#aa83e4838d3e68ab97cde1cca79145938">   79</a></span>        <span class="keywordtype">void</span> <a class="code hl_function" href="class_loom___m_q_t_t.html#aa83e4838d3e68ab97cde1cca79145938">setMaxRetries</a>(<span class="keywordtype">int</span> retries) { maxRetries = retries; };</div>
+<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span> </div>
+<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span>        <span class="keywordtype">void</span> <a class="code hl_function" href="class_loom___m_q_t_t.html#ae57b7d22cdca13dba1a85ddcb56b0823">loadConfigFromJSON</a>(<span class="keywordtype">char</span>* json);</div>
+<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span>    </div>
+<div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span>    <span class="keyword">private</span>:</div>
+<div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span>        <a class="code hl_class" href="class_manager.html">Manager</a>* manInst;                       <span class="comment">// Instance of the manager</span></div>
+<div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span> </div>
+<div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span>        Client* internetClient;                  <span class="comment">// Client to supply to the MQTT client to handle internet communication</span></div>
+<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span>        MqttClient mqttClient;                  <span class="comment">// MQTT Client to manage interactions with the MQTT broker</span></div>
+<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span> </div>
+<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span>        <span class="keyword">const</span> <span class="keywordtype">char</span>* getMQTTError();                  <span class="comment">// Get the string representation of the MQTT error codes</span></div>
+<div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span>    </div>
+<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span>        <span class="keywordtype">int</span> keep_alive = 60000;                 <span class="comment">// How long the broker should keep the connection open, defaults to a minute</span></div>
+<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span>        <span class="keywordtype">int</span> maxRetries = 4;                         <span class="comment">// How many times we want to retry the connection</span></div>
+<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span> </div>
+<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>        <span class="keywordtype">char</span> address[100];                         <span class="comment">// Domain that the broker is running on</span></div>
+<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span>        <span class="keywordtype">char</span> database_name[100];                   <span class="comment">// Database to publish the data to</span></div>
+<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span>        <span class="keywordtype">char</span> projectServer[100];                   <span class="comment">// Project </span></div>
+<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span>        <span class="keywordtype">int</span> port;                                  <span class="comment">// Port the broker is listening on</span></div>
+<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span>        <span class="keywordtype">char</span> topic[100];                           <span class="comment">// Where to publish the data to</span></div>
+<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span>        <span class="keywordtype">char</span> username[100];                        <span class="comment">// Username to log into the broker</span></div>
+<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span>        <span class="keywordtype">char</span> password[100];                        <span class="comment">// Password to log into the broker</span></div>
 <div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span> </div>
-<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span>};</div>
+<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span>        </div>
+<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span> </div>
+<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span>};</div>
 <div class="ttc" id="aclass_loom___batch_s_d_html"><div class="ttname"><a href="class_loom___batch_s_d.html">Loom_BatchSD</a></div><div class="ttdef"><b>Definition:</b> Loom_BatchSD.h:9</div></div>
 <div class="ttc" id="aclass_loom___m_q_t_t_html"><div class="ttname"><a href="class_loom___m_q_t_t.html">Loom_MQTT</a></div><div class="ttdef"><b>Definition:</b> Loom_MQTT.h:17</div></div>
-<div class="ttc" id="aclass_loom___m_q_t_t_html_a2d5628eed583d94d94d81dedefb9f3fb"><div class="ttname"><a href="class_loom___m_q_t_t.html#a2d5628eed583d94d94d81dedefb9f3fb">Loom_MQTT::setKeepAlive</a></div><div class="ttdeci">void setKeepAlive(int time)</div><div class="ttdef"><b>Definition:</b> Loom_MQTT.h:72</div></div>
-<div class="ttc" id="aclass_loom___m_q_t_t_html_aa83e4838d3e68ab97cde1cca79145938"><div class="ttname"><a href="class_loom___m_q_t_t.html#aa83e4838d3e68ab97cde1cca79145938">Loom_MQTT::setMaxRetries</a></div><div class="ttdeci">void setMaxRetries(int retries)</div><div class="ttdef"><b>Definition:</b> Loom_MQTT.h:78</div></div>
-<div class="ttc" id="aclass_loom___m_q_t_t_html_ae57b7d22cdca13dba1a85ddcb56b0823"><div class="ttname"><a href="class_loom___m_q_t_t.html#ae57b7d22cdca13dba1a85ddcb56b0823">Loom_MQTT::loadConfigFromJSON</a></div><div class="ttdeci">void loadConfigFromJSON(char *json)</div><div class="ttdef"><b>Definition:</b> Loom_MQTT.cpp:233</div></div>
-<div class="ttc" id="aclass_loom___m_q_t_t_html_aec53de002ca74a7c57676487b0101a67"><div class="ttname"><a href="class_loom___m_q_t_t.html#aec53de002ca74a7c57676487b0101a67">Loom_MQTT::publish</a></div><div class="ttdeci">void publish()</div><div class="ttdef"><b>Definition:</b> Loom_MQTT.cpp:33</div></div>
+<div class="ttc" id="aclass_loom___m_q_t_t_html_a2d5628eed583d94d94d81dedefb9f3fb"><div class="ttname"><a href="class_loom___m_q_t_t.html#a2d5628eed583d94d94d81dedefb9f3fb">Loom_MQTT::setKeepAlive</a></div><div class="ttdeci">void setKeepAlive(int time)</div><div class="ttdef"><b>Definition:</b> Loom_MQTT.h:73</div></div>
+<div class="ttc" id="aclass_loom___m_q_t_t_html_aa83e4838d3e68ab97cde1cca79145938"><div class="ttname"><a href="class_loom___m_q_t_t.html#aa83e4838d3e68ab97cde1cca79145938">Loom_MQTT::setMaxRetries</a></div><div class="ttdeci">void setMaxRetries(int retries)</div><div class="ttdef"><b>Definition:</b> Loom_MQTT.h:79</div></div>
+<div class="ttc" id="aclass_loom___m_q_t_t_html_ae57b7d22cdca13dba1a85ddcb56b0823"><div class="ttname"><a href="class_loom___m_q_t_t.html#ae57b7d22cdca13dba1a85ddcb56b0823">Loom_MQTT::loadConfigFromJSON</a></div><div class="ttdeci">void loadConfigFromJSON(char *json)</div><div class="ttdef"><b>Definition:</b> Loom_MQTT.cpp:244</div></div>
+<div class="ttc" id="aclass_loom___m_q_t_t_html_aec53de002ca74a7c57676487b0101a67"><div class="ttname"><a href="class_loom___m_q_t_t.html#aec53de002ca74a7c57676487b0101a67">Loom_MQTT::publish</a></div><div class="ttdeci">void publish()</div><div class="ttdef"><b>Definition:</b> Loom_MQTT.cpp:35</div></div>
 <div class="ttc" id="aclass_manager_html"><div class="ttname"><a href="class_manager.html">Manager</a></div><div class="ttdef"><b>Definition:</b> Loom_Manager.h:18</div></div>
 <div class="ttc" id="aclass_module_html"><div class="ttname"><a href="class_module.html">Module</a></div><div class="ttdef"><b>Definition:</b> Module.h:30</div></div>
 </div><!-- fragment --></div><!-- contents -->

@@ -21,7 +21,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Loom 4<span id="projectnumber">&#160;V4.0.7</span>
+   <div id="projectname">Loom 4<span id="projectnumber">&#160;v4.5</span>
    </div>
    <div id="projectbrief">Arduino library for Internet of Things Rapid Prototyping in environmental sensing</div>
   </td>
@@ -100,6 +100,10 @@ Collaboration diagram for Loom_Analog:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:afa90bbf4d632fe9b3168567cfc605f77"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___analog.html#afa90bbf4d632fe9b3168567cfc605f77">measure</a> () override</td></tr>
+<tr class="separator:afa90bbf4d632fe9b3168567cfc605f77"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab222f5f4287f778d8c38c208dcf0f535"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___analog.html#ab222f5f4287f778d8c38c208dcf0f535">package</a> () override</td></tr>
+<tr class="separator:ab222f5f4287f778d8c38c208dcf0f535"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa9218c7fd30d6e36f7dfc1bd51fce3bd"><td class="memTemplParams" colspan="2">template&lt;typename T , typename... Args&gt; </td></tr>
 <tr class="memitem:aa9218c7fd30d6e36f7dfc1bd51fce3bd"><td class="memTemplItemLeft" align="right" valign="top">&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="class_loom___analog.html#aa9218c7fd30d6e36f7dfc1bd51fce3bd">Loom_Analog</a> (<a class="el" href="class_manager.html">Manager</a> &amp;man, T firstPin, Args... additionalPins)</td></tr>
 <tr class="separator:aa9218c7fd30d6e36f7dfc1bd51fce3bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -108,12 +112,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:aa10083fc06926d96f3264a76634a4f9e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a46f95ad4da3d275756c9e445bb1b7c39"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___analog.html#a46f95ad4da3d275756c9e445bb1b7c39">Loom_Analog</a> (<a class="el" href="class_manager.html">Manager</a> &amp;man)</td></tr>
 <tr class="separator:a46f95ad4da3d275756c9e445bb1b7c39"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aad8eb0beb60b2914f79132b0bb8a8503"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___analog.html#aad8eb0beb60b2914f79132b0bb8a8503">get_battery_voltage</a> ()</td></tr>
-<tr class="separator:aad8eb0beb60b2914f79132b0bb8a8503"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afa90bbf4d632fe9b3168567cfc605f77"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___analog.html#afa90bbf4d632fe9b3168567cfc605f77">measure</a> () override</td></tr>
-<tr class="separator:afa90bbf4d632fe9b3168567cfc605f77"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab222f5f4287f778d8c38c208dcf0f535"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___analog.html#ab222f5f4287f778d8c38c208dcf0f535">package</a> () override</td></tr>
-<tr class="separator:ab222f5f4287f778d8c38c208dcf0f535"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6de5fc396d1ced23ee0e92e552f68a8e"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___analog.html#a6de5fc396d1ced23ee0e92e552f68a8e">getBatteryVoltage</a> ()</td></tr>
+<tr class="separator:a6de5fc396d1ced23ee0e92e552f68a8e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab947938a7fb26b85809bcca6ca1b6635"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___analog.html#ab947938a7fb26b85809bcca6ca1b6635">getMV</a> (int pin)</td></tr>
 <tr class="separator:ab947938a7fb26b85809bcca6ca1b6635"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1e1e4a6559c3dd631a0cef1df7da0417"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___analog.html#a1e1e4a6559c3dd631a0cef1df7da0417">getAnalog</a> (int pin)</td></tr>
@@ -299,32 +299,11 @@ template&lt;typename T &gt; </div>
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
-<a id="aad8eb0beb60b2914f79132b0bb8a8503" name="aad8eb0beb60b2914f79132b0bb8a8503"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aad8eb0beb60b2914f79132b0bb8a8503">&#9670;&#160;</a></span>get_battery_voltage()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">float Loom_Analog::get_battery_voltage </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<p>Get the current voltage of the battery </p>
-
-</div>
-</div>
 <a id="a1e1e4a6559c3dd631a0cef1df7da0417" name="a1e1e4a6559c3dd631a0cef1df7da0417"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a1e1e4a6559c3dd631a0cef1df7da0417">&#9670;&#160;</a></span>getAnalog()</h2>
 
 <div class="memitem">
 <div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
       <table class="memname">
         <tr>
           <td class="memname">float Loom_Analog::getAnalog </td>
@@ -334,11 +313,6 @@ template&lt;typename T &gt; </div>
           <td></td>
         </tr>
       </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
 </div><div class="memdoc">
 <p>Get the analog value from a given pin </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
@@ -349,14 +323,29 @@ template&lt;typename T &gt; </div>
 
 </div>
 </div>
+<a id="a6de5fc396d1ced23ee0e92e552f68a8e" name="a6de5fc396d1ced23ee0e92e552f68a8e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6de5fc396d1ced23ee0e92e552f68a8e">&#9670;&#160;</a></span>getBatteryVoltage()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float Loom_Analog::getBatteryVoltage </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Get the current voltage of the battery </p>
+
+</div>
+</div>
 <a id="ab947938a7fb26b85809bcca6ca1b6635" name="ab947938a7fb26b85809bcca6ca1b6635"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ab947938a7fb26b85809bcca6ca1b6635">&#9670;&#160;</a></span>getMV()</h2>
 
 <div class="memitem">
 <div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
       <table class="memname">
         <tr>
           <td class="memname">float Loom_Analog::getMV </td>
@@ -366,11 +355,6 @@ template&lt;typename T &gt; </div>
           <td></td>
         </tr>
       </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
 </div><div class="memdoc">
 <p>Get the Millivolts of a specified pin </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
@@ -517,8 +501,8 @@ template&lt;typename T &gt; </div>
 </div>
 </div>
 <hr/>The documentation for this class was generated from the following files:<ul>
-<li>src/Sensors/Loom_Analog/<a class="el" href="_loom___analog_8h_source.html">Loom_Analog.h</a></li>
-<li>src/Sensors/Loom_Analog/Loom_Analog.cpp</li>
+<li>C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.5/libraries/Loom/src/Sensors/Loom_Analog/<a class="el" href="_loom___analog_8h_source.html">Loom_Analog.h</a></li>
+<li>C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.5/libraries/Loom/src/Sensors/Loom_Analog/Loom_Analog.cpp</li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

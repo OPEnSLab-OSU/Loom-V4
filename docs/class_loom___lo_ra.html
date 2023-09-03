@@ -21,7 +21,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Loom 4<span id="projectnumber">&#160;V4.0.7</span>
+   <div id="projectname">Loom 4<span id="projectnumber">&#160;v4.5</span>
    </div>
    <div id="projectbrief">Arduino library for Internet of Things Rapid Prototyping in environmental sensing</div>
   </td>
@@ -102,8 +102,8 @@ Collaboration diagram for Loom_LoRa:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:aaed284e0ee8066d432ef5f821ed97b2f"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___lo_ra.html#aaed284e0ee8066d432ef5f821ed97b2f">Loom_LoRa</a> (<a class="el" href="class_manager.html">Manager</a> &amp;man, const int address=-1, const uint8_t powerLevel=23, const uint8_t retryCount=3, const uint16_t retryTimeout=200, const uint16_t max_message_len=RH_RF95_MAX_MESSAGE_LEN)</td></tr>
-<tr class="separator:aaed284e0ee8066d432ef5f821ed97b2f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a69c117d1263b1cb39474b61f86c95bd7"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___lo_ra.html#a69c117d1263b1cb39474b61f86c95bd7">Loom_LoRa</a> (<a class="el" href="class_manager.html">Manager</a> &amp;man, const int address=-1, const uint8_t powerLevel=23, const uint8_t retryCount=3, const uint16_t retryTimeout=200)</td></tr>
+<tr class="separator:a69c117d1263b1cb39474b61f86c95bd7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a51eeb6300e87b9475486bf6b924d953e"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___lo_ra.html#a51eeb6300e87b9475486bf6b924d953e">receive</a> (uint maxWaitTime) override</td></tr>
 <tr class="separator:a51eeb6300e87b9475486bf6b924d953e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aca61400243bed5a522efb91feaa494d5"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_loom___lo_ra.html#aca61400243bed5a522efb91feaa494d5">send</a> (const uint8_t destinationAddress) override</td></tr>
@@ -195,22 +195,19 @@ uint8_t&#160;</td><td class="memItemRight" valign="bottom"><b>retryCount</b></td
 <tr class="memitem:aabfc6e927445243d0e567a6c9288ba9c inherit pro_attribs_class_radio"><td class="memItemLeft" align="right" valign="top"><a id="aabfc6e927445243d0e567a6c9288ba9c" name="aabfc6e927445243d0e567a6c9288ba9c"></a>
 uint16_t&#160;</td><td class="memItemRight" valign="bottom"><b>retryTimeout</b></td></tr>
 <tr class="separator:aabfc6e927445243d0e567a6c9288ba9c inherit pro_attribs_class_radio"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2a67937e663ca6e921260986c08a0d69 inherit pro_attribs_class_radio"><td class="memItemLeft" align="right" valign="top"><a id="a2a67937e663ca6e921260986c08a0d69" name="a2a67937e663ca6e921260986c08a0d69"></a>
-StaticJsonDocument&lt; 255 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>recvDoc</b></td></tr>
-<tr class="separator:a2a67937e663ca6e921260986c08a0d69 inherit pro_attribs_class_radio"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a32295d7209d2ba3bb92a0532491e9fcf inherit pro_attribs_class_radio"><td class="memItemLeft" align="right" valign="top"><a id="a32295d7209d2ba3bb92a0532491e9fcf" name="a32295d7209d2ba3bb92a0532491e9fcf"></a>
-StaticJsonDocument&lt; 255 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>sendDoc</b></td></tr>
-<tr class="separator:a32295d7209d2ba3bb92a0532491e9fcf inherit pro_attribs_class_radio"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a24843a3a82049c95fdcfefccdde509d8 inherit pro_attribs_class_radio"><td class="memItemLeft" align="right" valign="top"><a id="a24843a3a82049c95fdcfefccdde509d8" name="a24843a3a82049c95fdcfefccdde509d8"></a>
-StaticJsonDocument&lt; 2000 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>messageJson</b></td></tr>
-<tr class="separator:a24843a3a82049c95fdcfefccdde509d8 inherit pro_attribs_class_radio"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1a74c02bc445201aae6c4a5225c73dff inherit pro_attribs_class_radio"><td class="memItemLeft" align="right" valign="top"><a id="a1a74c02bc445201aae6c4a5225c73dff" name="a1a74c02bc445201aae6c4a5225c73dff"></a>
+StaticJsonDocument&lt; 300 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>recvDoc</b></td></tr>
+<tr class="separator:a1a74c02bc445201aae6c4a5225c73dff inherit pro_attribs_class_radio"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a202d4da4ca258d70210ac16662512fee inherit pro_attribs_class_radio"><td class="memItemLeft" align="right" valign="top"><a id="a202d4da4ca258d70210ac16662512fee" name="a202d4da4ca258d70210ac16662512fee"></a>
+StaticJsonDocument&lt; 300 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>sendDoc</b></td></tr>
+<tr class="separator:a202d4da4ca258d70210ac16662512fee inherit pro_attribs_class_radio"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Used to communicate with LoRa type radios</p>
 <dl class="section author"><dt>Author</dt><dd>Will Richards </dd></dl>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
-<a id="aaed284e0ee8066d432ef5f821ed97b2f" name="aaed284e0ee8066d432ef5f821ed97b2f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aaed284e0ee8066d432ef5f821ed97b2f">&#9670;&#160;</a></span>Loom_LoRa()</h2>
+<a id="a69c117d1263b1cb39474b61f86c95bd7" name="a69c117d1263b1cb39474b61f86c95bd7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a69c117d1263b1cb39474b61f86c95bd7">&#9670;&#160;</a></span>Loom_LoRa()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -243,13 +240,7 @@ StaticJsonDocument&lt; 2000 &gt;&#160;</td><td class="memItemRight" valign="bott
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">const uint16_t&#160;</td>
-          <td class="paramname"><em>retryTimeout</em> = <code>200</code>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const uint16_t&#160;</td>
-          <td class="paramname"><em>max_message_len</em> = <code>RH_RF95_MAX_MESSAGE_LEN</code>&#160;</td>
+          <td class="paramname"><em>retryTimeout</em> = <code>200</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -296,7 +287,6 @@ StaticJsonDocument&lt; 2000 &gt;&#160;</td><td class="memItemRight" valign="bott
 </table>
 </div><div class="memdoc">
 <p>Initialize the module </p>
-<p>Default Modem Configuration BW: 125000 SF: 7 CR: 5</p>
 
 <p>Implements <a class="el" href="class_module.html">Module</a>.</p>
 
@@ -501,8 +491,8 @@ StaticJsonDocument&lt; 2000 &gt;&#160;</td><td class="memItemRight" valign="bott
 </div>
 </div>
 <hr/>The documentation for this class was generated from the following files:<ul>
-<li>src/Radio/Loom_LoRa/<a class="el" href="_loom___lo_ra_8h_source.html">Loom_LoRa.h</a></li>
-<li>src/Radio/Loom_LoRa/Loom_LoRa.cpp</li>
+<li>C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.5/libraries/Loom/src/Radio/Loom_LoRa/<a class="el" href="_loom___lo_ra_8h_source.html">Loom_LoRa.h</a></li>
+<li>C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.5/libraries/Loom/src/Radio/Loom_LoRa/Loom_LoRa.cpp</li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

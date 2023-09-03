@@ -1,10 +1,11 @@
-<map id="src/Sensors" name="src/Sensors">
-<area shape="rect" id="node2" href="dir_9eb516bade93de8ed505d1774d2631d2.html" title="Analog" alt="" coords="499,63,562,88"/>
-<area shape="rect" id="node3" href="dir_abc44327bd9a62eb36f446d48ca760f8.html" title="I2C" alt="" coords="434,63,475,88"/>
-<area shape="rect" id="node4" href="dir_a0b6e2c5b16e123449bc545f2b01a23a.html" title="Loom_Analog" alt="" coords="308,63,409,88"/>
-<area shape="rect" id="node5" href="dir_8347bf0e537d8cbaea57ae133f1d2e3f.html" title="Loom_Digital" alt="" coords="186,63,283,88"/>
-<area shape="rect" id="node6" href="dir_c1c9c6049189259cc1cfe0eeb075e0bc.html" title="SDI12" alt="" coords="105,63,162,88"/>
-<area shape="rect" id="node7" href="dir_510aef1acf63521dcdd1684edb86e21c.html" title="SPI" alt="" coords="37,63,80,88"/>
-<area shape="rect" id="clust2" href="dir_afe58f6d0ef7eec69c2706509daaefe7.html" alt="" coords="27,52,668,99"/>
-<area shape="rect" id="clust1" href="dir_68267d1309a1af8e8297ef4c3efbcdba.html" title="src" alt="" coords="16,16,679,109"/>
+<map id="C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.5/libraries/Loom/src/Sensors" name="C:/Users/jwilt/AppData/Local/Arduino15/packages/loom4/hardware/samd/4.5/libraries/Loom/src/Sensors">
+<area shape="rect" id="node2" href="dir_9eb516bade93de8ed505d1774d2631d2.html" title="Analog" alt="" coords="578,63,641,88"/>
+<area shape="rect" id="node3" href="dir_abc44327bd9a62eb36f446d48ca760f8.html" title="I2C" alt="" coords="513,63,554,88"/>
+<area shape="rect" id="node4" href="dir_a0b6e2c5b16e123449bc545f2b01a23a.html" title="Loom_Analog" alt="" coords="387,63,488,88"/>
+<area shape="rect" id="node5" href="dir_8347bf0e537d8cbaea57ae133f1d2e3f.html" title="Loom_Digital" alt="" coords="265,63,362,88"/>
+<area shape="rect" id="node6" href="dir_c1c9c6049189259cc1cfe0eeb075e0bc.html" title="SDI12" alt="" coords="183,63,241,88"/>
+<area shape="rect" id="node7" href="dir_ffec7e7c7a6b914c3ab5df53763d138e.html" title="Serial" alt="" coords="105,63,159,88"/>
+<area shape="rect" id="node8" href="dir_510aef1acf63521dcdd1684edb86e21c.html" title="SPI" alt="" coords="37,63,80,88"/>
+<area shape="rect" id="clust2" href="dir_afe58f6d0ef7eec69c2706509daaefe7.html" alt="" coords="27,52,747,99"/>
+<area shape="rect" id="clust1" href="dir_68267d1309a1af8e8297ef4c3efbcdba.html" title="src" alt="" coords="16,16,757,109"/>
 </map>
