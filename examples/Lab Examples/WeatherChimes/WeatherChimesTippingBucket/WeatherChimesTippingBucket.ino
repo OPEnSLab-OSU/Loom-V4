@@ -75,7 +75,7 @@ void setup() {
   ENABLE_FUNC_SUMMARIES;
 
   // Set the interrupt pin to pullup
-  pinMode(INT_PIN, INPUT_PULLUP);
+  pinMode(INT_PIN, INPUT_PULLDOWN);
 
   // Wait 20 seconds for the serial console to open
   manager.beginSerial();
@@ -101,6 +101,9 @@ void setup() {
 void loop() {
 
   if(sampleFlag){
+    // Set the RTC interrupt alarm to wake the device in 15 min
+    hypnos.setInterruptDuration(TimeSpan(0, 0, 15, 0));
+
     // Measure and package the data
     manager.measure();
     manager.package();
@@ -116,9 +119,6 @@ void loop() {
 
     // Publish the collected data to MQTT
     mqtt.publish();
-
-    // Set the RTC interrupt alarm to wake the device in 15 min
-    hypnos.setInterruptDuration(TimeSpan(0, 0, 15, 0));
 
     // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
     hypnos.reattachRTCInterrupt();
