@@ -101,7 +101,7 @@ void setup() {
 void loop() {
 
   if(sampleFlag){
-    // Set the RTC interrupt alarm to wake the device in 15 min
+    // Set the RTC interrupt alarm to wake the device in 15 min, this should be done as soon as the device enters sampling mode for consistant sleep cycles
     hypnos.setInterruptDuration(TimeSpan(0, 0, 15, 0));
 
     // Measure and package the data
