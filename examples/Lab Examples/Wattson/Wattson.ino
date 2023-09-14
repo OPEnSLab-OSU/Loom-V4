@@ -17,13 +17,16 @@
 Manager manager("Device", 1);
 //Loom_WIFI wifi(manager, CommunicationMode::AP); // For AP
 Loom_WIFI wifi(manager, CommunicationMode::CLIENT, SECRET_SSID, SECRET_PASS); // For Client
+
+// Create a new instance of max this takes in the WiFi object so we can communicate with the computer in addition to adding a controllable neopixel
 Loom_Max maxMsp(manager, wifi, new Loom_Neopixel());
 
 Loom_MPU6050 mpu(manager);
 // Read the battery voltage and A0 and A1
 Loom_Analog analog(manager, A0, A1);
+
 // Reads the button on pin 10
-Loom_Digital digital(manager, 10);
+Loom_Digital digital(manager, INPUT_PULLUP, 10);
 
 void setup() {
 
