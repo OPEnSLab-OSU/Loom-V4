@@ -366,22 +366,25 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::sleep(bool waitForSerial){
-    // Try to power down the active modules
-    if(shouldPowerUp){
-        manInst->power_down();
-        // 50ms delay allows this last message to be sent before the bus disconnects
-        LOG("Entering Standby Sleep...");
-        delay(50);
+
+    // If the alarm set time is less than the current time we missed our next alarm so we need to set a new one
+    if(RTC_DS.getAlarm(1) > RTC_DS.now()){
+        // Try to power down the active modules
+        if(shouldPowerUp){
+            manInst->power_down();
+            // 50ms delay allows this last message to be sent before the bus disconnects
+            LOG("Entering Standby Sleep...");
+            delay(50);
+        }
+        
+        disable();
+        pre_sleep();                    // Pre-sleep cleanup
+        shouldPowerUp = true;
+        LowPower.sleep();               // Go to sleep and hang
+        post_sleep(waitForSerial);      // Wake up
+    }else{
+        WARNING("If the alarm was set to a time less than the current time we don't want to sleep before a new time was set");
     }
-
-
-    
-    
-    disable();
-    pre_sleep();                    // Pre-sleep cleanup
-    shouldPowerUp = true;
-    LowPower.sleep();               // Go to sleep and hang
-    post_sleep(waitForSerial);      // Wake up
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
