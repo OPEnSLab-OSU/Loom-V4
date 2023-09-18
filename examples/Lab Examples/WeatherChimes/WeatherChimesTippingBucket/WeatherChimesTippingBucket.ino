@@ -75,7 +75,7 @@ void setup() {
   ENABLE_FUNC_SUMMARIES;
 
   // Set the interrupt pin to pullup
-  pinMode(INT_PIN, INPUT_PULLDOWN);
+  pinMode(INT_PIN, INPUT);
 
   // Wait 20 seconds for the serial console to open
   manager.beginSerial();

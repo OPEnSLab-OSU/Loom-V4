@@ -90,7 +90,7 @@ void loop() {
   // Publish the collected data to MQTT
   mqtt.publish();
 
-  // Set the RTC interrupt alarm to wake the device in 15 min
+  // Set the RTC interrupt alarm to wake the device in 15 min, at the top to schedule next interrupt asap
   hypnos.setInterruptDuration(TimeSpan(0, 0, 15, 0));
 
   // Reattach to the interrupt after we have set the alarm so we can have repeat triggers

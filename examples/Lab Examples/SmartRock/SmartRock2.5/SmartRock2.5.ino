@@ -44,6 +44,9 @@ void setup() {
 }
 
 void loop() {
+  
+  // Set the RTC interrupt alarm to wake the device in 10 seconds, at the top to schedule next interrupt asap
+  hypnos.setInterruptDuration(sleepInterval);
 
   // Measure and package the data
   manager.measure();
@@ -55,8 +58,6 @@ void loop() {
   // Log the data to the SD card              
   hypnos.logToSD();
 
-  // Set the RTC interrupt alarm to wake the device in 10 seconds
-  hypnos.setInterruptDuration(sleepInterval);
 
   // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
   hypnos.reattachRTCInterrupt();
