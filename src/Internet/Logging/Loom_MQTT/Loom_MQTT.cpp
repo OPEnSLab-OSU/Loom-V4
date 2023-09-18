@@ -247,7 +247,14 @@ void Loom_MQTT::loadConfigFromJSON(char* json){
     // Doc to store the JSON data from the SD card in
     StaticJsonDocument<300> doc;
     DeserializationError deserialError = deserializeJson(doc, json);
+
+    /* 
+        Initialize all to null bytes so they are treated as a 0 length string
+        Issue: https://github.com/OPEnSLab-OSU/Loom-V4/issues/57
+     */
     memset(projectServer, '\0', 100);
+    memset(username, '\0', 100);
+    memset(password, '\0', 100);
 
     // Check if an error occurred and if so print it
     if(deserialError != DeserializationError::Ok){
@@ -260,10 +267,17 @@ void Loom_MQTT::loadConfigFromJSON(char* json){
     if(!doc["broker"].isNull()){
         strncpy(address, doc["broker"].as<const char*>(), 100);
         strncpy(database_name, doc["database"].as<const char*>(), 100);
-        strncpy(username, doc["username"].as<const char*>(), 100);
-        strncpy(password, doc["password"].as<const char*>(), 100);
+
+        // If we dont have a username don't try to update the variables
+        if(!doc["username".isNull()]){
+            strncpy(username, doc["username"].as<const char*>(), 100);
+            strncpy(password, doc["password"].as<const char*>(), 100);
+        }
+       
+        // If there is no project parameter don't update the project
         if(!doc["project"].isNull())
             strncpy(projectServer, doc["project"].as<const char*>(), 100);
+
         port = doc["port"].as<int>();
     }
     
