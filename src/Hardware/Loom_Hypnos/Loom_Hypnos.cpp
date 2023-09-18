@@ -383,7 +383,7 @@ void Loom_Hypnos::sleep(bool waitForSerial){
         LowPower.sleep();               // Go to sleep and hang
         post_sleep(waitForSerial);      // Wake up
     }else{
-        WARNING("If the alarm was set to a time less than the current time we don't want to sleep before a new time was set");
+        WARNING("Alarm triggered during sample, specified sample duration was too short! Setting new sample time...");
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
