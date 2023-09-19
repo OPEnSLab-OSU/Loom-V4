@@ -269,7 +269,7 @@ void Loom_MQTT::loadConfigFromJSON(char* json){
         strncpy(database_name, doc["database"].as<const char*>(), 100);
 
         // If we dont have a username don't try to update the variables
-        if(!doc["username".isNull()]){
+        if(!doc["username"].isNull()){
             strncpy(username, doc["username"].as<const char*>(), 100);
             strncpy(password, doc["password"].as<const char*>(), 100);
         }
