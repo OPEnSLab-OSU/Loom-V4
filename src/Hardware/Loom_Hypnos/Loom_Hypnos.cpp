@@ -174,6 +174,7 @@ void Loom_Hypnos::wakeup(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::initializeRTC(){
     FUNCTION_START;
+    char output[OUTPUT_SIZE];
     LOG("Initializing DS3231....");
 
     // If the RTC failed to start inform the user and hang
@@ -204,6 +205,8 @@ void Loom_Hypnos::initializeRTC(){
     // We successfully started the RTC 
     LOG(F("DS3231 Real-Time Clock Initialized Successfully!"));
     RTC_initialized = true;
+    snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
+    LOG(output);
     FUNCTION_END;
    
     
@@ -250,6 +253,30 @@ DateTime Loom_Hypnos::getCurrentTime(){
         LOG(F("Attempted to pull time when RTC was not previously initialized! Returned default datetime"));
         return DateTime();
     }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::networkTimeUpdate(){
+    FUNCTION_START;
+    if(networkComponent != nullptr && networkComponent->isConnected()){
+        char output[OUTPUT_SIZE];
+        int year, month, day, hour, minute, second = 0;
+        float tz = 0;
+        LOG("Attempting to set RTC time to the current network time...");
+    
+        // Attempt to retrieve the current time from our network component
+        if(networkComponent->getNetworkTime(&year, &month, &day, &hour, &minute, &second, &tz)){
+            RTC_DS.adjust(DateTime(year, month, day, hour, minute, second));
+            snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
+            LOG(output);
+        }else{
+            ERROR("Failed to get network time! Time has not been set.");
+        }
+    }else{
+        ERROR("Network component not set in hypnos or component wasn't connected to the internet.");
+    }
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -373,9 +400,6 @@ void Loom_Hypnos::sleep(bool waitForSerial){
         LOG("Entering Standby Sleep...");
         delay(50);
     }
-
-
-    
     
     disable();
     pre_sleep();                    // Pre-sleep cleanup

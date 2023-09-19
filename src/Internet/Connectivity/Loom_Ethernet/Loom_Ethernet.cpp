@@ -2,7 +2,7 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Ethernet::Loom_Ethernet(Manager& man, uint8_t mac[6], IPAddress ip) : Module("Ethernet"), manInst(&man){
+Loom_Ethernet::Loom_Ethernet(Manager& man, uint8_t mac[6], IPAddress ip) : NetworkComponent("Ethernet"), manInst(&man){
     this->ip = ip;
     for(int i = 0; i < 6; i++)
         this->mac[i] = mac[i];
@@ -11,7 +11,7 @@ Loom_Ethernet::Loom_Ethernet(Manager& man, uint8_t mac[6], IPAddress ip) : Modul
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Ethernet::Loom_Ethernet(Manager& man) : Module("Ethernet"), manInst(&man) {
+Loom_Ethernet::Loom_Ethernet(Manager& man) : NetworkComponent("Ethernet"), manInst(&man) {
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -4,8 +4,8 @@
 #include <EthernetClient.h>
 #include <EthernetUdp.h>
 
-#include "Module.h"
 #include "Loom_Manager.h"
+#include "../NetworkComponent.h"
 
 
 /**
@@ -13,7 +13,7 @@
  * 
  * @author Will Richards
  */ 
-class Loom_Ethernet : public Module{
+class Loom_Ethernet : public NetworkComponent{
 
     protected:
 
@@ -30,6 +30,12 @@ class Loom_Ethernet : public Module{
 
         // Disconnect from the network
         void power_down() override {};
+
+        // Get the current time from the network
+        bool getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) override { return true; };
+
+        /* Returns the currently connected state of the interface */
+        bool isConnected() override { return ethernetClient.connected(); };
     
     public:
 

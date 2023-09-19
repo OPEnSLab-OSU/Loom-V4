@@ -5,7 +5,7 @@
 FlashStorage(WiFiConfig, WifiInfo);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_WIFI::Loom_WIFI(Manager& man, CommunicationMode mode, const char* name, const char* password, int connectionRetries) : Module("WiFi"), manInst(&man), mode(mode), connectionRetries(connectionRetries){
+Loom_WIFI::Loom_WIFI(Manager& man, CommunicationMode mode, const char* name, const char* password, int connectionRetries) : NetworkComponent("WiFi"), manInst(&man), mode(mode), connectionRetries(connectionRetries){
     if(mode == CommunicationMode::AP && strlen(name) <= 0){
         snprintf(wifi_name, 100, "%s%i", manInst->get_device_name(), manInst->get_instance_num());
     }else{
@@ -18,7 +18,7 @@ Loom_WIFI::Loom_WIFI(Manager& man, CommunicationMode mode, const char* name, con
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_WIFI::Loom_WIFI(Manager& man) : Module("WiFi"), manInst(&man) {
+Loom_WIFI::Loom_WIFI(Manager& man) : NetworkComponent("WiFi"), manInst(&man) {
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -364,5 +364,24 @@ IPAddress Loom_WIFI::getBroadcast(){
     broadcast[3] = 255;
 
     return broadcast;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_WIFI::getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) {
+    unsigned long unixtime = WiFi.getTime();
+    if(unixtime != 0){
+        DateTime time = DateTime(unixtime);
+        Serial.println(unixtime);
+        *year = time.year();
+        *month = time.month();
+        *day = time.day();
+        *hour = time.hour();
+        *minute = time.minute();
+        *second = time.second();
+        return true;
+    }else{
+        return false;
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
