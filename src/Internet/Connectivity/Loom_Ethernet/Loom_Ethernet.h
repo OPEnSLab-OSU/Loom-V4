@@ -26,13 +26,13 @@ class Loom_Ethernet : public NetworkComponent{
         void initialize() override;
 
         // Reconnect to the network
-        void power_up() override {};
+        void power_up() override { };
 
         // Disconnect from the network
-        void power_down() override {};
+        void power_down() override { Ethernet.maintain(); };
 
         // Get the current time from the network
-        bool getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) override { return true; };
+        bool getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz);
 
         /* Returns the currently connected state of the interface */
         bool isConnected() override { return ethernetClient.connected(); };
@@ -66,7 +66,7 @@ class Loom_Ethernet : public NetworkComponent{
         /**
          * Attempt to connect to the configured network 
          */
-        void connect();
+        bool connect();
 
         /**
          * Returns a reference to the Ethernet Client
@@ -109,6 +109,13 @@ class Loom_Ethernet : public NetworkComponent{
         Manager* manInst;                   // Pointer to the manager
 
         EthernetClient ethernetClient;      // Ethernet client that can be used with the MQTT client or other additional objects
+        EthernetUDP udp;                    // UDP Client
+
+        /* NTP Syncronization */
+        unsigned int localPort = 8888;
+        const char* timeServer = "time.nist.gov";
+        const int NTP_PACKET_SIZE = 48;
+        void sendNTPpacket();
 
         bool hasInitialized = false;        // Has the Ethernet module run through the initialization process
 

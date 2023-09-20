@@ -221,27 +221,24 @@ DateTime Loom_Hypnos::get_utc_time(){
     if(timezone == TIME_ZONE::ACST)
         return now + TimeSpan(0, timezone, -30, 0);
 
-    // If we are in a timezone that observes daylight savings
-    else if(timezone == AST || timezone == EST || timezone == CST || timezone == MST || timezone == AST || timezone == PST || timezone == AKST){
-        // If we are in the months where daylight savings is not in affect
-        if(now.month() >= 3 && now.month() <= 10){
-            
-            return now + TimeSpan(0, (timezone)-1, 0, 0);
+    if(isDaylightSavings()){
+        return now + TimeSpan(0, (timezone)-1, 0, 0);
+    }else{
+        return now + TimeSpan(0, (timezone), 0, 0);
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            // If in the months when it changes check if the days are correct
-            if( (now.month() == 3 && now.day() >= 13) || (now.month() == 10 && now.day() < 6)){
-                return now + TimeSpan(0, (timezone)-1, 0, 0);
-            }
-            
-        }
-        else{
-            return now + TimeSpan(0, (timezone), 0, 0);
-        }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::isDaylightSavings(){
+    // Timezones that observe daylight savings
+    if(timezone == AST || timezone == EST || timezone == CST || timezone == MST || timezone == AST || timezone == PST || timezone == AKST){
+        int currMonth = getCurrentTime().month();
+
+        // If we are in the months where daylight savings is in affect
+        return (currMonth > 3 && currMonth  < 11);
     }
-    
-    else{
-        return now + TimeSpan(0, timezone, 0, 0);
-    }
+    return false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -262,16 +259,25 @@ bool Loom_Hypnos::networkTimeUpdate(){
     if(networkComponent != nullptr && networkComponent->isConnected()){
         char output[OUTPUT_SIZE];
         int year, month, day, hour, minute, second = 0;
-        float tz = 0;
-        LOG("Attempting to set RTC time to the current network time...");
-    
-        // Attempt to retrieve the current time from our network component
-        if(networkComponent->getNetworkTime(&year, &month, &day, &hour, &minute, &second, &tz)){
-            RTC_DS.adjust(DateTime(year, month, day, hour, minute, second));
-            snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
-            LOG(output);
-        }else{
-            ERROR("Failed to get network time! Time has not been set.");
+        float tz = timezone;
+        /* Go back another hour*/
+        if(isDaylightSavings()){
+            tz -= 1;
+        }
+
+        /* Try twice to set the time if it works break out if not we just og again*/
+        for(int i = 0; i < 2; i++){
+            LOG("Attempting to set RTC time to the current network time...");
+        
+            // Attempt to retrieve the current time from our network component
+            if(networkComponent->getNetworkTime(&year, &month, &day, &hour, &minute, &second, &tz)){
+                RTC_DS.adjust(DateTime(year, month, day, hour, minute, second));
+                snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
+                LOG(output);
+                break;
+            }else{
+                ERROR("Failed to get network time! Time has not been set. Retrying...");
+            }
         }
     }else{
         ERROR("Network component not set in hypnos or component wasn't connected to the internet.");

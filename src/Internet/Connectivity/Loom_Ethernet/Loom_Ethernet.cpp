@@ -27,8 +27,6 @@ void Loom_Ethernet::initialize() {
 
     // Give a bit more time to initialize the module
     delay(1000);
-
-    moduleInitialized = true;
     
     LOG(F("Successfully Initalized Ethernet!"));
     // Print the device IP
@@ -43,24 +41,29 @@ void Loom_Ethernet::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Ethernet::connect(){
+bool Loom_Ethernet::connect(){
     if(moduleInitialized){
-       pinMode(8, OUTPUT);
-       digitalWrite(8, HIGH);
+        pinMode(8, OUTPUT);
+        digitalWrite(8, HIGH);
 
-       // Initialize the module
-       Ethernet.init(10);
+        // Initialize the module
+        Ethernet.init(10);
 
-       // No DHCP server
-       if(Ethernet.begin(mac) == 0){
-        WARNING(F("Failed to configure using DHCP"));
+        // No DHCP server
+        if(Ethernet.begin(mac) == 0){
+            ERROR(F("Failed to configure using DHCP"));
 
-        // Attempt to assign a static IP
-        Ethernet.begin(mac, ip);
-       }
-       else{
-        ip = Ethernet.localIP();
-       }
+            // Module didn't get an IP address attempting to figure out why...
+            moduleInitialized = false;
+            if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+                ERROR("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
+            } else if (Ethernet.linkStatus() == LinkOFF) {
+                ERROR("Ethernet cable is not connected.");
+            }
+           
+        }else{
+            ip = Ethernet.localIP();
+        }
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,6 +94,67 @@ void Loom_Ethernet::loadConfigFromJSON(char* json){
     free(json);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool Loom_Ethernet::getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz){
+    byte packetBuffer[NTP_PACKET_SIZE];     // Buffer to read in packet
+    const unsigned long seventyYears = 2208988800UL; // Unix time start
+
+    // Start UDP listener
+    udp.begin(localPort);
+
+    // Send off the NTP request to the time server
+    sendNTPpacket();
+
+    // Wait 5 seconds for data to come back
+    delay(5000);
+
+    if(udp.parsePacket()){
+        udp.read(packetBuffer, NTP_PACKET_SIZE);
+
+        unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
+        unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);
+        // combine the four bytes (two words) into a long integer
+        // this is NTP time (seconds since Jan 1 1900):
+        unsigned long secsSince1900 = highWord << 16 | lowWord;
+
+        // Convert seconds since 1900 into unixtime
+        unsigned long unixtime = secsSince1900 - seventyYears;
+
+        DateTime currentTime = DateTime(unixtime);
+        *year = currentTime.year();
+        *month = currentTime.month();
+        *day = currentTime.day();
+        *hour = currentTime.hour();
+        *minute = currentTime.minute();
+        *second = currentTime.minute();
+    }
+
+
+}
+
+void Loom_Ethernet::sendNTPpacket(){
+    byte packetBuffer[NTP_PACKET_SIZE];     // Buffer to read in packet
+    // set all bytes in the buffer to 0
+    memset(packetBuffer, 0, NTP_PACKET_SIZE);
+
+    // Initialize values needed to form NTP request
+    // (see URL above for details on the packets)
+    packetBuffer[0] = 0b11100011;   // LI, Version, Mode
+    packetBuffer[1] = 0;     // Stratum, or type of clock
+    packetBuffer[2] = 6;     // Polling Interval
+    packetBuffer[3] = 0xEC;  // Peer Clock Precision
+    // 8 bytes of zero for Root Delay & Root Dispersion
+    packetBuffer[12]  = 49;
+    packetBuffer[13]  = 0x4E;
+    packetBuffer[14]  = 49;
+    packetBuffer[15]  = 52;
+
+    // all NTP fields have been given values, now
+    // you can send a packet requesting a timestamp:
+    udp.beginPacket(timeServer, 123); // NTP requests are to port 123
+    udp.write(packetBuffer, NTP_PACKET_SIZE);
+    udp.endPacket();
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 IPAddress Loom_Ethernet::getIPAddress(){
