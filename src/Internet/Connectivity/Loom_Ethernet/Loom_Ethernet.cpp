@@ -95,6 +95,7 @@ void Loom_Ethernet::loadConfigFromJSON(char* json){
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Ethernet::getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz){
     byte packetBuffer[NTP_PACKET_SIZE];     // Buffer to read in packet
     const unsigned long seventyYears = 2208988800UL; // Unix time start
@@ -105,9 +106,10 @@ bool Loom_Ethernet::getNetworkTime(int* year, int* month, int* day, int* hour, i
     // Send off the NTP request to the time server
     sendNTPpacket();
 
-    // Wait 5 seconds for data to come back
-    delay(5000);
+    // Wait 1 seconds for data to come back
+    delay(1000);
 
+    /* Receive the packet from the timeserver*/
     if(udp.parsePacket()){
         udp.read(packetBuffer, NTP_PACKET_SIZE);
 
@@ -120,6 +122,7 @@ bool Loom_Ethernet::getNetworkTime(int* year, int* month, int* day, int* hour, i
         // Convert seconds since 1900 into unixtime
         unsigned long unixtime = secsSince1900 - seventyYears;
 
+        // Set the integer pointers to the corresponding time
         DateTime currentTime = DateTime(unixtime);
         *year = currentTime.year();
         *month = currentTime.month();
@@ -127,11 +130,15 @@ bool Loom_Ethernet::getNetworkTime(int* year, int* month, int* day, int* hour, i
         *hour = currentTime.hour();
         *minute = currentTime.minute();
         *second = currentTime.minute();
+
+        return true;
     }
 
-
+    return false;
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Ethernet::sendNTPpacket(){
     byte packetBuffer[NTP_PACKET_SIZE];     // Buffer to read in packet
     // set all bytes in the buffer to 0
@@ -155,6 +162,7 @@ void Loom_Ethernet::sendNTPpacket(){
     udp.write(packetBuffer, NTP_PACKET_SIZE);
     udp.endPacket();
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 IPAddress Loom_Ethernet::getIPAddress(){
