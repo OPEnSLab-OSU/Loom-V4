@@ -6,6 +6,8 @@
 #include "Module.h"
 #include "Loom_Manager.h"
 
+#include "../../../Hardware/Loom_Hypnos/Loom_Hypnos.h"
+
 #define MAX_PACKET_SIZE 2000
 
 /**
@@ -59,8 +61,16 @@ class Loom_RemoteManager : public Module{
          */
         void loadConfigFromJSON(char* json);
 
+        /**
+         * Set an instance of the hypnos inside the RemoteManager
+         * 
+         * @param hypnos Reference to the Hypnos object
+        */
+        void setHypnosInstance(Loom_Hypnos& hypnos) { this->hypnosInst = &hypnos; };
+    
     private:
-        Manager manInst = nullptr;                                                          // Instance of the Loom Manager
+        Manager* manInst = nullptr;                                                         // Instance of the Loom Manager
+        Loom_Hypnos* hypnosInst = nullptr;                                                  // Instance of the Hypnos
 
         Client* internetClient;                                                             // Client to supply to the MQTT client to handle internet communication
         MqttClient mqttClient;                                                              // MQTT Client to manage interactions with the MQTT broker
@@ -84,4 +94,14 @@ class Loom_RemoteManager : public Module{
         char topic[100];                                                                    // Where to publish the data to
         char username[100];                                                                 // Username to log into the broker
         char password[100];                                                                 // Password to log into the broker
+
+        /* Helper methods for updating individual components of the device */
+
+        /* General Device */
+        void updateDeviceStatus(bool onOff);
+
+        /* Hypnos */
+        void updateHypnosInterval(char topic[512], char message[MAX_PACKET_SIZE], StaticJsonDocument<MAX_PACKET_SIZE> &json);
+        void updateHypnosTime(char topic[512], char message[MAX_PACKET_SIZE], StaticJsonDocument<MAX_PACKET_SIZE> &json);
+        
 };

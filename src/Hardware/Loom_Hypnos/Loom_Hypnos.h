@@ -202,7 +202,6 @@ class Loom_Hypnos : public Module{
         /* Set a network interface in the Hypnos so we can sync our time */
         void setNetworkInterface(NetworkComponent* component) { networkComponent = component; };
 
-
         /* Set the current RTC time to the time retrieved from the network */
         bool networkTimeUpdate();
 
