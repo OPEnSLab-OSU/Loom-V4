@@ -40,7 +40,7 @@ void Loom_RemoteManager::power_down(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_RemoteManager::refreshRemoteTopics(){
     // Create topic name buffer and message buffer as well as a temp JSON document to parse the received packets into
-    char topic[512];
+    char topic[MAX_TOPIC_LENGTH];
     char message[MAX_PACKET_SIZE];
     StaticJsonDocument<MAX_PACKET_SIZE> tempDoc;
 
@@ -273,9 +273,9 @@ void Loom_RemoteManager::getMQTTError(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_RemoteManager::updateHypnosInterval(char topic[512], char message[MAX_PACKET_SIZE], StaticJsonDocument<MAX_PACKET_SIZE> &json){
+void Loom_RemoteManager::updateHypnosInterval(char topic[MAX_TOPIC_LENGTH], char message[MAX_PACKET_SIZE], StaticJsonDocument<MAX_PACKET_SIZE> &json){
     // Clear message and topic and json
-    memset(topic, '\0', 512);
+    memset(topic, '\0', MAX_TOPIC_LENGTH);
     memset(message, '\0', MAX_PACKET_SIZE);
     json.clear();
 
@@ -289,7 +289,7 @@ void Loom_RemoteManager::updateHypnosInterval(char topic[512], char message[MAX_
             "seconds": 0
         }
     */
-    snprintf(topic, 512, "RemoteManager/%s%i/Hypnos/setSleepInterval", manInst->get_device_name(), manInst->get_instance_num());
+    snprintf(topic, MAX_TOPIC_LENGTH, "RemoteManager/%s%i/Hypnos/setSleepInterval", manInst->get_device_name(), manInst->get_instance_num());
     if(getCurrentRetained((const char*)topic, message)){
 
         // Parse the incoming message into a JSON Document and then create a new date time from the values to update the current time in the Hypnos
@@ -306,16 +306,16 @@ void Loom_RemoteManager::updateHypnosInterval(char topic[512], char message[MAX_
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_RemoteManager::updateHypnosTime(char topic[512], char message[MAX_PACKET_SIZE], StaticJsonDocument<MAX_PACKET_SIZE> &json){
+void Loom_RemoteManager::updateHypnosTime(char topic[MAX_TOPIC_LENGTH], char message[MAX_PACKET_SIZE], StaticJsonDocument<MAX_PACKET_SIZE> &json){
     // Clear message and topic and json
-    memset(topic, '\0', 512);
+    memset(topic, '\0', MAX_TOPIC_LENGTH);
     memset(message, '\0', MAX_PACKET_SIZE);
     json.clear();
 
     /* 
         This is the topic that we need to publish to to change the RTC time. The contents of the packet can be whatever there just needs to be a packet
     */
-    snprintf(topic, 512, "RemoteManager/%s%i/Hypnos/setRTC", manInst->get_device_name(), manInst->get_instance_num());
+    snprintf(topic, MAX_TOPIC_LENGTH, "RemoteManager/%s%i/Hypnos/setRTC", manInst->get_device_name(), manInst->get_instance_num());
     if(getCurrentRetained((const char*)topic, message)){
         // Set the new RTC time from the network
         hypnosInst->networkTimeUpdate();
@@ -330,18 +330,18 @@ void Loom_RemoteManager::updateHypnosTime(char topic[512], char message[MAX_PACK
 void Loom_RemoteManager::updateDeviceStatus(bool onOff){
     StaticJsonDocument<100> json;
     char message[100];
-    char topic[512];
+    char topic[MAX_TOPIC_LENGTH];
 
     // Clear strings
     memset(message, '\0', 100);
-    memset(topic, '\0', 512);
+    memset(topic, '\0', MAX_TOPIC_LENGTH);
 
     // Set the online flag and then serialize the json to a string
     json["online"] = onOff;
     serializeJson(json, message);
 
     // Format the topic to publish the data to and publish the message
-    snprintf(topic, 512, "RemoteManager/%s%i/status", manInst->get_device_name(), manInst->get_instance_num());
+    snprintf(topic, MAX_TOPIC_LENGTH, "RemoteManager/%s%i/status", manInst->get_device_name(), manInst->get_instance_num());
     publishMessage((const char*)topic, message);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

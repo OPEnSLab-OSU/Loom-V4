@@ -9,6 +9,7 @@
 #include "../../../Hardware/Loom_Hypnos/Loom_Hypnos.h"
 
 #define MAX_PACKET_SIZE 2000
+#define MAX_TOPIC_LENGTH 512
 
 /**
  * Remote management class handles, altering settings on-the-fly OTA
@@ -101,7 +102,7 @@ class Loom_RemoteManager : public Module{
         void updateDeviceStatus(bool onOff);
 
         /* Hypnos */
-        void updateHypnosInterval(char topic[512], char message[MAX_PACKET_SIZE], StaticJsonDocument<MAX_PACKET_SIZE> &json);
-        void updateHypnosTime(char topic[512], char message[MAX_PACKET_SIZE], StaticJsonDocument<MAX_PACKET_SIZE> &json);
+        void updateHypnosInterval(char topic[MAX_TOPIC_LENGTH], char message[MAX_PACKET_SIZE], StaticJsonDocument<MAX_PACKET_SIZE> &json);
+        void updateHypnosTime(char topic[MAX_TOPIC_LENGTH], char message[MAX_PACKET_SIZE], StaticJsonDocument<MAX_PACKET_SIZE> &json);
         
 };
