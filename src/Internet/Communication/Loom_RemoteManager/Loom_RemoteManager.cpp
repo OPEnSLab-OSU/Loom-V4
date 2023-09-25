@@ -21,15 +21,24 @@ Loom_RemoteManager::Loom_RemoteManager(Manager& man, Client& internet_client) : 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_RemoteManager::initialize(){
-    power_up();
+void Loom_RemoteManager::power_up(){
+    // Connect to the MQTT broker 
+    if(connectToBroker()){
+        refreshRemoteTopics();
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_RemoteManager::power_up(){
-    // Connect to the MQTT broker 
-    connectToBroker();
+void Loom_RemoteManager::power_down(){
+    // Disconnect from the broker
+    disconnectFromBroker();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_RemoteManager::refreshRemoteTopics(){
+    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -80,34 +89,90 @@ bool Loom_RemoteManager::connectToBroker(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_RemoteManager::disconnectFromBroker(){
+    mqttClient.stop();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_RemoteManager::publishMessage(const char* topic, const char* message){
     FUNCTION_START;
+
+    // Make sure the module is initialized
     if(moduleInitialized){
-        // Start a message write the data and close the message, publish all messages with retain
-        if(mqttClient.beginMessage(topic, true, 2) != 1){
-            ERROR(F("Failed to begin message!"));
-        }
+        if(mqttClient.connected()){
+            // Start a message write the data and close the message, publish all messages with retain
+            if(mqttClient.beginMessage(topic, true, 2) != 1){
+                ERROR(F("Failed to begin message!"));
+            }
 
-        // Print the message to the topic
-        mqttClient.println(message);
+            // Print the message to the topic
+            mqttClient.println(message);
 
-        // Check to see if we are actually closing messages properly
-        if(mqttClient.endMessage() != 1){
-            ERROR(F("Failed to close message!"));
-            FUNCTION_END;
-            return false;
+            // Check to see if we are actually closing messages properly
+            if(mqttClient.endMessage() != 1){
+                ERROR(F("Failed to close message!"));
+                FUNCTION_END;
+                return false;
+            }
+            else{
+                LOG(F("Data has been successfully sent!"));
+                FUNCTION_END;
+                return true;
+            }   
         }
         else{
-            LOG(F("Data has been successfully sent!"));
-            FUNCTION_END;
-            return true;
-        }   
+            ERROR("MQTT Client not connected to broker ")
+        }
     }
     else{
         ERROR("Module not initialized!");
     }
     FUNCTION_END;
     return false;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_RemoteManager::getCurrentRetained(const char* topic, char message[MAX_PACKET_SIZE]){
+    FUNCTION_START;
+    char output[OUTPUT_SIZE];
+
+    if(mqttClient.connected()){
+        /* Clear the incoming buffer */
+        memset(message, '\0', MAX_PACKET_SIZE);
+
+        // Subscribe to the given topic we want to read from
+        if(!mqttClient.subscribe(topic)){
+            snprintf(output, OUTPUT_SIZE, "Failed to subscribe to topic: %s.", topic);
+            ERROR(output);
+        }
+
+        /* Attempt to parse a message on the current topic */
+        int messageSize = mqttClient.parseMessage();
+        if(messageSize){
+            /* Copy the received message into the message string */
+            strncpy(message, mqttClient.messageTopic().c_str(), MAX_PACKET_SIZE);
+
+            // Unsubscribe from the topic 
+            mqttClient.unsubscribe(topic);
+
+            FUNCTION_END;
+            return true;
+        }
+        else{
+            WARNING("Message of size 0 received.");
+            FUNCTION_END;
+            return false;
+            
+        }
+    }else{
+        ERROR("Not connected to MQTT broker.");
+        FUNCTION_END;
+        return false;
+    }
+    
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
