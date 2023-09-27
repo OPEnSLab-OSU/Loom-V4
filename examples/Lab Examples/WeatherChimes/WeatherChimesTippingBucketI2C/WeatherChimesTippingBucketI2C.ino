@@ -16,7 +16,7 @@
 #include <Sensors/I2C/Loom_MS5803/Loom_MS5803.h>
 #include <Hardware/Loom_TippingBucket/Loom_TippingBucket.h>
 
-#include <Internet/Logging/Loom_MQTT/Loom_MQTT.h>
+#include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h>
 #include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
 
 Manager manager("Chime", 3);
@@ -35,7 +35,7 @@ Loom_MS5803 ms_air(manager, 118); // 118(0x76) if CSB=HIGH on WC PCB
 Loom_TippingBucket bucket(manager, COUNTER_TYPE::I2C, 0.01f);
 
 Loom_LTE lte(manager, "hologram", "", "");
-Loom_MQTT mqtt(manager, lte.getClient());
+Loom_MongoDB mqtt(manager, lte.getClient());
 
 /* Calculate the water height based on the difference of pressures*/
 float calculateWaterHeight(){

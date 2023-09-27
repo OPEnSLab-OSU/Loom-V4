@@ -1,8 +1,8 @@
-#include "Loom_MQTT.h"
+#include "Loom_MongoDB.h"
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_MQTT::Loom_MQTT(
+Loom_MongoDB::Loom_MongoDB(
                     Manager& man,
                     Client& internet_client, 
                     const char* broker_address, 
@@ -11,30 +11,26 @@ Loom_MQTT::Loom_MQTT(
                     const char* broker_user, 
                     const char* broker_pass,
                     const char* projectServer
-                ) : Module("MQTT"),
-                    manInst(&man), 
-                    internetClient(&internet_client), 
-                    port(broker_port),
-                    mqttClient(*internetClient)
+                ) : MQTTComponent("MongoDB", internet_client),
+                    manInst(&man)
                     {
-                        strncpy(this->address, broker_address, 100);
+                        setConnectionParameters(broker_address, broker_port, broker_user, broker_pass);
                         strncpy(this->database_name, database_name, 100);
-                        strncpy(this->username, broker_user, 100);
-                        strncpy(this->password, broker_pass, 100);
                         strncpy(this->projectServer, projectServer, 100);
                     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_MQTT::Loom_MQTT(Manager& man, Client& internet_client) : Module("MQTT"), manInst(&man), internetClient(&internet_client), mqttClient(*internetClient){
+Loom_MongoDB::Loom_MongoDB(Manager& man, Client& internet_client) : MQTTComponent("MongoDB", internet_client), manInst(&man){
     moduleInitialized = false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_MQTT::publish(){
+void Loom_MongoDB::publish(){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
+    char topic[MAX_TOPIC_LENGTH];
     char jsonString[2000];
     if(moduleInitialized){
 
@@ -42,10 +38,10 @@ void Loom_MQTT::publish(){
         
         if(strlen(projectServer) > 0)
             // Formulate a topic to publish on with the format "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
-            snprintf_P(topic, 100, PSTR("%s/%s/%s%i"), projectServer, database_name, manInst->get_device_name(), manInst->get_instance_num());
+            snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s/%s%i"), projectServer, database_name, manInst->get_device_name(), manInst->get_instance_num());
         else
             // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
-            snprintf_P(topic, 100, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
+            snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
 
         // If we are logging in using credentials then supply them
         if(strlen(username) > 0)
@@ -111,9 +107,10 @@ void Loom_MQTT::publish(){
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_MQTT::publish(Loom_BatchSD& batchSD){
+void Loom_MongoDB::publish(Loom_BatchSD& batchSD){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
+    char topic[MAX_TOPIC_LENGTH]
     char line[2000];
     int packetNumber = 0, index = 0;
     char c;
@@ -123,10 +120,10 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
 
             if(strlen(projectServer) > 0)
                 // Formulate a topic to publish on with the format "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
-                snprintf_P(topic, 100, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
+                snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
             else
                 // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
-                snprintf_P(topic, 100, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
+                snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
             
             // If we are logging in using credentials then supply them
             if(strlen(username) > 0)
@@ -208,42 +205,13 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-const char* Loom_MQTT::getMQTTError(){
-    FUNCTION_START;
-    // Convert error codes to actual descriptions
-    switch(mqttClient.connectError()){
-        case -2:
-            FUNCTION_END;
-            return "CONNECTION_REFUSED";
-        case -1:
-            FUNCTION_END;
-            return "CONNECTION_TIMEOUT";
-        case 1:
-            FUNCTION_END;
-            return "UNACCEPTABLE_PROTOCOL_VERSION";
-        case 2:
-            FUNCTION_END;
-            return "IDENTIFIER_REJECTED";
-        case 3:
-            FUNCTION_END;
-            return "SERVER_UNAVAILABLE";
-        case 4:
-            FUNCTION_END;
-            return "BAD_USER_NAME_OR_PASSWORD";
-        case 5:
-            FUNCTION_END;
-            return "NOT_AUTHORIZED";
-        default:
-            FUNCTION_END;
-            return "UNKNOWN_ERROR";
-    }
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_MQTT::loadConfigFromJSON(char* json){
+void Loom_MongoDB::loadConfigFromJSON(char* json){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
+    char topic[MAX_TOPIC_LENGTH];
+    char address[100];
+    char username[100];
+    char password[100];
     // Doc to store the JSON data from the SD card in
     StaticJsonDocument<300> doc;
     DeserializationError deserialError = deserializeJson(doc, json);
@@ -254,24 +222,43 @@ void Loom_MQTT::loadConfigFromJSON(char* json){
         ERROR(output);
     }
 
-    // Only update values if not null
+    // Clear the strings and set port = 0
+    memset(address, '\0', 100);
+    memset(database_name, '\0', 100);
+    memset(username, '\0', 100);
+    memset(password, '\0', 100);
+    port = 0;
+    
+    /* We should check if any parameter is null */
     if(!doc["broker"].isNull()){
         strncpy(address, doc["broker"].as<const char*>(), 100);
+
+    if(!doc["database"].isNull())
         strncpy(database_name, doc["database"].as<const char*>(), 100);
+    
+    if(!doc["username"].isNull())
         strncpy(username, doc["username"].as<const char*>(), 100);
+
+    if(!doc["password"].isNull())
         strncpy(password, doc["password"].as<const char*>(), 100);
+
+    if(!doc["project"].isNull())
         strncpy(projectServer, doc["project"].as<const char*>(), 100);
+
+    if(!doc["port"].isNull())
         port = doc["port"].as<int>();
-    }
+    
+    // Set the connection parameters 
+    setConnectionParameters(address, port, username, password);
     
     if(strlen(projectServer) > 0)
-            // Formulate a topic to publish on with the format "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
-            snprintf_P(topic, 100, PSTR("%s/%s/%s%i"), projectServer, database_name, manInst->get_device_name(), manInst->get_instance_num());
-        else
-            // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
-            snprintf_P(topic, 100, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
+        // Formulate a topic to publish on with the format "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
+        snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s/%s%i"), projectServer, database_name, manInst->get_device_name(), manInst->get_instance_num());
+    else
+        // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
+        snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
     
-    moduleInitialized = true;
+    
     free(json);
     FUNCTION_END;
 }

@@ -9,7 +9,7 @@
 #include <RHReliableDatagram.h>
 
 /**
- * Used to communicate with LoRa type radios
+ * Used to communicate with Freewave type radios
  * 
  * @author Will Richards
  */ 
@@ -17,8 +17,6 @@ class Loom_Freewave : public Radio{
     protected:
         /* These aren't used with this module */
         void measure() override {};                               
-        
-        
 
     public:
 

@@ -25,7 +25,7 @@
 #include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h>
 // Internet/DB Includes
 #ifdef USE_INTERNET
-#include <Internet/Logging/Loom_MQTT/Loom_MQTT.h>
+#include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h>
 #include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
 #endif
 // OneWire Includes
@@ -43,7 +43,7 @@ Loom_SHT31 sht(manager);
 // Create lte and mqtt classes
 #ifdef USE_INTERNET
 Loom_LTE lte(manager, NETWORK_APN, NETWORK_USER, NETWORK_PASS);
-Loom_MQTT mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS, "LilyPad");
+Loom_MongoDB mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS, "LilyPad");
 #endif
 
 // Create oneWire/DallasTemperature sensor classes

@@ -9,14 +9,14 @@
 
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
-#include <Internet/Logging/Loom_MQTT/Loom_MQTT.h>
+#include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h>
 
 Manager manager("Device", 1);
 
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 
 Loom_LTE lte(manager, NETWORK_NAME, NETWORK_USER, NETWORK_PASS);
-Loom_MQTT mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS, PROJECT);
+Loom_MongoDB mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS, PROJECT);
 
 // Enables batch logging with a batch size of 15
 Loom_BatchSD batchSD(hypnos, 15);

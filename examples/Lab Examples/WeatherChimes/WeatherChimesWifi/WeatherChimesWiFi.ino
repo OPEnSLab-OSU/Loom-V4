@@ -20,7 +20,7 @@
 // If using SDI12, GS3 or Teros 11 or 12 uncoment this line
 //#include <Sensors/SDI12/Loom_SDI12/Loom_SDI12.h>
 
-#include <Internet/Logging/Loom_MQTT/Loom_MQTT.h>
+#include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h>
 #include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
 
 Manager manager("Chime", 1);
@@ -39,7 +39,7 @@ Loom_MS5803 ms_air(manager, 118); // 118(0x76) if CSB=HIGH on WC PCB
 
 
 Loom_WIFI wifi(manager, CommunicationMode::CLIENT, "", "");
-Loom_MQTT mqtt(manager, wifi.getClient());
+Loom_MongoDB mqtt(manager, wifi.getClient());
 
 // If using Teros 10, Uncoment this line
 Loom_Teros10 t10(manager, A0);
