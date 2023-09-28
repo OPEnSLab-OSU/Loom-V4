@@ -7,18 +7,18 @@ Loom_RemoteManager::Loom_RemoteManager(
                 Client& internet_client, 
                 const char* broker_address, 
                 int broker_port, 
-                const char* database_name, 
                 const char* broker_user, 
                 const char* broker_pass
-            ) : manInst(&man), MQTTComponent("RemoteManager"), port(broker_port), internetClient(&internet_client), mqttClient(*internetClient){
+            ) : manInst(&man), MQTTComponent("RemoteManager", internet_client){
                 strncpy(this->address, broker_address, 100);
+                port = broker_port;
                 strncpy(this->username, broker_user, 100);
                 strncpy(this->password, password, 100);
             }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_RemoteManager::Loom_RemoteManager(Manager& man, Client& internet_client) : manInst(&man), MQTTComponent("RemoteManager") {}
+Loom_RemoteManager::Loom_RemoteManager(Manager& man, Client& internet_client) : manInst(&man), MQTTComponent("RemoteManager", internet_client) {}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -124,7 +124,7 @@ void Loom_RemoteManager::updateHypnosInterval(char topic[MAX_TOPIC_LENGTH], char
 
         // Parse the incoming message into a JSON Document and then create a new date time from the values to update the current time in the Hypnos
         deserializeJson(json, (const char*)message);
-        DateTime time = DateTime(json["days"].as<int>(), json["hours"].as<int>(), json["minutes"].as<int>(), json["seconds"].as<int>());
+        TimeSpan time = TimeSpan(json["days"].as<int>(), json["hours"].as<int>(), json["minutes"].as<int>(), json["seconds"].as<int>());
         
         // Set the new interrupt duration
         hypnosInst->setInterruptDuration(time);

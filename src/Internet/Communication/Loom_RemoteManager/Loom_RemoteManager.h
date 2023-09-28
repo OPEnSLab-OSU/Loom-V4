@@ -76,8 +76,6 @@ class Loom_RemoteManager : public MQTTComponent{
         Manager* manInst = nullptr;                                                         // Instance of the Loom Manager
         Loom_Hypnos* hypnosInst = nullptr;                                                  // Instance of the Hypno
 
-        
-
         char topic[100];                                                                    // Where to publish the data to
 
         /* Helper methods for updating individual components of the device */
