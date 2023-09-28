@@ -14,7 +14,13 @@ Loom_MongoDB::Loom_MongoDB(
                 ) : MQTTComponent("MongoDB", internet_client),
                     manInst(&man)
                     {
-                        setConnectionParameters(broker_address, broker_port, broker_user, broker_pass);
+                        /* MQTT Connection parameters */
+                        strncpy(this->address, broker_address, 100);
+                        port = broker_port;
+                        strncpy(this->username, broker_user, 100);
+                        strncpy(this->password, broker_pass, 100);
+
+                        /* Local MongoDB parameters */
                         strncpy(this->database_name, database_name, 100);
                         strncpy(this->projectServer, projectServer, 100);
                     }
@@ -29,8 +35,7 @@ Loom_MongoDB::Loom_MongoDB(Manager& man, Client& internet_client) : MQTTComponen
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MongoDB::publish(){
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
-    char topic[MAX_TOPIC_LENGTH];
+    
     char jsonString[2000];
     if(moduleInitialized){
 
@@ -43,75 +48,35 @@ void Loom_MongoDB::publish(){
             // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
             snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
 
-        // If we are logging in using credentials then supply them
-        if(strlen(username) > 0)
-            mqttClient.setUsernamePassword(username, password);
-
-        // Set the keepalive timer
-        mqttClient.setKeepAliveInterval(keep_alive);
-
-        int retryAttempts = 0;
-
-        // Try to connect multiple times as some may be dropped
-        while(!mqttClient.connected())
-        {
-            // If our retry limit has been reached we dont want to try to send data cause it wont work
-            if(retryAttempts >= maxRetries){
-                ERROR(F("MQTT Retry limit exceeded!"));
-                TIMER_ENABLE;
-                FUNCTION_END;
-                return;
-            }
-
-            snprintf_P(output, OUTPUT_SIZE, PSTR("Attempting to connect to broker: %s:%i"), address, port);
-            LOG(output);
-
-            // Attempt to Connect to the MQTT client 
-            if(!mqttClient.connect(address, port)){
-                snprintf_P(output, OUTPUT_SIZE, PSTR("Failed to connect to broker: %s"), getMQTTError());
-                ERROR(output);
-                delay(5000);
-            }
-
-            retryAttempts++;
+        /* Attempt to connect to the broker if it fails we should just return */
+        if(!connectToBroker()){
+            FUNCTION_END;
+            return false;
         }
-        
-        LOG(F("Successfully connected to broker!"));
-        LOG(F("Attempting to send data..."));
 
-        // Tell the broker we are still here
-        mqttClient.poll();
-
-        // Start a message write the data and close the message
-        if(mqttClient.beginMessage(topic, false, 2) != 1){
-            ERROR(F("Failed to begin message!"));
-        }
+        /* Attempt to publish the data to the given topic */
         manInst->getJSONString(jsonString);
-        mqttClient.println(jsonString);
-
-        // Check to see if we are actually closing messages properly
-        if(mqttClient.endMessage() != 1){
-            ERROR(F("Failed to close message!"));
+        if(!publishMessage(topic, jsonString)){
+            FUNCTION_END;
+            return false;
         }
-        else{
-            LOG(F("Data has been successfully sent!"));
-        }   
     }
     else{
         WARNING(F("Module not initialized! If using credentials from SD make sure they are loaded first."));
+        FUNCTION_END;
+        return false;
     }
     FUNCTION_END;
     TIMER_ENABLE;
+    return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_MongoDB::publish(Loom_BatchSD& batchSD){
+bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
-    char topic[MAX_TOPIC_LENGTH]
-    char line[2000];
+    char line[MAX_PACKET_SIZE];
     int packetNumber = 0, index = 0;
     char c;
     if(moduleInitialized){
@@ -125,61 +90,41 @@ void Loom_MongoDB::publish(Loom_BatchSD& batchSD){
                 // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
                 snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
             
-            // If we are logging in using credentials then supply them
-            if(strlen(username) > 0)
-                mqttClient.setUsernamePassword(username, password);
+            /* Attempt to connect to the broker */
+            if(!connectToBroker())
+                return false;
             
-
-            // Set the keepalive time
-            mqttClient.setKeepAliveInterval(keep_alive);
-        
-
-            int retryAttempts = 0;
-
-            // Try to connect multiple times as some may be dropped
-            while(!mqttClient.connected())
-            {
-                // If our retry limit has been reached we dont want to try to send data cause it wont work
-                if(retryAttempts >= maxRetries){
-                    ERROR(F("MQTT Retry limit exceeded!"));
-                    TIMER_ENABLE;
-                    FUNCTION_END;
-                    return;
-                }
-
-                snprintf_P(output, OUTPUT_SIZE, PSTR("Attempting to connect to broker: %s:%i"), address, port);
-                LOG(output);
-
-                // Attempt to Connect to the MQTT client 
-                if(!mqttClient.connect(address, port)){
-                    snprintf_P(output, OUTPUT_SIZE, PSTR("Failed to connect to broker: %s"), getMQTTError());
-                    ERROR(output);
-                    delay(5000);
-                }
-
-                retryAttempts++;
-            }
-            
-
-            // Tell the broker we are still here
-            mqttClient.poll();
-            
+            /* Get the file containing our batch of data */
             File fileOutput = batchSD.getBatch();
+
+            bool allDataSuccess = true;
             
-            // Read all available data from 
+            /* Utilize a stream so it doesn't matter how much data we have as its read in one by one */
             while(fileOutput.available()){
                 c = fileOutput.read();
+
+                // \r Marks the end of a line, at this point we want to publish that whole packet
                 if(c == '\r'){
-                    snprintf_P(output, OUTPUT_SIZE, PSTR("Publishing Packet %i of %d"), packetNumber+1, batchSD.getBatchSize());
-                    printModuleName(output);
+
+                    // Track the packet number we are currently publishing 
+                    snprintf_P(output, OUTPUT_SIZE, PSTR("Publishing Packet %i of %i"), packetNumber+1, batchSD.getBatchSize());
+                    LOG(output);
+
+                    // Replace the \r with a null character
                     line[index] = '\0';
-                    mqttClient.beginMessage(topic, false, 2);
-                    mqttClient.println(line);
-                    mqttClient.endMessage();
+
+                    if(!publishMessage(topic, line)){
+                        snprintf(output, OUTPUT_SIZE, PSTR("Failed to publish packet #%i"), packetNumber+1);
+                        WARNING(output);
+                        allDataSuccess = false;
+                    }
+
                     delay(500);
                     index = 0;
                     packetNumber++;
                 }
+
+                // If not just add the packet to the line array
                 else{
                     line[index] = c;
                     index++;
@@ -188,19 +133,31 @@ void Loom_MongoDB::publish(Loom_BatchSD& batchSD){
             }
             fileOutput.close();
             
-            LOG(F("Data has been successfully sent!"));
+            // Check if we actually sent all the data successfully 
+            if(allDataSuccess)
+                LOG(F("Data has been successfully sent!"));
+            else{
+                WARNING(F("1 or more packets failed to send!"));
+                FUNCTION_END;
+                return false;
+            }
             
         }
         else{
             snprintf_P(output, OUTPUT_SIZE, PSTR("Batch not ready to publish: %i/%i"), batchSD.getCurrentBatch(), batchSD.getBatchSize());
             LOG(output);
+            FUNCTION_END;
+            return false;
         }
     }
     else{
         WARNING(F("Module not initialized! If using credentials from SD make sure they are loaded first."));
+        FUNCTION_END;
+        return false;
     }
     FUNCTION_END;
     TIMER_ENABLE;
+    return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -209,9 +166,7 @@ void Loom_MongoDB::loadConfigFromJSON(char* json){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     char topic[MAX_TOPIC_LENGTH];
-    char address[100];
-    char username[100];
-    char password[100];
+
     // Doc to store the JSON data from the SD card in
     StaticJsonDocument<300> doc;
     DeserializationError deserialError = deserializeJson(doc, json);
@@ -230,7 +185,7 @@ void Loom_MongoDB::loadConfigFromJSON(char* json){
     port = 0;
     
     /* We should check if any parameter is null */
-    if(!doc["broker"].isNull()){
+    if(!doc["broker"].isNull())
         strncpy(address, doc["broker"].as<const char*>(), 100);
 
     if(!doc["database"].isNull())
@@ -247,16 +202,15 @@ void Loom_MongoDB::loadConfigFromJSON(char* json){
 
     if(!doc["port"].isNull())
         port = doc["port"].as<int>();
-    
-    // Set the connection parameters 
-    setConnectionParameters(address, port, username, password);
-    
-    if(strlen(projectServer) > 0)
+   
+    if(strlen(projectServer) > 0){
         // Formulate a topic to publish on with the format "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
         snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s/%s%i"), projectServer, database_name, manInst->get_device_name(), manInst->get_instance_num());
-    else
+    }
+    else{
         // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
         snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
+    }
     
     
     free(json);

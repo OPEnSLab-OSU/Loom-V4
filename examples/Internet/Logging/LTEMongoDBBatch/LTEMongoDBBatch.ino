@@ -1,5 +1,5 @@
 /**
- * This is an example use case for Loomified wifi and MQTT to log data remotely in BATCHES
+ * This is an example use case for Loomified LTE and MQTT to log data remotely in BATCHES to a MongoDB database
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */

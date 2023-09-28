@@ -15,14 +15,6 @@
 class MQTTComponent : public Module{
     protected:
 
-        /** 
-         * Set the backbones MQTT parameters 
-         * 
-         * @param address The address of the MQTT broker
-         * @param port The port that the MQTT broker is listening on
-        */
-        void setConnectionParameters(const char* address, int port, const char* username, const char* password);
-
         bool connectToBroker();                                                                         // Connect to the configured broker
         void disconnectFromBroker() { mqttClient.stop(); };                                             // Disconnect from the MQTT broker
         const char* getMQTTError();                                                                     // Convert the MQTT error code into a string
@@ -74,14 +66,13 @@ class MQTTComponent : public Module{
         virtual void power_up() override { connectToBroker(); };    
 
         /* On initialize we just want to call the power_up function to connect to the broker, this can also be overriden but you should call power_up or connectToBroker again */
-        virtual void initialize() override { 
-            if(strlen(address) <= 0 || port = 0){
-                moduleInitialized = false;
-                ERROR("Broker address not specified, module will be uninitialized.");
-            }else{
-                power_up(); 
-            }
-        };           
+        virtual void initialize() override;
+
+        /* MQTT Connection parameters */
+        char address[100];                          // Domain that the broker is running on
+        int port;                                   // Port the broker is listening on
+        char username[100];                         // Username to log into the broker
+        char password[100];                         // Password to log into the broker
 
     public:
 
@@ -91,7 +82,7 @@ class MQTTComponent : public Module{
          * @param compName Name for the underlying module
          * @param internet_client The Client object from a internet platform 
         */
-        MQTTComponent(const char* compName, Client& internet_client) : Module(compName), mqttClient(*internet_client) {
+        MQTTComponent(const char* compName, Client& internet_client) : Module(compName), mqttClient(internet_client) {
             /* Clear all connection parameters */
             memset(address, '\0', 100);
             port = 0;
@@ -100,24 +91,17 @@ class MQTTComponent : public Module{
         };
 
         /* Publishes the current sample to the remote broker */
-        void publish() = 0;
+        virtual bool publish() = 0;
 
         /**
          * Load the MQTT credentials from a JSON string, used to pull credentials from a file
          * @param jsonString JSON formatted string containing the login credentials, this is freed at the end
          */
-        void loadConfigFromJSON(char* json) = 0;
+        virtual void loadConfigFromJSON(char* json) = 0;
 
     private:
         MqttClient mqttClient;                      // Instance of the MQTT client
 
         int keep_alive = 60000;                     // How long the broker should keep the connection open, defaults to a minute
         int maxRetries = 4;                         // How many times we want to retry the connection
-
-        /* MQTT Connection parameters */
-        char address[100];                          // Domain that the broker is running on
-        int port;                                   // Port the broker is listening on
-        char username[100];                         // Username to log into the broker
-        char password[100];                         // Password to log into the broker
-
 };        

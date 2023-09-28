@@ -1,10 +1,10 @@
 #pragma once
 
 
-#include <ArduinoMqttClient.h>
 
 #include "Module.h"
 #include "Loom_Manager.h"
+#include "../../Logging/MQTTComponent/MQTTComponent.h"
 
 #include "../../../Hardware/Loom_Hypnos/Loom_Hypnos.h"
 
@@ -16,10 +16,10 @@
  * 
  * @author Will Richards
 */
-class Loom_RemoteManager : public Module{
+class Loom_RemoteManager : public MQTTComponent{
     protected:
          /* These aren't used with the RemoteManager yet */
-        void initialize() override { power_up() }; 
+        void initialize() override { power_up(); }; 
         void measure() override {};                               
         void package() override {};
 
@@ -45,7 +45,7 @@ class Loom_RemoteManager : public Module{
                 const char* broker_address, 
                 int broker_port, 
                 const char* broker_user = "", 
-                const char* broker_pass = "",
+                const char* broker_pass = ""
             );
         
         /**
@@ -60,7 +60,7 @@ class Loom_RemoteManager : public Module{
          * Load the MQTT credentials from a JSON string, used to pull credentials from a file
          * @param jsonString JSON formatted string containing the login credentials, this is freed at the end
          */
-        void loadConfigFromJSON(char* json);
+        void loadConfigFromJSON(char* json) override;
 
         /**
          * Set an instance of the hypnos inside the RemoteManager
@@ -68,33 +68,17 @@ class Loom_RemoteManager : public Module{
          * @param hypnos Reference to the Hypnos object
         */
         void setHypnosInstance(Loom_Hypnos& hypnos) { this->hypnosInst = &hypnos; };
+
+        /* Publish the current status updates*/
+        bool publish() override;
     
     private:
         Manager* manInst = nullptr;                                                         // Instance of the Loom Manager
-        Loom_Hypnos* hypnosInst = nullptr;                                                  // Instance of the Hypnos
+        Loom_Hypnos* hypnosInst = nullptr;                                                  // Instance of the Hypno
 
-        Client* internetClient;                                                             // Client to supply to the MQTT client to handle internet communication
-        MqttClient mqttClient;                                                              // MQTT Client to manage interactions with the MQTT broker
+        
 
-        bool connectToBroker();                                                             // Connect to the MQTT broker
-        void disconnectFromBroker();                                                        // Disconnect from the MQTT broker
-        const char* getMQTTError();                                                         // Convert the MQTT error code into a string
-
-        /* Publish a given message to a given topic with retain set to true */
-        bool publishMessage(const char* topic, const char* message);                        // Publish a given message to a specific topic
-        bool getCurrentRetained(const char* topic, char message[MAX_PACKET_SIZE]);          // Subscribes to a topic just to get the current retained message and then unsubscribes
-        bool deleteRetained(const char* topic);                                             // Delete the last retained message
-
-        /* Management Methods */
-        bool refreshRemoteTopics();
-
-        /* MQTT Parameters */
-        int maxRetries = 4;                                                                 // How many times we want to retry the connection
-        char address[100];                                                                  // Domain that the broker is running on
-        int port;                                                                           // Port the broker is listening on
         char topic[100];                                                                    // Where to publish the data to
-        char username[100];                                                                 // Username to log into the broker
-        char password[100];                                                                 // Password to log into the broker
 
         /* Helper methods for updating individual components of the device */
 

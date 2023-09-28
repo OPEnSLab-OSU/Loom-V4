@@ -59,12 +59,12 @@ class Loom_MongoDB : public MQTTComponent{
         /**
          * Publish the current JSON data over MQTT 
          */ 
-        void publish() override;
+        bool publish() override;
 
         /**
          * Publish the current JSON data as a batch
          */ 
-        void publish(Loom_BatchSD& batchSD);
+        bool publish(Loom_BatchSD& batchSD);
 
         /**
          * Load the MQTT credentials from a JSON string, used to pull credentials from a file

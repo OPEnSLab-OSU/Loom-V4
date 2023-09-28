@@ -2,19 +2,20 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void MQTTComponent::setConnectionParameters(const char* address, int port, const char* username, const char* password){
-    strncpy(this->address, address, 100);
-    this->port = port;
-    strncpy(this->username, username, 100);
-    strncpy(this->password, password, 100);
-    moduleInitialized = true;
-    
+void MQTTComponent::initialize(){
+    if(strlen(address) <= 0 || port == 0){
+        moduleInitialized = false;
+        ERROR("Broker address not specified, module will be uninitialized.");
+    }else{
+        power_up(); 
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool MQTTComponent::connectToBroker() {
     FUNCTION_START;
+    char output[OUTPUT_SIZE];
     if(moduleInitialized){
 
         // Check if we forgot to supply an address or a port number
@@ -71,7 +72,7 @@ bool MQTTComponent::connectToBroker() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool MQTTComponent::publishMessage(const char* topic, const char* message, bool retain = false, int qos = 2){
+bool MQTTComponent::publishMessage(const char* topic, const char* message, bool retain, int qos){
     FUNCTION_START;
 
     // Make sure the module is initialized
@@ -98,7 +99,7 @@ bool MQTTComponent::publishMessage(const char* topic, const char* message, bool 
             }   
         }
         else{
-            ERROR("MQTT Client not connected to broker ")
+            ERROR("MQTT Client not connected to broker ");
         }
     }
     else{
