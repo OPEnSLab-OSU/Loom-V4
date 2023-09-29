@@ -43,7 +43,7 @@ class Loom_K30 : public I2CDevice{
         /**
          * Get the current CO2 levels collected by the sensor
          */ 
-        int getCO2() { return CO2Levels; };
+        float getCO2() { return (float)CO2Levels; };
 
     private:
         Manager* manInst;                                               // Instance of the manager
