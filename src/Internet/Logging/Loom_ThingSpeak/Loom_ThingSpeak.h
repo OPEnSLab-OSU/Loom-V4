@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ArduinoMqttClient.h>
+#include <tuple>
 
 #include "Loom_Manager.h"
 #include "../MQTTComponent/MQTTComponent.h"
@@ -77,11 +78,19 @@ class Loom_ThingSpeak : public MQTTComponent{
         /**
          * Add a new function to the list of functions that we are going to pass into ThingSpeak
          * 
-         * @param fieldName The cor
+         * @param fieldName The corresponding field number
+         * @param function The function signature as follows: float someFunction()
         */
         void addFunction(int fieldNumber, FloatReturnFuncDefs function);
 
-        void addFunction(int fieldNumber, FloatReturnFuncDefs function, int parameter);
+        /**
+         * Add a new function to the list of functions that we are going to pass into ThingSpeak
+         * 
+         * @param fieldName The corresponding field number
+         * @param function The function signature as follows: float someFunction(int)
+         * @param parameter The parameter to supply to the function when we call it
+         */
+        void addFunction(int fieldNumber, FloatReturnFuncDefsWithParam function, int parameter);
     
     private:
         Manager* manInst;                       // Instance of the manager   
