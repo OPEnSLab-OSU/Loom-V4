@@ -20,7 +20,7 @@
     #define TIMER_RESET
 #endif
 
-#define OUTPUT_SIZE 200
+#define OUTPUT_SIZE 256
 
 /**
  *  General overarching interface to provide basic unified functionality
