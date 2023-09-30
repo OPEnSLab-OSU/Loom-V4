@@ -8,7 +8,6 @@
 
 #include "../../../Hardware/Loom_Hypnos/Loom_Hypnos.h"
 
-#define MAX_PACKET_SIZE 2000
 #define MAX_TOPIC_LENGTH 512
 
 /**
@@ -84,7 +83,7 @@ class Loom_RemoteManager : public MQTTComponent{
         void updateDeviceStatus(bool onOff);
 
         /* Hypnos */
-        void updateHypnosInterval(char topic[MAX_TOPIC_LENGTH], char message[MAX_PACKET_SIZE], StaticJsonDocument<MAX_PACKET_SIZE> &json);
-        void updateHypnosTime(char topic[MAX_TOPIC_LENGTH], char message[MAX_PACKET_SIZE], StaticJsonDocument<MAX_PACKET_SIZE> &json);
+        void updateHypnosInterval(char topic[MAX_TOPIC_LENGTH], char message[MAX_JSON_SIZE], StaticJsonDocument<MAX_JSON_SIZE> &json);
+        void updateHypnosTime(char topic[MAX_TOPIC_LENGTH], char message[MAX_JSON_SIZE], StaticJsonDocument<MAX_JSON_SIZE> &json);
         
 };

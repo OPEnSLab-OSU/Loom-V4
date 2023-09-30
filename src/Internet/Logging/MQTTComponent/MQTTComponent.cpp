@@ -111,13 +111,13 @@ bool MQTTComponent::publishMessage(const char* topic, const char* message, bool 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool MQTTComponent::getCurrentRetained(const char* topic, char message[MAX_PACKET_SIZE]){
+bool MQTTComponent::getCurrentRetained(const char* topic, char message[MAX_JSON_SIZE]){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
 
     if(mqttClient.connected()){
         /* Clear the incoming buffer */
-        memset(message, '\0', MAX_PACKET_SIZE);
+        memset(message, '\0', MAX_JSON_SIZE);
 
         // Subscribe to the given topic we want to read from
         if(!mqttClient.subscribe(topic)){
@@ -129,7 +129,7 @@ bool MQTTComponent::getCurrentRetained(const char* topic, char message[MAX_PACKE
         int messageSize = mqttClient.parseMessage();
         if(messageSize){
             /* Copy the received message into the message string */
-            strncpy(message, mqttClient.messageTopic().c_str(), MAX_PACKET_SIZE);
+            strncpy(message, mqttClient.messageTopic().c_str(), MAX_JSON_SIZE);
 
             // Unsubscribe from the topic 
             mqttClient.unsubscribe(topic);

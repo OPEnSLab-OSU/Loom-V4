@@ -4,7 +4,7 @@
 
 #include "Module.h"
 
-#define MAX_PACKET_SIZE 2000                // The maximum length of an MQTT message
+#define MAX_JSON_SIZE 2000                // The maximum length of an MQTT message
 #define MAX_TOPIC_LENGTH 512                // The maximum length of a topic string
 
 /**
@@ -39,7 +39,7 @@ class MQTTComponent : public Module{
          * 
          * @param The status of the retrieval attempt
         */
-        bool getCurrentRetained(const char* topic, char message[MAX_PACKET_SIZE]);         
+        bool getCurrentRetained(const char* topic, char message[MAX_JSON_SIZE]);         
 
         /**
          * Publishes a message to a given topic with size 0 and the retain flag set to true so that the current retained message is removed
@@ -61,6 +61,20 @@ class MQTTComponent : public Module{
          * @param retries The number of retries we want to make
         */
         void setMaxRetries(int retries) { maxRetries = retries; };
+
+        /**
+         * Set the client ID for the specific MQTT connection
+         * 
+         * @param id The new ID to set
+        */
+        void setClientID(const char* id) { mqttClient.setId(id); };
+
+        /**
+         * Wrapper for specifying that we want to use a clean session or not (defaults to true)
+         * 
+         * @param cleanSession Wether or not the session should be clean
+        */
+        void setCleanSession(bool cleanSession) { mqttClient.setCleanSession(cleanSession); };
 
         /* On power up we want to connect to the broker, this can be overridden but you will need to call connectToBroker again */
         virtual void power_up() override { connectToBroker(); };    

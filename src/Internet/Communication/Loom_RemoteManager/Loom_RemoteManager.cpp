@@ -42,8 +42,8 @@ void Loom_RemoteManager::power_down(){
 bool Loom_RemoteManager::publish(){
     // Create topic name buffer and message buffer as well as a temp JSON document to parse the received packets into
     char topic[MAX_TOPIC_LENGTH];
-    char message[MAX_PACKET_SIZE];
-    StaticJsonDocument<MAX_PACKET_SIZE> tempDoc;
+    char message[MAX_JSON_SIZE];
+    StaticJsonDocument<MAX_JSON_SIZE> tempDoc;
 
     // Update the current device status
     updateDeviceStatus(true);
@@ -103,10 +103,10 @@ void Loom_RemoteManager::loadConfigFromJSON(char* json){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_RemoteManager::updateHypnosInterval(char topic[MAX_TOPIC_LENGTH], char message[MAX_PACKET_SIZE], StaticJsonDocument<MAX_PACKET_SIZE> &json){
+void Loom_RemoteManager::updateHypnosInterval(char topic[MAX_TOPIC_LENGTH], char message[MAX_JSON_SIZE], StaticJsonDocument<MAX_JSON_SIZE> &json){
     // Clear message and topic and json
     memset(topic, '\0', MAX_TOPIC_LENGTH);
-    memset(message, '\0', MAX_PACKET_SIZE);
+    memset(message, '\0', MAX_JSON_SIZE);
     json.clear();
 
     /* 
@@ -136,10 +136,10 @@ void Loom_RemoteManager::updateHypnosInterval(char topic[MAX_TOPIC_LENGTH], char
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_RemoteManager::updateHypnosTime(char topic[MAX_TOPIC_LENGTH], char message[MAX_PACKET_SIZE], StaticJsonDocument<MAX_PACKET_SIZE> &json){
+void Loom_RemoteManager::updateHypnosTime(char topic[MAX_TOPIC_LENGTH], char message[MAX_JSON_SIZE], StaticJsonDocument<MAX_JSON_SIZE> &json){
     // Clear message and topic and json
     memset(topic, '\0', MAX_TOPIC_LENGTH);
-    memset(message, '\0', MAX_PACKET_SIZE);
+    memset(message, '\0', MAX_JSON_SIZE);
     json.clear();
 
     /* 

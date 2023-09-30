@@ -4,13 +4,13 @@
 #include <tuple>
 
 #include "Loom_Manager.h"
-#include "../MQTTComponent/MQTTComponent.h"
 
+#include "../MQTTComponent/MQTTComponent.h"
 #include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
 
+/* Define function signatures for functions of type "float name()" and "float name(int parameter)"*/
 using FloatReturnFuncDefs = float (*)();
 using FloatReturnFuncDefsWithParam = float (*)(int);
-
 
 /**
  * Platform for logging data to MQTT for logging to a remote database
@@ -45,12 +45,10 @@ class Loom_ThingSpeak : public MQTTComponent{
         Loom_ThingSpeak(
                 Manager& man,
                 Client& internet_client, 
-                const char* broker_address, 
-                int broker_port, 
-                const char* database_name, 
-                const char* broker_user = "", 
-                const char* broker_pass = "",
-                const char* projectServer = ""
+                int channelID, 
+                const char* clientID,
+                const char* broker_user, 
+                const char* broker_pass
             );
 
         /**
@@ -95,10 +93,19 @@ class Loom_ThingSpeak : public MQTTComponent{
     private:
         Manager* manInst;                       // Instance of the manager   
         int channelID;                          // The channelID we are publishing to
+
+        /**
+         * Format the packet to be sent to ThingSpeak
+         * Example: field1=343&field2=421.4&created_at=2023-02-21T11:46:51Z&status=MQTTPUBLISH
+         * 
+         * @param topic The topic buffer we should format to publish data to our given feed
+         * @param message The message buffer we should fill with our formatted packet
+        */
+        void formatMessage(char topic[MAX_TOPIC_LENGTH], char message[MAX_JSON_SIZE]);
         
         /* List of mappings from field names to functions */
         std::vector<std::pair<int, FloatReturnFuncDefs>> functionsNoParam;       // List of added functions that take no parameters
-        std::vector<std::tuple<int, FloatReturnFuncDefsWithParam, int parameter>> functionsParam; // List of added functions that take a parameter
+        std::vector<std::tuple<int, FloatReturnFuncDefsWithParam, int>> functionsParam; // List of added functions that take a parameter
 
 
         

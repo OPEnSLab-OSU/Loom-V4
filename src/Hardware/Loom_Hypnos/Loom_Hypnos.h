@@ -165,6 +165,14 @@ class Loom_Hypnos : public Module{
         DateTime getCurrentTime(); 
 
         /**
+         * Convert the current time to a ISO 8601 compatible time string
+         * 
+         * @param time The current time as a DateTime object
+         * @param array The buffer to write the string to (size 21)
+        */
+        void dateTime_toString(DateTime time, char array[21]);                              
+
+        /**
          * Set a custom time on startup for the RTC to use
         */
         void set_custom_time();
@@ -248,7 +256,7 @@ class Loom_Hypnos : public Module{
         DateTime get_utc_time();                                                            // Convert the local time to UTC, accounts for daylight savings zones
         TIME_ZONE timezone;                                                                 // Timezone the RTC was set to
        
-        void dateTime_toString(DateTime time, char array[21]);                              // Convert a DateTime object to our desired format
+        
 
         DateTime time;                                                                      // UTC time
         DateTime localTime;                                                                 // Local time

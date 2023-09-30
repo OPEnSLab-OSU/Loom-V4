@@ -36,7 +36,7 @@ Loom_MongoDB::Loom_MongoDB(Manager& man, Client& internet_client) : MQTTComponen
 bool Loom_MongoDB::publish(){
     FUNCTION_START;
     
-    char jsonString[2000];
+    char jsonString[MAX_JSON_SIZE];
     if(moduleInitialized){
 
         TIMER_DISABLE;
@@ -76,7 +76,7 @@ bool Loom_MongoDB::publish(){
 bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
-    char line[MAX_PACKET_SIZE];
+    char line[MAX_JSON_SIZE];
     int packetNumber = 0, index = 0;
     char c;
     if(moduleInitialized){
