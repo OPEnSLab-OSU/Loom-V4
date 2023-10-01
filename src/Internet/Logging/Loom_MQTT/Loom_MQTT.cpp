@@ -174,7 +174,7 @@ void Loom_MQTT::publish(Loom_BatchSD& batchSD){
                 c = fileOutput.read();
                 if(c == '\r'){
                     snprintf_P(output, OUTPUT_SIZE, PSTR("Publishing Packet %i of %d"), packetNumber+1, batchSD.getBatchSize());
-                    printModuleName(output);
+                    LOG(output);
                     line[index] = '\0';
                     mqttClient.beginMessage(topic, false, 2);
                     mqttClient.println(line);
