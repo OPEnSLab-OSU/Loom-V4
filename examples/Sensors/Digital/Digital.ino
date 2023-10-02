@@ -12,8 +12,8 @@
 
 Manager manager("Device", 1);
 
-// Reads the battery voltage
-Loom_Digital digital(manager, 12, 11);
+// Sets the pinMode of pin 12 and 11 to INPUT_PULLUP and then reads values from the pins
+Loom_Digital digital(manager, INPUT_PULLUP, 12, 11);
 
 void setup() {
 
@@ -25,7 +25,6 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
 
   // Measure the data from the sensors
   manager.measure();

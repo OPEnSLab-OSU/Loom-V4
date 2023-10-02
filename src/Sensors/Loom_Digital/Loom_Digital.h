@@ -27,13 +27,13 @@ class Loom_Digital : public Module{
          * @param additionalPins Variable length argument allowing you to supply multiple pins
          */ 
         template<typename T, typename... Args>
-        Loom_Digital(Manager& man, T firstPin , Args... additionalPins) : Module("Digital"){
+        Loom_Digital(Manager& man, int pinState, T firstPin , Args... additionalPins) : Module("Digital"){
            get_variadic_parameters(firstPin, additionalPins...);
            manInst = &man;
 
            // Set pin mode on digital pins
            for(int i = 0; i < digitalPins.size(); i++){
-                pinMode(digitalPins[i], INPUT_PULLUP);
+                pinMode(digitalPins[i], pinState);
            }
 
            // Register the module with the manager
@@ -46,12 +46,12 @@ class Loom_Digital : public Module{
          * @param firstPin First digital pin we want to read from
          */ 
         template<typename T>
-        Loom_Digital(Manager& man, T firstPin) : Module("Digital"){
+        Loom_Digital(Manager& man, int pinState, T firstPin) : Module("Digital"){
            digitalPins.push_back(firstPin);
            manInst = &man;
 
            for(int i = 0; i < digitalPins.size(); i++){
-                pinMode(digitalPins[i], INPUT_PULLUP);
+                pinMode(digitalPins[i], pinState);
            }
 
            // Register the module with the manager

@@ -351,7 +351,6 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
     DateTime future(RTC_DS.now() + duration);
     RTC_DS.setAlarm(future);
 
-
     // Print the time that the next interrupt is set to trigger
     snprintf(output, OUTPUT_SIZE, PSTR("Current Time: %s"), RTC_DS.now().text());
     LOG(output);
@@ -366,22 +365,27 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::sleep(bool waitForSerial){
-    // Try to power down the active modules
-    if(shouldPowerUp){
-        manInst->power_down();
-        // 50ms delay allows this last message to be sent before the bus disconnects
-        LOG("Entering Standby Sleep...");
-        delay(50);
+
+    // If the alarm set time is less than the current time we missed our next alarm so we need to set a new one
+    if(RTC_DS.getAlarm(1) > RTC_DS.now()){
+
+        // Try to power down the active modules
+        if(shouldPowerUp){
+            manInst->power_down();
+            
+            // 50ms delay allows this last message to be sent before the bus disconnects
+            LOG("Entering Standby Sleep...");
+            delay(50);
+        }
+        
+        disable();
+        pre_sleep();                    // Pre-sleep cleanup
+        shouldPowerUp = true;
+        LowPower.sleep();               // Go to sleep and hang
+        post_sleep(waitForSerial);      // Wake up
+    }else{
+        WARNING("Alarm triggered during sample, specified sample duration was too short! Setting new sample time...");
     }
-
-
-    
-    
-    disable();
-    pre_sleep();                    // Pre-sleep cleanup
-    shouldPowerUp = true;
-    LowPower.sleep();               // Go to sleep and hang
-    post_sleep(waitForSerial);      // Wake up
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

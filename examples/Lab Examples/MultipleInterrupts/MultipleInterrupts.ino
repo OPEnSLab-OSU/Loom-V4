@@ -30,20 +30,15 @@ void wakeTrigger(){
 }
 
 void tipTrigger() {
-  tip_time = millis();
-
-  // Check if the time of the last tip is more than 250 ms to debounce the switch
-  if(tip_time - last_tip_time > 250){
-    counter++;
-    tipFlag = true;
-    detachInterrupt(INT_PIN);
-  }
+  hypnos.shouldPowerUp = false;
+  tipFlag = true;
+  detachInterrupt(INT_PIN);
 }
 
 void setup() {
 
-  // Set the interrupt pin to pullup
-  pinMode(INT_PIN, INPUT_PULLUP);
+  // Set the interrupt pin to INPUT
+  pinMode(INT_PIN, INPUT);
 
   // Wait 20 seconds for the serial console to open
   manager.beginSerial();
@@ -62,12 +57,13 @@ void setup() {
 
 void loop() {
   
-  // If we are waking up normally then we should sample data
-  if(sampleFlag) {
+  if(sampleFlag){
+    // Set the RTC interrupt alarm to wake the device in 15 min, this should be done as soon as the device enters sampling mode for consistant sleep cycles
+    hypnos.setInterruptDuration(TimeSpan(0, 0, 15, 0));
+
     // Measure and package the data
     manager.measure();
     manager.package();
-    manager.addData("Switch", "Status", counter);
     
     // Print the current JSON packet
     manager.display_data();            
@@ -75,23 +71,23 @@ void loop() {
     // Log the data to the SD card              
     hypnos.logToSD();
 
-    // Set the RTC interrupt alarm to wake the device every 30 seconds
-    hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 30));
-
     // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
     hypnos.reattachRTCInterrupt();
-
-    sampleFlag = false; // Do not do this process unless ISR sets the flag
+    attachInterrupt(INT_PIN, tipTrigger, FALLING);
+    attachInterrupt(INT_PIN, tipTrigger, FALLING);
+    sampleFlag = false;
   }
 
-  // Check if Tipping Bucket event
-  if(tipFlag) {
+  if(tipFlag){
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(20);
+    bucket.incrementCount();
     tipFlag = false;
-    Serial.println(counter);
     attachInterrupt(INT_PIN, tipTrigger, FALLING);
     attachInterrupt(INT_PIN, tipTrigger, FALLING);
+    digitalWrite(LED_BUILTIN, LOW);
   }
   
-  // Put the device into a deep sleep
+  // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
   hypnos.sleep();
 }
