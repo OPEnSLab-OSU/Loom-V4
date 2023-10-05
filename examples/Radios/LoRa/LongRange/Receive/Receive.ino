@@ -19,8 +19,8 @@ void setup() {
 
 void loop() {
 
-  // Wait up to 15 seconds for a message, this is cause it takes AT LEAST 13 seconds in the air to reach the receiver 
-  if(lora.receive(15000)){
+  // Wait up to 60 seconds for a message, this is cause it takes a long time in the air to reach the receiver 
+  if(lora.receive(60000)){
     manager.display_data();
   }
 }

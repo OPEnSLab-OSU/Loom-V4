@@ -24,6 +24,6 @@ void loop() {
   // Send the current JSON document to address 0
   lora.send(0);
 
-  // Wait 20 seconds between transmits
-  manager.pause(20000);
+  // Wait 30 seconds between transmits
+  manager.pause(30000);
 }

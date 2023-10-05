@@ -92,6 +92,7 @@ void Loom_LoRa::initialize(){
         driver.setModemConfig(RH_RF95::ModemConfigChoice::Bw125Cr48Sf4096);
         driver.setSpreadingFactor(12);
         driver.setCodingRate4(8);
+        manager->setTimeout(60000);
     }
 
 	driver.sleep();
@@ -329,7 +330,7 @@ bool Loom_LoRa::transmit(JsonObject json, int destination){
         return false;
     }
 
-
+    
     if(!manager->sendtoWait(buffer, sizeof(buffer), destination)){
         ERROR(F("Failed to send packet to specified address!"));
 
