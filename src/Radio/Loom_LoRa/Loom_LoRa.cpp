@@ -138,8 +138,8 @@ bool Loom_LoRa::send(const uint8_t destinationAddress){
 bool Loom_LoRa::receive(uint maxWaitTime){
     if(moduleInitialized){
         
-        /* If we are using long range mode with a wait of less than 13 seconds this likely wont work so we should tell the user*/
-        if(range == LORA_RANGE::LONG && maxWaitTime < 13000){
+        /* If we are using long range mode with a wait of less than 50 seconds this may not work so we should tell the user*/
+        if(range == LORA_RANGE::LONG && maxWaitTime < 50000){
             WARNING("Using long range mode with a timeout time less than 13 seconds can lead to weird behavior where the packet may not be completely received.");
         }
 
