@@ -7,7 +7,11 @@
 #include "Loom_Manager.h"
 
 /**
- *  SHT31 Temperature and Humidity Sensor
+ *  SEN55 Air Quality sensors, supports pm 1.0, 2.5, 4.0, 10 as well as Temp/Humidity and Nox and Voc index
+ * 
+ * NOTE: To get accurate results using the SE555 it should be powered on and remain on as according to the data sheet,
+ * the switch-on behavior for the VOC Index is ~ 1 hr and the NOx is ~ 6 hours.
+ * Data sheet: https://cdn.sparkfun.com/assets/5/b/f/2/8/Sensirion_Datasheet_SEN5x.pdf (Page 8)
  * 
  *  @author Will Richards
  */ 

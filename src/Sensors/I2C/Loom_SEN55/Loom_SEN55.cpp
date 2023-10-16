@@ -32,10 +32,31 @@ void Loom_SEN55::initialize() {
         snprintf(output, OUTPUT_SIZE, "Error occurred while attempting to reset device: %s, module will not be initialized!", errorMessage);
         ERROR(output);
         moduleInitialized = false;
+        return;
     }
     else{
         LOG("Sensor successfully initialized!");
     }
+
+    /* Determine if we want to measure with the particulate matter readings or not */
+    if(measurePM){
+        error = sen5x.startMeasurement();
+    }
+    else{
+        error = sen5x.startMeasurementWithoutPm();
+    }
+
+    if(error){
+        errorToString(error, errorMessage, OUTPUT_SIZE);
+        snprintf(output, OUTPUT_SIZE, "Error occurred when attempting to collect measurement: %s", errorMessage);
+        ERROR(output);
+        FUNCTION_END;
+        return;
+    }
+
+    // Wait for required one second as described in the readMeasuredValues() documentation
+    LOG("Waiting 10 seconds seconds so that we can warm the sensor up");
+    delay(10000);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -67,23 +88,6 @@ void Loom_SEN55::measure() {
 
     uint16_t error = 0;
 
-    /* Determine if we want to measure with the particulate matter readings or not */
-    if(measurePM)
-        error = sen5x.startMeasurement();
-    else
-        error = sen5x.startMeasurementWithoutPm();
-
-    if(error){
-        errorToString(error, sensorError, OUTPUT_SIZE);
-        snprintf(output, OUTPUT_SIZE, "Error occurred when attempting to collect measurement: %s", sensorError);
-        ERROR(output);
-        FUNCTION_END;
-        return;
-    }
-
-    // Wait for required one second as described in the readMeasuredValues() documentation
-    delay(1000);
-
     // Give the sensor time to prepare for measuring
     bool dataReady = false;
     uint16_t startTime = millis();
@@ -99,6 +103,7 @@ void Loom_SEN55::measure() {
 
     // If the data was not ready we don't want to update the sensor values
     if(dataReady){
+        LOG("Device was ready to read a new sample!");
         // Request the measured values form the sensor
         error = sen5x.readMeasuredValues( 
                                             massConcentrationPm1p0, massConcentrationPm2p5, massConcentrationPm4p0,
@@ -118,14 +123,6 @@ void Loom_SEN55::measure() {
         ERROR("No new data was ready within the given time period.");
     }
 
-    // Stop measuring and return the sensor to its idle state
-    error = sen5x.stopMeasurement();
-        if(error){
-            errorToString(error, sensorError, OUTPUT_SIZE);
-            snprintf(output, OUTPUT_SIZE, "Error occurred when attempting to stop measuring: %s", sensorError);
-            ERROR(output);
-        }
-   
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
