@@ -51,23 +51,6 @@ void Loom_Sen5x::measure()
         return;
     }
 
-    error = sen5xInstance.readMeasuredPmValues( t_massConcentrationPm1p0, 
-                                                t_massConcentrationPm2p5, 
-                                                t_massConcentrationPm4p0, 
-                                                t_massConcentrationPm10p0,
-                                                t_numberConcentrationPm0p5, 
-                                                t_numberConcentrationPm1p0,
-                                                t_numberConcentrationPm2p5,
-                                                t_numberConcentrationPm4p0,
-                                                t_numberConcentrationPm10p0,
-                                                t_typicalParticleSize );
-    if(error){
-        ERROR(F("Error reading the massConcentration measurements, sen5x readMeasuredPmValues() did not execute successfully..."));
-        moduleInitialized = false;
-        FUNCTION_END;
-        return;
-    }
-
     LOG(F("--Measurements successfully read--"));
     FUNCTION_END;
     return;

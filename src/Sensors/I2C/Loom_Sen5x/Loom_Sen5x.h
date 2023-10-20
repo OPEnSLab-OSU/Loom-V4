@@ -31,18 +31,6 @@ class Loom_Sen5x : public I2CDevice {
         float massConcentrationPm2p5;
         float massConcentrationPm4p0;
         float massConcentrationPm10p0;
-
-        float t_massConcentrationPm1p0;
-        float t_massConcentrationPm2p5;
-        float t_massConcentrationPm4p0;
-        float t_massConcentrationPm10p0;
-        float t_numberConcentrationPm0p5;
-        float t_numberConcentrationPm1p0;
-        float t_numberConcentrationPm2p5;
-        float t_numberConcentrationPm4p0;
-        float t_numberConcentrationPm10p0;
-        float t_typicalParticleSize;
-
         float ambientHumidity;
         float ambientTemperature;
         float vocIndex;
