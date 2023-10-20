@@ -22,12 +22,13 @@ class Loom_RemoteManager : public MQTTComponent{
         void measure() override {};                               
         void package() override {};
 
-        /* Used with the manager */
-        void power_down() override; 
-        void power_up() override;
+      
 
     public:
-
+          /* Used with the manager */
+        void power_down() override; 
+        void power_up() override;
+        
         /**
          * Remote Manager constructor
          * 

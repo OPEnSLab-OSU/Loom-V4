@@ -114,15 +114,18 @@ bool MQTTComponent::publishMessage(const char* topic, const char* message, bool 
 bool MQTTComponent::getCurrentRetained(const char* topic, char message[MAX_JSON_SIZE]){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
-
+    LOG(topic);
     if(mqttClient.connected()){
         /* Clear the incoming buffer */
         memset(message, '\0', MAX_JSON_SIZE);
 
         // Subscribe to the given topic we want to read from
-        if(!mqttClient.subscribe(topic)){
+        if(!mqttClient.subscribe(topic, 2)){
             snprintf(output, OUTPUT_SIZE, "Failed to subscribe to topic: %s.", topic);
             ERROR(output);
+        }
+        else{
+            LOG("Successfully subscribed to topic!");
         }
 
         /* Attempt to parse a message on the current topic */
@@ -139,6 +142,7 @@ bool MQTTComponent::getCurrentRetained(const char* topic, char message[MAX_JSON_
         }
         else{
             WARNING("Message of size 0 received.");
+            mqttClient.unsubscribe(topic);
             FUNCTION_END;
             return false;
             

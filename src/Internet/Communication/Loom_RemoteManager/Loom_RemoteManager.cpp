@@ -13,12 +13,13 @@ Loom_RemoteManager::Loom_RemoteManager(
                 strncpy(this->address, broker_address, 100);
                 port = broker_port;
                 strncpy(this->username, broker_user, 100);
-                strncpy(this->password, password, 100);
+                strncpy(this->password, broker_pass, 100);
+                manInst->registerModule(this);
             }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_RemoteManager::Loom_RemoteManager(Manager& man, Client& internet_client) : manInst(&man), MQTTComponent("RemoteManager", internet_client) {}
+Loom_RemoteManager::Loom_RemoteManager(Manager& man, Client& internet_client) : manInst(&man), MQTTComponent("RemoteManager", internet_client) {manInst->registerModule(this);}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -33,7 +34,6 @@ void Loom_RemoteManager::power_up(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_RemoteManager::power_down(){
     // Disconnect from the broker
-    updateDeviceStatus(false);
     disconnectFromBroker();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -44,7 +44,7 @@ bool Loom_RemoteManager::publish(){
     char topic[MAX_TOPIC_LENGTH];
     char message[MAX_JSON_SIZE];
     StaticJsonDocument<MAX_JSON_SIZE> tempDoc;
-
+    
     // Update the current device status
     updateDeviceStatus(true);
 
@@ -58,6 +58,8 @@ bool Loom_RemoteManager::publish(){
         updateHypnosTime(topic, message, tempDoc);
         
     }
+
+     updateDeviceStatus(false);
 
     return true;
 }
@@ -173,6 +175,7 @@ void Loom_RemoteManager::updateDeviceStatus(bool onOff){
     // Format the topic to publish the data to and publish the message
     snprintf(topic, MAX_TOPIC_LENGTH, "RemoteManager/%s%i/status", manInst->get_device_name(), manInst->get_instance_num());
     publishMessage((const char*)topic, message);
+    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
