@@ -95,6 +95,8 @@ void Loom_Sen5x::measure()
         return;
     }
 
+    shouldMeasurePm = false;
+
     if(!shouldMeasurePm){
         error = sen5xInstance.startMeasurementWithoutPm();
         if(error) {
