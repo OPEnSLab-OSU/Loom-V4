@@ -17,6 +17,7 @@ void Loom_Sen5x::initialize()
 
     Wire.begin();
     sen5xInstance.begin(Wire);
+    sen5xInstance.setTemperatureOffsetSimple(tempOffset);
 
     uint16_t error = sen5xInstance.deviceReset();
     if(error) {
@@ -70,16 +71,6 @@ void Loom_Sen5x::package()
         json["Ambient_Temperature"] = ambientTemperature;
         json["Voc_Index"] = vocIndex;
         json["Nox_Index"] = noxIndex;
-        json["test t_massConcentrationPm1p0"] = t_massConcentrationPm1p0;
-        json["test t_massConcentrationPm2p5"] = t_massConcentrationPm2p5;
-        json["test t_massConcentrationPm4p0"] = t_massConcentrationPm4p0;
-        json["test t_massConcentrationPm10p0"] = t_massConcentrationPm10p0;
-        json["test t_numberConcentrationPm0p5"] = t_numberConcentrationPm0p5;
-        json["test t_numberConcentrationPm1p0"] = t_numberConcentrationPm1p0;
-        json["test t_numberConcentrationPm2p5"] = t_numberConcentrationPm2p5;
-        json["test t_numberConcentrationPm4p0"] = t_numberConcentrationPm4p0;
-        json["test t_numberConcentrationPm10p0"] = t_numberConcentrationPm10p0;
-        json["test t_typicalParticleSize"] = t_typicalParticleSize;
     }
 
     FUNCTION_END;

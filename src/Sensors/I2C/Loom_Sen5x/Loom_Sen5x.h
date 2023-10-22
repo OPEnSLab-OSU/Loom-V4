@@ -6,7 +6,7 @@
 #include "../I2CDevice.h"
 #include <Wire.h>
 
-#define MAXBUF_REQUIREMENT 48 // Test this
+
 
 class Loom_Sen5x : public I2CDevice {
     protected:
