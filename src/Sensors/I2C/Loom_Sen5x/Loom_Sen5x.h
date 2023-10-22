@@ -25,6 +25,7 @@ class Loom_Sen5x : public I2CDevice {
     private:
         SensirionI2CSen5x sen5xInstance;    //Sen5x obj
         Manager *manInst;
+        bool shouldMeasurePm;
 
         float tempOffset;
         float massConcentrationPm1p0;

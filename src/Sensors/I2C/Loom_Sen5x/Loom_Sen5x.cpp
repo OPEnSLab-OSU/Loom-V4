@@ -8,8 +8,48 @@ I2CDevice("Sen5x"), manInst(&man), tempOffset(temperatureOffset)
     manInst->registerModule(this);
 };
 
-void Loom_Sen5x::power_up(){};
-void Loom_Sen5x::power_down(){};
+void Loom_Sen5x::power_up()
+{
+    FUNCTION_START;
+    uint8_t error;
+
+    if(!shouldMeasurePm){
+        error = sen5xInstance.startMeasurementWithoutPm();
+        if(error) {
+            ERROR(F("Sen5 failed to start measurements ( startMeasurementWithoutPm() )!"));
+            moduleInitialized = false;
+            FUNCTION_END;
+            return;
+        }
+            
+    }
+    else{
+        error = sen5xInstance.startMeasurement();
+        if(error) {
+            ERROR(F("Sen5 failed to start measurements ( startMeasurement() )!"));
+            moduleInitialized = false;
+            FUNCTION_END;
+            return;
+        }
+    }
+    FUNCTION_END;
+    return;
+}
+
+void Loom_Sen5x::power_down()
+{
+    FUNCTION_START;
+    uint8_t error = sen5xInstance.stopMeasurement();
+    if(error){
+        ERROR(F("Sen5 failed to to powerdown! Call to stopMeasurement() failed."));
+        moduleInitialized = false;
+        FUNCTION_END;
+        return;
+    }
+
+    FUNCTION_END;
+    return;
+}
 
 void Loom_Sen5x::initialize()
 {
@@ -26,6 +66,7 @@ void Loom_Sen5x::initialize()
         FUNCTION_END;
         return;
     }
+
     error = sen5xInstance.startMeasurement();
     if(error) {
         ERROR(F("Sen5 failed to start measurements ( startMeasurement() )!"));
@@ -33,6 +74,7 @@ void Loom_Sen5x::initialize()
         FUNCTION_END;
         return;
     }
+    shouldMeasurePm = true;
 
     LOG(F("Sen5 successfully initialized..."));
     FUNCTION_END;
@@ -45,11 +87,31 @@ void Loom_Sen5x::measure()
 
     uint16_t error = sen5xInstance.readMeasuredValues( massConcentrationPm1p0, massConcentrationPm2p5, massConcentrationPm4p0,
                                                         massConcentrationPm10p0, ambientHumidity, ambientTemperature, vocIndex, noxIndex);
+
     if(error){
         ERROR(F("Error reading measurements, sen5x readMeasureValues() did not execute successfully..."));
         moduleInitialized = false;
         FUNCTION_END;
         return;
+    }
+
+    if(!shouldMeasurePm){
+        error = sen5xInstance.startMeasurementWithoutPm();
+        if(error) {
+            ERROR(F("Sen5 failed to start measurements ( startMeasurementWithoutPm() )!"));
+            moduleInitialized = false;
+            FUNCTION_END;
+            return;
+        }  
+    }
+    else{
+        error = sen5xInstance.startMeasurement();
+        if(error) {
+            ERROR(F("Sen5 failed to start measurements ( startMeasurement() )!"));
+            moduleInitialized = false;
+            FUNCTION_END;
+            return;
+        }
     }
 
     LOG(F("--Measurements successfully read--"));
