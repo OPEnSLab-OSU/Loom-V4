@@ -25,7 +25,7 @@ LTE_Shield lte;
 #if defined(USE_ATT)
   const mobile_network_operator_t MOBILE_NETWORK_OPERATOR = MNO_ATT;
 #elif defined(USE_ROGERS)
-  const mobile_network_operator_t MOBILE_NETWORK_OPERATOR = MNO_ROGERS;
+  const mobile_network_operator_t MOBILE_NETWORK_OPERATOR = MNO_SW_DEFAULT;
 #endif
 
 const String MOBILE_NETWORK_STRINGS[] = {"Default", "SIM_ICCD", "AT&T", "VERIZON", 
@@ -144,7 +144,7 @@ void setup() {
       op.stat = 1;
       op.shortOp = "Rogers";
       op.longOp = "Rogers Wireless";
-      op.numOp = 302320;
+      op.numOp = 302720;
       op.act = 7;
     }else{
       op.stat = 1;
