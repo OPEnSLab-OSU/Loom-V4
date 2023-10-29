@@ -66,5 +66,3 @@ class Loom_SEN55 : public I2CDevice {
 
 
 };
-
-#endif
