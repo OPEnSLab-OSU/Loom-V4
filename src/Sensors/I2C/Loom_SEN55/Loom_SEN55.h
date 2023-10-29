@@ -28,6 +28,22 @@ class Loom_SEN55 : public I2CDevice {
         */
         Loom_SEN55(Manager& manager, float tempOffset = 0.0, int addr = 0x69);
 
+        /**
+        * Manual Cleaning function for the SEN55 fan
+        * 
+        * 
+        * @param waitTimeMS delay in milliseconds to succeed fan cleaning call
+        **/
+        void clean_fan(int waitTimeMS = 100);
+        
+        /**
+        * Sets the interval for the SEN55's fan auto cleaning
+        * 
+        * @param interval The time interval in seconds for the SEN55 auto clean functionality. 
+        *                 Note a time of 0 (defualt) disables the autocleaning functionality.
+        **/
+        void set_cleaning_interval(uint32_t interval = 0)
+
     private:
         SensirionI2CSEN55 SEN55Instance;    //SEN55 obj
         Manager *manInst;
