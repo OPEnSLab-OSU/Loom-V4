@@ -26,7 +26,7 @@ Loom_WIFI wifi(manager, CommunicationMode::CLIENT, SECRET_SSID, SECRET_PASS);
 //Loom_LTE lte(manager, NETWORK_NAME, NETWORK_USER, NETWORK_PASS);
 
 // WiFi
-Loom_ThingSpeak mqtt(manager, wifi.getClient(), CHANNEL_ID, CLIENT_ID, BROKER_USER, BROKER_PASS);
+Loom_ThingSpeak thingspeak(manager, wifi.getClient(), CHANNEL_ID, CLIENT_ID, BROKER_USER, BROKER_PASS);
 
 // LTE
 //Loom_ThingSpeak mqtt(manager, lte.getClient(), CHANNEL_ID, CLIENT_ID, BROKER_USER, BROKER_PASS);
@@ -43,10 +43,10 @@ void setup() {
     manager.beginSerial();
 
     // Populates field 1 with the return value of exampleNoParam
-    mqtt.addFunction(1, exampleNoParam);
+    thingspeak.addFunction(1, exampleNoParam);
 
     // Populates field 2 with the return value of exampleParam passing in 100 as the parameter
-    mqtt.addFunction(2, exampleParam, 100);
+    thingspeak.addFunction(2, exampleParam, 100);
 
     /*
         For Loom sensors you just need to pass in the "get" function for example:
@@ -63,7 +63,7 @@ void loop() {
 
     manager.display_data();
 
-    mqtt.publish();
+    thingspeak.publish();
 
     manager.pause(5000);
 }
