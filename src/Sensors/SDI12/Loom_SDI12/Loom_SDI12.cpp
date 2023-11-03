@@ -18,6 +18,7 @@ void Loom_SDI12::initialize(){
 
     // On init we set the SDI pin to OUTPUT so we can request data
     pinMode(sdiInterface.getDataPin(), OUTPUT);
+    sensorName.reserve(200);
 
     // Start the interface and then wait for 100ms to allow things to settle and startup correctly
     sdiInterface.begin();
@@ -53,19 +54,18 @@ void Loom_SDI12::measure(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::package(){
-    char output[OUTPUT_SIZE];
+    
     for(int i = 0; i < inUseAddresses.size(); i++){
-        
         if(strstr(getSensorInfo(inUseAddresses[i]), "GS3") != NULL){
-            snprintf(output, OUTPUT_SIZE, "GS3_%i", i);
-            JsonObject json = manInst->get_data_object(output);
+            sensorName = "GS3_" + i;
+            JsonObject json = manInst->get_data_object(sensorName.c_str());
             json["Temperature"] = sensorData[0];
             json["Dielectric_Permittivity"] = sensorData[1];
             json["Conductivity"] = sensorData[2];
         }
         else if(strstr(getSensorInfo(inUseAddresses[i]), "TER") != NULL){
-            snprintf(output, OUTPUT_SIZE, "Teros_%i", i);
-            JsonObject json = manInst->get_data_object(output);
+            sensorName = "Teros_" + i;
+            JsonObject json = manInst->get_data_object(sensorName.c_str());
             json["Temperature"] = sensorData[0];
             json["Volumetric_Water_Content"] = sensorData[1];
             if(strstr(getSensorInfo(inUseAddresses[i]), "TER12") != NULL)

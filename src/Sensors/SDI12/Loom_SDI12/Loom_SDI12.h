@@ -65,4 +65,6 @@ class Loom_SDI12 : public Module{
         void readResponse(char response[RESPONSE_SIZE]);                   // Reads and returns the sensor's response to the command
         bool checkActive(char addr);                            // Checks if the current address is actually being used
         
+        String sensorName;                                      // Temp variable for setting the sensorName
+        
 };
