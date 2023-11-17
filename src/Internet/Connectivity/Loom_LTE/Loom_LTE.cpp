@@ -284,8 +284,23 @@ TinyGsmClient& Loom_LTE::getClient() { return client; }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) {
-    *tz = 0;
-    return modem.getNetworkTime(year, month, day, hour, minute, second, tz);
+    // Get the timezone that we are in converted to an int
+    int tzInt = (int)*tz;
+
+    // Pull the current values from the GSM
+    if(modem.getNetworkTime(year, month, day, hour, minute, second, tz)){
+
+        // Create a date time object and then subtract the TimeZone from the date time setting all the pointers to the new values and returning
+        DateTime time = DateTime(*year, *month, *day, *hour, *minute, *second) - TimeSpan(0, tzInt, 0, 0);
+        *year = time.year();
+        *month = time.month();
+        *day = time.day();
+        *hour = time.hour();
+        *minute = time.minute();
+        *second = time.second();
+        return true;
+    }
+    return false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
