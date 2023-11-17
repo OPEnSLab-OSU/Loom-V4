@@ -369,7 +369,7 @@ void Loom_Hypnos::sleep(bool waitForSerial){
     // If the alarm set time is less than the current time we missed our next alarm so we need to set a new one, we need to check if we have powered on already so we dont use the RTC that isn't enabled
     bool hasAlarmTriggered = false;
     if(shouldPowerUp){
-        hasAlarmTriggered = RTC_DS.getAlarm(1) <= RTC_DS.now();
+        hasAlarmTriggered = RTC_DS.getAlarm(1).unixtime() <= RTC_DS.now().unixtime();
     }
     
     if(!hasAlarmTriggered){
