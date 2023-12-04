@@ -8,6 +8,7 @@
 
 #include "Arduino.h"
 #include "Module.h"
+#include "Internet/Connectivity/NetworkComponent.h"
 
 #include "Hardware/Loom_Hypnos/SDManager.h"
 #include "Loom_Manager.h"
@@ -198,6 +199,16 @@ class Loom_Hypnos : public Module{
          */ 
         SDManager* getSDManager() { return sdMan; };
 
+        /* Set a network interface in the Hypnos so we can sync our time */
+        void setNetworkInterface(NetworkComponent* component) { networkComponent = component; };
+
+
+        /* Set the current RTC time to the time retrieved from the network */
+        bool networkTimeUpdate();
+
+        /* Whether or not the current timezone is observing daylight savings */
+        bool isDaylightSavings();
+
         /**
          * Set an alternative name to log data to
          */ 
@@ -210,6 +221,7 @@ class Loom_Hypnos : public Module{
 
         Manager* manInst = nullptr;                                                         // Instance of the manager
         SDManager* sdMan = nullptr;                                                         // SD Manager
+        NetworkComponent* networkComponent = nullptr;                                     // Reference to a NetworkComponent
 
         int sd_chip_select;                                                                 // Pin that the SD card will use to communicate with the Hypnos
         bool enableSD;                                                                      // Specifies whether or not the SD card should be enabled on the Hypnos
@@ -228,7 +240,6 @@ class Loom_Hypnos : public Module{
         // 1st - Interrupt Trigger
         // 2nd - Interrupt Type (SLEEP or OTHER)
         std::map<int, std::tuple<InterruptCallbackFunction, int, HypnosInterruptType>> pinToInterrupt;            
-
         
         void initializeRTC();                                                               // Initialize RTC
 

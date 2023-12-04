@@ -5,8 +5,8 @@
 #include <FlashStorage.h>
 
 
-#include "Module.h"
 #include "Loom_Manager.h"
+#include "../NetworkComponent.h"
 #include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
 
 /**
@@ -29,11 +29,13 @@ typedef struct {
  * 
  * @author Will Richards
  */ 
-class Loom_WIFI : public Module{
+class Loom_WIFI : public NetworkComponent{
     protected:
 
         /* These aren't used with the Wifi manager */
-        void measure() override {};                                
+        void measure() override {};      
+
+        bool getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) override;
 
         // Initialize the device and connect to the network
         void initialize() override;
@@ -44,7 +46,10 @@ class Loom_WIFI : public Module{
 
         // Disconnect from the network
         void power_down() override;
-    
+
+        // Overridden isConnected for the NetworkComponent
+        bool isConnected() override;
+        
     public:
 
         /**
@@ -121,11 +126,6 @@ class Loom_WIFI : public Module{
          */ 
         IPAddress getBroadcast();
 
-
-        /**
-         * Return the current connection state of the WiFi module
-         */ 
-        bool isConnected();
 
         /**
          * Called by max to ignore WiFi verification requests

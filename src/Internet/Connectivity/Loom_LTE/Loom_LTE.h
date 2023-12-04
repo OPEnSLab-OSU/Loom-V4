@@ -4,9 +4,8 @@
 //#define TINY_GSM_MODEM_UBLOX 
 #define TINY_GSM_MODEM_SARAR4
 
-#include "Module.h"
 #include "Loom_Manager.h"   
-
+#include "../NetworkComponent.h"
 #include <TinyGsmClient.h>
 
 #include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
@@ -19,13 +18,13 @@
  * 
  * @author Will Richards
  */ 
-class Loom_LTE : public Module{
+class Loom_LTE : public NetworkComponent{
     protected:
         /* These aren't used with the Wifi manager */
-        void measure() override {};                               
-        
-           
+        void measure() override {};    
 
+        bool isConnected() override { return modem.isGprsConnected(); };          
+           
     public:
 
         /**
@@ -59,9 +58,11 @@ class Loom_LTE : public Module{
         // Disconnect from the network
         void power_down() override;
 
-
         // Signal Strength
         void package() override;
+
+        // Get the current time from the network
+        bool getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) override;  
 
         /**
          * Load the config to connect to the LTE network from a JSON string
@@ -94,11 +95,6 @@ class Loom_LTE : public Module{
          * Get the client to supply to publish platforms that need to communicate using this internet framework
          */ 
         TinyGsmClient& getClient();
-
-        /**
-         * Checks if the modem is connected to a cellular network
-         */ 
-        bool isConnected();
 
         /* Restart the modem */
         void restartModem() { 

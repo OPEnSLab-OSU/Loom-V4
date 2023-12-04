@@ -2,7 +2,7 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_LTE::Loom_LTE(Manager& man, const char* apn, const char* user, const char* pass, const int pin) : Module("LTE"), manInst(&man), modem(SerialAT), client(modem){
+Loom_LTE::Loom_LTE(Manager& man, const char* apn, const char* user, const char* pass, const int pin) : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem){
     strncpy(this->APN, apn, 100);
     strncpy(this->gprsUser, user, 100);
     strncpy(this->gprsPass, pass, 100);
@@ -13,7 +13,7 @@ Loom_LTE::Loom_LTE(Manager& man, const char* apn, const char* user, const char* 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_LTE::Loom_LTE(Manager& man) : Module("LTE"), manInst(&man), modem(SerialAT), client(modem){
+Loom_LTE::Loom_LTE(Manager& man) : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem){
     manInst->registerModule(this);
 
     // Not initialized because we don't actually know what to connect to yet
@@ -67,7 +67,6 @@ void Loom_LTE::initialize(){
         LOG(output);
 
         //verifyConnection();
-
         LOG(F("Module successfully initialized!"));
     }
     else{
@@ -106,14 +105,14 @@ void Loom_LTE::power_up(){
         LOG(F("Powering up complete!"));
         TIMER_ENABLE;
     }
-
     // If the module isn't initialized we want to try again
     else{
         initialize();
     }
-
+    
     if(!firstInit && !isConnected() && moduleInitialized)
             connect();
+    
     FUNCTION_END;
     
 }
@@ -280,10 +279,28 @@ void Loom_LTE::loadConfigFromJSON(char* json){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LTE::isConnected(){ return modem.isGprsConnected(); }
+TinyGsmClient& Loom_LTE::getClient() { return client; }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-TinyGsmClient& Loom_LTE::getClient() { return client; }
+bool Loom_LTE::getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) {
+    // Get the timezone that we are in converted to an int
+    int tzInt = (int)*tz;
+
+    // Pull the current values from the GSM
+    if(modem.getNetworkTime(year, month, day, hour, minute, second, tz)){
+
+        // Create a date time object and then subtract the TimeZone from the date time setting all the pointers to the new values and returning
+        DateTime time = DateTime(*year, *month, *day, *hour, *minute, *second) - TimeSpan(0, tzInt, 0, 0);
+        *year = time.year();
+        *month = time.month();
+        *day = time.day();
+        *hour = time.hour();
+        *minute = time.minute();
+        *second = time.second();
+        return true;
+    }
+    return false;
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
