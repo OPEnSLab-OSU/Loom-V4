@@ -155,8 +155,10 @@ class Loom_Hypnos : public Module{
         /**
          * Drops the Feather M0 and Hypnos board into a low power sleep waiting for an interrupt to wake it up and pull it out of sleep
          * @param waitForSerial Whether or not we should wait for the user to open the serial monitor before continuing execution
+	 * @param disable33 Whether or not to disable 3.3V rails
+	 * @param disable5 Whether or not to disable 5V and 12V rails
          */ 
-        void sleep(bool waitForSerial = false);
+        void sleep(bool waitForSerial = false, bool disable33 = true, bool disable5 = true);
 
         /**
          * Get the current time from the RTC

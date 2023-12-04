@@ -365,7 +365,7 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 /* Sleep Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::sleep(bool waitForSerial){
+void Loom_Hypnos::sleep(bool waitForSerial, bool disable33 = true, bool disable5 = true){
     // Try to power down the active modules
     if(shouldPowerUp){
         manInst->power_down();
@@ -377,7 +377,7 @@ void Loom_Hypnos::sleep(bool waitForSerial){
 
     
     
-    disable();
+    disable(disable33, disable5);
     pre_sleep();                    // Pre-sleep cleanup
     shouldPowerUp = true;
     LowPower.sleep();               // Go to sleep and hang
@@ -395,7 +395,7 @@ void Loom_Hypnos::pre_sleep(){
     attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
 
     // Disable the power rails
-    disable();
+    //disable(); commented out as rails are already disabled in the sleep() function
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
