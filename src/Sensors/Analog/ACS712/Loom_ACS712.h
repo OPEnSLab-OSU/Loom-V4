@@ -11,9 +11,19 @@
 
 class Loom_ACS712 : public Module {
 
+    protected:
+	void initialize() override {};
+	void power_up() override {};
+	void power_down() override {};
+
     public:
 
-        Loom_ACS712(Manager &man, int port = A0, int scaleFactor = 185, int ACSOffset = 2500);
+        Loom_ACS712(
+		Manager &man, 
+		int port = A0, 
+		int scaleFactor = 185, 
+		int ACSOffset = 2500
+		);
 
         void measure() override;
         void package() override;
@@ -27,5 +37,5 @@ class Loom_ACS712 : public Module {
         int offset;         //ACS offset
         double voltage;     //Voltage value
         double amps;        //Amps value
-}
+};
 
