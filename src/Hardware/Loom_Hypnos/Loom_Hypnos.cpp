@@ -373,9 +373,6 @@ void Loom_Hypnos::sleep(bool waitForSerial){
         LOG("Entering Standby Sleep...");
         delay(50);
     }
-
-
-    
     
     disable();
     pre_sleep();                    // Pre-sleep cleanup

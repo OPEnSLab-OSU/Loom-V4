@@ -25,5 +25,5 @@ void loop() {
     if(lora.receiveBatch(5000, &packetNumber)){
       manager.display_data();
     }
-  }while(packetNumber > 0)
+  }while(packetNumber > 0);
 }

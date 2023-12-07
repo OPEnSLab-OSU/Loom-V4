@@ -44,7 +44,7 @@ void Loom_LoRa::initialize(){
 
     // Set the radio frequency
     if(driver.setFrequency(RF95_FREQ)){
-        snprintf(output, OUTPUT_SIZE, "Radio frequency successfully set to: %i", RF95_FREQ);
+        snprintf(output, OUTPUT_SIZE, "Radio frequency successfully set to: %f", RF95_FREQ);
         LOG(output);
     }
     else{
@@ -113,6 +113,7 @@ bool Loom_LoRa::transmit(JsonObject json, int destination){
     uint8_t buffer[maxMessageLength];
     memset(buffer, '\0', maxMessageLength);
 
+
     // Try to write the JSON to the buffer
     if(!jsonToBuffer(buffer, json)){
         ERROR(F("Failed to convert JSON to MsgPack"));
@@ -152,7 +153,6 @@ bool Loom_LoRa::recv(int waitTime){
         recvStatus = manager->recvfromAckTimeout(buffer, &len, waitTime, &fromAddress);
         
     }
-
 
     // If a packet was received 
     if(recvStatus){
@@ -206,10 +206,12 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress){
             */
             StaticJsonDocument<100> batchNotify;
             char packet[2000]; // Buffer to read the stored batch packet into
+            memset(packet, '\0', 2000);
             int packetNumber = 0;
             int index = 0;
             char c;
             batchNotify["batch_size"] = batchSD->getBatchSize();
+           
 
             /* We must successfully send the first packet before sending consecutive ones */
             if(send(destinationAddress, batchNotify.as<JsonObject>())){
@@ -220,10 +222,12 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress){
                 // Read all available data from the batch file one line at a time into the buffer 
                 while(fileOutput.available()){
                     c = fileOutput.read();
-                    if(c == '\r'){
+                    if(c == '\n'){
                         snprintf_P(output, OUTPUT_SIZE, PSTR("Transmitting Packet %i of %d"), packetNumber+1, batchSD->getBatchSize());
                         LOG(output);
                         packet[index] = '\0';
+                        
+                        
                         // Use the main document to convert the string into a JSON document 
                         deserializeJson(manInst->getDocument(), (const char*)packet, 2000);
 
@@ -240,9 +244,14 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress){
                         delay(500);
                         index = 0;
                         packetNumber++;
+                        Serial.println();
+                        memset(packet, '\0', 2000);
                     }
                     else{
-                        packet[index] = c;
+                        if(c == '\r')
+                            packet[index] = '\0';
+                        else
+                            packet[index] = c;
                         index++;
                     }  
                     
