@@ -21,7 +21,9 @@ void setup() {
 }
 
 void loop() {
+  manager.measure();
   manager.package();
+  manager.display_data();
 
   mqtt.publish();
 
