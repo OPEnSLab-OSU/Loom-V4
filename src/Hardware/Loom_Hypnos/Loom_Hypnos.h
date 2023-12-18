@@ -108,13 +108,13 @@ class Loom_Hypnos : public Module{
          * @param enable33 whether or not to enable the 3.3v rails
          * @param enable5 whether or not to enable the 5v and 12v rails
          */ 
-        void enable(bool enable33 = true, bool emable5 = true);
+        void enable(bool enable33 = true, bool enable5 = true);
 
         /**
          * Disables the Hypnos Board
          * Disables the Power Rails and sets the SPI pins to INPUT which effectively disables them
          */ 
-        void disable();
+        void disable(bool disable33 = true, bool disable5 = true);
 
         /* SD Functionality */
 
