@@ -56,8 +56,8 @@ void Loom_Hypnos::enable(bool enable33, bool enable5){
 
     // Enable the 3.3v and 5v rails on the Hypnos
     digitalWrite(5, (enable33) ? LOW : HIGH);
-    digitalWrite(6, (enable5) ? HIGH : LOW);
-    //digitalWrite(6, (enable5) ? LOW : HIGH);
+    //digitalWrite(6, (enable5) ? HIGH : LOW);
+    digitalWrite(6, HIGH);
     digitalWrite(LED_BUILTIN, HIGH);
 
     if(enableSD){
@@ -81,7 +81,7 @@ void Loom_Hypnos::enable(bool enable33, bool enable5){
 void Loom_Hypnos::disable(bool disable33, bool disable5){
     // Disable the 3.3v and 5v rails on the Hypnos
     digitalWrite(5, (disable33) ? HIGH : LOW);
-    digitalWrite(6, (disable5) ? LOW : HIGH);
+    //digitalWrite(6, (disable5) ? LOW : HIGH);
     digitalWrite(LED_BUILTIN, LOW); 
 
     if(enableSD){
@@ -397,7 +397,7 @@ void Loom_Hypnos::pre_sleep(){
     attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
 
     // Disable the power rails
-    //disable(); 
+    disable(); 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
