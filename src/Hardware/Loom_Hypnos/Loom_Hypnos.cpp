@@ -366,8 +366,13 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::sleep(bool waitForSerial){
 
-    // If the alarm set time is less than the current time we missed our next alarm so we need to set a new one
-    if(RTC_DS.getAlarm(1) > RTC_DS.now()){
+    // If the alarm set time is less than the current time we missed our next alarm so we need to set a new one, we need to check if we have powered on already so we dont use the RTC that isn't enabled
+    bool hasAlarmTriggered = false;
+    if(shouldPowerUp){
+        hasAlarmTriggered = RTC_DS.getAlarm(1).unixtime() <= RTC_DS.now().unixtime();
+    }
+    
+    if(!hasAlarmTriggered){
 
         // Try to power down the active modules
         if(shouldPowerUp){
@@ -384,7 +389,7 @@ void Loom_Hypnos::sleep(bool waitForSerial){
         LowPower.sleep();               // Go to sleep and hang
         post_sleep(waitForSerial);      // Wake up
     }else{
-        WARNING("Alarm triggered during sample, specified sample duration was too short! Setting new sample time...");
+        WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
