@@ -72,6 +72,9 @@ You will also need to install Developet Tools, which requires Admin access.
 3. Hypnos Interrupts: https://media.oregonstate.edu/media/t/1_7hq18o2d
 4. C++ Tutorials https://www.cprogramming.com/tutorial/c++-tutorial.html?inl=nv
 5. Loom Sensor Hookup Tutorials: https://www.youtube.com/watch?v=AU5vwO4RJqE&list=PLGLI7V_o5-ahvLrscgoZRVfLx5KtgjEVV&index=3
+6. How to use Git: https://youtu.be/jRJ6Aklc4iQ
+7. Loom Logger: https://youtu.be/O3mnjWIp8MI
+8. I2C and I2C: https://youtu.be/TrAzs9ex4kE 
 
 ## Run an Example
 
