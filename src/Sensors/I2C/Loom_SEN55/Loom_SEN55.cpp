@@ -4,10 +4,10 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_SEN55::Loom_SEN55(
                         Manager& man,
-                        bool measurePM, 
+                        bool measurePM,
                         bool useMux
                     ) : I2CDevice("SEN55"), manInst(&man), measurePM(measurePM){
-                        
+
                         // Register the module with the manager
                         if(!useMux)
                             manInst->registerModule(this);
@@ -24,7 +24,7 @@ void Loom_SEN55::initialize() {
     Wire.begin();
     sen5x.begin(Wire);
 
-    // Attempt to reset the device 
+    // Attempt to reset the device
     uint16_t error = sen5x.deviceReset();
     if(error){
         /* Stringify the errro and log the error */
@@ -66,7 +66,7 @@ void Loom_SEN55::measure() {
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     char sensorError[OUTPUT_SIZE];
-    
+
     /* TODO: Implement this once we know the raw integration works.
     // Get the current connection status
     bool connectionStatus = checkDeviceConnection();
@@ -83,7 +83,7 @@ void Loom_SEN55::measure() {
         FUNCTION_END;
         return;
     }*/
-    
+
     /* Attempt to initiate a measurement with the sensor */
 
     uint16_t error = 0;
@@ -105,12 +105,12 @@ void Loom_SEN55::measure() {
     if(dataReady){
         LOG("Device was ready to read a new sample!");
         // Request the measured values form the sensor
-        error = sen5x.readMeasuredValues( 
+        error = sen5x.readMeasuredValues(
                                             massConcentrationPm1p0, massConcentrationPm2p5, massConcentrationPm4p0,
                                             massConcentrationPm10p0, ambientHumidity, ambientTemperature, vocIndex,
                                             noxIndex
                                         );
-        
+
         // Check if we had an error reading the sensor values
         if(error){
             errorToString(error, sensorError, OUTPUT_SIZE);
@@ -134,10 +134,10 @@ void Loom_SEN55::package() {
 
     // Only include the PM measurements if we are actually measuring PM
     if(measurePM){
-        json["PM1.0"] = massConcentrationPm10p0;
-        json["PM2.5"] = massConcentrationPm2p5;
-        json["PM4.0"] = massConcentrationPm4p0;
-        json["PM10.0"] = massConcentrationPm10p0;
+        json["PM1_0"] = massConcentrationPm10p0;
+        json["PM2_5"] = massConcentrationPm2p5;
+        json["PM4_0"] = massConcentrationPm4p0;
+        json["PM10_0"] = massConcentrationPm10p0;
     }
     json["AmbientHumidity"] = (isnan(ambientHumidity) ? -1 : ambientHumidity);
     json["AmbientTemperature"] = (isnan(ambientTemperature) ? -1 : ambientTemperature);
