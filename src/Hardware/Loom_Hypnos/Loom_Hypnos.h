@@ -93,7 +93,7 @@ class Loom_Hypnos : public Module{
          * @param use_custom_time Use a specific time set by the user that is different than the compile time
          * @param useSD Whether or not SD card functionality should be enabled
          */ 
-        Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time = false, bool useSD = true);
+        Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time = true, bool useSD = true);
 
         /**
          *  Cleanup any dynamically allocated pointers
@@ -109,13 +109,13 @@ class Loom_Hypnos : public Module{
          * @param enable33 whether or not to enable the 3.3v rails
          * @param enable5 whether or not to enable the 5v and 12v rails
          */ 
-        void enable(bool enable33 = true, bool emable5 = true);
+        void enable(bool enable33 = true, bool enable5 = true);
 
         /**
          * Disables the Hypnos Board
          * Disables the Power Rails and sets the SPI pins to INPUT which effectively disables them
          */ 
-        void disable();
+        void disable(bool disable33 = true, bool disable5 = true);
 
         /* SD Functionality */
 
@@ -156,8 +156,10 @@ class Loom_Hypnos : public Module{
         /**
          * Drops the Feather M0 and Hypnos board into a low power sleep waiting for an interrupt to wake it up and pull it out of sleep
          * @param waitForSerial Whether or not we should wait for the user to open the serial monitor before continuing execution
+	 * @param disable33 Whether or not to disable 3.3V rails
+	 * @param disable5 Whether or not to disable 5V and 12V rails
          */ 
-        void sleep(bool waitForSerial = false);
+        void sleep(bool waitForSerial = false, bool disable33 = true, bool disable5 = true);
 
         /**
          * Get the current time from the RTC

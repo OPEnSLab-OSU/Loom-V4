@@ -20,9 +20,7 @@
     #define TIMER_RESET
 #endif
 
-#define OUTPUT_SIZE 200
-#define MAX_JSON_SIZE 2000
-
+#define OUTPUT_SIZE 256
 
 /**
  *  General overarching interface to provide basic unified functionality

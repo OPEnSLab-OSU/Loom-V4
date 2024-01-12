@@ -22,7 +22,7 @@ class Loom_SHT31 : public I2CDevice{
 
     public:
         /**
-         * Constructs a new TSL2591 sensor
+         * Constructs a new SHT31 sensor
          * @param man Reference to the manager that is used to universally package all data
          * @param address I2C address that is assigned to the sensor
          */ 

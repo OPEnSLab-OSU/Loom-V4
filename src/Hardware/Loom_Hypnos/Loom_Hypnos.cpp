@@ -9,7 +9,7 @@ Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, b
     pinMode(5, OUTPUT);                     // 3.3v power rail
     pinMode(6, OUTPUT);                     // 5v power rail
     pinMode(LED_BUILTIN, OUTPUT);           // Status LED
-    
+
     // Create the SD Manager if we want to use SD
     if(useSD){
         sdMan = new SDManager(manInst, sd_chip_select);
@@ -26,7 +26,7 @@ Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, b
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Hypnos::~Loom_Hypnos(){   
+Loom_Hypnos::~Loom_Hypnos(){
     if(sdMan != nullptr)
         delete sdMan;
 }
@@ -77,11 +77,11 @@ void Loom_Hypnos::enable(bool enable33, bool enable5){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::disable(){
+void Loom_Hypnos::disable(bool disable33, bool disable5){
     // Disable the 3.3v and 5v rails on the Hypnos
-    digitalWrite(5, HIGH);
-    digitalWrite(6, LOW);
-    digitalWrite(LED_BUILTIN, LOW); 
+    digitalWrite(5, (disable33) ? HIGH : LOW);
+    digitalWrite(6, (disable5) ? LOW : HIGH);
+    digitalWrite(LED_BUILTIN, LOW);
 
     if(enableSD){
         // Disable SPI pins/SD chip select to save power
@@ -115,7 +115,7 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
             LOG(F("Interrupt successfully attached!"));
         }
         else{
-            
+
             attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
             attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
             LOG(F("Interrupt successfully attached!"));
@@ -124,7 +124,7 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
         pinToInterrupt.insert(std::make_pair(interruptPin, std::make_tuple(isrFunc, triggerState, interruptType)));
         FUNCTION_END;
         return true;
-    } 
+    }
     else{
         detachInterrupt(digitalPinToInterrupt(interruptPin));
         ERROR(F("Failed to attach interrupt! Interrupt callback evaluated to a null pointer, it is possible you forgot to supply a callback function"));
@@ -134,8 +134,8 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
     FUNCTION_END;
     return false;
 
-   
-        
+
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -153,7 +153,7 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
 
         attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
         attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
-        
+
     }
     else{
         LowPower.attachInterruptWakeup(interruptPin, std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
@@ -167,7 +167,7 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::wakeup(){
-    detachInterrupt(pinToInterrupt.begin()->first);     // Detach the interrupt so it doesn't trigger again    
+    detachInterrupt(pinToInterrupt.begin()->first);     // Detach the interrupt so it doesn't trigger again
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -182,7 +182,7 @@ void Loom_Hypnos::initializeRTC(){
         ERROR(F("Couldn't start RTC! Check your connections... Execution will now hang as this is likely a fatal error"));
         return;
     }
-    
+
     // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't happen with coin cell batt backup
 	if (RTC_DS.lostPower()) {
 		WARNING(F("RTC lost power, let's set the time!"));
@@ -202,14 +202,14 @@ void Loom_Hypnos::initializeRTC(){
 
     RTC_DS.writeSqwPinMode(DS3231_OFF);
 
-    // We successfully started the RTC 
+    // We successfully started the RTC
     LOG(F("DS3231 Real-Time Clock Initialized Successfully!"));
     RTC_initialized = true;
     snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
     LOG(output);
     FUNCTION_END;
-   
-    
+
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -220,7 +220,6 @@ DateTime Loom_Hypnos::get_utc_time(){
     // Subtract 30 minutes from this zone
     if(timezone == TIME_ZONE::ACST)
         return now + TimeSpan(0, timezone, -30, 0);
-
     if(isDaylightSavings()){
         return now + TimeSpan(0, (timezone)-1, 0, 0);
     }else{
@@ -245,7 +244,7 @@ bool Loom_Hypnos::isDaylightSavings(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 DateTime Loom_Hypnos::getCurrentTime(){
     if(RTC_initialized)
-        return RTC_DS.now(); 
+        return RTC_DS.now();
     else{
         LOG(F("Attempted to pull time when RTC was not previously initialized! Returned default datetime"));
         return DateTime();
@@ -288,7 +287,7 @@ bool Loom_Hypnos::networkTimeUpdate(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::dateTime_toString(DateTime time, char array[21]){
-    
+
     // Formatted as: YYYY-MM-DDTHH:MM:SSZ
     snprintf_P(array, 21, PSTR("%u-%02u-%02uT%u:%u:%uZ"), time.year(), time.month(), time.day(), time.hour(), time.minute(), time.second());
 }
@@ -312,7 +311,7 @@ void Loom_Hypnos::set_custom_time(){
 
 	// Entering the year
 	LOG(F("Enter the Year (Four digits, e.g. 2020)"));
-  
+
 	while(computer_year == ""){
 		computer_year = Serial.readStringUntil('\n');
 	}
@@ -337,7 +336,7 @@ void Loom_Hypnos::set_custom_time(){
 	}
     snprintf(output, OUTPUT_SIZE, "Day Entered: %s", computer_day.c_str());
 	LOG(output);
-    
+
 
 	// Entering the hour
 	LOG(F("Enter the Hour (0 ~ 23)"));
@@ -376,7 +375,7 @@ void Loom_Hypnos::set_custom_time(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){ 
+void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
 
@@ -397,13 +396,23 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 /* Sleep Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::sleep(bool waitForSerial){
+void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
+    // Try to power down the active modules
 
     // If the alarm set time is less than the current time we missed our next alarm so we need to set a new one, we need to check if we have powered on already so we dont use the RTC that isn't enabled
     bool hasAlarmTriggered = false;
+
     if(shouldPowerUp){
         hasAlarmTriggered = RTC_DS.getAlarm(1).unixtime() <= RTC_DS.now().unixtime();
     }
+
+
+    //disable(disable33, disable5);
+    pre_sleep();                    // Pre-sleep cleanup
+    disable(disable33, disable5);   // Disable the power rails
+    shouldPowerUp = true;
+    LowPower.sleep();               // Go to sleep and hang
+    post_sleep(waitForSerial);      // Wake up
     
     if(!hasAlarmTriggered){
 
@@ -437,8 +446,7 @@ void Loom_Hypnos::pre_sleep(){
     attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
 
     // Disable the power rails
-    disable();
-
+    // disable();  <------------  TODO: test with this commented out
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -449,12 +457,12 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
     if(shouldPowerUp){
         USBDevice.attach();
         Serial.begin(115200);
-        
+
         enable();
 
         // Re-init the modules that need it
-        manInst->power_up();  
-        
+        manInst->power_up();
+
         // Clear any pending RTC alarms
         RTC_DS.clearAlarm();
 
@@ -516,7 +524,7 @@ void Loom_Hypnos::getTimeZoneFromSD(const char* fileName){
         if(!json["timezone"].isNull())
             timezone = timezoneMap[json["timezone"].as<const char*>()];
         LOG(F("Timezone successfully loaded!"));
-        
+
     }
     FUNCTION_END;
 }
@@ -554,8 +562,8 @@ void Loom_Hypnos::createTimezoneMap(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::logToSD() {
-    FUNCTION_START; 
-    sdMan->log(getCurrentTime()); 
+    FUNCTION_START;
+    sdMan->log(getCurrentTime());
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
