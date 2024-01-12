@@ -3,7 +3,7 @@
 Logger* Logger::instance = nullptr;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Manager::Manager(const char* devName, uint32_t instanceNum) : instanceNumber(instanceNum), doc(2000) {
+Manager::Manager(const char* devName, uint32_t instanceNum) : instanceNumber(instanceNum), doc(MAX_JSON_SIZE) {
     strncpy(this->deviceName, devName, 100);
     Logger::getInstance();
 }
@@ -185,7 +185,7 @@ void Manager::power_down(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::display_data(){
-    char jsonStr[2000];
+    char jsonStr[MAX_JSON_SIZE];
     FUNCTION_START;
     if(!doc.isNull()){
 
@@ -194,7 +194,7 @@ void Manager::display_data(){
             modules[i].second->display_data();
         }
 
-        serializeJsonPretty(doc, jsonStr, 2000);
+        serializeJsonPretty(doc, jsonStr, MAX_JSON_SIZE);
         LOG(F("Data Json: \n"));
         LOG_LONG(jsonStr);
     }
@@ -229,9 +229,9 @@ void Manager::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Manager::getJSONString(char array[2000]){
+void Manager::getJSONString(char array[MAX_JSON_SIZE]){
     size_t jsonSize = measureJson(doc)+1;
-    serializeJson(doc, array, 2000);
+    serializeJson(doc, array, MAX_JSON_SIZE);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

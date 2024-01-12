@@ -8,7 +8,7 @@
 #include <Loom_Manager.h>
 
 #include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
-#include <Internet/Communication/Loom_Max.h>
+#include <Internet/Communication/Loom_Max/Loom_Max.h>
 
 Manager manager("Device", 1);
 

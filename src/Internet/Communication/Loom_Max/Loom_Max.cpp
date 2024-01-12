@@ -159,10 +159,10 @@ bool Loom_Max::subscribe(){
             wifiInst->ipToString(udpRecv->remoteIP(), ip);
             snprintf(output, OUTPUT_SIZE, "Packet received from: %s", ip) ;
             LOG(output);
-            char jsonStr[2000];
+            char jsonStr[MAX_JSON_SIZE];
 
             LOG(F("Message Json: "));
-            serializeJsonPretty(messageJson, jsonStr, 2000);
+            serializeJsonPretty(messageJson, jsonStr, MAX_JSON_SIZE);
             LOG(jsonStr);
 
             // If we are receiving a command for the MaxSub module

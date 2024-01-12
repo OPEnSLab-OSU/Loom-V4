@@ -6,7 +6,7 @@
 #include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h>
 #include <Radio/Loom_LoRa/Loom_LoRa.h>
 #include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
-#include <Internet/Logging/Loom_MQTT/Loom_MQTT.h>
+#include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h>
 
 #include "AS5311.h"
 
@@ -55,7 +55,7 @@ Loom_LoRa lora(manager, NODE_NUMBER);
 #elif defined DENDROMETER_WIFI
 #include "credentials/arduino_secrets.h"
 Loom_WIFI wifi(manager, CommunicationMode::CLIENT, SECRET_SSID, SECRET_PASS);
-Loom_MQTT mqtt(manager, wifi.getClient(), SECRET_BROKER, SECRET_PORT, MQTT_DATABASE, BROKER_USER, BROKER_PASS);
+Loom_MongoDB mqtt(manager, wifi.getClient(), SECRET_BROKER, SECRET_PORT, MQTT_DATABASE, BROKER_USER, BROKER_PASS);
 Loom_BatchSD batchSD(hypnos, TRANSMIT_INTERVAL);
 #else
 #warning Wireless communication disabled!

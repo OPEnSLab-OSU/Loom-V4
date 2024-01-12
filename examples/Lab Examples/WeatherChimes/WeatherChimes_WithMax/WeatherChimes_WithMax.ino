@@ -22,12 +22,12 @@
 // If using SDI12, GS3 or Teros 11 or 12 uncoment this line
 //#include <Sensors/SDI12/Loom_SDI12/Loom_SDI12.h>
 
-#include <Internet/Logging/Loom_MQTT/Loom_MQTT.h>
+#include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h>
 #include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
 
 // Max includes
 #include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
-#include <Internet/Communication/Loom_Max.h>
+#include <Internet/Communication/Loom_Max/Loom_Max.h>
 
 Manager manager("Chime", 1);
 
@@ -44,7 +44,7 @@ Loom_MS5803 ms_air(manager, 118); // 118(0x76) if CSB=HIGH on WC PCB
 
 
 Loom_LTE lte(manager, NETWORK_APN, NETWORK_USER, NETWORK_PASS);
-Loom_MQTT mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
+Loom_MongoDB mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
 
 Loom_WIFI wifi(manager, CommunicationMode::AP);
 Loom_Max maxMsp(manager, wifi);
