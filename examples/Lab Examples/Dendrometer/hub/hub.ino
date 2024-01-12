@@ -6,7 +6,7 @@
 #include <Radio/Loom_LoRa/Loom_LoRa.h>
 #include <Sensors/Loom_Analog/Loom_Analog.h>
 #include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
-#include <Internet/Logging/Loom_MQTT/Loom_MQTT.h>
+#include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h>
 
 const unsigned long REPORT_INTERVAL = 1 * 60 * 60 * 1000;
 
@@ -16,7 +16,7 @@ Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 Loom_Analog batteryVoltage(manager);
 Loom_LoRa lora(manager);
 Loom_LTE lte(manager, "hologram", "", "", A5);
-Loom_MQTT mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
+Loom_MongoDB mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
 
 void setup()
 {

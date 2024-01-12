@@ -36,6 +36,12 @@ class Loom_TippingBucket : public Module{
     
         /* Increase the tip count variable by one */
         void incrementCount() { tipCount++; };
+
+        /* Get the rainfall that accumulated over the last hour (calculated based on the Hypnos RTC)*/
+        float getHourlyRainfall() {return tipsToInches(hourlyTips); };
+
+        /* Get the total rainfall over the runtime of the device */
+        float getTotalRainfall() {return tipsToInches(tipCount); };
     private:
         Manager* manInst = nullptr;                                 // Instance of the manager
         unsigned long tipCount = 0;                                 // The number of tips accumulated by the counter
