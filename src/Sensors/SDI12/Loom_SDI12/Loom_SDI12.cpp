@@ -32,6 +32,10 @@ void Loom_SDI12::initialize(){
         memset(response, '\0', RESPONSE_SIZE);
         requestSensorInfo(response, inUseAddresses[i]);
         addressToType.insert(std::pair<char, const char*>(inUseAddresses[i], response));
+
+        // Allocate string of size 100 for each SDI device to store a name
+        sensorNames.push_back((char*) malloc(sizeof(char) * 100));
+        memset(sensorNames[i], '\0', 100);
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -53,19 +57,22 @@ void Loom_SDI12::measure(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::package(){
-    char output[OUTPUT_SIZE];
+    
     for(int i = 0; i < inUseAddresses.size(); i++){
-        
         if(strstr(getSensorInfo(inUseAddresses[i]), "GS3") != NULL){
-            snprintf(output, OUTPUT_SIZE, "GS3_%i", i);
-            JsonObject json = manInst->get_data_object(output);
+            if(strlen(sensorNames[i]) <= 0){
+                snprintf(sensorNames[i], 100, "GS3_%i", i);
+            }
+            JsonObject json = manInst->get_data_object(sensorNames[i]);
             json["Temperature"] = sensorData[0];
             json["Dielectric_Permittivity"] = sensorData[1];
             json["Conductivity"] = sensorData[2];
         }
         else if(strstr(getSensorInfo(inUseAddresses[i]), "TER") != NULL){
-            snprintf(output, OUTPUT_SIZE, "Teros_%i", i);
-            JsonObject json = manInst->get_data_object(output);
+            if(strlen(sensorNames[i]) <= 0){
+                snprintf(sensorNames[i], 100, "TER_%i", i);
+            }
+            JsonObject json = manInst->get_data_object(sensorNames[i]);
             json["Temperature"] = sensorData[0];
             json["Volumetric_Water_Content"] = sensorData[1];
             if(strstr(getSensorInfo(inUseAddresses[i]), "TER12") != NULL)

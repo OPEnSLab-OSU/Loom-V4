@@ -45,13 +45,13 @@ class Loom_ADS1115 : public I2CDevice{
          * Get the value in the analog table according to analog number not INDEX
          * @param pin Pin to get data from (1-4)
          */ 
-        int getAnalog(int pin) { return analogData[pin-1]; };
+        float getAnalog(int pin) { return (float)analogData[pin-1]; };
 
         /**
          * Get the value in the diff table according to diff number not INDEX
          * @param pin Pin to get data from (1-2)
          */ 
-        int getDiff(int pin) { return analogData[pin-1]; };
+        float getDiff(int pin) { return (float)analogData[pin-1]; };
     
     private:
         Manager* manInst;                                           // Instance of the manager

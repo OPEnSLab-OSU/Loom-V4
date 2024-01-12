@@ -13,7 +13,7 @@ Loom_OLED::Loom_OLED(Manager& man,
                      const uint16_t scroll_duration, 
                      const byte freeze_pin, 
                      const FreezeType freeze_behavior
-                    ) : Module("OLED"), manInst(&man), min_filter_delay(min_filter_delay), version(type), reset_pin(reset_pin), display_format(display_format), scroll_duration(scroll_duration), freeze_behavior(freeze_behavior), freeze_pin(freeze_pin), flattenedDoc(2000){
+                    ) : Module("OLED"), manInst(&man), min_filter_delay(min_filter_delay), version(type), reset_pin(reset_pin), display_format(display_format), scroll_duration(scroll_duration), freeze_behavior(freeze_behavior), freeze_pin(freeze_pin), flattenedDoc(MAX_JSON_SIZE){
                         manInst->registerModule(this);
 
                         // Create the correct display module given the OLED version

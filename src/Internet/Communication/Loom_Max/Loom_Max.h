@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Module.h"
-#include "../Connectivity/Loom_Wifi/Loom_Wifi.h"
+#include "../../Connectivity/Loom_Wifi/Loom_Wifi.h"
 #include "Actuators.h"
 
 #include <Udp.h>

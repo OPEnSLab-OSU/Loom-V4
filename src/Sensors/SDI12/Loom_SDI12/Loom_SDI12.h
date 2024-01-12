@@ -59,6 +59,7 @@ class Loom_SDI12 : public Module{
 
         float sensorData[3];                                    // Array of floats to store sensor data
         std::vector<char> inUseAddresses;                       // List of address that have SDI_12 sensors connected
+        std::vector<char*> sensorNames;                         // List of strings of sensor names
 
         std::map<char, const char*> addressToType;              // Maps an SDI12 device address to a device type
 

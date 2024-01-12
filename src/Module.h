@@ -21,6 +21,8 @@
 #endif
 
 #define OUTPUT_SIZE 200
+#define MAX_JSON_SIZE 2000
+
 
 /**
  *  General overarching interface to provide basic unified functionality
