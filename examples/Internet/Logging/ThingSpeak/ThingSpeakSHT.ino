@@ -12,6 +12,7 @@
 #include "arduino_secrets.h"
 
 #include <Loom_Manager.h>
+#include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h>
 
 #include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
 
@@ -29,29 +30,18 @@ Loom_WIFI wifi(manager, CommunicationMode::CLIENT, SECRET_SSID, SECRET_PASS);
 Loom_ThingSpeak thingspeak(manager, wifi.getClient(), CHANNEL_ID, CLIENT_ID, BROKER_USER, BROKER_PASS);
 
 // LTE
-//Loom_ThingSpeak mqtt(manager, lte.getClient(), CHANNEL_ID, CLIENT_ID, BROKER_USER, BROKER_PASS);
+//Loom_ThingSpeak thingspeak(manager, lte.getClient(), CHANNEL_ID, CLIENT_ID, BROKER_USER, BROKER_PASS);
 
-float exampleNoParam() {
-    return 45.6;
-}
-
-float exampleParam(int param) {
-    return 75 + param;
-}
+Loom_SHT31 sht(manager);
 
 void setup() {
     manager.beginSerial();
 
     // Populates field 1 with the return value of exampleNoParam
-    thingspeak.addFunction(1, exampleNoParam);
+    thingspeak.addFunction(1, sht.getTemperature);
 
     // Populates field 2 with the return value of exampleParam passing in 100 as the parameter
-    thingspeak.addFunction(2, exampleParam, 100);
-
-    /*
-        For Loom sensors you just need to pass in the "get" function for example:
-                mqtt.addFunction(1, sht.getTemperature());
-    */
+    thingspeak.addFunction(2, sht.getHumidity);
 
     manager.initialize();
 }

@@ -160,9 +160,9 @@ class Manager{
         void read_serial_num();                                 // Read the serial number out of the feather's registers
 
         /* Module Data */
-        DynamicJsonDocument doc;                           // JSON document that will store all sensor information
+        DynamicJsonDocument doc;                                // JSON document that will store all sensor information
         JsonArray contentsArray;                                // Stores the contents of the modules
-        std::vector<std::pair<const char*, Module*>> modules;        // List of modules that have been added to the stack
+        std::vector<std::pair<const char*, Module*>> modules;   // List of modules that have been added to the stack
 
         /* Validation */
         bool hasInitialized = false;                            // Whether or not the initialize function has been called, if not it could be the source of hanging so we want to know
