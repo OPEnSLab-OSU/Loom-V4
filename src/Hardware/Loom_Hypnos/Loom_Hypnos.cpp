@@ -406,14 +406,6 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
         hasAlarmTriggered = RTC_DS.getAlarm(1).unixtime() <= RTC_DS.now().unixtime();
     }
 
-
-    //disable(disable33, disable5);
-    pre_sleep();                    // Pre-sleep cleanup
-    disable(disable33, disable5);   // Disable the power rails
-    shouldPowerUp = true;
-    LowPower.sleep();               // Go to sleep and hang
-    post_sleep(waitForSerial);      // Wake up
-    
     if(!hasAlarmTriggered){
 
         // Try to power down the active modules
@@ -446,7 +438,7 @@ void Loom_Hypnos::pre_sleep(){
     attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
 
     // Disable the power rails
-    // disable();  <------------  TODO: test with this commented out
+    disable();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
