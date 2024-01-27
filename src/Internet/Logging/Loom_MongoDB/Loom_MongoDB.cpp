@@ -212,7 +212,7 @@ void Loom_MongoDB::loadConfigFromJSON(char* json){
         snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
     }
     
-    
+    moduleInitialized = true;
     free(json);
     FUNCTION_END;
 }
