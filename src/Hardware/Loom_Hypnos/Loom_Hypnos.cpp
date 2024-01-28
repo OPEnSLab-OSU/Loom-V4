@@ -416,10 +416,11 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
             LOG("Entering Standby Sleep...");
             delay(50);
         }
+        disable(disable33, disable5);
         pre_sleep(disable33, disable5);                    // Pre-sleep cleanup
         shouldPowerUp = true;
         LowPower.sleep();               // Go to sleep and hang
-        post_sleep(waitForSerial, disable33, disable5);      // Wake up
+        post_sleep(waitForSerial);      // Wake up
     }else{
         WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");
     }
@@ -441,14 +442,14 @@ void Loom_Hypnos::pre_sleep(bool disable33, bool disalbe5){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::post_sleep(bool waitForSerial, bool disable33, bool disable5){
+void Loom_Hypnos::post_sleep(bool waitForSerial){
     // Enable the //Watchdog timer when waking up
     TIMER_ENABLE;
     if(shouldPowerUp){
         USBDevice.attach();
         Serial.begin(115200);
 
-        enable(disable33, disable5); // Checks if the 3.3v or 5v are disabled and re-enables them
+        enable(); // Checks if the 3.3v or 5v are disabled and re-enables them
 
         // Re-init the modules that need it
         manInst->power_up();
