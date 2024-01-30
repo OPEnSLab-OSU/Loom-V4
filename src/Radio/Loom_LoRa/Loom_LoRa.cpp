@@ -314,7 +314,7 @@ bool Loom_LoRa::receiveBatch(uint maxWaitTime, int* numberOfPackets){
             // Get the number of additional packets to expect
             if(!recvDoc["batch_size"].isNull()){
                 *numberOfPackets = recvDoc["batch_size"].as<int>();
-                return true;
+                return false;
             }
             else{
                 manInst->set_device_name(recvDoc["id"]["name"].as<const char*>());
