@@ -79,7 +79,7 @@ void loop() {
   // Reattach the interrupt
   hypnos.reattachRTCInterrupt();
 
-  // Set the hypnos to sleep, but with power still being supplied to the 5v rail
-  hypnos.sleep(false, true, false);
+  // Set the hypnos to sleep, but with power still being supplied to the 5v rail (wait for serial when testing from a computer)
+  hypnos.sleep(true, true, false);
 }
 
