@@ -417,7 +417,11 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
             delay(50);
         }
         disable(disable33, disable5);
+<<<<<<< Updated upstream
         pre_sleep(disable33, disable5);                    // Pre-sleep cleanup
+=======
+        pre_sleep();                    // Pre-sleep cleanup
+>>>>>>> Stashed changes
         shouldPowerUp = true;
         LowPower.sleep();               // Go to sleep and hang
         post_sleep(waitForSerial);      // Wake up
@@ -428,16 +432,13 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::pre_sleep(bool disable33, bool disalbe5){
+void Loom_Hypnos::pre_sleep(){
     // Close the serial connection and detach
     Serial.end();
     USBDevice.detach();
 
     // Reattach the interrupt to the RTC interrupt pin
     attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
-
-    // Disable the power rails
-    disable(disable33, disalbe5);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

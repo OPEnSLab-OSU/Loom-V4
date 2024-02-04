@@ -265,7 +265,7 @@ class Loom_Hypnos : public Module{
 
         /* Sleep functionality */
 
-        void pre_sleep(bool disable33=true, bool disable5=true);                                                                   // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
+        void pre_sleep();                                                                   // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
         void post_sleep(bool waitForSerial);                                                // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
 
 
