@@ -32,6 +32,7 @@ void Loom_SEN55::initialize() {
         snprintf(output, OUTPUT_SIZE, "Error occurred while attempting to reset device: %s, module will not be initialized!", errorMessage);
         ERROR(output);
         moduleInitialized = false;
+        FUNCTION_END;
         return;
     }
     else{
