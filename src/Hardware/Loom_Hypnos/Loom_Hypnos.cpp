@@ -417,11 +417,7 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
             delay(50);
         }
         disable(disable33, disable5);
-<<<<<<< Updated upstream
-        pre_sleep(disable33, disable5);                    // Pre-sleep cleanup
-=======
         pre_sleep();                    // Pre-sleep cleanup
->>>>>>> Stashed changes
         shouldPowerUp = true;
         LowPower.sleep();               // Go to sleep and hang
         post_sleep(waitForSerial);      // Wake up
