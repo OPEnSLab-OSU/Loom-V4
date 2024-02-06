@@ -417,11 +417,10 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
             delay(50);
         }
         disable(disable33, disable5);
-        bool enable33 = disable33, enable5 = disable5;
         pre_sleep(disable33, disable5);                    // Pre-sleep cleanup
         shouldPowerUp = true;
-        LowPower.sleep();               // Go to sleep and hang
-        post_sleep(waitForSerial);      // Wake up
+        LowPower.sleep();                                  // Go to sleep and hang
+        post_sleep(waitForSerial);                         // Wake up, if we disabled them when
     }else{
         WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");
     }
