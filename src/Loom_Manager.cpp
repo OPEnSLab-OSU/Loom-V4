@@ -16,7 +16,7 @@ Manager::Manager(const char* devName, uint32_t instanceNum) : instanceNumber(ins
     for(int i = 0; i < modules.size(); i++){
         // Find the pointer to the module name
         location = strstr(modules[i].first, module->getModuleName());
-        
+
         // Check if the module name contains the base string to make sure this works past 2 modules of the same type
         if(location != NULL){
             // Append the address to the name
@@ -62,7 +62,7 @@ void Manager::beginSerial(bool waitForSerial){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::measure() {
     FUNCTION_START;
-    
+
     char noInitLog[50];
     if(hasInitialized){
        LOG(F("** Measuring **"));
@@ -93,7 +93,7 @@ void Manager::package(){
     char noInitLog[50];
 
     LOG(F("** Packaging **"));
-    
+
     // Clear the document so that we don't get null characters after too many updates
     doc.clear();
     doc[F("type")] = F("data");
@@ -121,7 +121,8 @@ void Manager::package(){
         TIMER_RESET;
     }
     packetNumber++;
-    
+    getJSONString(jsonStr);
+    doc.clear();
     LOG(F("** Packaging Complete **"));
     FUNCTION_END;
 }
@@ -185,23 +186,34 @@ void Manager::power_down(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::display_data(){
-    char jsonStr[MAX_JSON_SIZE];
     FUNCTION_START;
+    doc.clear();
+    DeserializationError jsonErr = deserializeJson(doc, jsonStr);
+
+    if(jsonErr != DeserializationError::Ok){
+        LOG(F("Error deserializing JSON..."));
+        LOG(F("Status: "));
+        LOG(F(jsonErr.c_str()));
+        LOG(F("Terminating display_data()"));
+        FUNCTION_END;
+        return;
+    }
+
     if(!doc.isNull()){
 
         // Display data for modules that support it
         for(int i = 0; i < modules.size(); i++){
             modules[i].second->display_data();
         }
-
-        serializeJsonPretty(doc, jsonStr, MAX_JSON_SIZE);
+        char jsonOut[MAX_JSON_SIZE];
+        serializeJsonPretty(doc, jsonOut, MAX_JSON_SIZE);
         LOG(F("Data Json: \n"));
-        LOG_LONG(jsonStr);
+        LOG_LONG(jsonOut);
     }
     else{
         LOG(F("JSON Document is Null there is no data to display"));
     }
-    
+
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -211,7 +223,7 @@ void Manager::initialize() {
     FUNCTION_START;
     // If you are using a hypnos board that has not been enabled, this needs to occur before initializing sensors
     if(usingHypnos && !hypnosEnabled){
-        LOG(F("Your sketch is set to use a Hypnos board which has not been enabled before attempting to initialize sensors. \nThis will causing hanging please enable the board before initialization. Continuing but know this may cause issues!")); 
+        LOG(F("Your sketch is set to use a Hypnos board which has not been enabled before attempting to initialize sensors. \nThis will causing hanging please enable the board before initialization. Continuing but know this may cause issues!"));
     }
 
     LOG(F("** Initializing Modules **"));
