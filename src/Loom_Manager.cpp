@@ -16,7 +16,7 @@ Manager::Manager(const char* devName, uint32_t instanceNum) : instanceNumber(ins
     for(int i = 0; i < modules.size(); i++){
         // Find the pointer to the module name
         location = strstr(modules[i].first, module->getModuleName());
-        
+
         // Check if the module name contains the base string to make sure this works past 2 modules of the same type
         if(location != NULL){
             // Append the address to the name
@@ -62,7 +62,7 @@ void Manager::beginSerial(bool waitForSerial){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::measure() {
     FUNCTION_START;
-    
+
     char noInitLog[50];
     if(hasInitialized){
        LOG(F("** Measuring **"));
@@ -93,7 +93,7 @@ void Manager::package(){
     char noInitLog[50];
 
     LOG(F("** Packaging **"));
-    
+
     // Clear the document so that we don't get null characters after too many updates
     doc.clear();
     doc[F("type")] = F("data");
@@ -121,7 +121,7 @@ void Manager::package(){
         TIMER_RESET;
     }
     packetNumber++;
-    
+
     LOG(F("** Packaging Complete **"));
     FUNCTION_END;
 }
@@ -201,7 +201,7 @@ void Manager::display_data(){
     else{
         LOG(F("JSON Document is Null there is no data to display"));
     }
-    
+
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -211,7 +211,7 @@ void Manager::initialize() {
     FUNCTION_START;
     // If you are using a hypnos board that has not been enabled, this needs to occur before initializing sensors
     if(usingHypnos && !hypnosEnabled){
-        LOG(F("Your sketch is set to use a Hypnos board which has not been enabled before attempting to initialize sensors. \nThis will causing hanging please enable the board before initialization. Continuing but know this may cause issues!")); 
+        LOG(F("Your sketch is set to use a Hypnos board which has not been enabled before attempting to initialize sensors. \nThis will causing hanging please enable the board before initialization. Continuing but know this may cause issues!"));
     }
 
     LOG(F("** Initializing Modules **"));
@@ -263,5 +263,90 @@ void Manager::pause(const uint32_t ms) const {
     int waitTime = millis() + ms;
     while (millis() < waitTime);
     TIMER_ENABLE;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void enable_voltage_reading(int modIndex, float sensorVolt, float commVolt) {
+    // If the given index does not contain the analog return
+    if(strcmp(modules[modIndex].first, "Analog")){
+        LOG(F("Error, the provided index is not the registered analog.\n"));
+        return;
+    }
+    analogIdx = modIndex;
+    targetReadV = sensorVolt;
+    targetComV = commVolt;
+    LOG(F("Voltage monitoring has been successfully enabled.\n"));
+    return;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool read_check() const {
+    if(targetReadV > 0.0)
+        return true;
+    return false;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool com_check() const {
+    if(targetComV > 0.0)
+        return true;
+    return false;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+float get_curr_voltage() const {
+    FUNCTION_START;
+    if(analogIdx < 0){
+        LOG(F("Error, voltage reading not enabled/ enabled correctly\n"));
+        FUNCTION_END;
+        return -1.0;
+    }
+    modules[analogIdx].second->measure();
+    FUNCTION_END;
+    return modules[analogIdx].second->getBatteryVoltage();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool voltage_read_status() const {
+    FUNCTION_START;
+    float read = get_curr_voltage();
+    // Something went wrong with the analog read so we'll return true
+    if(read < 0.0){
+        FUNCTION_END;
+        return true;
+    }
+    // It's above the threshhold so we can afford to enable the sensors
+    if(read > targetReadV){
+        FUNCTION_END;
+        return true;
+    }
+    // The analog is working but the read is below the threshhold, the sensors should not be enabled
+    FUNCTION_END;
+    return false;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool voltage_comm_status() const {
+    FUNCTION_START;
+    float read = get_curr_voltage();
+    // Something went wrong with the analog read so we'll return true
+    if(read < 0.0){
+        FUNCTION_END;
+        return true;
+    }
+    // It's above the threshhold so we can afford to send data
+    if(read > targetComV){
+        FUNCTION_END;
+        return true;
+    }
+    // The analog is working but the read is below the threshhold, data should not be sent
+    FUNCTION_END;
+    return false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

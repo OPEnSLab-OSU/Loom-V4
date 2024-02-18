@@ -53,7 +53,6 @@ void Loom_Hypnos::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::enable(bool enable33, bool enable5){
-
     // Enable the 3.3v and 5v rails on the Hypnos
     digitalWrite(5, (enable33) ? LOW : HIGH);
     digitalWrite(6, (enable5) ? HIGH : LOW);
@@ -67,12 +66,11 @@ void Loom_Hypnos::enable(bool enable33, bool enable5){
 
         sdMan->begin();
     }
+    manInst->setEnableState(true);
 
     // If the RTC hasn't already been initialized then do so now
     if(!RTC_initialized)
         initializeRTC();
-
-    manInst->setEnableState(true);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -416,9 +414,11 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
             LOG("Entering Standby Sleep...");
             delay(50);
         }
-        pre_sleep(disable33, disable5);                    // Pre-sleep cleanup
+        pre_sleep(disable33, disable5);                      // Pre-sleep cleanup
         shouldPowerUp = true;
-        LowPower.sleep();               // Go to sleep and hang
+        LowPower.sleep();                                    // Go to sleep and hang
+        if(manInst->read_check())
+            shouldPowerUp = manInst->voltage_read_status();  // Do we have enough voltage to power the sensors?
         post_sleep(waitForSerial, disable33, disable5);      // Wake up
     }else{
         WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");

@@ -4,11 +4,11 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MongoDB::Loom_MongoDB(
                     Manager& man,
-                    Client& internet_client, 
-                    const char* broker_address, 
-                    int broker_port, 
-                    const char* database_name, 
-                    const char* broker_user, 
+                    Client& internet_client,
+                    const char* broker_address,
+                    int broker_port,
+                    const char* database_name,
+                    const char* broker_user,
                     const char* broker_pass,
                     const char* projectServer
                 ) : MQTTComponent("MongoDB", internet_client),
@@ -35,12 +35,12 @@ Loom_MongoDB::Loom_MongoDB(Manager& man, Client& internet_client) : MQTTComponen
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_MongoDB::publish(){
     FUNCTION_START;
-    
+
     char jsonString[MAX_JSON_SIZE];
     if(moduleInitialized){
 
         TIMER_DISABLE;
-        
+
         if(strlen(projectServer) > 0)
             // Formulate a topic to publish on with the format "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
             snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s/%s%i"), projectServer, database_name, manInst->get_device_name(), manInst->get_instance_num());
@@ -79,8 +79,12 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
     char line[MAX_JSON_SIZE];
     int packetNumber = 0, index = 0;
     char c;
+    bool hasVoltage = true;
     if(moduleInitialized){
         TIMER_DISABLE;
+        if(manInst->check_com()){
+            hasVoltage = manInst->voltage_com_status();
+        }
         if(batchSD.shouldPublish()){
 
             if(strlen(projectServer) > 0)
@@ -89,16 +93,16 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
             else
                 // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
                 snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
-            
+
             /* Attempt to connect to the broker */
             if(!connectToBroker())
                 return false;
-            
+
             /* Get the file containing our batch of data */
             File fileOutput = batchSD.getBatch();
 
             bool allDataSuccess = true;
-            
+
             /* Utilize a stream so it doesn't matter how much data we have as its read in one by one */
             while(fileOutput.available()){
                 c = fileOutput.read();
@@ -106,7 +110,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
                 // \r Marks the end of a line, at this point we want to publish that whole packet
                 if(c == '\r'){
 
-                    // Track the packet number we are currently publishing 
+                    // Track the packet number we are currently publishing
                     snprintf_P(output, OUTPUT_SIZE, PSTR("Publishing Packet %i of %i"), packetNumber+1, batchSD.getBatchSize());
                     LOG(output);
 
@@ -128,12 +132,12 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
                 else{
                     line[index] = c;
                     index++;
-                }  
-                
+                }
+
             }
             fileOutput.close();
-            
-            // Check if we actually sent all the data successfully 
+
+            // Check if we actually sent all the data successfully
             if(allDataSuccess)
                 LOG(F("Data has been successfully sent!"));
             else{
@@ -141,7 +145,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
                 FUNCTION_END;
                 return false;
             }
-            
+
         }
         else{
             snprintf_P(output, OUTPUT_SIZE, PSTR("Batch not ready to publish: %i/%i"), batchSD.getCurrentBatch(), batchSD.getBatchSize());
@@ -183,14 +187,14 @@ void Loom_MongoDB::loadConfigFromJSON(char* json){
     memset(username, '\0', 100);
     memset(password, '\0', 100);
     port = 0;
-    
+
     /* We should check if any parameter is null */
     if(!doc["broker"].isNull())
         strncpy(address, doc["broker"].as<const char*>(), 100);
 
     if(!doc["database"].isNull())
         strncpy(database_name, doc["database"].as<const char*>(), 100);
-    
+
     if(!doc["username"].isNull())
         strncpy(username, doc["username"].as<const char*>(), 100);
 
@@ -202,7 +206,7 @@ void Loom_MongoDB::loadConfigFromJSON(char* json){
 
     if(!doc["port"].isNull())
         port = doc["port"].as<int>();
-   
+
     if(strlen(projectServer) > 0){
         // Formulate a topic to publish on with the format "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
         snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s/%s%i"), projectServer, database_name, manInst->get_device_name(), manInst->get_instance_num());
@@ -211,7 +215,7 @@ void Loom_MongoDB::loadConfigFromJSON(char* json){
         // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
         snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
     }
-    
+
     moduleInitialized = true;
     free(json);
     FUNCTION_END;
