@@ -267,7 +267,7 @@ void Manager::pause(const uint32_t ms) const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void enable_voltage_reading(int modIndex, float sensorVolt, float commVolt) {
+void Manager::enable_voltage_reading(int modIndex, float sensorVolt, float commVolt) {
     // If the given index does not contain the analog return
     if(strcmp(modules[modIndex].first, "Analog")){
         LOG(F("Error, the provided index is not the registered analog.\n"));
@@ -282,7 +282,7 @@ void enable_voltage_reading(int modIndex, float sensorVolt, float commVolt) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool read_check() const {
+bool Manager::read_check() const {
     if(targetReadV > 0.0)
         return true;
     return false;
@@ -290,7 +290,7 @@ bool read_check() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool com_check() const {
+bool Manager::com_check() const {
     if(targetComV > 0.0)
         return true;
     return false;
@@ -298,7 +298,7 @@ bool com_check() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-float get_curr_voltage() const {
+float Manager::get_curr_voltage() const {
     FUNCTION_START;
     if(analogIdx < 0){
         LOG(F("Error, voltage reading not enabled/ enabled correctly\n"));
@@ -307,12 +307,13 @@ float get_curr_voltage() const {
     }
     modules[analogIdx].second->measure();
     FUNCTION_END;
-    return modules[analogIdx].second->getBatteryVoltage();
+    // TODO: want to do something like this, but inheritance blocks it
+    // return modules[analogIdx].second->getBatteryVoltage();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool voltage_read_status() const {
+bool Manager::voltage_read_status() const {
     FUNCTION_START;
     float read = get_curr_voltage();
     // Something went wrong with the analog read so we'll return true
@@ -332,7 +333,7 @@ bool voltage_read_status() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool voltage_comm_status() const {
+bool Manager::voltage_comm_status() const {
     FUNCTION_START;
     float read = get_curr_voltage();
     // Something went wrong with the analog read so we'll return true

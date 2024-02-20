@@ -153,21 +153,21 @@ class Manager{
          * Enables voltage reading, by default this should be called right after registering analog
          * to the manager. Otherwise the index of the analog should be manually passed in
          *
-         * @param modIndex
-         * @param sensorVolt
-         * @param commVolt
+         * @param modIndex The index of the analog module, set to -1 (last element) by default
+         * @param sensorVolt The min volt threshhold for sensor reading functionality
+         * @param commVolt The min volt threshhold for communcation functionality (lte, wifi, etc.)
          */
-        void enable_voltage_reading(int modIndex = modules.size(), float sensorVolt = 0.0, float commVolt = 0.0);
+        void enable_voltage_reading(int modIndex = -1, float sensorVolt = 0.0, float commVolt = 0.0);
 
         /**
-         * Gives the status of voltage checking for sensor readings
+         * Gives the status of voltage checking for sensor readings (i.e. is the voltage checking feature enabled for sensors)
          *
          * @return true if we want to check the voltage (i.e. targetReadV > 0.0) false otherwise
          */
         bool read_check() const;
 
         /**
-         * Gives the status of voltage checking for IoT devices
+         * Gives the status of voltage checking for internet devices (i.e. is the voltage checking feature enabled for internet)
          *
          * @return true if we want to check the voltage (i.e. targetComV > 0.0) false otherwise
          */

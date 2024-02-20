@@ -83,7 +83,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
     if(moduleInitialized){
         TIMER_DISABLE;
         if(manInst->check_com()){
-            hasVoltage = manInst->voltage_com_status();
+            hasVoltage = manInst->voltage_comm_status();
         }
         if(batchSD.shouldPublish()){
 
