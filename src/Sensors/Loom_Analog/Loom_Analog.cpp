@@ -11,6 +11,9 @@ void Loom_Analog::measure(){
         if(pinMappings[i]->pinNumber == A7){
             pinMappings[i]->analog = getBatteryVoltage();
             pinMappings[i]->analog_mv = getBatteryVoltage() * 1000;
+            if(manInst->read_check() || manInst->com_check()){
+                manInst->set_voltage(pinMappings[i]->analog);
+            }
         }
 
         /* If its a normal pin then just read the value and update the previous values */
@@ -18,6 +21,10 @@ void Loom_Analog::measure(){
             int analogData = analogRead(pinMappings[i]->pinNumber);
             pinMappings[i]->analog = analogData;
             pinMappings[i]->analog_mv = analogToMV(analogData);
+
+            if(manInst->read_check() || manInst->com_check()){
+                manInst->set_voltage(pinMappings[i]->analog);
+            }
         }
     }
 }
@@ -53,7 +60,7 @@ float Loom_Analog::getBatteryVoltage(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 char* Loom_Analog::pinNumberToName(int pin){
-    // Malloc a name of size 4 
+    // Malloc a name of size 4
     char* name = (char*)malloc(sizeof(char) * 4);
     snprintf_P(name, 4, PSTR("A%i"), pin - 14);
     return name;

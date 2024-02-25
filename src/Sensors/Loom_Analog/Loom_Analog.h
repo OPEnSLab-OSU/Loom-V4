@@ -24,20 +24,20 @@ struct AnalogMapping{
 
 /**
  * Used to read Analog voltages from the analog pins on the feather M0
- * 
+ *
  * @author Will Richards
- */ 
+ */
 class Loom_Analog : public Module{
     protected:
-        /* These aren't used by Analog */           
+        /* These aren't used by Analog */
         void power_up() override {};
         void power_down() override {};
-        void initialize() override {};  
-        
+        void initialize() override {};
+
 
     public:
 
-        void measure() override;                               
+        void measure() override;
         void package() override;
 
         /**
@@ -45,7 +45,7 @@ class Loom_Analog : public Module{
          * @param man Reference to the manager
          * @param firstPin First analog pin we want to read from
          * @param additionalPins Variable length argument allowing you to supply multiple pins
-         */ 
+         */
         template<typename T, typename... Args>
         Loom_Analog(Manager& man, T firstPin , Args... additionalPins) : Module("Analog"){
            get_variadic_parameters(firstPin, additionalPins...);
@@ -63,7 +63,7 @@ class Loom_Analog : public Module{
          * Templated constructor that uses only 1 analog pin
          * @param man Reference to the manager
          * @param firstPin First analog pin we want to read from
-         */ 
+         */
         template<typename T>
         Loom_Analog(Manager& man, T firstPin) : Module("Analog"){
            pinMappings.push_back(new AnalogMapping(firstPin, pinNumberToName(firstPin), 0, 0));
@@ -80,7 +80,7 @@ class Loom_Analog : public Module{
         /**
          * Templated constructor that only reads the battery voltage
          * @param man Reference to the manager
-         */ 
+         */
         Loom_Analog(Manager& man) : Module("Analog"){
            manInst = &man;
            pinMappings.push_back(new AnalogMapping(A7, "Vbat", getBatteryVoltage(), getBatteryVoltage() * 1000));
@@ -94,24 +94,24 @@ class Loom_Analog : public Module{
 
         /**
          * Get the current voltage of the battery
-         */ 
+         */
         float getBatteryVoltage();
 
         /**
          * Get the Millivolts of a specified pin
          * @param pin The pin to get the data from eg. A0, A1, ...
-         */ 
+         */
         float getMV(int pin);
 
         /**
          * Get the analog value from a given pin
          * @param pin The pin to get the data from eg. A0, A1, ...
-         */ 
+         */
         float getAnalog(int pin);
 
     private:
 
-        /** 
+        /**
          *   The following two functions are some sorcery to get the variadic parameters without the need for passing in a size variable
          *   I don't fully understand it so don't touch it just works
          *   Based off: https://eli.thegreenplace.net/2014/variadic-templates-in-c/
@@ -133,7 +133,7 @@ class Loom_Analog : public Module{
         char* pinNumberToName(int pin);             // Convert the given to a name with the style "A0"
 
         Manager* manInst;                           // Instance of the manager
-        std::vector<AnalogMapping*> pinMappings;    // Contains a struct for each pin we are monitoring 
-        
+        std::vector<AnalogMapping*> pinMappings;    // Contains a struct for each pin we are monitoring
+
 
 };

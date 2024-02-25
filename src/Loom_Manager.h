@@ -157,7 +157,9 @@ class Manager{
          * @param sensorVolt The min volt threshhold for sensor reading functionality
          * @param commVolt The min volt threshhold for communcation functionality (lte, wifi, etc.)
          */
-        void enable_voltage_reading(int modIndex = -1, float sensorVolt = 0.0, float commVolt = 0.0);
+        void enable_voltage_reading(float sensorVolt = 0.0, float commVolt = 0.0, int modIndex = -1);
+
+        void set_voltage(const float voltage = 0.0) { currVoltage = voltage; }
 
         /**
          * Gives the status of voltage checking for sensor readings (i.e. is the voltage checking feature enabled for sensors)
@@ -174,25 +176,25 @@ class Manager{
         bool com_check() const;
 
         /**
-         * Reads the voltage of the battery/ analog
+         * Reads the voltage of the battery/ analog, sets the value of currVoltage
          *
          * @return the voltage reading
          */
-        float get_curr_voltage() const;
+        void read_curr_voltage();
 
         /**
          * Checks if the battery has enough voltage to enable and read the sensors
          *
          * @return true if the voltage read is above the threshhold, false otherwise
          */
-        bool voltage_read_status() const;
+        bool voltage_read_status();
 
         /**
          * Checks if the battery has enough voltage to send the logged data
          *
          * @return true if the voltage read is above the threshhold, false otherwise
          */
-        bool voltage_comm_status() const;
+        bool voltage_comm_status();
 
     private:
 
@@ -217,6 +219,7 @@ class Manager{
         int analogIdx = -1;                                     // If we want to measure voltage, this will save the index of the analog
         float targetReadV = 0.0;                                // Minimum voltage threshhold for reading the sensor data
         float targetComV = 0.0;                                 // Minimum voltage threshhold for sending data via LTE
+        float currVoltage = 0.0;                                // Stores the last voltage read
 
 
 };

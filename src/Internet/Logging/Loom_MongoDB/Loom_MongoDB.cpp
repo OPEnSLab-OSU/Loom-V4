@@ -79,12 +79,8 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
     char line[MAX_JSON_SIZE];
     int packetNumber = 0, index = 0;
     char c;
-    bool hasVoltage = true;
     if(moduleInitialized){
         TIMER_DISABLE;
-        if(manInst->check_com()){
-            hasVoltage = manInst->voltage_comm_status();
-        }
         if(batchSD.shouldPublish()){
 
             if(strlen(projectServer) > 0)

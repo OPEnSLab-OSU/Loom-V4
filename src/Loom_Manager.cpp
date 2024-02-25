@@ -267,7 +267,9 @@ void Manager::pause(const uint32_t ms) const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Manager::enable_voltage_reading(int modIndex, float sensorVolt, float commVolt) {
+void Manager::enable_voltage_reading(float sensorVolt, float commVolt, int modIndex) {
+
+    LOG(F("Called enable_voltage_reading\n"));
     // If the given index does not contain the analog return
     if(strcmp(modules[modIndex].first, "Analog")){
         LOG(F("Error, the provided index is not the registered analog.\n"));
@@ -276,6 +278,7 @@ void Manager::enable_voltage_reading(int modIndex, float sensorVolt, float commV
     analogIdx = modIndex;
     targetReadV = sensorVolt;
     targetComV = commVolt;
+
     LOG(F("Voltage monitoring has been successfully enabled.\n"));
     return;
 }
@@ -298,31 +301,26 @@ bool Manager::com_check() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-float Manager::get_curr_voltage() const {
+void Manager::read_curr_voltage() {
     FUNCTION_START;
     if(analogIdx < 0){
         LOG(F("Error, voltage reading not enabled/ enabled correctly\n"));
+        currVoltage = -1.0;
         FUNCTION_END;
-        return -1.0;
+        return;
     }
+    // TODO: implement a way to receive the analog readings (should be returned as a float)
     modules[analogIdx].second->measure();
     FUNCTION_END;
-    // TODO: want to do something like this, but inheritance blocks it
-    // return modules[analogIdx].second->getBatteryVoltage();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Manager::voltage_read_status() const {
+bool Manager::voltage_read_status() {
     FUNCTION_START;
-    float read = get_curr_voltage();
-    // Something went wrong with the analog read so we'll return true
-    if(read < 0.0){
-        FUNCTION_END;
-        return true;
-    }
+    Manager::read_curr_voltage();
     // It's above the threshhold so we can afford to enable the sensors
-    if(read > targetReadV){
+    if(currVoltage > targetReadV){
         FUNCTION_END;
         return true;
     }
@@ -333,16 +331,11 @@ bool Manager::voltage_read_status() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Manager::voltage_comm_status() const {
+bool Manager::voltage_comm_status() {
     FUNCTION_START;
-    float read = get_curr_voltage();
-    // Something went wrong with the analog read so we'll return true
-    if(read < 0.0){
-        FUNCTION_END;
-        return true;
-    }
+    Manager::read_curr_voltage();
     // It's above the threshhold so we can afford to send data
-    if(read > targetComV){
+    if(currVoltage > targetComV){
         FUNCTION_END;
         return true;
     }
