@@ -22,6 +22,17 @@ class Loom_NOVASDS011: public Module{
 
         Loom_NOVASDS011(Manager& man, HardwareSerial* serial = &Serial1);
 
+        /**
+         * Get PM 2.5 value
+         */ 
+
+        float getPM25() {return pm25; };
+
+        /**
+         * Get PM 10 value
+         */ 
+        float getPM() { return pm10; };
+
     private:
         Manager* manInst;           // Instance of the Manager  
         SDS011 nova;                // Instance of the library
