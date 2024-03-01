@@ -31,7 +31,7 @@ class Loom_NOVASDS011: public Module{
         /**
          * Get PM 10 value
          */ 
-        float getPM() { return pm10; };
+        float getPM10() { return pm10; };
 
     private:
         Manager* manInst;           // Instance of the Manager  
