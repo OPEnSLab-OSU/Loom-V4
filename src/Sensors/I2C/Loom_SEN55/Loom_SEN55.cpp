@@ -68,6 +68,12 @@ void Loom_SEN55::measure() {
     char output[OUTPUT_SIZE];
     char sensorError[OUTPUT_SIZE];
 
+    // Turn on pm reading if needed
+    if(measurePM){
+        // TODO add error checking if this works as intended
+        uint16_t readErr = sen5x.startMeasurement();
+    }
+
     /* TODO: Implement this once we know the raw integration works.
     // Get the current connection status
     bool connectionStatus = checkDeviceConnection();
@@ -122,6 +128,12 @@ void Loom_SEN55::measure() {
         }
     }else{
         ERROR("No new data was ready within the given time period.");
+    }
+
+    // Once the values have been read, turn off pm reading
+    if(measurePM){
+        // TODO add error checking if this works as intended
+        uint16_t readErr = sen5x.startMeasurementWithoutPm();
     }
 
     FUNCTION_END;
