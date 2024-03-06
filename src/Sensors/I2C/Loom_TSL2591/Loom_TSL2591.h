@@ -8,18 +8,18 @@
 
 /**
  * TSL2591 Light Sensor
- * 
+ *
  * @author Will Richards
- */ 
+ */
 class Loom_TSL2591 : public I2CDevice{
     protected:
-       
+
        // Manager controlled functions
-        void measure() override;                               
-        void initialize() override;    
+        void measure() override;
+        void initialize() override;
         void power_up() override;
-        void power_down() override {}; 
-        void package() override;   
+        void power_down() override {};
+        void package() override;
 
     public:
         /**
@@ -28,29 +28,31 @@ class Loom_TSL2591 : public I2CDevice{
          * @param address I2C address that is assigned to the sensor
          * @param light_gain Sets the gain level for how much to amplify the input
          * @param integration_time How long we want to integrate the data, longer time results in dimmer values
-         */ 
+         */
         Loom_TSL2591(
                       Manager& man,
-                      int address = 0x29, 
-                      bool useMux = false, 
-                      tsl2591Gain_t light_gain = TSL2591_GAIN_MED, 
+                      int address = 0x29,
+                      bool useMux = false,
+                      tsl2591Gain_t light_gain = TSL2591_GAIN_MED,
                       tsl2591IntegrationTime_t integration_time = TSL2591_INTEGRATIONTIME_100MS
                 );
 
         /**
          * Get recorded visible light
-         */ 
+         */
         uint16_t getVisible() {return lightLevels[0]; };
 
         /**
          * Get recorded infrared light
-         */ 
+         */
         uint16_t getInfrared() { return lightLevels[1]; };
 
         /**
          * Get recorded full spectrum
-         */ 
+         */
         uint16_t getFullSpectrum() {return lightLevels[2]; };
+
+        float autoLux();
 
 
 
