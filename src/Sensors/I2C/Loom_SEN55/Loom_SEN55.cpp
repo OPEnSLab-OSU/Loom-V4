@@ -72,6 +72,7 @@ void Loom_SEN55::measure() {
     if(measurePM){
         // TODO add error checking if this works as intended
         uint16_t readErr = sen5x.startMeasurement();
+        delay(60);
     }
 
     /* TODO: Implement this once we know the raw integration works.
@@ -134,6 +135,7 @@ void Loom_SEN55::measure() {
     if(measurePM){
         // TODO add error checking if this works as intended
         uint16_t readErr = sen5x.startMeasurementWithoutPm();
+        delay(60);
     }
 
     FUNCTION_END;
