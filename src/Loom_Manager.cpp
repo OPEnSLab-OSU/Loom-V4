@@ -267,18 +267,19 @@ void Manager::pause(const uint32_t ms) const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Manager::enable_voltage_reading(float sensorVolt, float commVolt, int modIndex) {
-
-    LOG(F("Called enable_voltage_reading\n"));
-    // If the given index does not contain the analog return
-    if(strcmp(modules[modIndex].first, "Analog")){
-        LOG(F("Error, the provided index is not the registered analog.\n"));
+void Manager::enable_voltage_reading(float sensorVolt, float commVolt) {
+    // Look for a registered analog device
+    for(int i = 0; i < modules.size(); i++)
+        if (!strcmp(modules[i].first, "Analog"))
+            analogIdx = i;
+    // If we were unable to find a registed analog module (the idx holds its default value)
+    if(analogIdx < 0){
+        LOG(F("Error, unable to find a registered analog module...\n"));
         return;
     }
-    analogIdx = modIndex;
+
     targetReadV = sensorVolt;
     targetComV = commVolt;
-
     LOG(F("Voltage monitoring has been successfully enabled.\n"));
     return;
 }
@@ -309,7 +310,7 @@ void Manager::read_curr_voltage() {
         FUNCTION_END;
         return;
     }
-    // TODO: implement a way to receive the analog readings (should be returned as a float)
+
     modules[analogIdx].second->measure();
     FUNCTION_END;
 }

@@ -9,6 +9,8 @@
 #define WAIT_TIME_MS 20000     // Time to wait for the serial interface to start
 #define BAUD_RATE 115200        // Serial interface baud rate
 
+class Loom_Analog;
+
 /**
  * Unifies all the various sensors to allow for collection in unison
  * This class manages the JSON document store of all sensor information
@@ -157,7 +159,7 @@ class Manager{
          * @param sensorVolt The min volt threshhold for sensor reading functionality
          * @param commVolt The min volt threshhold for communcation functionality (lte, wifi, etc.)
          */
-        void enable_voltage_reading(float sensorVolt = 0.0, float commVolt = 0.0, int modIndex = -1);
+        void enable_voltage_reading(float sensorVolt = 0.0, float commVolt = 0.0);
 
         void set_voltage(const float voltage = 0.0) { currVoltage = voltage; }
 
@@ -216,7 +218,7 @@ class Manager{
         bool usingHypnos = false;                               // If the setup is using a hypnos
         bool hypnosEnabled = false;                             // If the power rails on the hypnos are enabled this means we should be able to initialize
 
-        int analogIdx = -1;                                     // If we want to measure voltage, this will save the index of the analog
+        int analogIdx = -2;                                     // If we want to measure voltage, this will save the index of the analog
         float targetReadV = 0.0;                                // Minimum voltage threshhold for reading the sensor data
         float targetComV = 0.0;                                 // Minimum voltage threshhold for sending data via LTE
         float currVoltage = 0.0;                                // Stores the last voltage read
