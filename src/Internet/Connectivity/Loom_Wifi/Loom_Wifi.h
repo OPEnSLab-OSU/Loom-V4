@@ -11,7 +11,7 @@
 
 /**
  * Communication mode for routing traffic between the feather and Max client
- */ 
+ */
 enum CommunicationMode{
     CLIENT,         // Connect to a remote router to handle traffic
     AP              // Set the feather itself as an access point
@@ -26,20 +26,20 @@ typedef struct {
 
 /**
  * WiFi 101 library integrated with the manager to allow for easy sleep
- * 
+ *
  * @author Will Richards
- */ 
+ */
 class Loom_WIFI : public NetworkComponent{
     protected:
 
         /* These aren't used with the Wifi manager */
-        void measure() override {};      
+        void measure() override {};
 
         bool getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) override;
 
         // Initialize the device and connect to the network
         void initialize() override;
-        void package() override;   
+        void package() override;
 
         // Reconnect to the network
         void power_up() override;
@@ -47,9 +47,6 @@ class Loom_WIFI : public NetworkComponent{
         // Disconnect from the network
         void power_down() override;
 
-        // Overridden isConnected for the NetworkComponent
-        bool isConnected() override;
-        
     public:
 
         /**
@@ -57,50 +54,53 @@ class Loom_WIFI : public NetworkComponent{
          * @param man Reference to the manager to control all aspects of every module
          * @param mode Whether or not to try to connect to an access point or create our own
          * @param name The name of the WiFi access point we are going to connect to
-         * @param password The password (if applicable) to connect to the access point 
-         */ 
+         * @param password The password (if applicable) to connect to the access point
+         */
         Loom_WIFI(Manager& man, CommunicationMode mode, const char* name = "", const char* password = "", int connectionRetries = 5);
 
         /**
          * Construct a new WiFi manager, passing the credentials in as a json document
-         * @param man Reference to the manager 
+         * @param man Reference to the manager
          * @param jsonString JSON string to pull the credentials from
-         */ 
+         */
         Loom_WIFI(Manager& man);
+
+        // Overridden isConnected for the NetworkComponent
+        bool isConnected() override;
 
         /**
          * Load the Wifi credentials from a JSON string, used to pull credentials from a file
-         * 
+         *
          * This automatically frees the input json
-         * 
-         * @param jsonString JSON formatted string containing the SSID and password 
+         *
+         * @param jsonString JSON formatted string containing the SSID and password
          */
         void loadConfigFromJSON(char* json);
 
         /**
          * Returns a reference to the WifiClient
          * @return wifiClient
-         */ 
+         */
         WiFiClient& getClient() { return wifiClient; };
 
         /**
          * Get a reference to the UDP communication handler
-         */ 
+         */
         WiFiUDP* getUDP() { return new WiFiUDP(); };
 
         /**
          * Attempt to ping Google, this tests if we are truly connected to the internet
-         */ 
+         */
         bool verifyConnection();
 
         /**
          * Connect to an already existing access point
-         */ 
+         */
         void connect_to_network();
 
         /**
          * Create our own access point
-         */ 
+         */
         void start_ap();
 
         /* Take in new WiFi information store it to flash and restart the WiFi chip to put the new credentials into effect*/
@@ -108,28 +108,27 @@ class Loom_WIFI : public NetworkComponent{
 
         /**
          * Get the IP address of the WiFi module
-         */ 
+         */
         IPAddress getIPAddress();
 
         /**
          * Get the subnet mask of the connected network
-         */ 
+         */
         IPAddress getSubnetMask();
 
         /**
          * Get the gateway IP of the network
-         */ 
+         */
         IPAddress getGateway();
 
         /**
          *  Get the broadcast IP of the network
-         */ 
+         */
         IPAddress getBroadcast();
-
 
         /**
          * Called by max to ignore WiFi verification requests
-         */ 
+         */
         void useMax() {usingMax = true; };
 
         /**
@@ -144,8 +143,8 @@ class Loom_WIFI : public NetworkComponent{
 
         /**
          * Convert an IP address to a string
-         */ 
-        void ipToString(IPAddress ip, char array[16]) { 
+         */
+        void ipToString(IPAddress ip, char array[16]) {
             snprintf(array, 16, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
         };
 
@@ -165,7 +164,7 @@ class Loom_WIFI : public NetworkComponent{
         bool firstInit = true;
         CommunicationMode mode;             // Current WiFi mode we are in
 
-        IPAddress remoteIP;                 // IP address to send the UDP requests to 
+        IPAddress remoteIP;                 // IP address to send the UDP requests to
 
-        
+
 };
