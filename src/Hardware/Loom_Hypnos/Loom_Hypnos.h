@@ -16,42 +16,47 @@
 // Used to pass along the user defined interrupt callback
 using InterruptCallbackFunction = void (*)();
 
+/** @file
+ *  This file includes the definitions of the enums.
+ */ 
+
+
 /**
  * Tracks the hypnos version and matches the version with the correct chip select pin
  */ 
 enum HYPNOS_VERSION{
-    V3_2 = 10,
-    V3_3 = 11,
-    ADALOGGER = 4
+    V3_2 = 10, /**< enum value 1 */
+    V3_3 = 11, /**<enum value 2 */
+    ADALOGGER = 4 /**<enum value 3 */
 };
 
 /**
  * Time zone abbreviations that map to the hour offset from UTC
  */ 
 enum TIME_ZONE{
-    WAT = 1,
-    AT = 2,
-    AST = 4,
-    EST = 5,
-    CST = 6,
-    MST = 7,
-    PST = 8,
-    AKST = 9,
-    HST = 9,
-    SST = 11,
-    GMT = 0,
-    BST = -1,
-    CET = -1,
-    EET = -2,
-    EEST = -3,
-    BRT = -3,
-    ZP4 = -4,
-    ZP5 = -5,
-    ZP6 = -6,
-    ZP7 = -7,
-    AWST = -8,
-    ACST = -9, // Half an hour off so its -9.5
-    AEST = -10
+    WAT = 1, /**< enum value 1 */
+    AT = 2, /**< enum value 2 */
+    AST = 4, /**< enum value 3 */
+    EST = 5, /**< enum value 4 */
+    CST = 6, /**< enum value 5 */
+    MST = 7, /**< enum value 6 */
+    PST = 8, /**< enum value 7 */
+    AKST = 9, /**< enum value 8 */
+    HST = 9, /**< enum value 9 */
+    SST = 11, /**< enum value 10 */
+    GMT = 0, /**< enum value 11 */
+    BST = -1, /**< enum value 12 */
+    CET = -1, /**< enum value 13 */
+    EET = -2, /**< enum value 14 */
+    EEST = -3, /**< enum value 15 */
+    BRT = -3, /**< enum value 16 */
+    ZP4 = -4, /**< enum value 17 */
+    ZP5 = -5, /**< enum value 18 */
+    ZP6 = -6, /**< enum value 19 */
+    ZP7 = -7, /**< enum value 20 */
+    AWST = -8, /**< enum value 21 */
+    ACST = -9,  /**< enum value 22 */   // Half an hour off so its -9.5
+    AEST = -10 /**< enum value 23 */
 
 };
 
