@@ -316,6 +316,9 @@ bool Loom_LoRa::receiveBatch(uint maxWaitTime, int* numberOfPackets){
                 *numberOfPackets = recvDoc["batch_size"].as<int>();
                 return false;
             }
+            else if (!recvDoc["id"].isNull() && recvDoc["id"]["name"].isNull()){
+                return false;
+            }
             else{
                 manInst->set_device_name(recvDoc["id"]["name"].as<const char*>());
                 manInst->set_instance_num(recvDoc["id"]["instance"].as<int>());
