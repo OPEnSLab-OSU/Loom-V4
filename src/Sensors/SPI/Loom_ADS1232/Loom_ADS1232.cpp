@@ -35,7 +35,7 @@ void Loom_ADS1232::power_down(){
         
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ADS1232::measure(){
-    if(inst.isReady()){
+    if(inst.is_ready()){
         weight = inst.units_read(num_samples);
     }else{
         WARNING("ADS1232 is not ready to collect data!");
