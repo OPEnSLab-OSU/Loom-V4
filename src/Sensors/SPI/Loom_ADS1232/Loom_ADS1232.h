@@ -3,6 +3,7 @@
 #include "Module.h"
 #include "Loom_Manager.h"
 
+
 #include <ADS1232_Lib.h>
 
 
@@ -16,18 +17,13 @@ class Loom_ADS1232 : public Module{
          
 
     public:
-        Loom_ADS1232(Manager& man, int num_samples = 1, long offset = 8403613, float scale = 2041.46);
+        Loom_ADS1232(Manager& man, int num_samples = 10, long offset = 8403613, float scale = 2041.46);
 
         void initialize() override;
         void power_up() override;
         void power_down() override;
         void measure() override;
         void package() override;
-
-        /**
-         * Calibrate the sensor
-         */ 
-        void calibrate();
 
         /**
          * Get the recorded weight
