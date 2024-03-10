@@ -6,6 +6,7 @@ Logger* Logger::instance = nullptr;
 Manager::Manager(const char* devName, uint32_t instanceNum) : instanceNumber(instanceNum), doc(MAX_JSON_SIZE) {
     strncpy(this->deviceName, devName, 100);
     Logger::getInstance();
+    memset(jsonStr, '\0', sizeof(char) * MAX_JSON_SIZE);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -40,7 +41,20 @@ Manager::Manager(const char* devName, uint32_t instanceNum) : instanceNumber(ins
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-DynamicJsonDocument& Manager::getDocument() {return doc;}
+DynamicJsonDocument& Manager::getDocument() {
+    if(!doc.isNull())
+        doc.clear();
+    if(jsonStr[0] == '\0')
+        return doc;
+
+    DeserializationError jsonErr = deserializeJson(doc, jsonStr);
+    if(jsonErr){
+        LOG(F("Error when deserializing json string in getDocument()."));
+        LOG(F("Status: "));
+        LOG(F(jsonErr.c_str()));
+    }
+    return doc;
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
