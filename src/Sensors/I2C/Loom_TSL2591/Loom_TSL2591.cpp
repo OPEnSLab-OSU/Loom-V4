@@ -133,10 +133,10 @@ float Loom_TSL2591::autoLux() {
 
     if(rawFull <= 100){
         while ((rawFull <= 100) && !((gainIdx == 3) && (itIdx == 5))) {
-            if (gainIndex < 3) {
+            if (gainIdx < 3) {
                 tsl.setGain(gains[++gainIdx]);
             }
-            else if (itIndex < 5) {
+            else if (itIdx < 5) {
                 tsl.setTiming(intTimes[++itIdx]);
             }
             raw = tsl.getFullLuminosity();
