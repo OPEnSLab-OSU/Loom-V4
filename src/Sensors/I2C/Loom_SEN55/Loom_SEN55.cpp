@@ -73,6 +73,40 @@ void Loom_SEN55::measure() {
         // TODO add error checking if this works as intended
         uint16_t readErr = sen5x.startMeasurement();
         delay(60);
+        float Pm1p0 = 0, Pm2p5 = 0, Pm4p0 = 0, Pm10p0 = 0;
+        float numPm0p5 = 0, numPm1p0 = 0, numPm2p5 = 0, numPm4p0 = 0, numPm10p0 = 0;
+        float particleSize = 0;
+        massConcentrationPm1p0 = 0;
+        massConcentrationPm2p5 = 0;
+        massConcentrationPm4p0 = 0;
+        massConcentrationPm10p0 = 0;
+        for(int i = 0; i < PM_AVERAGE_COUNT; i++){
+            sen5x.readMeasuredPmValues(&Pm1p0, &Pm2p5, &Pm4p0, &Pm10p0, &numPm0p5, &numPm1p0,
+                                        &numPm2p5, &numPm4p0, &numPm10p0, &particleSize);
+            massConcentrationPm1p0 += Pm1p0;
+            massConcentrationPm2p5 += Pm2p5;
+            massConcentrationPm4p0 += Pm4p0;
+            massConcentrationPm10p0 += Pm10p0;
+
+            numConcentrationPm0p5 += numPm0p5;
+            numConcentrationPm1p0 += numPm1p0;
+            numConcentrationPm2p5 += numPm2p5;
+            numConcentrationPm4p0 += numPm4p0;
+            numConcentrationPm10p0 += numPm10p0;
+            delay(1);
+        }
+        massConcentrationPm1p0 /= PM_AVERAGE_COUNT;
+        massConcentrationPm2p5 /= PM_AVERAGE_COUNT;
+        massConcentrationPm4p0 /= PM_AVERAGE_COUNT;
+        massConcentrationPm10p0 /= PM_AVERAGE_COUNT;
+
+        numConcentrationPm0p5 /= PM_AVERAGE_COUNT;
+        numConcentrationPm1p0 /= PM_AVERAGE_COUNT;
+        numConcentrationPm2p5 /= PM_AVERAGE_COUNT;
+        numConcentrationPm4p0 /= PM_AVERAGE_COUNT;
+        numConcentrationPm10p0 /= PM_AVERAGE_COUNT;
+
+        uint16_t readErr = sen5x.startMeasurementWithoutPm();
     }
 
     /* TODO: Implement this once we know the raw integration works.
@@ -129,13 +163,6 @@ void Loom_SEN55::measure() {
         }
     }else{
         ERROR("No new data was ready within the given time period.");
-    }
-
-    // Once the values have been read, turn off pm reading
-    if(measurePM){
-        // TODO add error checking if this works as intended
-        uint16_t readErr = sen5x.startMeasurementWithoutPm();
-        delay(60);
     }
 
     FUNCTION_END;
