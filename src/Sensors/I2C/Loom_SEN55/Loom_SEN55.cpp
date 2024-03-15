@@ -5,8 +5,9 @@
 Loom_SEN55::Loom_SEN55(
                         Manager& man,
                         bool measurePM,
-                        bool useMux
-                    ) : I2CDevice("SEN55"), manInst(&man), measurePM(measurePM){
+                        bool useMux,
+                        bool numMode
+                    ) : I2CDevice("SEN55"), manInst(&man), measurePM(measurePM), numMode(numMode){
 
                         // Register the module with the manager
                         if(!useMux)
@@ -87,12 +88,14 @@ void Loom_SEN55::measure() {
             massConcentrationPm2p5 += Pm2p5;
             massConcentrationPm4p0 += Pm4p0;
             massConcentrationPm10p0 += Pm10p0;
-
-            numConcentrationPm0p5 += numPm0p5;
-            numConcentrationPm1p0 += numPm1p0;
-            numConcentrationPm2p5 += numPm2p5;
-            numConcentrationPm4p0 += numPm4p0;
-            numConcentrationPm10p0 += numPm10p0;
+            if(numMode){
+                numConcentrationPm0p5 += numPm0p5;
+                numConcentrationPm1p0 += numPm1p0;
+                numConcentrationPm2p5 += numPm2p5;
+                numConcentrationPm4p0 += numPm4p0;
+                numConcentrationPm10p0 += numPm10p0;
+                typicalParticleSize += particleSize;
+            }
             delay(1);
         }
         massConcentrationPm1p0 /= PM_AVERAGE_COUNT;
@@ -100,13 +103,17 @@ void Loom_SEN55::measure() {
         massConcentrationPm4p0 /= PM_AVERAGE_COUNT;
         massConcentrationPm10p0 /= PM_AVERAGE_COUNT;
 
-        numConcentrationPm0p5 /= PM_AVERAGE_COUNT;
-        numConcentrationPm1p0 /= PM_AVERAGE_COUNT;
-        numConcentrationPm2p5 /= PM_AVERAGE_COUNT;
-        numConcentrationPm4p0 /= PM_AVERAGE_COUNT;
-        numConcentrationPm10p0 /= PM_AVERAGE_COUNT;
+        if(numMode){
+            numConcentrationPm0p5 /= PM_AVERAGE_COUNT;
+            numConcentrationPm1p0 /= PM_AVERAGE_COUNT;
+            numConcentrationPm2p5 /= PM_AVERAGE_COUNT;
+            numConcentrationPm4p0 /= PM_AVERAGE_COUNT;
+            numConcentrationPm10p0 /= PM_AVERAGE_COUNT;
+            typicalParticleSize /= PM_AVERAGE_COUNT;
+        }
 
         uint16_t readErr = sen5x.startMeasurementWithoutPm();
+        delay(60);
     }
 
     /* TODO: Implement this once we know the raw integration works.
@@ -180,6 +187,15 @@ void Loom_SEN55::package() {
         json["PM2_5"] = massConcentrationPm2p5;
         json["PM4_0"] = massConcentrationPm4p0;
         json["PM10_0"] = massConcentrationPm10p0;
+
+        if(numMode){
+            json["N_PM_5"] = numConcentrationPm0p5;
+            json["N_PM_1"] = numConcentrationPm1p0;
+            json["N_PM2_5"] = numConcentrationPm2p5;
+            json["N_PM_4"] = numConcentrationPm4p0;
+            json["N_PM_10"] = numConcentrationPm10p0;
+            json["Typical_Particle_Size"] = typicalParticleSize;
+        }
     }
     json["AmbientHumidity"] = (isnan(ambientHumidity) ? -1 : ambientHumidity);
     json["AmbientTemperature"] = (isnan(ambientTemperature) ? -1 : ambientTemperature);

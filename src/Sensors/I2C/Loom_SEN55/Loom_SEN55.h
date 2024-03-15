@@ -38,7 +38,8 @@ class Loom_SEN55 : public I2CDevice{
         Loom_SEN55(
                     Manager& man,
                     bool measurePM = true,
-                    bool useMux = false
+                    bool useMux = false,
+                    bool numMode = true
                 );
 
         /**
@@ -185,6 +186,7 @@ class Loom_SEN55 : public I2CDevice{
         SensirionI2CSen5x sen5x;                    // Instance of the SEN55 object
 
         bool measurePM;                             // Are we measuring particulate matter or not
+        bool numMode;                               // Do we want to read the number concentration and typical particle size?
 
         /* Sensor readings */
         float massConcentrationPm1p0;
