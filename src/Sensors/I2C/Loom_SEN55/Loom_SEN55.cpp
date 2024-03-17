@@ -6,8 +6,8 @@ Loom_SEN55::Loom_SEN55(
                         Manager& man,
                         bool measurePM,
                         bool useMux,
-                        bool numMode
-                    ) : I2CDevice("SEN55"), manInst(&man), measurePM(measurePM), numMode(numMode){
+                        bool readNumVals
+                    ) : I2CDevice("SEN55"), manInst(&man), measurePM(measurePM), readNumVals(readNumVals){
 
                         // Register the module with the manager
                         if(!useMux)
@@ -41,24 +41,24 @@ void Loom_SEN55::initialize() {
     }
 
     /* Determine if we want to measure with the particulate matter readings or not */
-    if(measurePM){
-        error = sen5x.startMeasurement();
-    }
-    else{
-        error = sen5x.startMeasurementWithoutPm();
-    }
+    // if(measurePM){
+    //     error = sen5x.startMeasurement();
+    // }
+    // else{
+    //     error = sen5x.startMeasurementWithoutPm();
+    // }
 
-    if(error){
-        errorToString(error, errorMessage, OUTPUT_SIZE);
-        snprintf(output, OUTPUT_SIZE, "Error occurred when attempting to collect measurement: %s", errorMessage);
-        ERROR(output);
-        FUNCTION_END;
-        return;
-    }
+    // if(error){
+    //     errorToString(error, errorMessage, OUTPUT_SIZE);
+    //     snprintf(output, OUTPUT_SIZE, "Error occurred when attempting to collect measurement: %s", errorMessage);
+    //     ERROR(output);
+    //     FUNCTION_END;
+    //     return;
+    // }
 
     // Wait for required one second as described in the readMeasuredValues() documentation
-    LOG("Waiting 10 seconds seconds so that we can warm the sensor up");
-    delay(10000);
+    // LOG("Waiting 10 seconds seconds so that we can warm the sensor up");
+    // delay(10000);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -72,23 +72,20 @@ void Loom_SEN55::measure() {
     // Turn on pm reading if needed
     if(measurePM){
         // TODO add error checking if this works as intended
+        LOG("Waiting 10 seconds seconds so that we can warm the sensor up");
         uint16_t readErr = sen5x.startMeasurement();
-        delay(60);
+        delay(10000);
         float Pm1p0 = 0, Pm2p5 = 0, Pm4p0 = 0, Pm10p0 = 0;
         float numPm0p5 = 0, numPm1p0 = 0, numPm2p5 = 0, numPm4p0 = 0, numPm10p0 = 0;
         float particleSize = 0;
-        massConcentrationPm1p0 = 0;
-        massConcentrationPm2p5 = 0;
-        massConcentrationPm4p0 = 0;
-        massConcentrationPm10p0 = 0;
         for(int i = 0; i < PM_AVERAGE_COUNT; i++){
-            sen5x.readMeasuredPmValues(&Pm1p0, &Pm2p5, &Pm4p0, &Pm10p0, &numPm0p5, &numPm1p0,
-                                        &numPm2p5, &numPm4p0, &numPm10p0, &particleSize);
+            sen5x.readMeasuredPmValues(Pm1p0, Pm2p5, Pm4p0, Pm10p0, numPm0p5, numPm1p0,
+                                        numPm2p5, numPm4p0, numPm10p0, particleSize);
             massConcentrationPm1p0 += Pm1p0;
             massConcentrationPm2p5 += Pm2p5;
             massConcentrationPm4p0 += Pm4p0;
             massConcentrationPm10p0 += Pm10p0;
-            if(numMode){
+            if(readNumVals){
                 numConcentrationPm0p5 += numPm0p5;
                 numConcentrationPm1p0 += numPm1p0;
                 numConcentrationPm2p5 += numPm2p5;
@@ -103,7 +100,7 @@ void Loom_SEN55::measure() {
         massConcentrationPm4p0 /= PM_AVERAGE_COUNT;
         massConcentrationPm10p0 /= PM_AVERAGE_COUNT;
 
-        if(numMode){
+        if(readNumValss){
             numConcentrationPm0p5 /= PM_AVERAGE_COUNT;
             numConcentrationPm1p0 /= PM_AVERAGE_COUNT;
             numConcentrationPm2p5 /= PM_AVERAGE_COUNT;
@@ -112,8 +109,14 @@ void Loom_SEN55::measure() {
             typicalParticleSize /= PM_AVERAGE_COUNT;
         }
 
-        uint16_t readErr = sen5x.startMeasurementWithoutPm();
+
         delay(60);
+    }
+
+    else {
+        LOG("Waiting 10 seconds seconds so that we can warm the sensor up");
+        uint16_t readErr = sen5x.startMeasurementWithoutPm();
+        delay(10000);
     }
 
     /* TODO: Implement this once we know the raw integration works.
@@ -153,10 +156,11 @@ void Loom_SEN55::measure() {
     // If the data was not ready we don't want to update the sensor values
     if(dataReady){
         LOG("Device was ready to read a new sample!");
+        float tmp = 0.0;
         // Request the measured values form the sensor
         error = sen5x.readMeasuredValues(
-                                            massConcentrationPm1p0, massConcentrationPm2p5, massConcentrationPm4p0,
-                                            massConcentrationPm10p0, ambientHumidity, ambientTemperature, vocIndex,
+                                            tmp, tmp, tmp, tmp,
+                                            ambientHumidity, ambientTemperature, vocIndex,
                                             noxIndex
                                         );
 
@@ -170,6 +174,10 @@ void Loom_SEN55::measure() {
         }
     }else{
         ERROR("No new data was ready within the given time period.");
+    }
+
+    if(measurePM){
+        uint16_t readErr = sen5x.startMeasurementWithoutPm();
     }
 
     FUNCTION_END;
@@ -188,12 +196,12 @@ void Loom_SEN55::package() {
         json["PM4_0"] = massConcentrationPm4p0;
         json["PM10_0"] = massConcentrationPm10p0;
 
-        if(numMode){
-            json["N_PM_5"] = numConcentrationPm0p5;
-            json["N_PM_1"] = numConcentrationPm1p0;
+        if(readNumVals){
+            json["N_PM0_5"] = numConcentrationPm0p5;
+            json["N_PM1_0"] = numConcentrationPm1p0;
             json["N_PM2_5"] = numConcentrationPm2p5;
-            json["N_PM_4"] = numConcentrationPm4p0;
-            json["N_PM_10"] = numConcentrationPm10p0;
+            json["N_PM4_0"] = numConcentrationPm4p0;
+            json["N_PM10_0"] = numConcentrationPm10p0;
             json["Typical_Particle_Size"] = typicalParticleSize;
         }
     }
