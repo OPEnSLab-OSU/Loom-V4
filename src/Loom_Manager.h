@@ -180,7 +180,6 @@ class Manager{
         /**
          * Reads the voltage of the battery/ analog, sets the value of currVoltage
          *
-         * @return the voltage reading
          */
         void read_curr_voltage();
 
