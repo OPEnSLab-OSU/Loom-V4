@@ -100,7 +100,7 @@ void Loom_SEN55::measure() {
         massConcentrationPm4p0 /= PM_AVERAGE_COUNT;
         massConcentrationPm10p0 /= PM_AVERAGE_COUNT;
 
-        if(readNumValss){
+        if(readNumVals){
             numConcentrationPm0p5 /= PM_AVERAGE_COUNT;
             numConcentrationPm1p0 /= PM_AVERAGE_COUNT;
             numConcentrationPm2p5 /= PM_AVERAGE_COUNT;
