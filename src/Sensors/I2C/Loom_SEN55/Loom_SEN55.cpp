@@ -41,10 +41,10 @@ void Loom_SEN55::initialize() {
 
     /* Determine if we want to measure with the particulate matter readings or not */
     if(measurePM){
-        error = sen5x.startMeasurement();
+        //error = sen5x.startMeasurement();
     }
     else{
-        error = sen5x.startMeasurementWithoutPm();
+        //error = sen5x.startMeasurementWithoutPm();
     }
 
     if(error){
@@ -57,7 +57,7 @@ void Loom_SEN55::initialize() {
 
     // Wait for required one second as described in the readMeasuredValues() documentation
     LOG("Waiting 10 seconds seconds so that we can warm the sensor up");
-    delay(10000);
+    //delay(10000);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -87,13 +87,20 @@ void Loom_SEN55::measure() {
 
     /* Attempt to initiate a measurement with the sensor */
 
+
     uint16_t error = 0;
+
+    error = sen5x.startMeasurement();
+
+    LOG("Waiting 10 seconds seconds so that we can warm the sensor up");
+    delay(10000);
 
     // Give the sensor time to prepare for measuring
     bool dataReady = false;
     uint16_t startTime = millis();
     LOG("Waiting for data to be ready... If not ready in 10 seconds we will stop trying");
-    while(!dataReady && millis() < startTime + 10000){
+    delay(10000);
+    while(millis() < startTime + 10000){
         error = sen5x.readDataReady(dataReady);
         if(error){
             errorToString(error, sensorError, OUTPUT_SIZE);
@@ -103,7 +110,7 @@ void Loom_SEN55::measure() {
     }
 
     // If the data was not ready we don't want to update the sensor values
-    if(dataReady){
+    //if(dataReady){
         LOG("Device was ready to read a new sample!");
         // Request the measured values form the sensor
         error = sen5x.readMeasuredValues(
@@ -120,9 +127,11 @@ void Loom_SEN55::measure() {
             FUNCTION_END;
             return;
         }
-    }else{
-        ERROR("No new data was ready within the given time period.");
-    }
+    //}else{
+    //    ERROR("No new data was ready within the given time period.");
+    //}
+
+    //error = sen5x.startMeasurementWithoutPm();
 
     FUNCTION_END;
 }
