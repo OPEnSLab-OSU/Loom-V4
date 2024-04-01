@@ -29,29 +29,29 @@ enum HYPNOS_VERSION{
  * Time zone abbreviations that map to the hour offset from UTC
  */
 enum TIME_ZONE{
-    WAT = 1,
-    AT = 2,
-    AST = 4,
-    EST = 5,
-    CST = 6,
-    MST = 7,
-    PST = 8,
-    AKST = 9,
-    HST = 9,
-    SST = 11,
+    WAT = -1,
+    AT = -2,
+    AST = -4,
+    EST = -5,
+    CST = -6,
+    MST = -7,
+    PST = -8,
+    AKST = -9,
+    HST = -9,
+    SST = -11,
     GMT = 0,
-    BST = -1,
-    CET = -1,
-    EET = -2,
-    EEST = -3,
-    BRT = -3,
-    ZP4 = -4,
-    ZP5 = -5,
-    ZP6 = -6,
-    ZP7 = -7,
-    AWST = -8,
-    ACST = -9, // Half an hour off so its -9.5
-    AEST = -10
+    BST = 1,
+    CET = 1,
+    EET = 2,
+    EEST = 3,
+    BRT = 3,
+    ZP4 = 4,
+    ZP5 = 5,
+    ZP6 = 6,
+    ZP7 = 7,
+    AWST = 8,
+    ACST = 10, // Half an hour off so its -9.5
+    AEST = 10
 
 };
 
@@ -230,7 +230,7 @@ class Loom_Hypnos : public Module{
 
         Manager* manInst = nullptr;                                                         // Instance of the manager
         SDManager* sdMan = nullptr;                                                         // SD Manager
-        NetworkComponent* networkComponent = nullptr;                                     // Reference to a NetworkComponent
+        NetworkComponent* networkComponent = nullptr;                                       // Reference to a NetworkComponent
 
         int sd_chip_select;                                                                 // Pin that the SD card will use to communicate with the Hypnos
         bool enableSD;                                                                      // Specifies whether or not the SD card should be enabled on the Hypnos
@@ -255,18 +255,15 @@ class Loom_Hypnos : public Module{
         void createTimezoneMap();                                                           // Map Timezone Strings to Timezone enum
         std::map<const char*, TIME_ZONE> timezoneMap;                                       // String to Timezone enum
 
-        DateTime get_utc_time();                                                            // Convert the local time to UTC, accounts for daylight savings zones
+        DateTime getLocalTime(DateTime time);                                               // Convert a given UTC time to local time
         TIME_ZONE timezone;                                                                 // Timezone the RTC was set to
-
-
 
         DateTime time;                                                                      // UTC time
         DateTime localTime;                                                                 // Local time
 
         /* Sleep functionality */
-
-        void pre_sleep(bool disable33=true, bool disable5=true);                                                                   // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
-        void post_sleep(bool waitForSerial, bool disable33=true, bool disable5=true);                                                // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
+        void pre_sleep(bool disable33=true, bool disable5=true);                            // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
+        void post_sleep(bool waitForSerial, bool disable33=true, bool disable5=true);       // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
 
 
 

@@ -289,9 +289,8 @@ bool Loom_LTE::getNetworkTime(int* year, int* month, int* day, int* hour, int* m
 
     // Pull the current values from the GSM
     if(modem.getNetworkTime(year, month, day, hour, minute, second, tz)){
-
-        // Create a date time object and then subtract the TimeZone from the date time setting all the pointers to the new values and returning
-        DateTime time = DateTime(*year, *month, *day, *hour, *minute, *second) - TimeSpan(0, tzInt, 0, 0);
+        // Create a date time object and then add the TimeZone back to get UTC time
+        DateTime time = DateTime(*year, *month, *day, *hour, *minute, *second) + TimeSpan(0,((int)*tz)*-1,0,0)
         *year = time.year();
         *month = time.month();
         *day = time.day();
