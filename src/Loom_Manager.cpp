@@ -42,13 +42,13 @@ Manager::Manager(const char* devName, uint32_t instanceNum) : instanceNumber(ins
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 DynamicJsonDocument& Manager::getDocument() {
-    if(!doc.isNull())
-        doc.clear();
     if(jsonStr[0] == '\0')
         return doc;
+    if(!doc.isNull())
+        doc.clear();
 
     DeserializationError jsonErr = deserializeJson(doc, jsonStr);
-    if(jsonErr){
+    if(jsonErr != DeserializationError::Ok){
         LOG(F("Error when deserializing json string in getDocument()."));
         LOG(F("Status: "));
         LOG(F(jsonErr.c_str()));
