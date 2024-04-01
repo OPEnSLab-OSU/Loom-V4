@@ -6,7 +6,7 @@
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
 
-#define PM_AVERAGE_COUNT 8     // Number of times to read the pm values then average them over
+#define PM_AVERAGE_COUNT 30     // Number of times to read the pm values then average them over
 
 /**
  *  SEN55 Air Quality sensors, supports pm 1.0, 2.5, 4.0, 10 as well as Temp/Humidity and Nox and Voc index
