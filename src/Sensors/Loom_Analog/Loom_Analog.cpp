@@ -11,20 +11,6 @@ void Loom_Analog::measure(){
         if(pinMappings[i]->pinNumber == A7){
             pinMappings[i]->analog = getBatteryVoltage();
             pinMappings[i]->analog_mv = getBatteryVoltage() * 1000;
-            if(manInst->read_check() || manInst->com_check()){
-                manInst->set_voltage(pinMappings[i]->analog);
-            }
-        }
-
-        /* If its a normal pin then just read the value and update the previous values */
-        else{
-            int analogData = analogRead(pinMappings[i]->pinNumber);
-            pinMappings[i]->analog = analogData;
-            pinMappings[i]->analog_mv = analogToMV(analogData);
-
-            if(manInst->read_check() || manInst->com_check()){
-                manInst->set_voltage(pinMappings[i]->analog);
-            }
         }
     }
 }

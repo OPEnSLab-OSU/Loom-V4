@@ -155,33 +155,10 @@ class Manager{
          * Enables voltage reading, by default this should be called right after registering analog
          * to the manager. Otherwise the index of the analog should be manually passed in
          *
-         * @param modIndex The index of the analog module, set to -1 (last element) by default
          * @param sensorVolt The min volt threshhold for sensor reading functionality
          * @param commVolt The min volt threshhold for communcation functionality (lte, wifi, etc.)
          */
         void enable_voltage_reading(float sensorVolt = 0.0, float commVolt = 0.0);
-
-        void set_voltage(const float voltage = 0.0) { currVoltage = voltage; }
-
-        /**
-         * Gives the status of voltage checking for sensor readings (i.e. is the voltage checking feature enabled for sensors)
-         *
-         * @return true if we want to check the voltage (i.e. targetReadV > 0.0) false otherwise
-         */
-        bool read_check() const;
-
-        /**
-         * Gives the status of voltage checking for internet devices (i.e. is the voltage checking feature enabled for internet)
-         *
-         * @return true if we want to check the voltage (i.e. targetComV > 0.0) false otherwise
-         */
-        bool com_check() const;
-
-        /**
-         * Reads the voltage of the battery/ analog, sets the value of currVoltage
-         *
-         */
-        void read_curr_voltage();
 
         /**
          * Checks if the battery has enough voltage to enable and read the sensors
@@ -217,10 +194,6 @@ class Manager{
         bool usingHypnos = false;                               // If the setup is using a hypnos
         bool hypnosEnabled = false;                             // If the power rails on the hypnos are enabled this means we should be able to initialize
 
-        int analogIdx = -2;                                     // If we want to measure voltage, this will save the index of the analog
         float targetReadV = 0.0;                                // Minimum voltage threshhold for reading the sensor data
         float targetComV = 0.0;                                 // Minimum voltage threshhold for sending data via LTE
-        float currVoltage = 0.0;                                // Stores the last voltage read
-
-
 };

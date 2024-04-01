@@ -5,6 +5,7 @@ Logger* Logger::instance = nullptr;
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Manager::Manager(const char* devName, uint32_t instanceNum) : instanceNumber(instanceNum), doc(MAX_JSON_SIZE) {
     strncpy(this->deviceName, devName, 100);
+    analogReadResolution(12);
     Logger::getInstance();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -268,58 +269,26 @@ void Manager::pause(const uint32_t ms) const {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::enable_voltage_reading(float sensorVolt, float commVolt) {
-    // Look for a registered analog device
-    for(int i = 0; i < modules.size(); i++)
-        if (!strcmp(modules[i].first, "Analog"))
-            analogIdx = i;
-    // If we were unable to find a registed analog module (the idx holds its default value)
-    if(analogIdx < 0){
-        LOG(F("Error, unable to find a registered analog module...\n"));
-        return;
-    }
-
     targetReadV = sensorVolt;
     targetComV = commVolt;
-    LOG(F("Voltage monitoring has been successfully enabled.\n"));
     return;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Manager::read_check() const {
-    if(targetReadV > 0.0)
-        return true;
-    return false;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Manager::com_check() const {
-    if(targetComV > 0.0)
-        return true;
-    return false;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Manager::read_curr_voltage() {
-    FUNCTION_START;
-    if(analogIdx < 0){
-        LOG(F("Error, voltage reading not enabled/ enabled correctly\n"));
-        currVoltage = -1.0;
-        FUNCTION_END;
-        return;
-    }
-
-    modules[analogIdx].second->measure();
-    FUNCTION_END;
+float Manager::getBatteryVoltage(){
+    float pin_reading = analogRead(A7);
+    pin_reading *= 2;
+    pin_reading *= 3.3;
+    pin_reading /= 4096;
+    return pin_reading;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Manager::voltage_read_status() {
     FUNCTION_START;
-    Manager::read_curr_voltage();
+    float currVoltage = getBatteryVoltage();
     // It's above the threshhold so we can afford to enable the sensors
     if(currVoltage > targetReadV){
         FUNCTION_END;
@@ -334,7 +303,7 @@ bool Manager::voltage_read_status() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Manager::voltage_comm_status() {
     FUNCTION_START;
-    Manager::read_curr_voltage();
+    float currVoltage = getBatteryVoltage();
     // It's above the threshhold so we can afford to send data
     if(currVoltage > targetComV){
         FUNCTION_END;
