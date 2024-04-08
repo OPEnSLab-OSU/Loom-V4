@@ -106,16 +106,16 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
     // If the RTC hasn't already been initialized then do so now if we are trying to schedule an RTC interrupt
     if(!RTC_initialized && interruptPin == 12)
         initializeRTC();
-
+    
     // Make sure a callback function was supplied
     if(isrFunc != nullptr){
+
          // If the interrupt we registered is for sleep we should set the interrupt to wake the device from sleep
         if(interruptType == SLEEP){
             LowPower.attachInterruptWakeup(interruptPin, isrFunc, triggerState);
             LOG(F("Interrupt successfully attached!"));
         }
         else{
-
             attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
             attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
             LOG(F("Interrupt successfully attached!"));
@@ -224,14 +224,10 @@ DateTime Loom_Hypnos::getLocalTime(DateTime time){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::isDaylightSavings(){
-    // If we are using a network component to automatically set the time, just return false
-    if(networkComponent != nullptr){
-        return false;
-    }
-
     // Timezones that observe daylight savings
     if(timezone == AST || timezone == EST || timezone == CST || timezone == MST || timezone == AST || timezone == PST || timezone == AKST){
         int currMonth = getCurrentTime().month();
+        Serial.println(currMonth);
 
         // If we are in the months where daylight savings is in affect
         return (currMonth >= 3 && currMonth < 11);
@@ -258,11 +254,6 @@ bool Loom_Hypnos::networkTimeUpdate(){
         char output[OUTPUT_SIZE];
         int year, month, day, hour, minute, second = 0;
         float tz = timezone;
-
-        /* Go back another hour*/
-        if(isDaylightSavings()){
-            tz -= 1;
-        }
 
         /* Try twice to set the time if it works break out if not we just og again*/
         for(int i = 0; i < 2; i++){
@@ -422,6 +413,7 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
         post_sleep(waitForSerial, disable33, disable5);         // Wake up
     }else{
         WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");
+        reattachRTCInterrupt();
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
