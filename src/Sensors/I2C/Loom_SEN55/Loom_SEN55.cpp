@@ -131,7 +131,7 @@ void Loom_SEN55::measure() {
     //    ERROR("No new data was ready within the given time period.");
     //}
 
-    //error = sen5x.startMeasurementWithoutPm();
+    error = sen5x.startMeasurementWithoutPm();
 
     FUNCTION_END;
 }
