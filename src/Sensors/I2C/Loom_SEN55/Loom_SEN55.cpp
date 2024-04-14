@@ -111,12 +111,57 @@ void Loom_SEN55::measure() {
 
 
         delay(60);
+
+        // TODO: This is not currently ideal, possibly look into alternative ways of doing this (e.g. can we change the delay value?)
+        float tmp = 0.0;
+        readErr = sen5x.readMeasuredValues(
+                                            tmp, tmp, tmp, tmp,
+                                            ambientHumidity, ambientTemperature, vocIndex,
+                                            noxIndex
+                                        );
     }
 
     else {
         LOG("Waiting 10 seconds seconds so that we can warm the sensor up");
         uint16_t readErr = sen5x.startMeasurementWithoutPm();
         delay(10000);
+
+        uint16_t error = 0;
+        // Give the sensor time to prepare for measuring
+        bool dataReady = false;
+        uint16_t startTime = millis();
+        LOG("Waiting for data to be ready... If not ready in 10 seconds we will stop trying");
+        while(!dataReady && millis() < startTime + 10000){
+            error = sen5x.readDataReady(dataReady);
+            if(error){
+                errorToString(error, sensorError, OUTPUT_SIZE);
+                snprintf(output, OUTPUT_SIZE, "Failed to check if data was ready to be read: %s", sensorError);
+                ERROR(output);
+            }
+        }
+
+        // If the data was not ready we don't want to update the sensor values
+        if(dataReady){
+            LOG("Device was ready to read a new sample!");
+            float tmp = 0.0;
+            // Request the measured values form the sensor
+            error = sen5x.readMeasuredValues(
+                                                tmp, tmp, tmp, tmp,
+                                                ambientHumidity, ambientTemperature, vocIndex,
+                                                noxIndex
+                                            );
+
+            // Check if we had an error reading the sensor values
+            if(error){
+                errorToString(error, sensorError, OUTPUT_SIZE);
+                snprintf(output, OUTPUT_SIZE, "Error occurred when reading measurement: %s", sensorError);
+                ERROR(output);
+                FUNCTION_END;
+                return;
+            }
+        }else{
+            ERROR("No new data was ready within the given time period.");
+        }
     }
 
     /* TODO: Implement this once we know the raw integration works.
@@ -138,45 +183,9 @@ void Loom_SEN55::measure() {
 
     /* Attempt to initiate a measurement with the sensor */
 
-    uint16_t error = 0;
-
-    // Give the sensor time to prepare for measuring
-    bool dataReady = false;
-    uint16_t startTime = millis();
-    LOG("Waiting for data to be ready... If not ready in 10 seconds we will stop trying");
-    while(!dataReady && millis() < startTime + 10000){
-        error = sen5x.readDataReady(dataReady);
-        if(error){
-            errorToString(error, sensorError, OUTPUT_SIZE);
-            snprintf(output, OUTPUT_SIZE, "Failed to check if data was ready to be read: %s", sensorError);
-            ERROR(output);
-        }
-    }
-
-    // If the data was not ready we don't want to update the sensor values
-    if(dataReady){
-        LOG("Device was ready to read a new sample!");
-        float tmp = 0.0;
-        // Request the measured values form the sensor
-        error = sen5x.readMeasuredValues(
-                                            tmp, tmp, tmp, tmp,
-                                            ambientHumidity, ambientTemperature, vocIndex,
-                                            noxIndex
-                                        );
-
-        // Check if we had an error reading the sensor values
-        if(error){
-            errorToString(error, sensorError, OUTPUT_SIZE);
-            snprintf(output, OUTPUT_SIZE, "Error occurred when reading measurement: %s", sensorError);
-            ERROR(output);
-            FUNCTION_END;
-            return;
-        }
-    }else{
-        ERROR("No new data was ready within the given time period.");
-    }
 
     if(measurePM){
+        delay(60);
         uint16_t readErr = sen5x.startMeasurementWithoutPm();
     }
 
