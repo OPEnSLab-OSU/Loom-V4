@@ -205,5 +205,7 @@ class Loom_SEN55 : public I2CDevice{
         float numConcentrationPm10p0;
         float typicalParticleSize;
 
+        int pmReadFrequency = 0;                   // Counter for the number of times we have read the PM values
+
 
 };

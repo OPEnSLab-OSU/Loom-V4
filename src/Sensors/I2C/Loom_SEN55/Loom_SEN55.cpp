@@ -71,14 +71,21 @@ void Loom_SEN55::measure() {
 
     // Turn on pm reading if needed
     if(measurePM){
-        // TODO add error checking if this works as intended
         LOG("Waiting 10 seconds seconds so that we can warm the sensor up");
         uint16_t readErr = sen5x.startMeasurement();
-        delay(10000);
+        delay(15000);
         float Pm1p0 = 0, Pm2p5 = 0, Pm4p0 = 0, Pm10p0 = 0;
         float numPm0p5 = 0, numPm1p0 = 0, numPm2p5 = 0, numPm4p0 = 0, numPm10p0 = 0;
         float particleSize = 0;
         for(int i = 0; i < PM_AVERAGE_COUNT; i++){
+            bool dataReady = false;
+            sen5x.readDataReady(dataReady);
+
+            // TODO: This works for now but should be changed later
+            if(!dataReady){
+                continue;
+            }
+
             sen5x.readMeasuredPmValues(Pm1p0, Pm2p5, Pm4p0, Pm10p0, numPm0p5, numPm1p0,
                                         numPm2p5, numPm4p0, numPm10p0, particleSize);
             massConcentrationPm1p0 += Pm1p0;
@@ -109,16 +116,15 @@ void Loom_SEN55::measure() {
             typicalParticleSize /= PM_AVERAGE_COUNT;
         }
 
-
-        delay(60);
-
-        // TODO: This is not currently ideal, possibly look into alternative ways of doing this (e.g. can we change the delay value?)
         float tmp = 0.0;
         readErr = sen5x.readMeasuredValues(
                                             tmp, tmp, tmp, tmp,
                                             ambientHumidity, ambientTemperature, vocIndex,
                                             noxIndex
                                         );
+
+        readErr = sen5x.startMeasurementWithoutPm();
+        delay(60);
     }
 
     else {
@@ -184,11 +190,6 @@ void Loom_SEN55::measure() {
     /* Attempt to initiate a measurement with the sensor */
 
 
-    if(measurePM){
-        delay(60);
-        uint16_t readErr = sen5x.startMeasurementWithoutPm();
-    }
-
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -200,7 +201,7 @@ void Loom_SEN55::package() {
 
     // Only include the PM measurements if we are actually measuring PM
     if(measurePM){
-        json["PM1_0"] = massConcentrationPm10p0;
+        json["PM1_0"] = massConcentrationPm1p0;
         json["PM2_5"] = massConcentrationPm2p5;
         json["PM4_0"] = massConcentrationPm4p0;
         json["PM10_0"] = massConcentrationPm10p0;
@@ -218,6 +219,18 @@ void Loom_SEN55::package() {
     json["AmbientTemperature"] = (isnan(ambientTemperature) ? -1 : ambientTemperature);
     json["VocIndex"] = (isnan(vocIndex) ? -1 : vocIndex);
     json["NoxIndex"] = (isnan(noxIndex) ? -1 : noxIndex);
+
+    massConcentrationPm1p0 = 0;
+    massConcentrationPm2p5 = 0;
+    massConcentrationPm4p0 = 0;
+    massConcentrationPm10p0 = 0;
+    numConcentrationPm0p5 = 0;
+    numConcentrationPm1p0 = 0;
+    numConcentrationPm2p5 = 0;
+    numConcentrationPm4p0 = 0;
+    numConcentrationPm10p0 = 0;
+    typicalParticleSize = 0;
+
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
