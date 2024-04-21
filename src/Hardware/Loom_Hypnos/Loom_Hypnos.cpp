@@ -38,9 +38,9 @@ void Loom_Hypnos::package(){
     char timeStr[21];
     char localStr[21];
 
-    time = get_utc_time();
-    localTime = getCurrentTime();
-
+    time = getCurrentTime();
+    localTime = getLocalTime(time);
+    
     dateTime_toString(time, timeStr);
     json["time_utc"] = timeStr;
 
@@ -106,16 +106,16 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
     // If the RTC hasn't already been initialized then do so now if we are trying to schedule an RTC interrupt
     if(!RTC_initialized && interruptPin == 12)
         initializeRTC();
-
+    
     // Make sure a callback function was supplied
     if(isrFunc != nullptr){
+
          // If the interrupt we registered is for sleep we should set the interrupt to wake the device from sleep
         if(interruptType == SLEEP){
             LowPower.attachInterruptWakeup(interruptPin, isrFunc, triggerState);
             LOG(F("Interrupt successfully attached!"));
         }
         else{
-
             attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
             attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
             LOG(F("Interrupt successfully attached!"));
@@ -188,12 +188,8 @@ void Loom_Hypnos::initializeRTC(){
 		WARNING(F("RTC lost power, let's set the time!"));
 
         // If we want to set a custom time
-        if(Serial && custom_time){
+        if(Serial){
             set_custom_time();
-        }
-        else{
-            // Set the RTC to the date & time this sketch was compiled
-            RTC_DS.adjust(DateTime(F(__DATE__), F(__TIME__)));
         }
 	}
 
@@ -214,16 +210,14 @@ void Loom_Hypnos::initializeRTC(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-DateTime Loom_Hypnos::get_utc_time(){
-    DateTime now = getCurrentTime();
-
-    // Subtract 30 minutes from this zone
+DateTime Loom_Hypnos::getLocalTime(DateTime time){
+    // Add 30 minutes from this zone
     if(timezone == TIME_ZONE::ACST)
-        return now + TimeSpan(0, timezone, -30, 0);
+        return time + TimeSpan(0, timezone, 30, 0);
     if(isDaylightSavings()){
-        return now + TimeSpan(0, (timezone)-1, 0, 0);
+        return time + TimeSpan(0, (timezone)+1, 0, 0);
     }else{
-        return now + TimeSpan(0, (timezone), 0, 0);
+        return time + TimeSpan(0, (timezone), 0, 0);
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -233,9 +227,10 @@ bool Loom_Hypnos::isDaylightSavings(){
     // Timezones that observe daylight savings
     if(timezone == AST || timezone == EST || timezone == CST || timezone == MST || timezone == AST || timezone == PST || timezone == AKST){
         int currMonth = getCurrentTime().month();
+        Serial.println(currMonth);
 
         // If we are in the months where daylight savings is in affect
-        return (currMonth > 3 && currMonth  < 11);
+        return (currMonth >= 3 && currMonth < 11);
     }
     return false;
 }
@@ -259,10 +254,6 @@ bool Loom_Hypnos::networkTimeUpdate(){
         char output[OUTPUT_SIZE];
         int year, month, day, hour, minute, second = 0;
         float tz = timezone;
-        /* Go back another hour*/
-        if(isDaylightSavings()){
-            tz -= 1;
-        }
 
         /* Try twice to set the time if it works break out if not we just og again*/
         for(int i = 0; i < 2; i++){
@@ -271,7 +262,7 @@ bool Loom_Hypnos::networkTimeUpdate(){
             // Attempt to retrieve the current time from our network component
             if(networkComponent->getNetworkTime(&year, &month, &day, &hour, &minute, &second, &tz)){
                 RTC_DS.adjust(DateTime(year, month, day, hour, minute, second));
-                snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
+                snprintf(output, OUTPUT_SIZE, "Network time successfully set to: %s", getCurrentTime().text());
                 LOG(output);
                 break;
             }else{
@@ -307,7 +298,7 @@ void Loom_Hypnos::set_custom_time(){
     char output[OUTPUT_SIZE];
 
 	// Let the user know that they should enter local time
-	LOG(F("Please use your local time, not UTC!"));
+	LOG(F("Please use UTC time, not local!"));
 
 	// Entering the year
 	LOG(F("Enter the Year (Four digits, e.g. 2020)"));
@@ -384,10 +375,10 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
     RTC_DS.setAlarm(future);
 
     // Print the time that the next interrupt is set to trigger
-    snprintf(output, OUTPUT_SIZE, PSTR("Current Time: %s"), RTC_DS.now().text());
+    snprintf(output, OUTPUT_SIZE, PSTR("Current Time (Local): %s"), getLocalTime(RTC_DS.now()).text());
     LOG(output);
 
-    snprintf(output, OUTPUT_SIZE, PSTR("Next Interrupt Alarm Set For: %s"), future.text());
+    snprintf(output, OUTPUT_SIZE, PSTR("Next Interrupt Alarm Set For: %s"), getLocalTime(future).text());
     LOG(output);
     FUNCTION_END;
 }
@@ -416,18 +407,19 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
             LOG("Entering Standby Sleep...");
             delay(50);
         }
-        pre_sleep(disable33, disable5);                    // Pre-sleep cleanup
+        pre_sleep(disable33, disable5);                         // Pre-sleep cleanup
         shouldPowerUp = true;
-        LowPower.sleep();               // Go to sleep and hang
-        post_sleep(waitForSerial, disable33, disable5);      // Wake up
+        LowPower.sleep();                                       // Go to sleep and hang
+        post_sleep(waitForSerial, disable33, disable5);         // Wake up
     }else{
         WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");
+        reattachRTCInterrupt();
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::pre_sleep(bool disable33, bool disalbe5){
+void Loom_Hypnos::pre_sleep(bool disable33, bool disable5){
     // Close the serial connection and detach
     Serial.end();
     USBDevice.detach();
@@ -436,13 +428,13 @@ void Loom_Hypnos::pre_sleep(bool disable33, bool disalbe5){
     attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
 
     // Disable the power rails
-    disable(disable33, disalbe5);
+    disable(disable33, disable5);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::post_sleep(bool waitForSerial, bool disable33, bool disable5){
-    // Enable the //Watchdog timer when waking up
+    // Enable the Watchdog timer when waking up
     TIMER_ENABLE;
     if(shouldPowerUp){
         USBDevice.attach();

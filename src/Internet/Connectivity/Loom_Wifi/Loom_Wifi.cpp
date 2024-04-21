@@ -371,7 +371,7 @@ IPAddress Loom_WIFI::getBroadcast(){
 bool Loom_WIFI::getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) {
     unsigned long unixtime = WiFi.getTime();
     if(unixtime != 0){
-        DateTime time = DateTime(unixtime) - TimeSpan(0,(int)*tz, 0, 0);
+        DateTime time = DateTime(unixtime);
         *year = time.year();
         *month = time.month();
         *day = time.day();
