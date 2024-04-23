@@ -82,12 +82,10 @@ void Loom_SEN55::measure() {
             sen5x.readDataReady(dataReady);
 
             // TODO: This works for now but should be changed later
-            if(!dataReady){
-                continue;
-            }
-
-            sen5x.readMeasuredPmValues(Pm1p0, Pm2p5, Pm4p0, Pm10p0, numPm0p5, numPm1p0,
+            if(dataReady)
+                sen5x.readMeasuredPmValues(Pm1p0, Pm2p5, Pm4p0, Pm10p0, numPm0p5, numPm1p0,
                                         numPm2p5, numPm4p0, numPm10p0, particleSize);
+
             massConcentrationPm1p0 += Pm1p0;
             massConcentrationPm2p5 += Pm2p5;
             massConcentrationPm4p0 += Pm4p0;
