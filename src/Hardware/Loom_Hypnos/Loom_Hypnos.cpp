@@ -80,7 +80,7 @@ void Loom_Hypnos::enable(bool enable33, bool enable5){
 void Loom_Hypnos::disable(bool disable33, bool disable5){
     // Disable the 3.3v and 5v rails on the Hypnos
     digitalWrite(5, (disable33) ? HIGH : LOW);
-    digitalWrite(6, (disable5) ? LOW : HIGH);
+    //digitalWrite(6, (disable5) ? LOW : HIGH); never cut off 5V rail for Whisp
     digitalWrite(LED_BUILTIN, LOW);
 
     if(enableSD){
