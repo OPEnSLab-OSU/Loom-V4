@@ -56,6 +56,7 @@ void Loom_TSL2591::measure() {
             return;
         }
 
+       
         // Pull the data from the sensor
         uint16_t visible = tsl.getLuminosity(TSL2591_VISIBLE);
 
@@ -106,55 +107,4 @@ void Loom_TSL2591::power_up() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-float Loom_TSL2591::autoLux() {
-    FUNCTION_START;
-    const tsl2591Gain_t gains[] = {TSL2591_GAIN_LOW, TSL2591_GAIN_MED,
-                                    TSL2591_GAIN_HIGH, TSL2591_GAIN_MAX};
 
-    const tsl2591IntegrationTime_t intTimes[] = {TSL2591_INTEGRATIONTIME_100MS, TSL2591_INTEGRATIONTIME_200MS,
-                                                TSL2591_INTEGRATIONTIME_300MS, TSL2591_INTEGRATIONTIME_400MS,
-                                                TSL2591_INTEGRATIONTIME_500MS, TSL2591_INTEGRATIONTIME_600MS};
-
-    uint8_t gainIdx = 0;
-    uint8_t itIdx = 0;
-
-    // Start at appropriate gain/ integration time
-    tsl.setGain(gains[gainIdx]);
-    tsl.setTiming(intTimes[itIdx]);
-
-    // Read in the luminosity value
-    uint32_t raw = tsl.getFullLuminosity();
-    // Raw value full spectrum
-    int rawFull = raw & 0xFFFF;
-    // IR light
-    int ir = raw >> 16;
-    // Visible light
-    int visible = rawFull - ir;
-
-    if(rawFull <= 100){
-        while ((rawFull <= 100) && !((gainIdx == 3) && (itIdx == 5))) {
-            if (gainIndex < 3) {
-                tsl.setGain(gains[++gainIdx]);
-            }
-            else if (itIndex < 5) {
-                tsl.setTiming(intTimes[++itIdx]);
-            }
-            raw = tsl.getFullLuminosity();
-            rawFull = raw & 0xFFFF;
-            ir = raw >> 16;
-            visible = rawFull - ir;
-        }
-    }
-    else {
-        while ((rawFull > 10000) && (itIdx > 0)) {
-            setIntegrationTime(intTimes[--itIdx]);
-            raw = tsl.getFullLuminosity();
-            rawFull = raw & 0xFFFF;
-            ir = raw >> 16;
-            visible = rawFull - ir;
-        }
-    }
-    FUNCTION_END;
-    return tsl.calculateLux(rawFull, ir);
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////

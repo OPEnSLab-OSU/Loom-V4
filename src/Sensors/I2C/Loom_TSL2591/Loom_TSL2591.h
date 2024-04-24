@@ -52,8 +52,6 @@ class Loom_TSL2591 : public I2CDevice{
          */
         uint16_t getFullSpectrum() {return lightLevels[2]; };
 
-        float autoLux();
-
 
 
     private:
