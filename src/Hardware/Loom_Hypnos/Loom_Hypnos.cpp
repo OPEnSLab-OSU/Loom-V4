@@ -417,8 +417,10 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
         pre_sleep(disable33, disable5);                      // Pre-sleep cleanup
         shouldPowerUp = true;
         LowPower.sleep();                                    // Go to sleep and hang
-        if(manInst->read_check())
-            shouldPowerUp = manInst->voltage_read_status();  // Do we have enough voltage to power the sensors?
+        if(!manInst->above_operational_threshold()){
+            shouldPowerUp = false;
+            LOG(F("The measured voltage is below the operating threshold, hypnos will attempt to prevent post_sleep procedures..."));
+        }
         post_sleep(waitForSerial, disable33, disable5);      // Wake up
     }else{
         WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");

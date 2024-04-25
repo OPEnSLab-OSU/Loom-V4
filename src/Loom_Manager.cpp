@@ -63,6 +63,13 @@ void Manager::beginSerial(bool waitForSerial){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::measure() {
     FUNCTION_START;
+    if(!above_operational_threshold()){
+        LOG(F("Battery voltage is below operational threshold, aborting data collection and processing..."));
+        inVoltageThresh = false;
+        FUNCTION_END;
+        return;
+    }
+    inVoltageThresh = true;
 
     char noInitLog[50];
     if(hasInitialized){
@@ -91,8 +98,12 @@ void Manager::measure() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::package(){
     FUNCTION_START;
-    char noInitLog[50];
+    if(!inVoltageThresh){
+        FUNCTION_END;
+        return;
+    }
 
+    char noInitLog[50];
     LOG(F("** Packaging **"));
 
     // Clear the document so that we don't get null characters after too many updates
@@ -188,6 +199,11 @@ void Manager::power_down(){
 void Manager::display_data(){
     char jsonStr[MAX_JSON_SIZE];
     FUNCTION_START;
+    if(!inVoltageThresh){
+        FUNCTION_END;
+        return;
+    }
+
     if(!doc.isNull()){
 
         // Display data for modules that support it
@@ -286,7 +302,7 @@ float Manager::getBatteryVoltage(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Manager::voltage_read_status() {
+bool Manager::above_operational_threshold() {
     FUNCTION_START;
     float currVoltage = getBatteryVoltage();
     // It's above the threshhold so we can afford to enable the sensors
@@ -301,7 +317,7 @@ bool Manager::voltage_read_status() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Manager::voltage_comm_status() {
+bool Manager::above_communication_threshold() {
     FUNCTION_START;
     float currVoltage = getBatteryVoltage();
     // It's above the threshhold so we can afford to send data

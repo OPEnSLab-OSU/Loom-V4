@@ -157,22 +157,34 @@ class Manager{
          *
          * @param sensorVolt The min volt threshhold for sensor reading functionality
          * @param commVolt The min volt threshhold for communcation functionality (lte, wifi, etc.)
+         *
+         * @note A value of 0.0 for will disregard voltage checking for that functionality
          */
         void enable_voltage_reading(float sensorVolt = 0.0, float commVolt = 0.0);
 
-        /**
-         * Checks if the battery has enough voltage to enable and read the sensors
-         *
-         * @return true if the voltage read is above the threshhold, false otherwise
-         */
-        bool voltage_read_status();
 
         /**
-         * Checks if the battery has enough voltage to send the logged data
+         * Reads the current battery voltage from analog pin A7
+         *
+         * @return The the battery voltage that was read
+         */
+        float getBatteryVoltage();
+
+        /**
+         * Checks if the battery has sufficient voltage to power up the sensors
+         * and complete a measurement cylcle.
          *
          * @return true if the voltage read is above the threshhold, false otherwise
          */
-        bool voltage_comm_status();
+        bool above_operational_threshold();
+
+        /**
+         * Checks if the battery has sufficient voltage to power up and send
+         * logged data via a communication method (like LTE).
+         *
+         * @return true if the voltage read is above the threshhold, false otherwise
+         */
+        bool above_communication_threshold();
 
     private:
 
@@ -194,6 +206,8 @@ class Manager{
         bool usingHypnos = false;                               // If the setup is using a hypnos
         bool hypnosEnabled = false;                             // If the power rails on the hypnos are enabled this means we should be able to initialize
 
+        /* Voltage Reading */
         float targetReadV = 0.0;                                // Minimum voltage threshhold for reading the sensor data
         float targetComV = 0.0;                                 // Minimum voltage threshhold for sending data via LTE
+        bool inVoltageThresh = true;                            // Whether or not the most recent measurement of voltage is above the threshhold
 };

@@ -35,6 +35,11 @@ Loom_MongoDB::Loom_MongoDB(Manager& man, Client& internet_client) : MQTTComponen
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_MongoDB::publish(){
     FUNCTION_START;
+    if(!manInst->above_communication_threshold()){
+        WARNING(F("Not within the voltage threshold to safely send data... aborting."));
+        FUNCTION_END;
+        return false;
+    }
 
     char jsonString[MAX_JSON_SIZE];
     if(moduleInitialized){
@@ -75,6 +80,12 @@ bool Loom_MongoDB::publish(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
     FUNCTION_START;
+    /*This should still send all the old data even if it aborts, otherwise if that issue is arrising might need to change this*/
+    if(!manInst->above_communication_threshold()){
+        WARNING(F("Not within the voltage threshold to safely send data... aborting."));
+        FUNCTION_END;
+        return false;
+    }
     char output[OUTPUT_SIZE];
     char line[MAX_JSON_SIZE];
     int packetNumber = 0, index = 0;

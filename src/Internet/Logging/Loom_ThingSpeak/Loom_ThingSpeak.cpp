@@ -4,10 +4,10 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_ThingSpeak::Loom_ThingSpeak(
                     Manager& man,
-                    Client& internet_client, 
-                    int channelID, 
+                    Client& internet_client,
+                    int channelID,
                     const char* clientID,
-                    const char* broker_user, 
+                    const char* broker_user,
                     const char* broker_pass
                 ) : MQTTComponent("ThingSpeak", internet_client),
                     manInst(&man)
@@ -33,6 +33,12 @@ Loom_ThingSpeak::Loom_ThingSpeak(Manager& man, Client& internet_client) : MQTTCo
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_ThingSpeak::publish(){
     FUNCTION_START;
+    if(manInst->above_communication_threshold()){
+        WARNING(F("Not within the voltage threshold to safely send data... aborting."));
+        FUNCTION_END;
+        return false;
+    }
+
     char message[MAX_JSON_SIZE];
     char topic[MAX_TOPIC_LENGTH];
     if(moduleInitialized){
@@ -73,7 +79,7 @@ void Loom_ThingSpeak::addFunction(int fieldNumber, FloatReturnFuncDefs function)
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_ThingSpeak::addFunction(int fieldNumber, FloatReturnFuncDefsWithParam function, int parameter){ 
+void Loom_ThingSpeak::addFunction(int fieldNumber, FloatReturnFuncDefsWithParam function, int parameter){
     functionsParam.push_back(std::make_tuple(fieldNumber, function, parameter));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -99,20 +105,20 @@ void Loom_ThingSpeak::formatMessage(char topic[MAX_TOPIC_LENGTH], char message[M
     int i;
     int totalAdded = 0; // Track the number of fields that have been added
     for(i = 0; i < functionsNoParam.size() && totalAdded < 8; i++){
-        // Set the field number and then call the corresponding function to update 
+        // Set the field number and then call the corresponding function to update
         snprintf(tempBuffer, 100, "field%i=%f&", functionsNoParam[i].first, functionsNoParam[i].second());
         strncat(message, tempBuffer, MAX_JSON_SIZE);
         totalAdded++;
     }
-   
+
     /* Next do the same thing except with list of functions that have a single integer paramater, also check if we are still less than 8 fields*/
     for(i = 0; i < functionsParam.size() && totalAdded < 8; i++){
-        // Set the field number and then call the corresponding function to update 
+        // Set the field number and then call the corresponding function to update
         snprintf(tempBuffer, 100, "field%i=%f&", std::get<0>(functionsParam[i]), std::get<1>(functionsParam[i])(std::get<2>(functionsParam[i])));
         strncat(message, tempBuffer, MAX_JSON_SIZE);
         totalAdded++;
     }
-    
+
     /* Check if we have a timestamp property if so we want to add a "created_at" paramater to the message that we are publishing */
     if(!manInst->getDocument()["timestamp"].isNull()){
         snprintf(tempBuffer, 100, "created_at=%s&", manInst->getDocument()["timestamp"]["time_local"].as<const char*>());
@@ -121,7 +127,7 @@ void Loom_ThingSpeak::formatMessage(char topic[MAX_TOPIC_LENGTH], char message[M
 
     /* Finally end the message with the status */
     strncat(message, "status=MQTTPUBLISH", MAX_JSON_SIZE);
-    
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -148,13 +154,13 @@ void Loom_ThingSpeak::loadConfigFromJSON(char* json){
 
     if(!doc["clientID"].isNull())
         setClientID(doc["clientID"].as<const char*>());
-    
+
     if(!doc["username"].isNull())
         strncpy(username, doc["username"].as<const char*>(), 100);
 
     if(!doc["password"].isNull())
         strncpy(password, doc["password"].as<const char*>(), 100);
-    
+
     free(json);
     FUNCTION_END;
 }
