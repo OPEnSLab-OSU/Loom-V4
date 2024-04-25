@@ -63,6 +63,13 @@ enum HypnosInterruptType{
     OTHER
 };
 
+enum HypnosPowerConfig{
+    SET3,
+    SET5,
+    SET3_5,
+    SETNONE
+};
+
 /**
  * All in one driver for the Hypnos board. This allows users to use the Hypnos board in a more modularized manner not requiring all the Loom stuff.
  *
@@ -108,14 +115,15 @@ class Loom_Hypnos : public Module{
          *
          * @param enable33 whether or not to enable the 3.3v rails
          * @param enable5 whether or not to enable the 5v and 12v rails
+         * @param init whether or not to write initial power values
          */
-        void enable(bool enable33 = true, bool enable5 = true);
+        void enable(HypnosPowerConfig config = HypnosPowerConfig::SETNONE);
 
         /**
          * Disables the Hypnos Board
          * Disables the Power Rails and sets the SPI pins to INPUT which effectively disables them
          */
-        void disable(bool disable33 = true, bool disable5 = true);
+        void disable(HypnosPowerConfig config = HypnosPowerConfig::SET3_5);
 
         /* SD Functionality */
 
@@ -262,9 +270,13 @@ class Loom_Hypnos : public Module{
         DateTime localTime;                                                                 // Local time
 
         /* Sleep functionality */
-        void pre_sleep(bool disable33=true, bool disable5=true);                            // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
-        void post_sleep(bool waitForSerial, bool disable33=true, bool disable5=true);       // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
+        void pre_sleep(HypnosPowerConfig config = HypnosPowerConfig::SETNONE);              // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
 
+        void post_sleep(bool waitForSerial,
+                        HypnosPowerConfig config = HypnosPowerConfig::SETNONE);             // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
+
+        HypnosPowerConfig convert_to_power_config(bool disable33, bool disable5) const;     // Convert the enable/disable flags to a power configuration
+        void toggle_power_rails(HypnosPowerConfig config);                                  // Toggle the power rails based on the configuration, essentailly applies the inverse state onto the power rails (ON -> OFF, OFF -> ON)
 
 
 };

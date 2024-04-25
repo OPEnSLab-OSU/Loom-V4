@@ -40,7 +40,7 @@ void Loom_Hypnos::package(){
 
     time = getCurrentTime();
     localTime = getLocalTime(time);
-    
+
     dateTime_toString(time, timeStr);
     json["time_utc"] = timeStr;
 
@@ -52,11 +52,35 @@ void Loom_Hypnos::package(){
 /* Power Rail Control Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::enable(bool enable33, bool enable5){
+void Loom_Hypnos::toggle_power_rails(HypnosPowerConfig config)
+{
+    FUNCTION_START;
+     switch(config){
+        case HypnosPowerConfig::SET3_5:
+            digitalWrite(5, !digitalRead(5));
+            digitalWrite(6, !digitalRead(6));
+            break;
+        case HypnosPowerConfig::SET3:
+            digitalWrite(5, !digitalRead(5));
+            break;
+        case HypnosPowerConfig::SET5:
+            digitalWrite(6, !digitalRead(6));
+            break;
+        case HypnosPowerConfig::SETNONE:
+            digitalWrite(5, LOW);
+            digitalWrite(6, HIGH);
+            break;
+    }
+    FUNCTION_END;
+    return;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // Enable the 3.3v and 5v rails on the Hypnos
-    digitalWrite(5, (enable33) ? LOW : HIGH);
-    digitalWrite(6, (enable5) ? HIGH : LOW);
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::enable(HypnosPowerConfig config){
+
+    // Toggle power for the necessary rails
+    toggle_power_rails(config);
     digitalWrite(LED_BUILTIN, HIGH);
 
     if(enableSD){
@@ -77,12 +101,10 @@ void Loom_Hypnos::enable(bool enable33, bool enable5){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::disable(bool disable33, bool disable5){
-    // Disable the 3.3v and 5v rails on the Hypnos
-    digitalWrite(5, (disable33) ? HIGH : LOW);
-    //digitalWrite(6, (disable5) ? LOW : HIGH); never cut off 5V rail for Whisp
-    digitalWrite(LED_BUILTIN, LOW);
+void Loom_Hypnos::disable(HypnosPowerConfig config){
 
+    // Toggle power for the necessary rails
+    toggle_power_rails(config);
     if(enableSD){
         // Disable SPI pins/SD chip select to save power
         pinMode(23, INPUT);
@@ -106,7 +128,7 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
     // If the RTC hasn't already been initialized then do so now if we are trying to schedule an RTC interrupt
     if(!RTC_initialized && interruptPin == 12)
         initializeRTC();
-    
+
     // Make sure a callback function was supplied
     if(isrFunc != nullptr){
 
@@ -407,10 +429,10 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
             LOG("Entering Standby Sleep...");
             delay(50);
         }
-        pre_sleep(disable33, disable5);                         // Pre-sleep cleanup
+        pre_sleep(convert_to_power_config(disable33, disable5));                         // Pre-sleep cleanup
         shouldPowerUp = true;
-        LowPower.sleep();                                       // Go to sleep and hang
-        post_sleep(waitForSerial, disable33, disable5);         // Wake up
+        LowPower.sleep();                                                                // Go to sleep and hang
+        post_sleep(waitForSerial, convert_to_power_config(disable33, disable5));         // Wake up
     }else{
         WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");
         reattachRTCInterrupt();
@@ -419,7 +441,7 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::pre_sleep(bool disable33, bool disable5){
+void Loom_Hypnos::pre_sleep(HypnosPowerConfig config){
     // Close the serial connection and detach
     Serial.end();
     USBDevice.detach();
@@ -428,19 +450,19 @@ void Loom_Hypnos::pre_sleep(bool disable33, bool disable5){
     attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
 
     // Disable the power rails
-    disable(disable33, disable5);
+    disable(config);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::post_sleep(bool waitForSerial, bool disable33, bool disable5){
+void Loom_Hypnos::post_sleep(bool waitForSerial, HypnosPowerConfig config){
     // Enable the Watchdog timer when waking up
     TIMER_ENABLE;
     if(shouldPowerUp){
         USBDevice.attach();
         Serial.begin(115200);
 
-        enable(disable33, disable5); // Checks if the 3.3v or 5v are disabled and re-enables them
+        enable(config); // Checks if the 3.3v or 5v are disabled and re-enables them
 
         // Re-init the modules that need it
         manInst->power_up();
@@ -457,6 +479,19 @@ void Loom_Hypnos::post_sleep(bool waitForSerial, bool disable33, bool disable5){
 
         LOG(F("Device has awoken from sleep!"));
     }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+HypnosPowerConfig Loom_Hypnos::convert_to_power_config(bool disable33, bool disable5) const {
+    if(disable33 && disable5)
+        return HypnosPowerConfig::SET3_5;
+    else if(disable33 && !disable5)
+        return HypnosPowerConfig::SET3;
+    else if(!disable33 && disable5)
+        return HypnosPowerConfig::SET5;
+    else
+        return HypnosPowerConfig::SETNONE;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
