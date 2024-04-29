@@ -57,18 +57,22 @@ void Loom_Hypnos::toggle_power_rails(HypnosPowerConfig config)
     FUNCTION_START;
      switch(config){
         case HypnosPowerConfig::SET3_5:
-            digitalWrite(5, !digitalRead(5));
-            digitalWrite(6, !digitalRead(6));
+            v3 = !v3;
+            v5 = !v5;
+            digitalWrite(5, v3);
+            digitalWrite(6, v5);
             break;
         case HypnosPowerConfig::SET3:
-            digitalWrite(5, !digitalRead(5));
+            v3 = !v3;
+            digitalWrite(5, v3);
             break;
         case HypnosPowerConfig::SET5:
-            digitalWrite(6, !digitalRead(6));
+            v5 = !v5;
+            digitalWrite(6, v5);
             break;
         case HypnosPowerConfig::SETNONE:
-            digitalWrite(5, LOW);
-            digitalWrite(6, HIGH);
+            digitalWrite(5, v3);
+            digitalWrite(6, v5);
             break;
     }
     FUNCTION_END;
