@@ -92,7 +92,14 @@ void Loom_LTE::power_up(){
             powerUp = true;
         }
     }
-        
+
+    if(!manInst->above_communication_threshold()){
+        WARNING(F("Not within the voltage threshold to safely send data, so the LTE will not be powered on... aborting."));
+        powerUp = false;
+        FUNCTION_END;
+        return;
+    }
+
     // If not connected to a network we want to connect
     if(moduleInitialized){
         LOG(F("Powering up GPRS Modem. This should take about 10 seconds..."));
@@ -109,12 +116,12 @@ void Loom_LTE::power_up(){
     else{
         initialize();
     }
-    
+
     if(!firstInit && !isConnected() && moduleInitialized)
             connect();
-    
+
     FUNCTION_END;
-    
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -210,7 +217,7 @@ bool Loom_LTE::verifyConnection(){
     FUNCTION_START;
     bool returnStatus =  false;
     LOG(F("Attempting to verify internet connection..."));
-    
+
     // Connect to TinyGSM's creator's website
     if(!client.connect("vsh.pp.ua", 80)){
         ERROR(F("Failed to contact TinyGSM example your internet connection may not be completely established!"));
@@ -243,7 +250,7 @@ bool Loom_LTE::verifyConnection(){
     TIMER_RESET;
     FUNCTION_END;
     return true;
-    
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
