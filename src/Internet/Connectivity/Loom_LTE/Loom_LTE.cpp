@@ -173,6 +173,9 @@ bool Loom_LTE::connect(){
             LOG(F("Successfully Connected!"));
             FUNCTION_END;
             TIMER_ENABLE;
+
+            // Delay for 6 seconds to get correct RSSI values
+            delay(6000);
             return true;
         }
         else{

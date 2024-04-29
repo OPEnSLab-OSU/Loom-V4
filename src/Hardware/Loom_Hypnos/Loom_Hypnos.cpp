@@ -419,28 +419,38 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
     // If the alarm set time is less than the current time we missed our next alarm so we need to set a new one, we need to check if we have powered on already so we dont use the RTC that isn't enabled
     bool hasAlarmTriggered = false;
 
+    // Try to power down the active modules
     if(shouldPowerUp){
-        hasAlarmTriggered = RTC_DS.getAlarm(1).unixtime() <= RTC_DS.now().unixtime();
+        manInst->power_down();
+
+        // 50ms delay allows this last message to be sent before the bus disconnects
+        LOG("Entering Standby Sleep...");
+        delay(50);
     }
 
+    // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
+    uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
+    uint32_t currentTime = RTC_DS.now().unixtime();
+    hasAlarmTriggered = alarmedTime <= currentTime;
+
+    // If it hasn't we should preform our sleep as before
     if(!hasAlarmTriggered){
-
-        // Try to power down the active modules
-        if(shouldPowerUp){
-            manInst->power_down();
-
-            // 50ms delay allows this last message to be sent before the bus disconnects
-            LOG("Entering Standby Sleep...");
-            delay(50);
-        }
         pre_sleep(convert_to_power_config(disable33, disable5));                         // Pre-sleep cleanup
         shouldPowerUp = true;
-        LowPower.sleep();                                                                // Go to sleep and hang
-        post_sleep(waitForSerial, convert_to_power_config(disable33, disable5));         // Wake up
-    }else{
+        LowPower.sleep();                                       // Go to sleep and hang
+    }
+    // If it has we want to trigger a resample which requires powering the sensors back up
+    else{
         WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");
         reattachRTCInterrupt();
+        if(shouldPowerUp){
+            manInst->power_up();
+        }
     }
+    // If the alarm hadn't triggered last time we want to wake up like normal
+    if(!hasAlarmTriggered)
+        post_sleep(waitForSerial, convert_to_power_config(disable33, disable5));         // Wake up
+   
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
