@@ -221,7 +221,7 @@ DateTime Loom_Hypnos::getLocalTime(DateTime time){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::isDaylightSavings(){
     // Timezones that observe daylight savings
-    if(timezone == AST || timezone == EST || timezone == CST || timezone == MST || timezone == AST || timezone == PST || timezone == AKST){
+    if(timezone == AST || timezone == EST || timezone == CST || timezone == AST || timezone == PST || timezone == AKST){
         int currMonth = getCurrentTime().month();
         Serial.println(currMonth);
 
