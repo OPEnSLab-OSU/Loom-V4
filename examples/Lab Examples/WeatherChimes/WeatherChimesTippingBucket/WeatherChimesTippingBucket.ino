@@ -80,6 +80,8 @@ void setup() {
   // Wait 20 seconds for the serial console to open
   manager.beginSerial();
 
+  hypnos.setNetworkInterface(&lte);
+
   // Enable the hypnos rails
   hypnos.enable();
 
@@ -102,6 +104,7 @@ void loop() {
 
   if(sampleFlag){
     detachInterrupt(INT_PIN);
+    hypnos.networkTimeUpdate();
     // Set the RTC interrupt alarm to wake the device in 15 min, this should be done as soon as the device enters sampling mode for consistant sleep cycles
     hypnos.setInterruptDuration(TimeSpan(0, 0, 15, 0));
 

@@ -61,7 +61,7 @@ bool MQTTComponent::connectToBroker() {
         mqttClient.poll();
     }
     else{
-        ERROR("Module not initialzed!");
+        ERROR("Module or NetworkComponent not initialzed!");
         FUNCTION_END;
         return false;
     }
@@ -76,7 +76,7 @@ bool MQTTComponent::publishMessage(const char* topic, const char* message, bool 
     FUNCTION_START;
 
     // Make sure the module is initialized
-    if(moduleInitialized){
+    if(moduleInitialized && internetClient.moduleInitialized){
         if(mqttClient.connected()){
             // Start a message write the data and close the message, publish all messages with retain
             if(mqttClient.beginMessage(topic, retain, qos) != 1){
@@ -103,7 +103,7 @@ bool MQTTComponent::publishMessage(const char* topic, const char* message, bool 
         }
     }
     else{
-        ERROR("Module not initialized!");
+        ERROR("Module or NetworkComponent not initialized!");
     }
     FUNCTION_END;
     return false;

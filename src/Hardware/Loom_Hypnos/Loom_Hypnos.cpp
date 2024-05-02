@@ -396,12 +396,12 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
         // 50ms delay allows this last message to be sent before the bus disconnects
         LOG("Entering Standby Sleep...");
         delay(50);
-    }
 
-    // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
-    uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
-    uint32_t currentTime = RTC_DS.now().unixtime();
-    hasAlarmTriggered = alarmedTime <= currentTime;
+        // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
+        uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
+        uint32_t currentTime = RTC_DS.now().unixtime();
+        hasAlarmTriggered = alarmedTime <= currentTime;
+    }
 
     // If it hasn't we should preform our sleep as before
     if(!hasAlarmTriggered){
@@ -417,6 +417,7 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
             manInst->power_up();
         }
     }
+
     // If the alarm hadn't triggered last time we want to wake up like normal
     if(!hasAlarmTriggered)
         post_sleep(waitForSerial, disable33, disable5);         // Wake up
@@ -442,11 +443,15 @@ void Loom_Hypnos::pre_sleep(bool disable33, bool disable5){
 void Loom_Hypnos::post_sleep(bool waitForSerial, bool disable33, bool disable5){
     // Enable the Watchdog timer when waking up
     TIMER_ENABLE;
+    Serial.println(shouldPowerUp);
     if(shouldPowerUp){
         USBDevice.attach();
         Serial.begin(115200);
+        Serial.println("Before enable");
 
         enable(disable33, disable5); // Checks if the 3.3v or 5v are disabled and re-enables them
+
+        Serial.println("After  enable");
 
         // Clear any pending RTC alarms
         RTC_DS.clearAlarm();
@@ -463,6 +468,7 @@ void Loom_Hypnos::post_sleep(bool waitForSerial, bool disable33, bool disable5){
 
         LOG(F("Device has awoken from sleep!"));
     }
+    Serial.println(shouldPowerUp);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
