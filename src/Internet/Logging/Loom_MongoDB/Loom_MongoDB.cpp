@@ -4,7 +4,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MongoDB::Loom_MongoDB(
                     Manager& man,
-                    Client& internet_client, 
+                    NetworkComponent& internet_client, 
                     const char* broker_address, 
                     int broker_port, 
                     const char* database_name, 
@@ -27,7 +27,7 @@ Loom_MongoDB::Loom_MongoDB(
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_MongoDB::Loom_MongoDB(Manager& man, Client& internet_client) : MQTTComponent("MongoDB", internet_client), manInst(&man){
+Loom_MongoDB::Loom_MongoDB(Manager& man, NetworkComponent& internet_client) : MQTTComponent("MongoDB", internet_client), manInst(&man){
     moduleInitialized = false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

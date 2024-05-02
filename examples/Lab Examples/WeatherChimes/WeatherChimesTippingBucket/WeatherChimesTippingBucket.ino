@@ -47,7 +47,7 @@ Loom_TippingBucket bucket(manager, COUNTER_TYPE::MANUAL, 0.01f);
 
 
 Loom_LTE lte(manager, "hologram", "", "");
-Loom_MongoDB mqtt(manager, lte.getClient());
+Loom_MongoDB mqtt(manager, lte);
 
 /* Calculate the water height based on the difference of pressures*/
 float calculateWaterHeight(){
@@ -101,6 +101,7 @@ void setup() {
 void loop() {
 
   if(sampleFlag){
+    detachInterrupt(INT_PIN);
     // Set the RTC interrupt alarm to wake the device in 15 min, this should be done as soon as the device enters sampling mode for consistant sleep cycles
     hypnos.setInterruptDuration(TimeSpan(0, 0, 15, 0));
 

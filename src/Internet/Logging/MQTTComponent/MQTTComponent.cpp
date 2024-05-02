@@ -16,7 +16,7 @@ void MQTTComponent::initialize(){
 bool MQTTComponent::connectToBroker() {
     FUNCTION_START;
     char output[OUTPUT_SIZE];
-    if(moduleInitialized){
+    if(moduleInitialized && internetClient.moduleInitialized){
 
         // Check if we forgot to supply an address or a port number
         if(strlen(address) <= 0  || port == 0){
