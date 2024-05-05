@@ -433,9 +433,11 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
     uint32_t currentTime = RTC_DS.now().unixtime();
     hasAlarmTriggered = alarmedTime <= currentTime;
 
+    HypnosPowerConfig cfg = convert_to_power_config(disable33, disable5);
+
     // If it hasn't we should preform our sleep as before
     if(!hasAlarmTriggered){
-        pre_sleep(convert_to_power_config(disable33, disable5));                         // Pre-sleep cleanup
+        pre_sleep(cfg);                         // Pre-sleep cleanup
         shouldPowerUp = true;
         LowPower.sleep();                                       // Go to sleep and hang
     }
@@ -449,8 +451,8 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
     }
     // If the alarm hadn't triggered last time we want to wake up like normal
     if(!hasAlarmTriggered)
-        post_sleep(waitForSerial, convert_to_power_config(disable33, disable5));         // Wake up
-   
+        post_sleep(waitForSerial, cfg);         // Wake up
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
