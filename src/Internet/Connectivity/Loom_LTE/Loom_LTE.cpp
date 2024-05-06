@@ -125,7 +125,7 @@ void Loom_LTE::power_down(){
         LOG(F("Powering down GPRS Modem. This should take about 5 seconds..."));
         modem.poweroff();
         digitalWrite(powerPin, HIGH);
-        delay(5000);
+        //delay(5000);
         LOG(F("Powering down complete!"));
     }
     FUNCTION_END;
@@ -171,6 +171,7 @@ bool Loom_LTE::connect(){
         LOG(output);
         if(modem.gprsConnect(APN, gprsUser, gprsPass)){
             LOG(F("Successfully Connected!"));
+            delay(6000);
             FUNCTION_END;
             TIMER_ENABLE;
             return true;
@@ -230,7 +231,7 @@ bool Loom_LTE::verifyConnection(){
         uint32_t timeout = millis();
         while (client.connected() && millis() - timeout < 10000L) {
             // Print available data
-            while (client.available()) {
+            while (client.available() && millis() - timeout < 10000L) {
                 char c = client.read();
                 Serial.print(c);
                 timeout = millis();

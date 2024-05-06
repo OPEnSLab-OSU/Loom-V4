@@ -70,7 +70,7 @@ void tipTrigger() {
 
 void setup() {
 
-  // Enable debug SD logging and function summaires
+  // Enable debug SD logging and function summaries
   ENABLE_SD_LOGGING;
   ENABLE_FUNC_SUMMARIES;
 
