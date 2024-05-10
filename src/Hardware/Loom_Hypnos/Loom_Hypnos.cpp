@@ -109,6 +109,7 @@ void Loom_Hypnos::disable(HypnosPowerConfig config){
 
     // Toggle power for the necessary rails
     toggle_power_rails(config);
+    digitalWrite(LED_BUILTIN, LOW);
     if(enableSD){
         // Disable SPI pins/SD chip select to save power
         pinMode(23, INPUT);
