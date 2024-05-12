@@ -52,28 +52,51 @@ void Loom_Hypnos::package(){
 /* Power Rail Control Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::toggle_power_rails(HypnosPowerConfig config)
+void Loom_Hypnos::toggle_power_rails(HypnosPowerConfig config, bool enable)
 {
     FUNCTION_START;
      switch(config){
         case HypnosPowerConfig::SET3_5:
             v3 = !v3;
             v5 = !v5;
+
             digitalWrite(5, v3);
             digitalWrite(6, v5);
             break;
         case HypnosPowerConfig::SET3:
             v3 = !v3;
+
             digitalWrite(5, v3);
+            digitalWrite(6, v5);
             break;
         case HypnosPowerConfig::SET5:
             v5 = !v5;
+
+            digitalWrite(5, v3);
             digitalWrite(6, v5);
             break;
         case HypnosPowerConfig::SETNONE:
             digitalWrite(5, v3);
             digitalWrite(6, v5);
             break;
+    }
+    if(enable){
+        if(enableSD){
+            // Enable SPI pins
+            pinMode(23, OUTPUT);
+            pinMode(24, OUTPUT);
+            pinMode(sd_chip_select, OUTPUT);
+
+            sdMan->begin();
+        }
+    }
+    else {
+        if(enableSD){
+            // Disable SPI pins/SD chip select to save power
+            pinMode(23, INPUT);
+            pinMode(24, INPUT);
+            pinMode(sd_chip_select, INPUT);
+        }
     }
     FUNCTION_END;
     return;
@@ -84,17 +107,8 @@ void Loom_Hypnos::toggle_power_rails(HypnosPowerConfig config)
 void Loom_Hypnos::enable(HypnosPowerConfig config){
 
     // Toggle power for the necessary rails
-    toggle_power_rails(config);
+    toggle_power_rails(config, true);
     digitalWrite(LED_BUILTIN, HIGH);
-
-    if(enableSD){
-        // Enable SPI pins
-        pinMode(23, OUTPUT);
-        pinMode(24, OUTPUT);
-        pinMode(sd_chip_select, OUTPUT);
-
-        sdMan->begin();
-    }
 
     // If the RTC hasn't already been initialized then do so now
     if(!RTC_initialized)
@@ -108,14 +122,8 @@ void Loom_Hypnos::enable(HypnosPowerConfig config){
 void Loom_Hypnos::disable(HypnosPowerConfig config){
 
     // Toggle power for the necessary rails
-    toggle_power_rails(config);
+    toggle_power_rails(config, false);
     digitalWrite(LED_BUILTIN, LOW);
-    if(enableSD){
-        // Disable SPI pins/SD chip select to save power
-        pinMode(23, INPUT);
-        pinMode(24, INPUT);
-        pinMode(sd_chip_select, INPUT);
-    }
 
     manInst->setEnableState(false);
 }
@@ -500,7 +508,7 @@ void Loom_Hypnos::post_sleep(bool waitForSerial, HypnosPowerConfig config){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-HypnosPowerConfig Loom_Hypnos::convert_to_power_config(bool disable33, bool disable5) const {
+HypnosPowerConfig Loom_Hypnos::convert_to_power_config(bool disable33, bool disable5) {
     if(disable33 && disable5)
         return HypnosPowerConfig::SET3_5;
     else if(disable33 && !disable5)

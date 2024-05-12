@@ -278,8 +278,8 @@ class Loom_Hypnos : public Module{
         void post_sleep(bool waitForSerial,
                         HypnosPowerConfig config = HypnosPowerConfig::SETNONE);             // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
 
-        HypnosPowerConfig convert_to_power_config(bool disable33, bool disable5) const;     // Convert the enable/disable flags to a power configuration
-        void toggle_power_rails(HypnosPowerConfig config);                                  // Toggle the power rails based on the configuration, essentailly applies the inverse state onto the power rails (ON -> OFF, OFF -> ON)
+        HypnosPowerConfig convert_to_power_config(bool disable33, bool disable5);     // Convert the enable/disable flags to a power configuration
+        void toggle_power_rails(HypnosPowerConfig config, bool enable);                     // Toggle the power rails based on the configuration, essentailly applies the inverse state onto the power rails (ON -> OFF, OFF -> ON)
 
 
 };
