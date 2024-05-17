@@ -46,6 +46,26 @@ void Loom_Hypnos::package(){
 
     dateTime_toString(localTime, localStr);
     json["time_local"] = localStr;
+
+    char railStr3[15];
+    char railStr5[15];
+    if(v3 == LOW)
+        strcpy(railStr3, "LOW/Enabled");
+    else
+        strcpy(railStr3, "HIGH/Disabled");
+    if (v5 == LOW)
+        strcpy(railStr5, "LOW/Disabled");
+    else
+        strcpy(railStr5, "HIGH/Enabled");
+
+    railStr3[strlen(railStr3)] = '\0';
+    railStr5[strlen(railStr5)] = '\0';
+
+    json["3v Status"] = railStr3;
+    json["5v Status"] = railStr5;
+
+    return;
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
