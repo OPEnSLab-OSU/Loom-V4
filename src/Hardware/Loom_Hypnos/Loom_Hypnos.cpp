@@ -47,23 +47,6 @@ void Loom_Hypnos::package(){
     dateTime_toString(localTime, localStr);
     json["time_local"] = localStr;
 
-    char railStr3[15];
-    char railStr5[15];
-    if(v3 == LOW)
-        strcpy(railStr3, "LOW/Enabled");
-    else
-        strcpy(railStr3, "HIGH/Disabled");
-    if (v5 == LOW)
-        strcpy(railStr5, "LOW/Disabled");
-    else
-        strcpy(railStr5, "HIGH/Enabled");
-
-    railStr3[strlen(railStr3)] = '\0';
-    railStr5[strlen(railStr5)] = '\0';
-
-    json["3v Status"] = railStr3;
-    json["5v Status"] = railStr5;
-
     return;
 
 }
@@ -481,6 +464,23 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
     // If the alarm hadn't triggered last time we want to wake up like normal
     if(!hasAlarmTriggered)
         post_sleep(waitForSerial, cfg);         // Wake up
+
+    char railStr3[26];
+    char railStr5[26];
+    if(v3 == LOW)
+        strcpy(railStr3, "v3 Status: LOW/Enabled");
+    else
+        strcpy(railStr3, "v3 Status: HIGH/Disabled");
+    if(v5 == LOW)
+        strcpy(railStr5, "v5 Status: LOW/Disabled");
+    else
+        strcpy(railStr5, "v5 Status: HIGH/Enabled");
+
+    railStr3[strlen(railStr3)] = '\0';
+    railStr5[strlen(railStr5)] = '\0';
+
+    LOG(railStr3);
+    LOG(railStr5);
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
