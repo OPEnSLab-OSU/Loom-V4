@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Adafruit_VEML7700.h"
+#include <Adafruit_VEML7700.h>
 #include <Adafruit_Sensor.h>
 
 #include "../I2CDevice.h"
@@ -12,7 +12,7 @@ class Loom_VEML7700 : public I2CDevice{
        // Manager controlled functions
         void measure() override;
         void initialize() override;
-        void power_up() override;
+        void power_up() override {};
         void power_down() override {};
         void package() override;
 
