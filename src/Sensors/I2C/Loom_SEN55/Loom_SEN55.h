@@ -6,7 +6,7 @@
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
 
-#define PM_AVERAGE_COUNT 30     // Number of times to read the pm values then average them over
+#define PM_AVERAGE_COUNT 10     // Number of times to read the pm values then average them over
 
 /**
  *  SEN55 Air Quality sensors, supports pm 1.0, 2.5, 4.0, 10 as well as Temp/Humidity and Nox and Voc index
@@ -180,6 +180,12 @@ class Loom_SEN55 : public I2CDevice{
          * Get NOX Index
         */
         float getNOXIndex() { return noxIndex; };
+
+        /**
+        * Reset relevant values to 0, this is useful for preparing for another measurement cycle.
+        * @return An array of the values pre-reset
+        */
+        void resetValuesForMeasure();
 
     private:
         Manager* manInst;                           // Instance of the manager

@@ -69,22 +69,37 @@ void Loom_SEN55::measure() {
     char output[OUTPUT_SIZE];
     char sensorError[OUTPUT_SIZE];
 
+    delay(100);
+    // Reset the relevent values for the average calcuation of the PM measurements
+    resetValuesForMeasure();
+
     // Turn on pm reading if needed
     if(measurePM){
-        LOG("Waiting 10 seconds seconds so that we can warm the sensor up");
+        LOG(F("Beginning PM measurement, waiting 2 seconds at each increment for stablizing mesurement..."));
         uint16_t readErr = sen5x.startMeasurement();
-        delay(15000);
         float Pm1p0 = 0, Pm2p5 = 0, Pm4p0 = 0, Pm10p0 = 0;
         float numPm0p5 = 0, numPm1p0 = 0, numPm2p5 = 0, numPm4p0 = 0, numPm10p0 = 0;
         float particleSize = 0;
+        uint8_t failedReads = 0;
         for(int i = 0; i < PM_AVERAGE_COUNT; i++){
+            delay(2000);
+
             bool dataReady = false;
             sen5x.readDataReady(dataReady);
+            if(!dataReady && i == 0){
+                uint16_t startTime = millis();
+                LOG(F("No data available on iteration 0, waiting an additional 5 seconds to see if data becomes available"));
+                while(!dataReady && millis() < startTime + 5000){
+                    sen5x.readDataReady(dataReady);
+                }
+            }
 
-            // TODO: This works for now but should be changed later
             if(dataReady)
                 sen5x.readMeasuredPmValues(Pm1p0, Pm2p5, Pm4p0, Pm10p0, numPm0p5, numPm1p0,
                                         numPm2p5, numPm4p0, numPm10p0, particleSize);
+            else{
+                failedReads++;
+            }
 
             massConcentrationPm1p0 += Pm1p0;
             massConcentrationPm2p5 += Pm2p5;
@@ -100,18 +115,26 @@ void Loom_SEN55::measure() {
             }
             delay(1);
         }
-        massConcentrationPm1p0 /= PM_AVERAGE_COUNT;
-        massConcentrationPm2p5 /= PM_AVERAGE_COUNT;
-        massConcentrationPm4p0 /= PM_AVERAGE_COUNT;
-        massConcentrationPm10p0 /= PM_AVERAGE_COUNT;
 
-        if(readNumVals){
-            numConcentrationPm0p5 /= PM_AVERAGE_COUNT;
-            numConcentrationPm1p0 /= PM_AVERAGE_COUNT;
-            numConcentrationPm2p5 /= PM_AVERAGE_COUNT;
-            numConcentrationPm4p0 /= PM_AVERAGE_COUNT;
-            numConcentrationPm10p0 /= PM_AVERAGE_COUNT;
-            typicalParticleSize /= PM_AVERAGE_COUNT;
+        if(failedReads < PM_AVERAGE_COUNT){
+            // Calculate the average of the values (excluding failed reads)
+            massConcentrationPm1p0 /= (PM_AVERAGE_COUNT - failedReads);
+            massConcentrationPm2p5 /= (PM_AVERAGE_COUNT - failedReads);
+            massConcentrationPm4p0 /= (PM_AVERAGE_COUNT - failedReads);
+            massConcentrationPm10p0 /= (PM_AVERAGE_COUNT - failedReads);;
+
+            if(readNumVals){
+                numConcentrationPm0p5 /= (PM_AVERAGE_COUNT - failedReads);;
+                numConcentrationPm1p0 /= (PM_AVERAGE_COUNT - failedReads);;
+                numConcentrationPm2p5 /= (PM_AVERAGE_COUNT - failedReads);;
+                numConcentrationPm4p0 /= (PM_AVERAGE_COUNT - failedReads);;
+                numConcentrationPm10p0 /= (PM_AVERAGE_COUNT - failedReads);;
+                typicalParticleSize /= (PM_AVERAGE_COUNT - failedReads);;
+            }
+        }
+
+        else{
+            ERROR("Failed to read any data from the sensor, values might be incorrect. If this persists, please check for errors...");
         }
 
         float tmp = 0.0;
@@ -126,7 +149,7 @@ void Loom_SEN55::measure() {
     }
 
     else {
-        LOG("Waiting 10 seconds seconds so that we can warm the sensor up");
+        LOG("Beginning measurement without PM, waiting 10 seconds for sensor to stabilize...");
         uint16_t readErr = sen5x.startMeasurementWithoutPm();
         delay(10000);
 
@@ -134,7 +157,7 @@ void Loom_SEN55::measure() {
         // Give the sensor time to prepare for measuring
         bool dataReady = false;
         uint16_t startTime = millis();
-        LOG("Waiting for data to be ready... If not ready in 10 seconds we will stop trying");
+        LOG(F("Waiting for data to be ready... If not ready in 10 seconds we will stop trying"));
         while(!dataReady && millis() < startTime + 10000){
             error = sen5x.readDataReady(dataReady);
             if(error){
@@ -218,17 +241,6 @@ void Loom_SEN55::package() {
     json["VocIndex"] = (isnan(vocIndex) ? -1 : vocIndex);
     json["NoxIndex"] = (isnan(noxIndex) ? -1 : noxIndex);
 
-    massConcentrationPm1p0 = 0;
-    massConcentrationPm2p5 = 0;
-    massConcentrationPm4p0 = 0;
-    massConcentrationPm10p0 = 0;
-    numConcentrationPm0p5 = 0;
-    numConcentrationPm1p0 = 0;
-    numConcentrationPm2p5 = 0;
-    numConcentrationPm4p0 = 0;
-    numConcentrationPm10p0 = 0;
-    typicalParticleSize = 0;
-
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -250,3 +262,20 @@ void Loom_SEN55::adjustTempOffset(float offset) {
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_SEN55::resetValuesForMeasure() {
+    FUNCTION_START;
+    massConcentrationPm1p0 = 0;
+    massConcentrationPm2p5 = 0;
+    massConcentrationPm4p0 = 0;
+    massConcentrationPm10p0 = 0;
+    numConcentrationPm0p5 = 0;
+    numConcentrationPm1p0 = 0;
+    numConcentrationPm2p5 = 0;
+    numConcentrationPm4p0 = 0;
+    numConcentrationPm10p0 = 0;
+    typicalParticleSize = 0;
+    FUNCTION_END;
+    return;
+}
