@@ -216,14 +216,13 @@ DateTime Loom_Hypnos::getLocalTime(DateTime time){
         return time + TimeSpan(0, (timezone), 0, 0);
     }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////// ///////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::isDaylightSavings(){
     // Timezones that observe daylight savings
     if(timezone == AST || timezone == EST || timezone == CST || timezone == AST || timezone == PST || timezone == AKST){
         int currMonth = getCurrentTime().month();
-        Serial.println(currMonth);
 
         // If we are in the months where daylight savings is in affect
         return (currMonth >= 3 && currMonth < 11);
@@ -443,15 +442,12 @@ void Loom_Hypnos::pre_sleep(bool disable33, bool disable5){
 void Loom_Hypnos::post_sleep(bool waitForSerial, bool disable33, bool disable5){
     // Enable the Watchdog timer when waking up
     TIMER_ENABLE;
-    Serial.println(shouldPowerUp);
     if(shouldPowerUp){
         USBDevice.attach();
         Serial.begin(115200);
-        Serial.println("Before enable");
 
         enable(disable33, disable5); // Checks if the 3.3v or 5v are disabled and re-enables them
 
-        Serial.println("After  enable");
 
         // Clear any pending RTC alarms
         RTC_DS.clearAlarm();
@@ -468,7 +464,6 @@ void Loom_Hypnos::post_sleep(bool waitForSerial, bool disable33, bool disable5){
 
         LOG(F("Device has awoken from sleep!"));
     }
-    Serial.println(shouldPowerUp);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

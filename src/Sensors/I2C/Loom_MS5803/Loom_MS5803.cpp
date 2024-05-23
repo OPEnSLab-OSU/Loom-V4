@@ -24,7 +24,7 @@ void Loom_MS5803::initialize(){
         // Wait 3 seconds after initializing
         //delay(3000);
     //}
-    inst.initializeMS_5803(false)
+    inst.initializeMS_5803(false);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
