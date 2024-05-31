@@ -78,6 +78,9 @@ bool MQTTComponent::publishMessage(const char* topic, const char* message, bool 
     // Make sure the module is initialized
     if(moduleInitialized && internetClient.moduleInitialized){
         if(mqttClient.connected()){
+            // Tell the broker we are still here
+            mqttClient.poll();
+
             // Start a message write the data and close the message, publish all messages with retain
             if(mqttClient.beginMessage(topic, retain, qos) != 1){
                 ERROR(F("Failed to begin message!"));

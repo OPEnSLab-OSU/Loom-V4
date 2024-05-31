@@ -31,6 +31,7 @@ void Loom_LTE::initialize(){
 
     // Immediately pull the pin high so that the pin is in the default power state of the LTE board
     pinMode(powerPin, HIGH);
+    delay(1000);
 
     // Start up the module
     power_up();
