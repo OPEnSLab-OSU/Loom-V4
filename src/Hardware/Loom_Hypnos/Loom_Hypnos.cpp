@@ -68,7 +68,11 @@ void Loom_Hypnos::toggle_power_rails(HypnosPowerConfig config, bool enable)
             break;
         case HypnosPowerConfig::SET3:
             v3 = !v3;
-
+            if(v3)
+                Serial.println("v3 is high");
+            else
+                Serial.println("v3 is low");
+            Serial.println("Checkpoint 1");
             digitalWrite(5, v3);
             digitalWrite(6, v5);
             break;
@@ -113,11 +117,13 @@ void Loom_Hypnos::enable(HypnosPowerConfig config){
     toggle_power_rails(config, true);
     digitalWrite(LED_BUILTIN, HIGH);
 
+    Serial.println("Checkpoint 2");
     // If the RTC hasn't already been initialized then do so now
     if(!RTC_initialized)
         initializeRTC();
 
     manInst->setEnableState(true);
+    Serial.println("Checkpoint 6");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -220,6 +226,7 @@ void Loom_Hypnos::initializeRTC(){
         ERROR(F("Couldn't start RTC! Check your connections... Execution will now hang as this is likely a fatal error"));
         return;
     }
+    Serial.println("Checkpoint 3");
 
     // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't happen with coin cell batt backup
 	if (RTC_DS.lostPower()) {
@@ -230,6 +237,7 @@ void Loom_Hypnos::initializeRTC(){
             set_custom_time();
         }
 	}
+    Serial.println("Checkpoint 4");
 
 	// Clear any pending alarms
 	RTC_DS.clearAlarm();
@@ -242,7 +250,7 @@ void Loom_Hypnos::initializeRTC(){
     snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
     LOG(output);
     FUNCTION_END;
-
+    Serial.println("Checkpoint 5");
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
