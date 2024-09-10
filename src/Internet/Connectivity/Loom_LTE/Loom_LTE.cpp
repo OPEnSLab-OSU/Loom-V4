@@ -27,11 +27,7 @@ void Loom_LTE::initialize(){
     char output[OUTPUT_SIZE];
     char ip[16];
     // Set the pin to output so we can write to it
-    pinMode(powerPin, OUTPUT);
-
-    // Immediately pull the pin high so that the pin is in the default power state of the LTE board
-    pinMode(powerPin, HIGH);
-    delay(1000);
+    pinMode(powerPin, INPUT);
 
     // Start up the module
     power_up();
@@ -102,13 +98,15 @@ void Loom_LTE::power_up(){
         LOG(F("Powering up GPRS Modem. This should take about 10 seconds..."));
         TIMER_DISABLE;
 
-        // We must pull the power pin low and then high after 0.5 seconds to wake the LTE board 
+        // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release the pin state
+        pinMode(powerPin, OUTPUT);
         digitalWrite(powerPin, LOW);
-        delay(1000);
-        digitalWrite(powerPin, HIGH);
-        delay(2000);
+        delay(3200);
+        pinMode(powerPin, INPUT);
+
+        // Delay an additional one second to allow communication to open up
         SerialAT.begin(9600);
-        delay(6000);
+        delay(1000);
         modem.restart();
         LOG(F("Powering up complete!"));
         TIMER_ENABLE;
@@ -132,7 +130,11 @@ void Loom_LTE::power_down(){
     if(moduleInitialized && powerUp){
         LOG(F("Powering down GPRS Modem. This should take about 5 seconds..."));
         modem.poweroff();
-        digitalWrite(powerPin, HIGH);
+        // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release the pin state
+        pinMode(powerPin, OUTPUT);
+        digitalWrite(powerPin, LOW);
+        delay(1600);
+        pinMode(powerPin, INPUT);
         //delay(5000);
         LOG(F("Powering down complete!"));
     }
