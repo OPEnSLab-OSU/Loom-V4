@@ -25,6 +25,7 @@
     - [Getting Started Resources](#getting-started-resources)
 - [Using Examples](#run-an-example)
 - [Troubleshooting](#troubleshooting)
+- [Best Practices](#best-practices)
 - [Opening Issues](#issues)
 - [Feather Idiosyncrasies](#weird-feather-m0-issues)
 - [Supported Projects](#opens-supported-projects)
@@ -95,6 +96,9 @@ You will also need to install Developet Tools, which requires Admin access.
 ## Troubleshooting
 If you get permissions error accessing the library folder, and are using a Mac, see note in the installation section above.
 If you are updating from an old version of Loom, you may need to do a "clean install" by removing the Arduino15 folder, and starting the process from the beginning to install again.
+
+## Best Practices
+Will Fill in Please.
 
 ## Issues
 If you are experiencing issues, please click the "Issues" tab on this repo and choose the template that best fits your needs. Please supply as much information as possible. This helps us to better understand a fix issues quickly
