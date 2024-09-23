@@ -94,7 +94,7 @@ class Loom_LTE : public NetworkComponent{
         /**
          * Get the client to supply to publish platforms that need to communicate using this internet framework
          */ 
-        TinyGsmClient& getClient();
+        Client* getClient() override;
 
         /* Restart the modem */
         void restartModem() { 

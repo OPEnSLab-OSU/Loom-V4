@@ -39,7 +39,7 @@ Loom_MS5803 ms_air(manager, 118); // 118(0x76) if CSB=HIGH on WC PCB
 
 
 Loom_WIFI wifi(manager, CommunicationMode::CLIENT, "", "");
-Loom_MongoDB mqtt(manager, wifi.getClient());
+Loom_MongoDB mqtt(manager, wifi);
 
 // If using Teros 10, Uncoment this line
 Loom_Teros10 t10(manager, A0);

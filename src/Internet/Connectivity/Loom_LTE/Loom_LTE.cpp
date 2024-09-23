@@ -27,7 +27,7 @@ void Loom_LTE::initialize(){
     char output[OUTPUT_SIZE];
     char ip[16];
     // Set the pin to output so we can write to it
-    pinMode(powerPin, OUTPUT);
+    pinMode(powerPin, INPUT);
 
     // Start up the module
     power_up();
@@ -97,10 +97,16 @@ void Loom_LTE::power_up(){
     if(moduleInitialized){
         LOG(F("Powering up GPRS Modem. This should take about 10 seconds..."));
         TIMER_DISABLE;
+
+        // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release the pin state
+        pinMode(powerPin, OUTPUT);
         digitalWrite(powerPin, LOW);
-        delay(10000);
+        delay(3200);
+        pinMode(powerPin, INPUT);
+
+        // Delay an additional one second to allow communication to open up
         SerialAT.begin(9600);
-        delay(6000);
+        delay(1000);
         modem.restart();
         LOG(F("Powering up complete!"));
         TIMER_ENABLE;
@@ -124,8 +130,12 @@ void Loom_LTE::power_down(){
     if(moduleInitialized && powerUp){
         LOG(F("Powering down GPRS Modem. This should take about 5 seconds..."));
         modem.poweroff();
-        digitalWrite(powerPin, HIGH);
-        delay(5000);
+        // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release the pin state
+        pinMode(powerPin, OUTPUT);
+        digitalWrite(powerPin, LOW);
+        delay(1600);
+        pinMode(powerPin, INPUT);
+        //delay(5000);
         LOG(F("Powering down complete!"));
     }
     FUNCTION_END;
@@ -171,6 +181,7 @@ bool Loom_LTE::connect(){
         LOG(output);
         if(modem.gprsConnect(APN, gprsUser, gprsPass)){
             LOG(F("Successfully Connected!"));
+            delay(6000);
             FUNCTION_END;
             TIMER_ENABLE;
             return true;
@@ -230,7 +241,7 @@ bool Loom_LTE::verifyConnection(){
         uint32_t timeout = millis();
         while (client.connected() && millis() - timeout < 10000L) {
             // Print available data
-            while (client.available()) {
+            while (client.available() && millis() - timeout < 10000L) {
                 char c = client.read();
                 Serial.print(c);
                 timeout = millis();
@@ -279,7 +290,7 @@ void Loom_LTE::loadConfigFromJSON(char* json){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-TinyGsmClient& Loom_LTE::getClient() { return client; }
+Client* Loom_LTE::getClient() { return (Client*)&client; }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -289,9 +300,8 @@ bool Loom_LTE::getNetworkTime(int* year, int* month, int* day, int* hour, int* m
 
     // Pull the current values from the GSM
     if(modem.getNetworkTime(year, month, day, hour, minute, second, tz)){
-
-        // Create a date time object and then subtract the TimeZone from the date time setting all the pointers to the new values and returning
-        DateTime time = DateTime(*year, *month, *day, *hour, *minute, *second) - TimeSpan(0, tzInt, 0, 0);
+        // Create a date time object and then add the TimeZone back to get UTC time
+        DateTime time = DateTime(*year, *month, *day, *hour, *minute, *second) + TimeSpan(0,((int)(*tz))*(-1),0,0);
         *year = time.year();
         *month = time.month();
         *day = time.day();

@@ -36,8 +36,8 @@ class Module{
 
         virtual const char* getModuleName() { return moduleName; }; // Return the name of the sensor
         virtual void printModuleName(const char* message) { 
-            char output[256];
-            snprintf_P(output, 256, PSTR("[%s] %s"), getModuleName(), message);
+            char output[OUTPUT_SIZE];
+            snprintf_P(output, OUTPUT_SIZE, PSTR("[%s] %s"), getModuleName(), message);
             Serial.println(output);
         };
 

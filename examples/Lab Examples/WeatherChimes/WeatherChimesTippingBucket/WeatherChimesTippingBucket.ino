@@ -47,7 +47,7 @@ Loom_TippingBucket bucket(manager, COUNTER_TYPE::MANUAL, 0.01f);
 
 
 Loom_LTE lte(manager, "hologram", "", "");
-Loom_MongoDB mqtt(manager, lte.getClient());
+Loom_MongoDB mqtt(manager, lte);
 
 /* Calculate the water height based on the difference of pressures*/
 float calculateWaterHeight(){
@@ -70,7 +70,7 @@ void tipTrigger() {
 
 void setup() {
 
-  // Enable debug SD logging and function summaires
+  // Enable debug SD logging and function summaries
   ENABLE_SD_LOGGING;
   ENABLE_FUNC_SUMMARIES;
 
@@ -79,6 +79,8 @@ void setup() {
 
   // Wait 20 seconds for the serial console to open
   manager.beginSerial();
+
+  hypnos.setNetworkInterface(&lte);
 
   // Enable the hypnos rails
   hypnos.enable();
@@ -101,6 +103,8 @@ void setup() {
 void loop() {
 
   if(sampleFlag){
+    detachInterrupt(INT_PIN);
+    hypnos.networkTimeUpdate();
     // Set the RTC interrupt alarm to wake the device in 15 min, this should be done as soon as the device enters sampling mode for consistant sleep cycles
     hypnos.setInterruptDuration(TimeSpan(0, 0, 15, 0));
 
