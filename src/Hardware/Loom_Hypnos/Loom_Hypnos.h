@@ -63,6 +63,13 @@ enum HypnosInterruptType{
     OTHER
 };
 
+// Custom comparator for const char*, used for evaluating timezone name to timezone enum
+struct cmp_str {
+    bool operator()(const char* a, const char* b) const {
+        return strcmp(a, b) < 0;
+    }
+};
+
 /**
  * All in one driver for the Hypnos board. This allows users to use the Hypnos board in a more modularized manner not requiring all the Loom stuff.
  *
@@ -180,18 +187,11 @@ class Loom_Hypnos : public Module{
         void set_custom_time();
 
         /**
-         * Get a custom sleep interval specified in a file on the SD card
-         * If there was an error reading the file the sleep interval will be set to 20 minutes
-         * @param fileName Name of the file to pull information from
-         * @return TimeSpan with the parsed data
+         * Load the configuration for the hypnos from the SD card (Timezeone and sleep interval)
+         * @param fileName The file name on the root of the SD card to retrieve the information from
+         * @return Return the time span for which the device is intended to sleep for
          */
-        TimeSpan getSleepIntervalFromSD(const char* fileName);
-
-        /**
-         * Get and set the timezone for the Hypnos from the SD card
-         * @param fileName Name of the file to pull information from
-         */
-        void getTimeZoneFromSD(const char* fileName);
+        TimeSpan getConfigFromSD(const char* fileName);
 
         /**
          * Read file from SD
@@ -253,7 +253,7 @@ class Loom_Hypnos : public Module{
         void initializeRTC();                                                               // Initialize RTC
 
         void createTimezoneMap();                                                           // Map Timezone Strings to Timezone enum
-        std::map<const char*, TIME_ZONE> timezoneMap;                                       // String to Timezone enum
+        std::map<const char*, TIME_ZONE, cmp_str> timezoneMap;                              // String to Timezone enum, use custom compare to ensure that strings are compared correctly
 
         DateTime getLocalTime(DateTime time);                                               // Convert a given UTC time to local time
         TIME_ZONE timezone;                                                                 // Timezone the RTC was set to

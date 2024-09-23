@@ -468,10 +468,10 @@ void Loom_Hypnos::post_sleep(bool waitForSerial, bool disable33, bool disable5){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-TimeSpan Loom_Hypnos::getSleepIntervalFromSD(const char* fileName){
+TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
     FUNCTION_START;
     // Doc to store the JSON data from the SD card in
-    StaticJsonDocument<255> doc;
+    StaticJsonDocument<OUTPUT_SIZE> doc;
     char output[OUTPUT_SIZE];
     char* fileRead = sdMan->readFile(fileName);
     DeserializationError deserialError = deserializeJson(doc, fileRead);
@@ -481,39 +481,29 @@ TimeSpan Loom_Hypnos::getSleepIntervalFromSD(const char* fileName){
     JsonObject json = doc.as<JsonObject>();
 
     if(deserialError != DeserializationError::Ok){
-        snprintf(output, OUTPUT_SIZE, "There was an error reading the sleep interval from SD: %s, defaulting sampling interval to 20 minutes.", deserialError.c_str());
+        snprintf(output, OUTPUT_SIZE, "There was an error reading the config from SD: %s, defaulting sampling interval to 20 minutes.", deserialError.c_str());
         ERROR(output);
         return TimeSpan(0, 0, 20, 0);
     }
     else{
-        LOG(F("Sleep interval successfully loaded from SD!"));
-        // Return the interval as set in the json
-        return TimeSpan(json["days"].as<int>(), json["hours"].as<int>(), json["minutes"].as<int>(), json["seconds"].as<int>());
-    }
-    FUNCTION_END;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+        LOG(F("Config successfully loaded from SD!"));
+        if(!json["timezone"].isNull()){
+            const char* timezoneStr = json["timezone"].as<const char*>();
+            snprintf(output, OUTPUT_SIZE, "Selected timezone: %s, UTC offset: %i", timezoneStr, (int)timezoneMap[(const char*)timezoneStr]);
+            LOG(output);
+            timezone = timezoneMap[(const char*)timezoneStr];
+        }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::getTimeZoneFromSD(const char* fileName){
-    FUNCTION_START;
-    // Doc to store the JSON data from the SD card in
-    StaticJsonDocument<255> doc;
-    char* fileRead = sdMan->readFile(fileName);
-    DeserializationError deserialError = deserializeJson(doc, fileRead);
-    free(fileRead);
-
-    // Create json object to easily pull data from
-    JsonObject json = doc.as<JsonObject>();
-
-    if(deserialError != DeserializationError::Ok){
-        ERROR(F("There was an error reading the timezone defaulting to programmed timezone"));
-    }
-    else{
-        if(!json["timezone"].isNull())
-            timezone = timezoneMap[json["timezone"].as<const char*>()];
-        LOG(F("Timezone successfully loaded!"));
-
+        // If the sleep interval key is not supplied we want to set some default
+        if(!json["SleepInterval"].isNull()){
+            // Return the interval as set in the json
+            return TimeSpan(json["SleepInterval"]["days"].as<int>(), json["SleepInterval"]["hours"].as<int>(), json["SleepInterval"]["minutes"].as<int>(), json["SleepInterval"]["seconds"].as<int>());
+        }
+        else{
+            snprintf(output, OUTPUT_SIZE, "There was an error reading the sampling interval from SD, defaulting sampling interval to 20 minutes.");
+            ERROR(output);
+            return TimeSpan(0, 0, 20, 0);
+        }
     }
     FUNCTION_END;
 }
