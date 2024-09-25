@@ -2,11 +2,18 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_LTE::Loom_LTE(Manager& man, const char* apn, const char* user, const char* pass, const int pin) : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem){
+Loom_LTE::Loom_LTE(Manager& man, const char* apn, const char* user, const char* pass, const int pin, LTE_VERSION version) : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem){
     strncpy(this->APN, apn, 100);
     strncpy(this->gprsUser, user, 100);
     strncpy(this->gprsPass, pass, 100);
     this->powerPin = pin;
+
+    if (version == SPARKFUN) this->pull = std::bind(&Loom_LTE::_pull_sparkfun, this);
+    else if (version == OPENS) this->pull = std::bind(&Loom_LTE::_pull_opens, this);
+    else{
+        ERROR(F("Invalid LTE version specified! Defaulting to Sparkfun LTE"));
+        this->pull = std::bind(&Loom_LTE::_pull_sparkfun, this);
+    }
 
     manInst->registerModule(this);
 }
@@ -18,6 +25,40 @@ Loom_LTE::Loom_LTE(Manager& man) : NetworkComponent("LTE"), manInst(&man), modem
 
     // Not initialized because we don't actually know what to connect to yet
     moduleInitialized = false;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LTE::_pull_sparkfun(){
+    int16_t waitMs = 3200;
+    if (powered)
+        waitMs = 1600;
+
+    pinMode(powerPin, OUTPUT);
+    digitalWrite(powerPin, LOW);
+    delay(waitMs);
+    pinMode(powerPin, INPUT);
+
+    return;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LTE::_pull_opens(){
+    // When we need to power up
+    if (!powered){
+        pinMode(powerPin, OUTPUT);
+        digitalWrite(powerPin, HIGH);
+        delay(5000);
+        pinMode(powerPin, INPUT);
+    }
+    // When we need to power down
+    else {
+        pinMode(powerPin, OUTPUT);
+        digitalWrite(powerPin, LOW);
+        delay(2500);
+        pinMode(powerPin, INPUT);
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -92,35 +133,33 @@ void Loom_LTE::power_up(){
             powerUp = true;
         }
     }
-        
+
     // If not connected to a network we want to connect
     if(moduleInitialized){
         LOG(F("Powering up GPRS Modem. This should take about 10 seconds..."));
         TIMER_DISABLE;
 
         // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release the pin state
-        pinMode(powerPin, OUTPUT);
-        digitalWrite(powerPin, LOW);
-        delay(3200);
-        pinMode(powerPin, INPUT);
+        pull();
 
         // Delay an additional one second to allow communication to open up
         SerialAT.begin(9600);
         delay(1000);
         modem.restart();
         LOG(F("Powering up complete!"));
+        powered = true;
         TIMER_ENABLE;
     }
     // If the module isn't initialized we want to try again
     else{
         initialize();
     }
-    
+
     if(!firstInit && !isConnected() && moduleInitialized)
             connect();
-    
+
     FUNCTION_END;
-    
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -131,11 +170,9 @@ void Loom_LTE::power_down(){
         LOG(F("Powering down GPRS Modem. This should take about 5 seconds..."));
         modem.poweroff();
         // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release the pin state
-        pinMode(powerPin, OUTPUT);
-        digitalWrite(powerPin, LOW);
-        delay(1600);
-        pinMode(powerPin, INPUT);
-        //delay(5000);
+        pull();
+        powered = false;
+
         LOG(F("Powering down complete!"));
     }
     FUNCTION_END;
@@ -221,7 +258,7 @@ bool Loom_LTE::verifyConnection(){
     FUNCTION_START;
     bool returnStatus =  false;
     LOG(F("Attempting to verify internet connection..."));
-    
+
     // Connect to TinyGSM's creator's website
     if(!client.connect("vsh.pp.ua", 80)){
         ERROR(F("Failed to contact TinyGSM example your internet connection may not be completely established!"));
@@ -254,7 +291,7 @@ bool Loom_LTE::verifyConnection(){
     TIMER_RESET;
     FUNCTION_END;
     return true;
-    
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
