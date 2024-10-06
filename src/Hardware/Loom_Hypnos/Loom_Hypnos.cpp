@@ -50,6 +50,10 @@ void Loom_Hypnos::package(){
     return;
 
 }
+
+int pin_inverse(int pinVal) {
+    return pinVal == HIGH ? LOW : HIGH;
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /* Power Rail Control Functionality */
@@ -60,20 +64,20 @@ void Loom_Hypnos::toggle_power_rails(HypnosPowerConfig config, bool enable)
     FUNCTION_START;
      switch(config){
         case HypnosPowerConfig::SET3_5:
-            v3 = !v3;
-            v5 = !v5;
+            v3 = pin_inverse(v3);
+            v5 = pin_inverse(v5);
 
             digitalWrite(5, v3);
             digitalWrite(6, v5);
             break;
         case HypnosPowerConfig::SET3:
-            v3 = !v3;
+            v3 = pin_inverse(v3);
 
             digitalWrite(5, v3);
             digitalWrite(6, v5);
             break;
         case HypnosPowerConfig::SET5:
-            v5 = !v5;
+            v5 = pin_inverse(v5);
 
             digitalWrite(5, v3);
             digitalWrite(6, v5);
@@ -83,24 +87,15 @@ void Loom_Hypnos::toggle_power_rails(HypnosPowerConfig config, bool enable)
             digitalWrite(6, v5);
             break;
     }
-    if(enable){
-        if(enableSD){
-            // Enable SPI pins
-            pinMode(23, OUTPUT);
-            pinMode(24, OUTPUT);
-            pinMode(sd_chip_select, OUTPUT);
+    if(enableSD){
+        // Disable SPI pins/SD chip select to save power
+        pinMode(23, INPUT);
+        pinMode(24, INPUT);
+        pinMode(sd_chip_select, INPUT);
+    }
+    if (enable)
+        sdMan->begin();
 
-            sdMan->begin();
-        }
-    }
-    else {
-        if(enableSD){
-            // Disable SPI pins/SD chip select to save power
-            pinMode(23, INPUT);
-            pinMode(24, INPUT);
-            pinMode(sd_chip_select, INPUT);
-        }
-    }
     FUNCTION_END;
     return;
 }

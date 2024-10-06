@@ -269,8 +269,8 @@ class Loom_Hypnos : public Module{
         DateTime time;                                                                      // UTC time
         DateTime localTime;                                                                 // Local time
 
-        bool v5 = HIGH;
-        bool v3 = LOW;
+        int v5 = HIGH;
+        int v3 = LOW;
 
         /* Sleep functionality */
         void pre_sleep(HypnosPowerConfig config = HypnosPowerConfig::SETNONE);              // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
