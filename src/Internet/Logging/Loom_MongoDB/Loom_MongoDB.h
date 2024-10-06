@@ -4,6 +4,7 @@
 
 #include "Loom_Manager.h"
 #include "../MQTTComponent/MQTTComponent.h"
+#include "../../Connectivity/NetworkComponent.h"
 
 #include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
 
@@ -41,7 +42,7 @@ class Loom_MongoDB : public MQTTComponent{
          */ 
         Loom_MongoDB(
                 Manager& man,
-                Client& internet_client, 
+                NetworkComponent& internet_client, 
                 const char* broker_address, 
                 int broker_port, 
                 const char* database_name, 
@@ -54,7 +55,7 @@ class Loom_MongoDB : public MQTTComponent{
          * Construct a new MQTT interface, expects credentials to be loaded from JSON
          * @param man Reference to the manager
          */ 
-        Loom_MongoDB(Manager& man, Client& internet_client);
+        Loom_MongoDB(Manager& man, NetworkComponent& internet_client);
         
         /**
          * Publish the current JSON data over MQTT 
@@ -74,7 +75,6 @@ class Loom_MongoDB : public MQTTComponent{
     
     private:
         Manager* manInst;                       // Instance of the manager   
-
 
         char topic[MAX_TOPIC_LENGTH];           // Topic we are publishing to
         char database_name[100];                // Database to publish the data to

@@ -44,7 +44,7 @@ class Loom_ThingSpeak : public MQTTComponent{
          */ 
         Loom_ThingSpeak(
                 Manager& man,
-                Client& internet_client, 
+                NetworkComponent& internet_client, 
                 int channelID, 
                 const char* clientID,
                 const char* broker_user, 
@@ -55,7 +55,7 @@ class Loom_ThingSpeak : public MQTTComponent{
          * Construct a new MQTT interface, expects credentials to be loaded from JSON
          * @param man Reference to the manager
          */ 
-        Loom_ThingSpeak(Manager& man, Client& internet_client);
+        Loom_ThingSpeak(Manager& man, NetworkComponent& internet_client);
         
         /**
          * Publish the current JSON data over MQTT 

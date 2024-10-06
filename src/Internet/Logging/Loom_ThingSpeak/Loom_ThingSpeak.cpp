@@ -4,7 +4,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_ThingSpeak::Loom_ThingSpeak(
                     Manager& man,
-                    Client& internet_client, 
+                    NetworkComponent& internet_client, 
                     int channelID, 
                     const char* clientID,
                     const char* broker_user, 
@@ -25,7 +25,7 @@ Loom_ThingSpeak::Loom_ThingSpeak(
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_ThingSpeak::Loom_ThingSpeak(Manager& man, Client& internet_client) : MQTTComponent("ThingSpeak", internet_client), manInst(&man){
+Loom_ThingSpeak::Loom_ThingSpeak(Manager& man, NetworkComponent& internet_client) : MQTTComponent("ThingSpeak", internet_client), manInst(&man){
     moduleInitialized = false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

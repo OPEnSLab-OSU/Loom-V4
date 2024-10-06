@@ -1,8 +1,8 @@
 /**
  * In lab use case example for the WeatherChimes project
- * 
+ *
  * This project uses SDI12, TSL2591 and an SHT31 sensor to log environment data and logs it to both the SD card and also MQTT/MongoDB
- * 
+ *
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 #include <Loom_Manager.h>
@@ -47,7 +47,7 @@ Loom_TippingBucket bucket(manager, COUNTER_TYPE::MANUAL, 0.01f);
 
 
 Loom_LTE lte(manager, "hologram", "", "");
-Loom_MongoDB mqtt(manager, lte.getClient());
+Loom_MongoDB mqtt(manager, lte);
 
 /* Calculate the water height based on the difference of pressures*/
 float calculateWaterHeight(){
@@ -55,7 +55,7 @@ float calculateWaterHeight(){
   return (((ms_water.getPressure()-ms_air.getPressure()) * 100) / (997.77 * 9.81));
 }
 
-// Called when the interrupt is triggered 
+// Called when the interrupt is triggered
 void isrTrigger(){
   sampleFlag = true;
   detachInterrupt(INT_PIN);
@@ -70,7 +70,7 @@ void tipTrigger() {
 
 void setup() {
 
-  // Enable debug SD logging and function summaires
+  // Enable debug SD logging and function summaries
   ENABLE_SD_LOGGING;
   ENABLE_FUNC_SUMMARIES;
 
@@ -79,6 +79,8 @@ void setup() {
 
   // Wait 20 seconds for the serial console to open
   manager.beginSerial();
+
+  hypnos.setNetworkInterface(&lte);
 
   // Enable the hypnos rails
   hypnos.enable();
@@ -102,7 +104,7 @@ void loop() {
 
   if(sampleFlag){
     detachInterrupt(INT_PIN);
-    
+    hypnos.networkTimeUpdate();
     // Set the RTC interrupt alarm to wake the device in 15 min, this should be done as soon as the device enters sampling mode for consistant sleep cycles
     hypnos.setInterruptDuration(TimeSpan(0, 0, 15, 0));
 
@@ -112,11 +114,11 @@ void loop() {
 
     // Add the water height calculation to the data
     manager.addData("Water", "Height_(m)", calculateWaterHeight());
-    
-    // Print the current JSON packet
-    manager.display_data();            
 
-    // Log the data to the SD card              
+    // Print the current JSON packet
+    manager.display_data();
+
+    // Log the data to the SD card
     hypnos.logToSD();
 
     // Publish the collected data to MQTT
@@ -138,8 +140,8 @@ void loop() {
     attachInterrupt(INT_PIN, tipTrigger, FALLING);
     digitalWrite(LED_BUILTIN, LOW);
   }
-  
+
   // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
   hypnos.sleep();
-  
+
 }

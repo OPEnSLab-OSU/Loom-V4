@@ -81,7 +81,7 @@ class Loom_WIFI : public NetworkComponent{
          * Returns a reference to the WifiClient
          * @return wifiClient
          */
-        WiFiClient& getClient() { return wifiClient; };
+        Client* getClient() override { return (Client*)&wifiClient; };
 
         /**
          * Get a reference to the UDP communication handler

@@ -1,6 +1,8 @@
 #pragma once
+#include <Client.h>
 
 #include "Module.h"
+
 
 /**
  * Generic Network Abstraction Layer to provide additional generalized functionality between network components
@@ -16,4 +18,6 @@ class NetworkComponent : public Module{
 
         /* Is the current network interface connected */
         virtual bool isConnected() = 0;
+
+        virtual Client* getClient() = 0;
 };

@@ -166,9 +166,6 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
     }
     FUNCTION_END;
     return false;
-
-
-
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -186,7 +183,6 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
 
         attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
         attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
-
     }
     else{
         LowPower.attachInterruptWakeup(interruptPin, std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
@@ -253,14 +249,13 @@ DateTime Loom_Hypnos::getLocalTime(DateTime time){
         return time + TimeSpan(0, (timezone), 0, 0);
     }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////// ///////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::isDaylightSavings(){
     // Timezones that observe daylight savings
-    if(timezone == AST || timezone == EST || timezone == CST || timezone == MST || timezone == AST || timezone == PST || timezone == AKST){
+    if(timezone == AST || timezone == EST || timezone == CST || timezone == AST || timezone == PST || timezone == AKST){
         int currMonth = getCurrentTime().month();
-        Serial.println(currMonth);
 
         // If we are in the months where daylight savings is in affect
         return (currMonth >= 3 && currMonth < 11);
@@ -504,11 +499,12 @@ void Loom_Hypnos::post_sleep(bool waitForSerial, HypnosPowerConfig config){
 
         enable(config); // Checks if the 3.3v or 5v are disabled and re-enables them
 
-        // Re-init the modules that need it
-        manInst->power_up();
 
         // Clear any pending RTC alarms
         RTC_DS.clearAlarm();
+
+        // Re-init the modules that need it
+        manInst->power_up();
 
         // We want to wait for the user to re-open the serial monitor before continuing to see readouts
         if(waitForSerial){
@@ -549,7 +545,7 @@ TimeSpan Loom_Hypnos::getSleepIntervalFromSD(const char* fileName){
     JsonObject json = doc.as<JsonObject>();
 
     if(deserialError != DeserializationError::Ok){
-        snprintf(output, OUTPUT_SIZE, "There was an error reading the sleep interval from SD: %s", deserialError.c_str());
+        snprintf(output, OUTPUT_SIZE, "There was an error reading the sleep interval from SD: %s, defaulting sampling interval to 20 minutes.", deserialError.c_str());
         ERROR(output);
         return TimeSpan(0, 0, 20, 0);
     }

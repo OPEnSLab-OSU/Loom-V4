@@ -2,11 +2,18 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_LTE::Loom_LTE(Manager& man, const char* apn, const char* user, const char* pass, const int pin) : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem){
+Loom_LTE::Loom_LTE(Manager& man, const char* apn, const char* user, const char* pass, const int pin, LTE_VERSION version) : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem){
     strncpy(this->APN, apn, 100);
     strncpy(this->gprsUser, user, 100);
     strncpy(this->gprsPass, pass, 100);
     this->powerPin = pin;
+
+    if (version == SPARKFUN) this->pull = std::bind(&Loom_LTE::_pull_sparkfun, this);
+    else if (version == OPENS) this->pull = std::bind(&Loom_LTE::_pull_opens, this);
+    else{
+        ERROR(F("Invalid LTE version specified! Defaulting to Sparkfun LTE"));
+        this->pull = std::bind(&Loom_LTE::_pull_sparkfun, this);
+    }
 
     manInst->registerModule(this);
 }
@@ -22,12 +29,46 @@ Loom_LTE::Loom_LTE(Manager& man) : NetworkComponent("LTE"), manInst(&man), modem
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LTE::_pull_sparkfun(){
+    int16_t waitMs = 3200;
+    if (powered)
+        waitMs = 1600;
+
+    pinMode(powerPin, OUTPUT);
+    digitalWrite(powerPin, LOW);
+    delay(waitMs);
+    pinMode(powerPin, INPUT);
+
+    return;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LTE::_pull_opens(){
+    // When we need to power up
+    if (!powered){
+        pinMode(powerPin, OUTPUT);
+        digitalWrite(powerPin, HIGH);
+        delay(5000);
+        pinMode(powerPin, INPUT);
+    }
+    // When we need to power down
+    else {
+        pinMode(powerPin, OUTPUT);
+        digitalWrite(powerPin, LOW);
+        delay(2500);
+        pinMode(powerPin, INPUT);
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::initialize(){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     char ip[16];
     // Set the pin to output so we can write to it
-    pinMode(powerPin, OUTPUT);
+    pinMode(powerPin, INPUT);
 
     // Start up the module
     power_up();
@@ -92,29 +133,33 @@ void Loom_LTE::power_up(){
             powerUp = true;
         }
     }
-        
+
     // If not connected to a network we want to connect
     if(moduleInitialized){
         LOG(F("Powering up GPRS Modem. This should take about 10 seconds..."));
         TIMER_DISABLE;
-        digitalWrite(powerPin, LOW);
-        delay(10000);
+
+        // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release the pin state
+        pull();
+
+        // Delay an additional one second to allow communication to open up
         SerialAT.begin(9600);
-        delay(6000);
+        delay(1000);
         modem.restart();
         LOG(F("Powering up complete!"));
+        powered = true;
         TIMER_ENABLE;
     }
     // If the module isn't initialized we want to try again
     else{
         initialize();
     }
-    
+
     if(!firstInit && !isConnected() && moduleInitialized)
             connect();
-    
+
     FUNCTION_END;
-    
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -124,8 +169,10 @@ void Loom_LTE::power_down(){
     if(moduleInitialized && powerUp){
         LOG(F("Powering down GPRS Modem. This should take about 5 seconds..."));
         modem.poweroff();
-        digitalWrite(powerPin, HIGH);
-        delay(5000);
+        // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release the pin state
+        pull();
+        powered = false;
+
         LOG(F("Powering down complete!"));
     }
     FUNCTION_END;
@@ -171,6 +218,7 @@ bool Loom_LTE::connect(){
         LOG(output);
         if(modem.gprsConnect(APN, gprsUser, gprsPass)){
             LOG(F("Successfully Connected!"));
+            delay(6000);
             FUNCTION_END;
             TIMER_ENABLE;
 
@@ -213,7 +261,7 @@ bool Loom_LTE::verifyConnection(){
     FUNCTION_START;
     bool returnStatus =  false;
     LOG(F("Attempting to verify internet connection..."));
-    
+
     // Connect to TinyGSM's creator's website
     if(!client.connect("vsh.pp.ua", 80)){
         ERROR(F("Failed to contact TinyGSM example your internet connection may not be completely established!"));
@@ -233,7 +281,7 @@ bool Loom_LTE::verifyConnection(){
         uint32_t timeout = millis();
         while (client.connected() && millis() - timeout < 10000L) {
             // Print available data
-            while (client.available()) {
+            while (client.available() && millis() - timeout < 10000L) {
                 char c = client.read();
                 Serial.print(c);
                 timeout = millis();
@@ -246,7 +294,7 @@ bool Loom_LTE::verifyConnection(){
     TIMER_RESET;
     FUNCTION_END;
     return true;
-    
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -282,7 +330,7 @@ void Loom_LTE::loadConfigFromJSON(char* json){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-TinyGsmClient& Loom_LTE::getClient() { return client; }
+Client* Loom_LTE::getClient() { return (Client*)&client; }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////

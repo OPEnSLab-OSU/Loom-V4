@@ -72,7 +72,7 @@ class Loom_Ethernet : public NetworkComponent{
          * Returns a reference to the Ethernet Client
          * @return Ethernet client
          */ 
-        EthernetClient& getClient() { return ethernetClient; };
+        Client* getClient() override { return (Client*)&ethernetClient; };
 
         /**
          * Get a reference to the UDP communication handler

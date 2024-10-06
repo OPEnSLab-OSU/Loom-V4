@@ -3,6 +3,7 @@
 #include <ArduinoMqttClient.h>
 
 #include "Module.h"
+#include "../../Connectivity/NetworkComponent.h"
 
 #define MAX_JSON_SIZE 2000                // The maximum length of an MQTT message
 #define MAX_TOPIC_LENGTH 512                // The maximum length of a topic string
@@ -90,7 +91,7 @@ class MQTTComponent : public Module{
          * @param compName Name for the underlying module
          * @param internet_client The Client object from a internet platform
         */
-        MQTTComponent(const char* compName, Client& internet_client) : Module(compName), mqttClient(internet_client) {
+        MQTTComponent(const char* compName, NetworkComponent& internet_client) : Module(compName), internetClient(internet_client), mqttClient(internet_client.getClient()){
             /* Clear all connection parameters */
             memset(address, '\0', 100);
             port = 0;
@@ -115,6 +116,7 @@ class MQTTComponent : public Module{
 
     private:
         MqttClient mqttClient;                      // Instance of the MQTT client
+        NetworkComponent& internetClient;
 
         int keep_alive = 60000;                     // How long the broker should keep the connection open, defaults to a minute
         int maxRetries = 4;                         // How many times we want to retry the connection

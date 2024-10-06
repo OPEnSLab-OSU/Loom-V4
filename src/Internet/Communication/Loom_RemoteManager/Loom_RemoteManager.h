@@ -41,7 +41,7 @@ class Loom_RemoteManager : public MQTTComponent{
         */
         Loom_RemoteManager(
                 Manager& man, 
-                Client& internet_client, 
+                NetworkComponent& internet_client, 
                 const char* broker_address, 
                 int broker_port, 
                 const char* broker_user = "", 
@@ -54,7 +54,7 @@ class Loom_RemoteManager : public MQTTComponent{
          * @param man Reference to the manager
          * @param internet_client Reference to the internet Client object
         */
-        Loom_RemoteManager(Manager& man, Client& internet_client);
+        Loom_RemoteManager(Manager& man, NetworkComponent& internet_client);
 
         /**
          * Load the MQTT credentials from a JSON string, used to pull credentials from a file

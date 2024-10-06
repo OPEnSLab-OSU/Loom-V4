@@ -4,7 +4,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MongoDB::Loom_MongoDB(
                     Manager& man,
-                    Client& internet_client, 
+                    NetworkComponent& internet_client, 
                     const char* broker_address, 
                     int broker_port, 
                     const char* database_name, 
@@ -27,7 +27,7 @@ Loom_MongoDB::Loom_MongoDB(
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_MongoDB::Loom_MongoDB(Manager& man, Client& internet_client) : MQTTComponent("MongoDB", internet_client), manInst(&man){
+Loom_MongoDB::Loom_MongoDB(Manager& man, NetworkComponent& internet_client) : MQTTComponent("MongoDB", internet_client), manInst(&man){
     moduleInitialized = false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -135,7 +135,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
             
             // Check if we actually sent all the data successfully 
             if(allDataSuccess)
-                LOG(F("Data has been successfully sent!"));
+                LOG(F("Data has been successfully sent!")); 
             else{
                 WARNING(F("1 or more packets failed to send!"));
                 FUNCTION_END;
