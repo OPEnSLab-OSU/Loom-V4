@@ -10,6 +10,9 @@ Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, b
     pinMode(6, OUTPUT);                     // 5v power rail
     pinMode(LED_BUILTIN, OUTPUT);           // Status LED
 
+    v3 = false;
+    v5 = false;
+
     // Create the SD Manager if we want to use SD
     if(useSD){
         sdMan = new SDManager(manInst, sd_chip_select);
@@ -50,10 +53,6 @@ void Loom_Hypnos::package(){
     return;
 
 }
-
-int pin_inverse(int pinVal) {
-    return pinVal == HIGH ? LOW : HIGH;
-}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /* Power Rail Control Functionality */
@@ -63,38 +62,43 @@ void Loom_Hypnos::toggle_power_rails(HypnosPowerConfig config, bool enable)
 {
     FUNCTION_START;
      switch(config){
-        case HypnosPowerConfig::SET3_5:
-            v3 = pin_inverse(v3);
-            v5 = pin_inverse(v5);
-
-            digitalWrite(5, v3);
-            digitalWrite(6, v5);
-            break;
         case HypnosPowerConfig::SET3:
-            v3 = pin_inverse(v3);
-
-            digitalWrite(5, v3);
-            digitalWrite(6, v5);
+            if (enable) {
+                if (!v3) v3 = true;
+                digitalWrite(5, LOW);
+            }
+            else {
+                if (v3) v3 = false;
+                digitalWrite(5, HIGH);
+            };
             break;
         case HypnosPowerConfig::SET5:
-            v5 = pin_inverse(v5);
-
-            digitalWrite(5, v3);
-            digitalWrite(6, v5);
+            if (enable) {
+                if(!v5) v5 = true;
+                digitalWrite(6, HIGH);
+            }
+            else {
+                if(v5) v5 = false;
+                digitalWrite(6, LOW);
+            }
+            break;
+        case HypnosPowerConfig::SET3_5:
+            if (enable) {
+                if (!v3) v3 = true;
+                if (!v5) v5 = true;
+                digitalWrite(5, LOW);
+                digitalWrite(6, HIGH);
+            }
+            else {
+                if (v3) v3 = false;
+                if (v5) v5 = false;
+                digitalWrite(5, HIGH);
+                digitalWrite(6, LOW);
+            }
             break;
         case HypnosPowerConfig::SETNONE:
-            digitalWrite(5, v3);
-            digitalWrite(6, v5);
             break;
     }
-    if(enableSD){
-        // Disable SPI pins/SD chip select to save power
-        pinMode(23, INPUT);
-        pinMode(24, INPUT);
-        pinMode(sd_chip_select, INPUT);
-    }
-    if (enable)
-        sdMan->begin();
 
     FUNCTION_END;
     return;
@@ -108,6 +112,13 @@ void Loom_Hypnos::enable(HypnosPowerConfig config){
     toggle_power_rails(config, true);
     digitalWrite(LED_BUILTIN, HIGH);
 
+    if(enableSD){
+        pinMode(23, OUTPUT);
+        pinMode(24, OUTPUT);
+        pinMode(sd_chip_select, OUTPUT);
+        sdMan->begin();
+    }
+
     // If the RTC hasn't already been initialized then do so now
     if(!RTC_initialized)
         initializeRTC();
@@ -118,10 +129,16 @@ void Loom_Hypnos::enable(HypnosPowerConfig config){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::disable(HypnosPowerConfig config){
-
     // Toggle power for the necessary rails
     toggle_power_rails(config, false);
     digitalWrite(LED_BUILTIN, LOW);
+
+    if(enableSD){
+        // Disable SPI pins/SD chip select to save power
+        pinMode(23, INPUT);
+        pinMode(24, INPUT);
+        pinMode(sd_chip_select, INPUT);
+    }
 
     manInst->setEnableState(false);
 }
@@ -233,8 +250,6 @@ void Loom_Hypnos::initializeRTC(){
     snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
     LOG(output);
     FUNCTION_END;
-
-
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -435,13 +450,13 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
     uint32_t currentTime = RTC_DS.now().unixtime();
     hasAlarmTriggered = alarmedTime <= currentTime;
 
-    HypnosPowerConfig cfg = convert_to_power_config(disable33, disable5);
-
     // If it hasn't we should preform our sleep as before
     if(!hasAlarmTriggered){
-        pre_sleep(cfg);                         // Pre-sleep cleanup
+        HypnosPowerConfig cfg = convert_to_power_config(disable33, disable5);
+        pre_sleep(cfg);                                         // Pre-sleep cleanup
         shouldPowerUp = true;
         LowPower.sleep();                                       // Go to sleep and hang
+        post_sleep(waitForSerial, cfg);         // Wake up;
     }
     // If it has we want to trigger a resample which requires powering the sensors back up
     else{
@@ -452,31 +467,13 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
         }
     }
     // If the alarm hadn't triggered last time we want to wake up like normal
-    if(!hasAlarmTriggered)
-        post_sleep(waitForSerial, cfg);         // Wake up
-
-    char railStr3[26];
-    char railStr5[26];
-    if(v3 == LOW)
-        strcpy(railStr3, "v3 Status: LOW/Enabled");
-    else
-        strcpy(railStr3, "v3 Status: HIGH/Disabled");
-    if(v5 == LOW)
-        strcpy(railStr5, "v5 Status: LOW/Disabled");
-    else
-        strcpy(railStr5, "v5 Status: HIGH/Enabled");
-
-    railStr3[strlen(railStr3)] = '\0';
-    railStr5[strlen(railStr5)] = '\0';
-
-    LOG(railStr3);
-    LOG(railStr5);
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::pre_sleep(HypnosPowerConfig config){
+    LOG(F("--CALLED PRE-SLEEP"));
     // Close the serial connection and detach
     Serial.end();
     USBDevice.detach();
@@ -518,8 +515,29 @@ void Loom_Hypnos::post_sleep(bool waitForSerial, HypnosPowerConfig config){
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void Loom_Hypnos::print_rail_info()
+{
+    char railStr3[26];
+    char railStr5[26];
+    if(v3)
+        strcpy(railStr3, "v3 Status: LOW/Enabled");
+    else
+        strcpy(railStr3, "v3 Status: HIGH/Disabled");
+    if(v5)
+        strcpy(railStr5, "v5 Status: HIGH/Enabled");
+    else
+        strcpy(railStr5, "v5 Status: LOW/Disabled");;
+
+    railStr3[strlen(railStr3)] = '\0';
+    railStr5[strlen(railStr5)] = '\0';
+
+    LOG(railStr3);
+    LOG(railStr5);
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 HypnosPowerConfig Loom_Hypnos::convert_to_power_config(bool disable33, bool disable5) {
+    LOG(F("---CALLED CONVERT TO POWER CONFIG"));
     if(disable33 && disable5)
         return HypnosPowerConfig::SET3_5;
     else if(disable33 && !disable5)

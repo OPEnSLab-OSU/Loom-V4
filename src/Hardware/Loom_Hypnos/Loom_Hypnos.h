@@ -234,6 +234,8 @@ class Loom_Hypnos : public Module{
         /* Return initialization state of the RTC */
         bool isRTCInitialized() { return RTC_initialized; };
 
+        void print_rail_info();
+
     private:
 
         Manager* manInst = nullptr;                                                         // Instance of the manager
@@ -269,8 +271,8 @@ class Loom_Hypnos : public Module{
         DateTime time;                                                                      // UTC time
         DateTime localTime;                                                                 // Local time
 
-        int v5 = HIGH;
-        int v3 = LOW;
+        bool v5;
+        bool v3;
 
         /* Sleep functionality */
         void pre_sleep(HypnosPowerConfig config = HypnosPowerConfig::SETNONE);              // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
