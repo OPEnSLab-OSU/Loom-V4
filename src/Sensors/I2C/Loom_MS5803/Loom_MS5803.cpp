@@ -13,17 +13,18 @@ Loom_MS5803::Loom_MS5803(Manager& man, byte address, bool useMux) : I2CDevice("M
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MS5803::initialize(){
     FUNCTION_START;
-    // Setup is backwards apparently
-    //if(inst.initializeMS_5803(false)){
-        //ERROR(F("Failed to initialize sensor!"));
-        //moduleInitialized = false;
-    //}
-    //else{
-        //LOG(F("Successfully Initialized!"));
-        
-        // Wait 3 seconds after initializing
-        //delay(3000);
-    //}
+     //Setup is backwards apparently
+    if(inst.initializeMS_5803(false)){
+        ERROR(F("Failed to initialize sensor!"));
+        moduleInitialized = false;
+    }
+    else{
+        LOG(F("Successfully Initialized ms5803! Address: "));
+        Serial.println(module_address, DEC);
+
+         //Wait 3 seconds after initializing
+        delay(3000);
+    }
     inst.initializeMS_5803(false);
     FUNCTION_END;
 }
