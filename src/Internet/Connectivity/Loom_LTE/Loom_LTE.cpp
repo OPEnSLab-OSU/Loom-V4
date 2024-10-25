@@ -116,7 +116,7 @@ void Loom_LTE::power_up(){
         initialize();
     }
     
-    if(!firstInit && !isConnected() && moduleInitialized)
+    if(!firstInit && moduleInitialized)
             connect();
     
     FUNCTION_END;

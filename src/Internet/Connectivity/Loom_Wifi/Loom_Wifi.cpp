@@ -18,7 +18,7 @@ Loom_WIFI::Loom_WIFI(Manager& man, CommunicationMode mode, const char* name, con
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_WIFI::Loom_WIFI(Manager& man) : NetworkComponent("WiFi"), manInst(&man) {
+Loom_WIFI::Loom_WIFI(Manager& man) : NetworkComponent("WiFi"), manInst(&man), connectionRetries(5) {
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -146,6 +146,7 @@ void Loom_WIFI::connect_to_network(){
     // If we are logging into a network with a password
     if(strlen(wifi_password) > 0){
 
+        LOG(F("We are authenticating with a password..."));
         // While we are trying to connect to the wifi network
         while(WiFi.begin(wifi_name, wifi_password) != WL_CONNECTED){
             LOG(F("Attempting to connect to AP..."));
@@ -163,6 +164,7 @@ void Loom_WIFI::connect_to_network(){
                     snprintf(wifi_name, 100, "%s%i", manInst->get_device_name(), manInst->get_instance_num());
                     start_ap();
                 }
+
                 TIMER_ENABLE;
                 FUNCTION_END;
                 return;
@@ -232,6 +234,9 @@ void Loom_WIFI::power_down(){
         // Disconnect and end the Wifi when we power down the device
         WiFi.disconnect();
         WiFi.end();
+        // WIFI Pins: 8, 7 (Interrupt pin), 4, 2
+        // Configure as OUTPUT so they can't possibly trigger an interrupt
+        pinMode(7, OUTPUT);
         delay(1000);
     }
 }

@@ -97,12 +97,12 @@ bool SDManager::log(DateTime currentTime){
             }    
             
             snprintf_P(output, MAX_JSON_SIZE, PSTR("%s,%i,"), manInst->get_device_name(), manInst->get_instance_num());
+            
             // Write the Instance data that isn't included in the JSON packet
             myFile.print(output);
             memset(output, '\0', MAX_JSON_SIZE); // Clear array
 
             JsonObject document = manInst->getDocument().as<JsonObject>();
-            
 
             // If there is a key that contains timestamp data when need to include that separately 
             if(document.containsKey("timestamp")){
