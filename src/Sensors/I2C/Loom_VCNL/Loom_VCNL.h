@@ -19,7 +19,7 @@ class Loom_VCNL : public I2CDevice{
        // Manager controlled functions
         void measure() override;                               
         void initialize() override;    
-        void power_up() override;
+        void power_up() override {};
         void power_down() override {}; 
         void package() override;   
 
