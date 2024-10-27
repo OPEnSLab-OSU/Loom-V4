@@ -32,7 +32,7 @@ class Loom_VCNL : public I2CDevice{
         Loom_VCNL(
                       Manager& man,
                       int address = 0x13, 
-                      bool useMux = false, 
+                      bool useMux = false 
                 );
 
         /**
@@ -48,10 +48,10 @@ class Loom_VCNL : public I2CDevice{
 
     private:
         Manager* manInst;                       // Instance of the manager
-        Adafruit_VCNL4010 vcnl;                   // Adafruit VCNL4010 Sensor Object
+        VCNL4010 vcnl;                          // Adafruit VCNL4010 Sensor Object
 
-         uint16_t ambientLight = 0;              // ambient light value
+         uint16_t ambientLight = 0;             // ambient light value
          uint16_t proximity = 0;                // proximity value
 
-        bool initialized = true; // True until set to false
+        bool initialized = true;                // True until set to false
 };
