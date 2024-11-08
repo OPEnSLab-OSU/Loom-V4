@@ -121,8 +121,12 @@ class Loom_LTE : public NetworkComponent{
         };
 
     private:
-        void _pull_opens();
-        void _pull_sparkfun();
+
+
+        void powerBoardOn();
+        void powerBoardOff();
+
+        LTE_VERSION lteBoardVersion = SPARKFUN;
 
         Manager* manInst;                   // Instance of the manager
 
@@ -140,5 +144,5 @@ class Loom_LTE : public NetworkComponent{
         Loom_BatchSD* batch_sd = nullptr;   // If we are using batch publish
 
         bool powered = false;               // Device power status
-        std::function <void(void)> pull = nullptr; // Our pull function, dynamic to LTE variant
+
 };

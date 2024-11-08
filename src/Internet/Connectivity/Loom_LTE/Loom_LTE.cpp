@@ -8,13 +8,7 @@ Loom_LTE::Loom_LTE(Manager& man, const char* apn, const char* user, const char* 
     strncpy(this->gprsPass, pass, 100);
     this->powerPin = pin;
 
-    if (version == SPARKFUN) this->pull = std::bind(&Loom_LTE::_pull_sparkfun, this);
-    else if (version == OPENS) this->pull = std::bind(&Loom_LTE::_pull_opens, this);
-    else{
-        ERROR(F("Invalid LTE version specified! Defaulting to Sparkfun LTE"));
-        this->pull = std::bind(&Loom_LTE::_pull_sparkfun, this);
-    }
-
+    lteBoardVersion = version;
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -29,32 +23,33 @@ Loom_LTE::Loom_LTE(Manager& man) : NetworkComponent("LTE"), manInst(&man), modem
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LTE::_pull_sparkfun(){
-    int16_t waitMs = 3200;
-    if (powered)
-        waitMs = 1600;
+void Loom_LTE::powerBoardOn(){
 
-    pinMode(powerPin, OUTPUT);
-    digitalWrite(powerPin, LOW);
-    delay(waitMs);
-    pinMode(powerPin, INPUT);
-
-    return;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LTE::_pull_opens(){
-    // When we need to power up
-    if (!powered){
+    // Handle powering on the parkfun board
+    if(lteBoardVersion == SPARKFUN){
+        int16_t waitMs = 3000;
+        pinMode(powerPin, OUTPUT);
+        digitalWrite(powerPin, LOW);
+        delay(waitMs);
+        pinMode(powerPin, INPUT);
+    }
+    // Use opens board power on pin mode
+    else{
         pinMode(powerPin, OUTPUT);
         digitalWrite(powerPin, HIGH);
         delay(5000);
         pinMode(powerPin, INPUT);
     }
-    // When we need to power down
-    else {
-        pinMode(powerPin, OUTPUT);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LTE::powerBoardOff(){
+    // NOTE: We don't need to power off the sparkfun LTE board we can just use the power off command
+    // Handle powering off the parkfun board
+    if(lteBoardVersion == OPENS){
+         pinMode(powerPin, OUTPUT);
         digitalWrite(powerPin, LOW);
         delay(2500);
         pinMode(powerPin, INPUT);
@@ -139,8 +134,8 @@ void Loom_LTE::power_up(){
         LOG(F("Powering up GPRS Modem. This should take about 10 seconds..."));
         TIMER_DISABLE;
 
-        // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release the pin state
-        pull();
+        // Power on whatever the currently used LTE board is
+        powerBoardOn();
 
         // Delay an additional one second to allow communication to open up
         SerialAT.begin(9600);
@@ -169,8 +164,8 @@ void Loom_LTE::power_down(){
     if(moduleInitialized && powerUp){
         LOG(F("Powering down GPRS Modem. This should take about 5 seconds..."));
         modem.poweroff();
-        // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release the pin state
-        pull();
+        // // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release the pin state
+        // pull();
         powered = false;
 
         LOG(F("Powering down complete!"));

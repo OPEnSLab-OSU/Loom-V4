@@ -94,6 +94,80 @@ void Loom_Hypnos::disable(bool disable33, bool disable5){
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::is3VDisabled(DEVICE_STATE deviceState){
+   
+    switch (deviceState)
+    {
+        case ENTERING_SLEEP:
+            switch (sleepModePowerConfig)
+            {
+                case PR_3V_ON_5V_ON:
+                    return false;
+                case PR_3V_ON_5V_OFF:
+                    return false;
+                case PR_3V_OFF_5V_ON:
+                    return true;
+                case PR_3V_OFF_5V_OFF:
+                    return true;
+            }
+            break;
+        case EXITING_SLEEP:
+            switch (wakeModePowerConfig)
+                {
+                    case PR_3V_ON_5V_ON:
+                        return false;
+                    case PR_3V_ON_5V_OFF:
+                        return false;
+                    case PR_3V_OFF_5V_ON:
+                        return true;
+                    case PR_3V_OFF_5V_OFF:
+                        return true;
+                }
+            break;
+    }
+
+    // We should never make it here but enable the rail if we do
+    return false;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::is5VDisabled(DEVICE_STATE deviceState){
+    switch (deviceState)
+    {
+        case ENTERING_SLEEP:
+            switch (sleepModePowerConfig)
+            {
+                case PR_3V_ON_5V_ON:
+                    return false;
+                case PR_3V_OFF_5V_ON:
+                    return false;
+                case PR_3V_ON_5V_OFF:
+                    return true;
+                case PR_3V_OFF_5V_OFF:
+                    return true;
+            }
+            break;
+        case EXITING_SLEEP:
+            switch (wakeModePowerConfig)
+                {
+                    case PR_3V_ON_5V_ON:
+                        return false;
+                    case PR_3V_OFF_5V_ON:
+                        return false;
+                    case PR_3V_ON_5V_OFF:
+                        return true;
+                    case PR_3V_OFF_5V_OFF:
+                        return true;
+                }
+            break;
+    }
+
+    // We should never make it here but enable the rail if we do
+    return false;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /* Interrupt Functionality */
 
@@ -382,7 +456,7 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 /* Sleep Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
+void Loom_Hypnos::sleep(bool waitForSerial){
     // Try to power down the active modules
 
     // If the alarm set time is less than the current time we missed our next alarm so we need to set a new one, we need to check if we have powered on already so we dont use the RTC that isn't enabled
@@ -404,7 +478,7 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
 
     // If it hasn't we should preform our sleep as before
     if(!hasAlarmTriggered){
-        pre_sleep(disable33, disable5);                         // Pre-sleep cleanup
+        pre_sleep();                                            // Pre-sleep cleanup
         shouldPowerUp = true;
         LowPower.sleep();                                       // Go to sleep and hang
     }
@@ -419,13 +493,18 @@ void Loom_Hypnos::sleep(bool waitForSerial, bool disable33, bool disable5){
 
     // If the alarm hadn't triggered last time we want to wake up like normal
     if(!hasAlarmTriggered)
-        post_sleep(waitForSerial, disable33, disable5);         // Wake up
+        post_sleep(waitForSerial);         // Wake up
    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::pre_sleep(bool disable33, bool disable5){
+void Loom_Hypnos::pre_sleep(){
+    bool disable5 = is5VDisabled(DEVICE_STATE::ENTERING_SLEEP);
+    bool disable33 = is3VDisabled(DEVICE_STATE::ENTERING_SLEEP);
+    char output[OUTPUT_SIZE];
+    delay(1000);
+
     // Close the serial connection and detach
     Serial.end();
     USBDevice.detach();
@@ -439,14 +518,20 @@ void Loom_Hypnos::pre_sleep(bool disable33, bool disable5){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::post_sleep(bool waitForSerial, bool disable33, bool disable5){
+void Loom_Hypnos::post_sleep(bool waitForSerial){
     // Enable the Watchdog timer when waking up
     TIMER_ENABLE;
+    
     if(shouldPowerUp){
         USBDevice.attach();
         Serial.begin(115200);
 
-        enable(disable33, disable5); // Checks if the 3.3v or 5v are disabled and re-enables them
+        // Check if they are not disabled to see if they should be enabled
+        bool enable5 = !is5VDisabled(DEVICE_STATE::EXITING_SLEEP);
+        bool enable33 = !is3VDisabled(DEVICE_STATE::EXITING_SLEEP);
+
+        enable(enable33, enable5); // Checks if the 3.3v or 5v are disabled and re-enables them
+        delay(1000);
 
 
         // Clear any pending RTC alarms

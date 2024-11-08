@@ -17,6 +17,24 @@
 using InterruptCallbackFunction = void (*)();
 
 /**
+ * Enum to represent all power rail configurations
+ */
+enum POWERRAIL_CONFIG{
+    PR_3V_ON_5V_ON,            // Both the 3v and 5v rails are enabled
+    PR_3V_ON_5V_OFF,            // The 3v rail is enabled and the 5v rail is disabled
+    PR_3V_OFF_5V_ON,            // The 3v rail is disabled and the 5v rail is enabled
+    PR_3V_OFF_5V_OFF           // The 3v rail and the 5v rail are both disabled
+};
+
+/**
+ * Enum to easily see if we are going to sleep or waking up from sleep
+ */
+enum DEVICE_STATE{
+    ENTERING_SLEEP,
+    EXITING_SLEEP
+};
+
+/**
  * Tracks the hypnos version and matches the version with the correct chip select pin
  */
 enum HYPNOS_VERSION{
@@ -124,6 +142,18 @@ class Loom_Hypnos : public Module{
          */
         void disable(bool disable33 = true, bool disable5 = true);
 
+        /**
+         * Set the configuration for the power rails when going to sleep
+         * @param config The configuration that we wish to perform when entering sleep
+         */
+        void setSleepConfiguration(POWERRAIL_CONFIG config) { sleepModePowerConfig = config; };
+
+        /**
+         * Set the configuration for the power rails when waking up from sleep
+         * @param config The configuration that we wish to perform when exiting sleep
+         */
+        void setWakeConfiguration(POWERRAIL_CONFIG config) { wakeModePowerConfig = config; };
+
         /* SD Functionality */
 
         /**
@@ -163,10 +193,8 @@ class Loom_Hypnos : public Module{
         /**
          * Drops the Feather M0 and Hypnos board into a low power sleep waiting for an interrupt to wake it up and pull it out of sleep
          * @param waitForSerial Whether or not we should wait for the user to open the serial monitor before continuing execution
-	 * @param disable33 Whether or not to disable 3.3V rails
-	 * @param disable5 Whether or not to disable 5V and 12V rails
          */
-        void sleep(bool waitForSerial = false, bool disable33 = true, bool disable5 = true);
+        void sleep(bool waitForSerial = false);
 
         /**
          * Get the current time from the RTC
@@ -229,9 +257,30 @@ class Loom_Hypnos : public Module{
     private:
 
         Manager* manInst = nullptr;                                                         // Instance of the manager
-        SDManager* sdMan = nullptr;                                                         // SD Manager
         NetworkComponent* networkComponent = nullptr;                                       // Reference to a NetworkComponent
 
+        /* Power rail setup */
+        // Power rail configuration for when the device is awake
+        POWERRAIL_CONFIG wakeModePowerConfig = PR_3V_ON_5V_ON;
+
+        // Power rail configuration for the when the device is asleep
+        POWERRAIL_CONFIG sleepModePowerConfig = PR_3V_OFF_5V_OFF;
+
+        /**
+         * Based on the state we are entering determine the configuration of the 3V power rail
+         * @param state The new state teh device is entering
+         */
+        bool is3VDisabled(DEVICE_STATE deviceState);
+
+        /**
+         * Based on the state we are entering determine the configuration of the 5V power rail
+         * @param state The new state teh device is entering
+         */
+        bool is5VDisabled(DEVICE_STATE deviceState);
+    
+
+        /* SD configuration */
+        SDManager* sdMan = nullptr;                                                         // SD Manager
         int sd_chip_select;                                                                 // Pin that the SD card will use to communicate with the Hypnos
         bool enableSD;                                                                      // Specifies whether or not the SD card should be enabled on the Hypnos
 
@@ -262,8 +311,8 @@ class Loom_Hypnos : public Module{
         DateTime localTime;                                                                 // Local time
 
         /* Sleep functionality */
-        void pre_sleep(bool disable33=true, bool disable5=true);                            // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
-        void post_sleep(bool waitForSerial, bool disable33=true, bool disable5=true);       // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
+        void pre_sleep();                            // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
+        void post_sleep(bool waitForSerial);         // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
 
 
 
