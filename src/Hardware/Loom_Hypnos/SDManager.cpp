@@ -115,14 +115,18 @@ bool SDManager::log(DateTime currentTime){
 
                 // Format date with spaces when logging to SD
                 char *indexPointer = strchr(utcArr, 'Z');
-                utcArr[10] = ' ';
-                utcArr[indexPointer-utcArr] = '\0';
+                if(indexPointer != nullptr){
+                    utcArr[10] = ' ';
+                    utcArr[indexPointer-utcArr] = '\0';
+                }
 
                 
                 // Format date with spaces when logging to SD
                 indexPointer = strchr(localArr, 'Z');
-                localArr[10] = ' ';
-                localArr[indexPointer-localArr] = '\0';
+                if(indexPointer != nullptr){
+                    localArr[10] = ' ';
+                    localArr[indexPointer-localArr] = '\0';
+                }
 
                 // Format the time stamp in the CSV file
                 strncat(output, utcArr, MAX_JSON_SIZE);
