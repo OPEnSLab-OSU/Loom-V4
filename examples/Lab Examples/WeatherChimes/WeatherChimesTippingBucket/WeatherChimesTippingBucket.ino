@@ -15,6 +15,7 @@
 #include <Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h>
 #include <Sensors/I2C/Loom_MS5803/Loom_MS5803.h>
 #include <Hardware/Loom_TippingBucket/Loom_TippingBucket.h>
+#include <Sensors/Analog/Loom_Teros10/Loom_Teros10.h>
 
 #include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h>
 #include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
@@ -44,6 +45,7 @@ Loom_TSL2591 tsl(manager);
 Loom_MS5803 ms_water(manager, 119); // 119(0x77) if CSB=LOW external, 118(0x76) if CSB=HIGH on WC PCB
 Loom_MS5803 ms_air(manager, 118); // 118(0x76) if CSB=HIGH on WC PCB
 Loom_TippingBucket bucket(manager, COUNTER_TYPE::MANUAL, 0.01f);
+Loom_Teros10 t10(manager, A1);
 
 
 Loom_LTE lte(manager, "hologram", "", "");

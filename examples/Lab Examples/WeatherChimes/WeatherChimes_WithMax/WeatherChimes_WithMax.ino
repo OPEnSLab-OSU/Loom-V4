@@ -16,7 +16,6 @@
 #include <Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h>
 #include <Sensors/I2C/Loom_MS5803/Loom_MS5803.h>
 
-// If using Teros 10, Uncoment this line
 #include <Sensors/Analog/Loom_Teros10/Loom_Teros10.h>
 
 // If using SDI12, GS3 or Teros 11 or 12 uncoment this line
@@ -51,8 +50,7 @@ Loom_Max maxMsp(manager, wifi);
 
 int cycleCounter = 0;
 
-// If using Teros 10, Uncoment this line
-Loom_Teros10 t10(manager, A0);
+Loom_Teros10 t10(manager, A1);
 
 // If using SDI12, GS3 or Teros 11 or 12 uncoment this line
 //Loom_SDI12 sdi(manager, A0);
