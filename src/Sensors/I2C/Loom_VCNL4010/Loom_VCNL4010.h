@@ -48,8 +48,7 @@ class Loom_VCNL4010 : public I2CDevice{
 
     private:
         Manager* manInst;                       // Instance of the manager
-        VCNL4010 vcnl;                          // Adafruit VCNL4010 Sensor Object
-
+        Adafruit_VCNL4010 vcnl;                 // Adafruit VCNL4010 Sensor Object                         // I2C address of the sensor
          uint16_t ambientLight = 0;             // ambient light value
          uint16_t proximity = 0;                // proximity value
 

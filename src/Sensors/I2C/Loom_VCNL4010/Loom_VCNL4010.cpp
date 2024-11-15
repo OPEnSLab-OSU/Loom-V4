@@ -32,6 +32,7 @@ void Loom_VCNL4010::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_VCNL4010::measure() {
     FUNCTION_START;
+    printf("VCNL4010 Measure\n");
     if(moduleInitialized){
         // Get the current connection status
         bool connectionStatus = checkDeviceConnection();
@@ -48,10 +49,10 @@ void Loom_VCNL4010::measure() {
             FUNCTION_END;
             return;
         }
-   
+        LOG(F("Measure VCNL4010"));
         // Pull the data from the sensor
-        uint16_t ambientLight = vcnl.getAmbientLight();
-        uint16_t proximity = vcnl.getProximity();
+        uint16_t ambientLight = vcnl.readAmbient();
+        uint16_t proximity = vcnl.readProximity();
     }
     FUNCTION_END;
 }
