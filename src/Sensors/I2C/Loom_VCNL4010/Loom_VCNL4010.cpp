@@ -51,8 +51,9 @@ void Loom_VCNL4010::measure() {
         }
         LOG(F("Measure VCNL4010"));
         // Pull the data from the sensor
-        uint16_t ambientLight = vcnl.readAmbient();
-        uint16_t proximity = vcnl.readProximity();
+        ambientLight = vcnl.readAmbient();
+        proximity = vcnl.readProximity();
+
     }
     FUNCTION_END;
 }
@@ -65,7 +66,9 @@ void Loom_VCNL4010::package() {
         JsonObject json = manInst->get_data_object(getModuleName());
         json["Ambient Light"] = ambientLight;
         json["Proximity"] = proximity;
-    }
+    } 
+    Serial.println(ambientLight);
+    Serial.println(proximity);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
