@@ -1,39 +1,38 @@
-#include "Loom_MS5803.h"
+#include "Loom_VCNL4010.h"
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_MS5803::Loom_MS5803(Manager& man, byte address, bool useMux) : I2CDevice("MS5803"), manInst(&man), inst(address, 512) {
-    module_address = address;
+Loom_VCNL4010::Loom_VCNL4010(
+                            Manager& man,
+                            int address,
+                            bool useMux
+                    ) : I2CDevice("VCNL4010"), manInst(&man), vcnl() {
+                        module_address = address;
 
-    if(!useMux)
-        manInst->registerModule(this);
-}
+                        // Register the module with the manager
+                        if(!useMux)
+                            manInst->registerModule(this);
+                    }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_MS5803::initialize(){
+void Loom_VCNL4010::initialize() {
     FUNCTION_START;
-     //Setup is backwards apparently
-    if(inst.initializeMS_5803(false)){
-        ERROR(F("Failed to initialize sensor!"));
+    if(!vcnl.begin()){
+        ERROR(F("Failed to initialize VCNL4010! Check connections and try again..."));
         moduleInitialized = false;
     }
     else{
-        LOG(F("Successfully Initialized ms5803! Address: "));
-        Serial.println(module_address, DEC);
-
-         //Wait 3 seconds after initializing
-        delay(3000);
+        LOG(F("Successfully initialized VCNL4010!"));
     }
-    inst.initializeMS_5803(false);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_MS5803::measure(){
+void Loom_VCNL4010::measure() {
     FUNCTION_START;
-    // Make sure the sensor initialized correctly
+    printf("VCNL4010 Measure\n");
     if(moduleInitialized){
         // Get the current connection status
         bool connectionStatus = checkDeviceConnection();
@@ -50,36 +49,27 @@ void Loom_MS5803::measure(){
             FUNCTION_END;
             return;
         }
-    
-        // Reinit the module every measure
-        inst.initializeMS_5803(false);
-        delay(1000);
+        LOG(F("Measure VCNL4010"));
+        // Pull the data from the sensor
+        ambientLight = vcnl.readAmbient();
+        proximity = vcnl.readProximity();
 
-        inst.readSensor();
-        sensorData[0] = inst.temperature();
-        sensorData[1] = inst.pressure();
     }
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_MS5803::package(){
+void Loom_VCNL4010::package() {
     FUNCTION_START;
-    // Make sure the sensor initialized correctly
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        json["Temperature"] = sensorData[0];
-        json["Pressure"] = sensorData[1];
-    }
+        json["Ambient Light"] = ambientLight;
+        json["Proximity"] = proximity;
+    } 
+    Serial.println(ambientLight);
+    Serial.println(proximity);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_MS5803::power_up(){
-    FUNCTION_START;
-    initialize();
-    FUNCTION_END;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
