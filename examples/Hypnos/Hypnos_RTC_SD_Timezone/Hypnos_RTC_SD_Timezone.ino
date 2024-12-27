@@ -26,7 +26,7 @@ void setup() {
   manager.beginSerial();
 
   // Load the Timezone before we enable the hypnos
-  hypnos.getTimeZoneFromSD("Timezone.json");
+  hypnos.getConfigFromSD("HypnosConfig.json");
 
   // Enable the hypnos rails
   hypnos.enable();

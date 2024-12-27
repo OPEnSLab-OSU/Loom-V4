@@ -17,6 +17,24 @@
 using InterruptCallbackFunction = void (*)();
 
 /**
+ * Enum to represent all power rail configurations
+ */
+enum POWERRAIL_CONFIG{
+    PR_3V_ON_5V_ON,            // Both the 3v and 5v rails are enabled
+    PR_3V_ON_5V_OFF,            // The 3v rail is enabled and the 5v rail is disabled
+    PR_3V_OFF_5V_ON,            // The 3v rail is disabled and the 5v rail is enabled
+    PR_3V_OFF_5V_OFF           // The 3v rail and the 5v rail are both disabled
+};
+
+/**
+ * Enum to easily see if we are going to sleep or waking up from sleep
+ */
+enum DEVICE_STATE{
+    ENTERING_SLEEP,
+    EXITING_SLEEP
+};
+
+/**
  * Tracks the hypnos version and matches the version with the correct chip select pin
  */
 enum HYPNOS_VERSION{
@@ -29,29 +47,29 @@ enum HYPNOS_VERSION{
  * Time zone abbreviations that map to the hour offset from UTC
  */
 enum TIME_ZONE{
-    WAT = 1,
-    AT = 2,
-    AST = 4,
-    EST = 5,
-    CST = 6,
-    MST = 7,
-    PST = 8,
-    AKST = 9,
-    HST = 9,
-    SST = 11,
+    WAT = -1,
+    AT = -2,
+    AST = -4,
+    EST = -5,
+    CST = -6,
+    MST = -7,
+    PST = -8,
+    AKST = -9,
+    HST = -9,
+    SST = -11,
     GMT = 0,
-    BST = -1,
-    CET = -1,
-    EET = -2,
-    EEST = -3,
-    BRT = -3,
-    ZP4 = -4,
-    ZP5 = -5,
-    ZP6 = -6,
-    ZP7 = -7,
-    AWST = -8,
-    ACST = -9, // Half an hour off so its -9.5
-    AEST = -10
+    BST = 1,
+    CET = 1,
+    EET = 2,
+    EEST = 3,
+    BRT = 3,
+    ZP4 = 4,
+    ZP5 = 5,
+    ZP6 = 6,
+    ZP7 = 7,
+    AWST = 8,
+    ACST = 10, // Half an hour off so its -9.5
+    AEST = 10
 
 };
 
@@ -61,6 +79,13 @@ enum TIME_ZONE{
 enum HypnosInterruptType{
     SLEEP,
     OTHER
+};
+
+// Custom comparator for const char*, used for evaluating timezone name to timezone enum
+struct cmp_str {
+    bool operator()(const char* a, const char* b) const {
+        return strcmp(a, b) < 0;
+    }
 };
 
 /**
@@ -117,6 +142,18 @@ class Loom_Hypnos : public Module{
          */
         void disable(bool disable33 = true, bool disable5 = true);
 
+        /**
+         * Set the configuration for the power rails when going to sleep
+         * @param config The configuration that we wish to perform when entering sleep
+         */
+        void setSleepConfiguration(POWERRAIL_CONFIG config) { sleepModePowerConfig = config; };
+
+        /**
+         * Set the configuration for the power rails when waking up from sleep
+         * @param config The configuration that we wish to perform when exiting sleep
+         */
+        void setWakeConfiguration(POWERRAIL_CONFIG config) { wakeModePowerConfig = config; };
+
         /* SD Functionality */
 
         /**
@@ -156,10 +193,8 @@ class Loom_Hypnos : public Module{
         /**
          * Drops the Feather M0 and Hypnos board into a low power sleep waiting for an interrupt to wake it up and pull it out of sleep
          * @param waitForSerial Whether or not we should wait for the user to open the serial monitor before continuing execution
-	 * @param disable33 Whether or not to disable 3.3V rails
-	 * @param disable5 Whether or not to disable 5V and 12V rails
          */
-        void sleep(bool waitForSerial = false, bool disable33 = true, bool disable5 = true);
+        void sleep(bool waitForSerial = false);
 
         /**
          * Get the current time from the RTC
@@ -172,7 +207,7 @@ class Loom_Hypnos : public Module{
          * @param time The current time as a DateTime object
          * @param array The buffer to write the string to (size 21)
         */
-        void dateTime_toString(DateTime time, char array[21]);
+        void dateTime_toString(DateTime time, char array[21], bool isLocal = false);
 
         /**
          * Set a custom time on startup for the RTC to use
@@ -180,18 +215,11 @@ class Loom_Hypnos : public Module{
         void set_custom_time();
 
         /**
-         * Get a custom sleep interval specified in a file on the SD card
-         * If there was an error reading the file the sleep interval will be set to 20 minutes
-         * @param fileName Name of the file to pull information from
-         * @return TimeSpan with the parsed data
+         * Load the configuration for the hypnos from the SD card (Timezeone and sleep interval)
+         * @param fileName The file name on the root of the SD card to retrieve the information from
+         * @return Return the time span for which the device is intended to sleep for
          */
-        TimeSpan getSleepIntervalFromSD(const char* fileName);
-
-        /**
-         * Get and set the timezone for the Hypnos from the SD card
-         * @param fileName Name of the file to pull information from
-         */
-        void getTimeZoneFromSD(const char* fileName);
+        TimeSpan getConfigFromSD(const char* fileName);
 
         /**
          * Read file from SD
@@ -229,9 +257,30 @@ class Loom_Hypnos : public Module{
     private:
 
         Manager* manInst = nullptr;                                                         // Instance of the manager
-        SDManager* sdMan = nullptr;                                                         // SD Manager
-        NetworkComponent* networkComponent = nullptr;                                     // Reference to a NetworkComponent
+        NetworkComponent* networkComponent = nullptr;                                       // Reference to a NetworkComponent
 
+        /* Power rail setup */
+        // Power rail configuration for when the device is awake
+        POWERRAIL_CONFIG wakeModePowerConfig = PR_3V_ON_5V_ON;
+
+        // Power rail configuration for the when the device is asleep
+        POWERRAIL_CONFIG sleepModePowerConfig = PR_3V_OFF_5V_OFF;
+
+        /**
+         * Based on the state we are entering determine the configuration of the 3V power rail
+         * @param state The new state teh device is entering
+         */
+        bool is3VDisabled(DEVICE_STATE deviceState);
+
+        /**
+         * Based on the state we are entering determine the configuration of the 5V power rail
+         * @param state The new state teh device is entering
+         */
+        bool is5VDisabled(DEVICE_STATE deviceState);
+    
+
+        /* SD configuration */
+        SDManager* sdMan = nullptr;                                                         // SD Manager
         int sd_chip_select;                                                                 // Pin that the SD card will use to communicate with the Hypnos
         bool enableSD;                                                                      // Specifies whether or not the SD card should be enabled on the Hypnos
 
@@ -253,20 +302,17 @@ class Loom_Hypnos : public Module{
         void initializeRTC();                                                               // Initialize RTC
 
         void createTimezoneMap();                                                           // Map Timezone Strings to Timezone enum
-        std::map<const char*, TIME_ZONE> timezoneMap;                                       // String to Timezone enum
+        std::map<const char*, TIME_ZONE, cmp_str> timezoneMap;                              // String to Timezone enum, use custom compare to ensure that strings are compared correctly
 
-        DateTime get_utc_time();                                                            // Convert the local time to UTC, accounts for daylight savings zones
+        DateTime getLocalTime(DateTime time);                                               // Convert a given UTC time to local time
         TIME_ZONE timezone;                                                                 // Timezone the RTC was set to
-
-
 
         DateTime time;                                                                      // UTC time
         DateTime localTime;                                                                 // Local time
 
         /* Sleep functionality */
-
-        void pre_sleep(bool disable33=true, bool disable5=true);                                                                   // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
-        void post_sleep(bool waitForSerial, bool disable33=true, bool disable5=true);                                                // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
+        void pre_sleep();                            // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
+        void post_sleep(bool waitForSerial);         // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
 
 
 

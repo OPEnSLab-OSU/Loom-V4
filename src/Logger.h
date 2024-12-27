@@ -265,7 +265,7 @@ class Logger{
 
         /**
          * Marks the end of a function, logs summary to SD card
-         * @param ret Openly typed variable to show the return type of the function
+         * @param freeMemory The amount of available memory on the device
         */
         void endFunction(int freeMemory){
             if(enableFunctionSummaries){

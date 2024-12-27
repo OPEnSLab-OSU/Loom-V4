@@ -2,12 +2,13 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_LTE::Loom_LTE(Manager& man, const char* apn, const char* user, const char* pass, const int pin) : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem){
+Loom_LTE::Loom_LTE(Manager& man, const char* apn, const char* user, const char* pass, const int pin, LTE_VERSION version) : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem){
     strncpy(this->APN, apn, 100);
     strncpy(this->gprsUser, user, 100);
     strncpy(this->gprsPass, pass, 100);
     this->powerPin = pin;
 
+    lteBoardVersion = version;
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -22,12 +23,47 @@ Loom_LTE::Loom_LTE(Manager& man) : NetworkComponent("LTE"), manInst(&man), modem
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LTE::powerBoardOn(){
+
+    // Handle powering on the parkfun board
+    if(lteBoardVersion == SPARKFUN){
+        int16_t waitMs = 3000;
+        pinMode(powerPin, OUTPUT);
+        digitalWrite(powerPin, LOW);
+        delay(waitMs);
+        pinMode(powerPin, INPUT);
+    }
+    // Use opens board power on pin mode
+    else{
+        pinMode(powerPin, OUTPUT);
+        digitalWrite(powerPin, HIGH);
+        delay(5000);
+        pinMode(powerPin, INPUT);
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LTE::powerBoardOff(){
+    // NOTE: We don't need to power off the sparkfun LTE board we can just use the power off command
+    // Handle powering off the parkfun board
+    if(lteBoardVersion == OPENS){
+         pinMode(powerPin, OUTPUT);
+        digitalWrite(powerPin, LOW);
+        delay(2500);
+        pinMode(powerPin, INPUT);
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::initialize(){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     char ip[16];
     // Set the pin to output so we can write to it
-    pinMode(powerPin, OUTPUT);
+    pinMode(powerPin, INPUT);
 
     // Start up the module
     power_up();
@@ -92,17 +128,21 @@ void Loom_LTE::power_up(){
             powerUp = true;
         }
     }
-        
+
     // If not connected to a network we want to connect
     if(moduleInitialized){
         LOG(F("Powering up GPRS Modem. This should take about 10 seconds..."));
         TIMER_DISABLE;
-        digitalWrite(powerPin, LOW);
-        delay(10000);
+
+        // Power on whatever the currently used LTE board is
+        powerBoardOn();
+
+        // Delay an additional one second to allow communication to open up
         SerialAT.begin(9600);
-        delay(6000);
+        delay(1000);
         modem.restart();
         LOG(F("Powering up complete!"));
+        powered = true;
         TIMER_ENABLE;
     }
     // If the module isn't initialized we want to try again
@@ -110,11 +150,11 @@ void Loom_LTE::power_up(){
         initialize();
     }
     
-    if(!firstInit && !isConnected() && moduleInitialized)
+    if(!firstInit && moduleInitialized)
             connect();
-    
+
     FUNCTION_END;
-    
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -124,8 +164,10 @@ void Loom_LTE::power_down(){
     if(moduleInitialized && powerUp){
         LOG(F("Powering down GPRS Modem. This should take about 5 seconds..."));
         modem.poweroff();
-        digitalWrite(powerPin, HIGH);
-        delay(5000);
+        // // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release the pin state
+        // pull();
+        powered = false;
+
         LOG(F("Powering down complete!"));
     }
     FUNCTION_END;
@@ -171,6 +213,7 @@ bool Loom_LTE::connect(){
         LOG(output);
         if(modem.gprsConnect(APN, gprsUser, gprsPass)){
             LOG(F("Successfully Connected!"));
+            delay(6000);
             FUNCTION_END;
             TIMER_ENABLE;
             return true;
@@ -210,7 +253,7 @@ bool Loom_LTE::verifyConnection(){
     FUNCTION_START;
     bool returnStatus =  false;
     LOG(F("Attempting to verify internet connection..."));
-    
+
     // Connect to TinyGSM's creator's website
     if(!client.connect("vsh.pp.ua", 80)){
         ERROR(F("Failed to contact TinyGSM example your internet connection may not be completely established!"));
@@ -230,7 +273,7 @@ bool Loom_LTE::verifyConnection(){
         uint32_t timeout = millis();
         while (client.connected() && millis() - timeout < 10000L) {
             // Print available data
-            while (client.available()) {
+            while (client.available() && millis() - timeout < 10000L) {
                 char c = client.read();
                 Serial.print(c);
                 timeout = millis();
@@ -243,7 +286,7 @@ bool Loom_LTE::verifyConnection(){
     TIMER_RESET;
     FUNCTION_END;
     return true;
-    
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -279,7 +322,7 @@ void Loom_LTE::loadConfigFromJSON(char* json){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-TinyGsmClient& Loom_LTE::getClient() { return client; }
+Client* Loom_LTE::getClient() { return (Client*)&client; }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -289,9 +332,8 @@ bool Loom_LTE::getNetworkTime(int* year, int* month, int* day, int* hour, int* m
 
     // Pull the current values from the GSM
     if(modem.getNetworkTime(year, month, day, hour, minute, second, tz)){
-
-        // Create a date time object and then subtract the TimeZone from the date time setting all the pointers to the new values and returning
-        DateTime time = DateTime(*year, *month, *day, *hour, *minute, *second) - TimeSpan(0, tzInt, 0, 0);
+        // Create a date time object and then add the TimeZone back to get UTC time
+        DateTime time = DateTime(*year, *month, *day, *hour, *minute, *second) + TimeSpan(0,((int)(*tz))*(-1),0,0);
         *year = time.year();
         *month = time.month();
         *day = time.day();

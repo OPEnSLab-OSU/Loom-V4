@@ -25,14 +25,12 @@ void isrTrigger(){
 
 void setup() {
 
-  // Start and wait for the user to open the Serial monitor
-  Serial.begin(115200);
-  while(!Serial);
+  manager.beginSerial();
 
   // Enable the hypnos rails
   hypnos.enable();
 
-  sleepInterval = hypnos.getSleepIntervalFromSD("SD_config.json");
+  sleepInterval = hypnos.getConfigFromSD("HypnosConfig.json");
 
   // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);

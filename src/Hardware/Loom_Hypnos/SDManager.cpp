@@ -97,12 +97,12 @@ bool SDManager::log(DateTime currentTime){
             }    
             
             snprintf_P(output, MAX_JSON_SIZE, PSTR("%s,%i,"), manInst->get_device_name(), manInst->get_instance_num());
+            
             // Write the Instance data that isn't included in the JSON packet
             myFile.print(output);
             memset(output, '\0', MAX_JSON_SIZE); // Clear array
 
             JsonObject document = manInst->getDocument().as<JsonObject>();
-            
 
             // If there is a key that contains timestamp data when need to include that separately 
             if(document.containsKey("timestamp")){
@@ -115,14 +115,18 @@ bool SDManager::log(DateTime currentTime){
 
                 // Format date with spaces when logging to SD
                 char *indexPointer = strchr(utcArr, 'Z');
-                utcArr[10] = ' ';
-                utcArr[indexPointer-utcArr] = '\0';
+                if(indexPointer != nullptr){
+                    utcArr[10] = ' ';
+                    utcArr[indexPointer-utcArr] = '\0';
+                }
 
                 
                 // Format date with spaces when logging to SD
                 indexPointer = strchr(localArr, 'Z');
-                localArr[10] = ' ';
-                localArr[indexPointer-localArr] = '\0';
+                if(indexPointer != nullptr){
+                    localArr[10] = ' ';
+                    localArr[indexPointer-localArr] = '\0';
+                }
 
                 // Format the time stamp in the CSV file
                 strncat(output, utcArr, MAX_JSON_SIZE);
