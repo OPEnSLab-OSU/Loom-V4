@@ -257,7 +257,7 @@
           },
           "url": "https://github.com/OPEnSLab-OSU/Loom-V4/releases/download/v4.7/loom4.zip",
           "archiveFileName": "loom4.zip",
-          "checksum": "SHA-256:da12787eb9c6561db5f5ae1ec1fc044ddd2bfd8c553d4b11ed9201669a2bc669",
+          "checksum": "SHA-256:3848aa6147532bfc09da71316816a771fb21bb07cb4328c4953c52c82b5ff680",
           "size": "29557804",
           "boards": [
             {
