@@ -151,7 +151,6 @@ bool Loom_LoRa::recv(int waitTime){
     }
     else{
         recvStatus = manager->recvfromAckTimeout(buffer, &len, waitTime, &fromAddress);
-        
     }
 
     // If a packet was received 
