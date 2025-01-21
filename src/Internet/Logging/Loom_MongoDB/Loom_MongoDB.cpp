@@ -76,9 +76,9 @@ bool Loom_MongoDB::publish(){
 bool Loom_MongoDB::publishMetadata(char* metadata){
     FUNCTION_START;
     
-    char jsonString[MAX_JSON_SIZE];
     if(moduleInitialized){
 
+        char jsonString[MAX_JSON_SIZE];
         TIMER_DISABLE;
         
         if(strlen(projectServer) > 0)
@@ -93,10 +93,10 @@ bool Loom_MongoDB::publishMetadata(char* metadata){
             FUNCTION_END;
             return false;
         }
-
+        
+        LOG(F("Attempting to publish metadata!")); 
         /* Attempt to publish the data to the given topic */
-        manInst->getJSONString(jsonString);
-        if(!publishMessage(topic, jsonString)){
+        if(!publishMessage(topic, metadata)){
             FUNCTION_END;
             return false;
         }
