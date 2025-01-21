@@ -73,6 +73,46 @@ bool Loom_MongoDB::publish(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_MongoDB::publishMetadata(char* metadata){
+    FUNCTION_START;
+    
+    char jsonString[MAX_JSON_SIZE];
+    if(moduleInitialized){
+
+        TIMER_DISABLE;
+        
+        if(strlen(projectServer) > 0)
+            // Formulate a topic to publish on with the format "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
+            snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s/%s%i"), projectServer, database_name, manInst->get_device_name(), manInst->get_instance_num());
+        else
+            // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
+            snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
+
+        /* Attempt to connect to the broker if it fails we should just return */
+        if(!connectToBroker()){
+            FUNCTION_END;
+            return false;
+        }
+
+        /* Attempt to publish the data to the given topic */
+        manInst->getJSONString(jsonString);
+        if(!publishMessage(topic, jsonString)){
+            FUNCTION_END;
+            return false;
+        }
+    }
+    else{
+        WARNING(F("Module not initialized! If using credentials from SD make sure they are loaded first."));
+        FUNCTION_END;
+        return false;
+    }
+    FUNCTION_END;
+    TIMER_ENABLE;
+    return true;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
