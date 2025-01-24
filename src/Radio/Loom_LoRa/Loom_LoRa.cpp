@@ -35,6 +35,7 @@ void Loom_LoRa::initialize(){
     // Initialize the radio manager
     if(manager->init()){
         LOG(F("Radio manager successfully initialized!"));
+        LOG(F(this->getModuleName()));
     }
     else{
         ERROR(F("Radio manager failed to initialize!"));
@@ -92,7 +93,6 @@ void Loom_LoRa::initialize(){
 void Loom_LoRa::package(){
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        json["RSSI"] = getSignalStrength();
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -353,41 +353,66 @@ bool Loom_LoRa::receiveBatch(uint maxWaitTime, int* numberOfPackets){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LoRa::receivePartial(uint waitTime){
+bool Loom_LoRa::receivePartial(uint waitTime) {
     char output[OUTPUT_SIZE];
 
-    if(moduleInitialized){
-        // Gets the number of additional packets the hub should expect
+    if (moduleInitialized) {
+        // Get the number of packets expected
         int numPackets = manInst->getDocument()["numPackets"].as<int>();
         JsonArray contents = manInst->getDocument()["contents"].as<JsonArray>();
         StaticJsonDocument<300> tempDoc;
 
+        // Ensure the contents array can hold all fragments
+        while (contents.size() < numPackets) {
+            contents.add(JsonObject());
+        }
 
-        // Loop for the given number of packets we are expecting
-        for(int i = 0; i < numPackets; i++){
-            snprintf(output, OUTPUT_SIZE, "Waiting for packet %i / %i",i+1, numPackets);
+        // Loop through the expected number of packets
+        for (int i = 0; i < numPackets; i++) {
+            snprintf(output, OUTPUT_SIZE, "Waiting for packet %i / %i", i + 1, numPackets);
             LOG(output);
 
-            // If a packet was received 
-            if(recv(waitTime)){
-                snprintf(output, OUTPUT_SIZE, "Fragment received %i / %i", i+1, numPackets);
+            // If a packet was received
+            if (recv(waitTime)) {
+                snprintf(output, OUTPUT_SIZE, "Fragment received %i / %i", i + 1, numPackets);
                 LOG(output);
-                
-                deserializeJson(tempDoc, (const char*)recvData, RECV_DATA_SIZE); //must cast to const char* to avoid no-copy behavior
-                // Add the current module to the overall contents array
-                contents.add(tempDoc);
-            }
-            else{
+
+                // Parse the received data into tempDoc
+                deserializeJson(tempDoc, (const char*)recvData, RECV_DATA_SIZE);
+
+                // Get the fragment ID
+                int fragmentID = tempDoc["fragment_id"].as<int>();
+
+                // Ensure the fragment ID is within bounds
+                if (fragmentID >= 0 && fragmentID < numPackets) {
+                    // Assign the fragment to the correct index in the contents array
+                    contents[fragmentID] = tempDoc.as<JsonObject>();
+                } else {
+                    snprintf(output, OUTPUT_SIZE, "Invalid fragment ID: %i", fragmentID);
+                    WARNING(output);
+                }
+            } else {
                 ERROR(F("No Packet Received"));
             }
         }
 
+        // Verify that all fragments are received
+        for (int i = 0; i < numPackets; i++) {
+            if (contents[i].isNull()) {
+                snprintf(output, OUTPUT_SIZE, "Missing fragment %i", i);
+                WARNING(output);
+                return false;
+            }
+        }
+
+        LOG(F("All fragments successfully received and ordered"));
         return true;
-    }else{
+    } else {
         ERROR(F("Module not initialized!"));
         return false;
     }
 }
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -451,6 +476,10 @@ bool Loom_LoRa::sendPartial(const uint8_t destinationAddress, JsonObject json){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::sendModules(JsonObject json, int numModules, const uint8_t destinationAddress){
     char output[OUTPUT_SIZE];
+
+    // Assign a unique identifier for each sender 
+    const char* senderID = "unique_sender_id"; 
+
     /*
         This is how each module will be sent across
         {
@@ -469,6 +498,10 @@ bool Loom_LoRa::sendModules(JsonObject json, int numModules, const uint8_t desti
         // Set the module key to whatever the main one is
         JsonArray contents = manInst->getDocument()["contents"].as<JsonArray>();
         sendDoc.set(contents[i].as<JsonObject>());
+
+        // Add sender ID and fragment ID to each packet
+        sendDoc["sender_id"] = senderID;
+        sendDoc["fragment_id"] = i;
 
         snprintf(output, OUTPUT_SIZE, "Fragmented Packet Being Sent (%i/%i)", i+1, numModules);
         LOG(output);
