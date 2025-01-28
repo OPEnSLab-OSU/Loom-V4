@@ -366,7 +366,8 @@ bool Loom_LoRa::receivePartial(uint waitTime) {
             int fragmentID;
             JsonObject data;
         };
-        std::vector<Packet> receivedPackets;
+        Packet receivedPackets[numPackets];
+        int packetCount = 0;
 
         // Ensure the contents array can hold all fragments
         while (contents.size() < numPackets) {
@@ -388,8 +389,10 @@ bool Loom_LoRa::receivePartial(uint waitTime) {
                 int senderID = tempDoc["sender_id"].as<int>();
 
                 if (fragmentID >= 0 && fragmentID < numPackets) {
-                    Packet packet = { senderID, fragmentID, tempDoc.as<JsonObject>() };
-                    receivedPackets.push_back(packet);
+                    receivedPackets[packetCount].senderID = senderID;
+                    receivedPackets[packetCount].fragmentID = fragmentID;
+                    receivedPackets[packetCount].data = tempDoc.as<JsonObject>();
+                    packetCount++;
                 } else {
                     snprintf(output, OUTPUT_SIZE, "Invalid fragment ID: %i", fragmentID);
                     WARNING(output);
@@ -399,14 +402,22 @@ bool Loom_LoRa::receivePartial(uint waitTime) {
             }
         }
 
-        // Sort received packets by sender_id and fragment_id
-        std::sort(receivedPackets.begin(), receivedPackets.end(), [](const Packet& a, const Packet& b) {
-            return (a.senderID < b.senderID) || (a.senderID == b.senderID && a.fragmentID < b.fragmentID);
-        });
+        // Manual sorting based on senderID and fragmentID
+        for (int i = 0; i < packetCount - 1; i++) {
+            for (int j = 0; j < packetCount - i - 1; j++) {
+                if ((receivedPackets[j].senderID > receivedPackets[j + 1].senderID) ||
+                    (receivedPackets[j].senderID == receivedPackets[j + 1].senderID &&
+                     receivedPackets[j].fragmentID > receivedPackets[j + 1].fragmentID)) {
+                    Packet temp = receivedPackets[j];
+                    receivedPackets[j] = receivedPackets[j + 1];
+                    receivedPackets[j + 1] = temp;
+                }
+            }
+        }
 
         // Assign sorted packets to the contents array
-        for (const auto& packet : receivedPackets) {
-            contents[packet.fragmentID] = packet.data;
+        for (int i = 0; i < packetCount; i++) {
+            contents[receivedPackets[i].fragmentID] = receivedPackets[i].data;
         }
 
         // Verify that all fragments are received
