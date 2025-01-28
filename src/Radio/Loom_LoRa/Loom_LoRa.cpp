@@ -357,10 +357,16 @@ bool Loom_LoRa::receivePartial(uint waitTime) {
     char output[OUTPUT_SIZE];
 
     if (moduleInitialized) {
-        // Get the number of packets expected
         int numPackets = manInst->getDocument()["numPackets"].as<int>();
         JsonArray contents = manInst->getDocument()["contents"].as<JsonArray>();
         StaticJsonDocument<300> tempDoc;
+
+        struct Packet {
+            int senderID;
+            int fragmentID;
+            JsonObject data;
+        };
+        std::vector<Packet> receivedPackets;
 
         // Ensure the contents array can hold all fragments
         while (contents.size() < numPackets) {
@@ -372,21 +378,18 @@ bool Loom_LoRa::receivePartial(uint waitTime) {
             snprintf(output, OUTPUT_SIZE, "Waiting for packet %i / %i", i + 1, numPackets);
             LOG(output);
 
-            // If a packet was received
             if (recv(waitTime)) {
                 snprintf(output, OUTPUT_SIZE, "Fragment received %i / %i", i + 1, numPackets);
                 LOG(output);
 
-                // Parse the received data into tempDoc
                 deserializeJson(tempDoc, (const char*)recvData, RECV_DATA_SIZE);
 
-                // Get the fragment ID
                 int fragmentID = tempDoc["fragment_id"].as<int>();
+                int senderID = tempDoc["sender_id"].as<int>();
 
-                // Ensure the fragment ID is within bounds
                 if (fragmentID >= 0 && fragmentID < numPackets) {
-                    // Assign the fragment to the correct index in the contents array
-                    contents[fragmentID] = tempDoc.as<JsonObject>();
+                    Packet packet = { senderID, fragmentID, tempDoc.as<JsonObject>() };
+                    receivedPackets.push_back(packet);
                 } else {
                     snprintf(output, OUTPUT_SIZE, "Invalid fragment ID: %i", fragmentID);
                     WARNING(output);
@@ -394,6 +397,16 @@ bool Loom_LoRa::receivePartial(uint waitTime) {
             } else {
                 ERROR(F("No Packet Received"));
             }
+        }
+
+        // Sort received packets by sender_id and fragment_id
+        std::sort(receivedPackets.begin(), receivedPackets.end(), [](const Packet& a, const Packet& b) {
+            return (a.senderID < b.senderID) || (a.senderID == b.senderID && a.fragmentID < b.fragmentID);
+        });
+
+        // Assign sorted packets to the contents array
+        for (const auto& packet : receivedPackets) {
+            contents[packet.fragmentID] = packet.data;
         }
 
         // Verify that all fragments are received
@@ -405,13 +418,14 @@ bool Loom_LoRa::receivePartial(uint waitTime) {
             }
         }
 
-        LOG(F("All fragments successfully received and ordered"));
+        LOG(F("All fragments successfully received, sorted, and ordered"));
         return true;
     } else {
         ERROR(F("Module not initialized!"));
         return false;
     }
 }
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
