@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ArduinoJson.hpp"
+#include "ArduinoJson/Object/JsonObject.hpp"
 #include <ArduinoJson.h>
 #include <Logger.h>
 #include <RHReliableDatagram.h>
@@ -32,14 +34,33 @@ protected:
     void measure() override {};
 
 public:
+    /**
+     * Construct a new LoRa driver.
+     *
+     * @param manager Reference to the manager
+     * @param address This device's LoRa address
+     * @param powerLevel Transmission power level, low to high
+     * @param retryCount Number of attempts to make before failing
+     * @param retryTimeout Length of time between retransmissions (ms)
+     */ 
     Loom_LoRa_Sketch(
         Manager& manager,
         const uint8_t address,
-        const uint8_t powerLevel = 23,
-        const uint8_t retryCount = 3,
-        const uint16_t retryTimeout = 200
+        const uint8_t powerLevel,
+        const uint8_t retryCount,
+        const uint16_t retryTimeout
     );
 
+    /**
+     * Construct a new LoRa driver, using the manager instance number as the
+     * address.
+     *
+     * @param manager Reference to the manager
+     * @param address This device's LoRa address
+     * @param powerLevel Transmission power level, low to high
+     * @param retryCount Number of attempts to make before failing
+     * @param retryTimeout Length of time between retransmissions (ms)
+     */ 
     Loom_LoRa_Sketch(
         Manager& manager,
         const uint8_t powerLevel = 23,
@@ -69,21 +90,37 @@ public:
      */ 
     void package() override;
 
+    // TODO(rwheary): maybe this should be fixed
     /**
-     * Receive a JSON packet from another radio, blocking until the wait time expires or a packet is received.
-     * Note that this method may block for an arbitrary time to receive a fragmented packet. If this is undesireable then open a PR I guess?
-     * @param maxWaitTime The maximum time to wait before continuing execution (Set to 0 for non-blocking)
+     * Receive a JSON packet from another radio, blocking until the wait time 
+     * expires or a packet is received. Note that this method may block for an
+     * arbitrary time to receive a fragmented packet. If this is undesireable
+     * then open a PR I guess?
+     *
+     * @param maxWaitTime The maximum time to wait before continuing execution 
+     *                    (Set to 0 for non-blocking)
      */
     bool receive(uint timeout);
 
     /**
-     * Send the current JSON data to the specified address
-     * @param destinationAddress The address we want to send the data to
+     * Send the current JSON data to the specified address.
+     *
+     * @param destinationAddress The address to send the data to.
      */ 
     bool send(const uint8_t destinationAddress);
 
+    /**
+     * Send an arbitrary JSON object to the specified address.
+     *
+     * @param destinationAddress The address to send the data to.
+     * @param json The JSON object to transmit.
+     */ 
+    bool send(const uint8_t destinationAddress, JsonObject json);
+
 private:
-    bool receiveFromLoRa(uint8_t *buf, uint8_t buf_size, uint timeout, uint8_t *fromAddress);
+    // receives some data from lora
+    bool receiveFromLoRa(uint8_t *buf, uint8_t buf_size, uint timeout, 
+                         uint8_t *fromAddress);
     bool receiveFrag(uint timeout, bool *isReady);
 
     // returns whether a packet has been loaded into the global document
@@ -91,6 +128,12 @@ private:
     bool handleFragBody(JsonDocument &workingDoc, uint8_t fromAddress);
     bool handleSingleFrag(JsonDocument &workingDoc);
     bool handleLostFrag(JsonDocument &workingDoc, uint8_t fromAddress);
+
+    bool transmitToLoRa(JsonObject json, uint8_t destinationAddress);
+
+    bool sendFullPacket(JsonObject json, uint8_t destinationAddress);
+    bool sendFragmentedPacket(JsonObject json, uint8_t destinationAddress);
+    bool sendPacketHeader(JsonObject json, uint8_t destinationAddress);
 
     char logOutput[OUTPUT_SIZE] = {};
 
@@ -100,16 +143,16 @@ private:
     
     bool poweredUp = true;
 
-    uint8_t deviceAddress;             // Device address
-    int16_t signalStrength;            // Strength of the signal received
+    uint8_t deviceAddress;      // Device address
+    int16_t signalStrength;     // Strength of the signal received
 
-    uint8_t powerLevel;                // The power level we want to transmit at
-    uint8_t sendRetryCount;            // Number transmission retries allowed
-    uint8_t receiveRetryCount;         // Number fragment receive retries allowed
-    uint16_t retryTimeout;             // Delay between retries (MS)
+    uint8_t powerLevel;         // The power level we want to transmit at
+    uint8_t sendRetryCount;     // Number transmission retries allowed
+    uint8_t receiveRetryCount;  // Number fragment receive retries allowed
+    uint16_t retryTimeout;      // Delay between retries (MS)
 
-    // TODO(rwheary): This could result in catastrophic memory leaks in the worst
-    // case. Should probably have a mechanism to handle that.
+    // TODO(rwheary): This could result in catastrophic memory leaks in the 
+    // worst case. Should probably have a mechanism to handle that.
     std::unordered_map<uint8_t, PartialPacket> frags; // Partial packets sorted by address
 };
 
