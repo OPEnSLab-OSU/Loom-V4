@@ -1,8 +1,10 @@
 #include "Loom_LoRa_Sketch.h"
+#include "ArduinoJson.hpp"
 #include "Logger.h"
 #include "Module.h"
 #include <cstdio>
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_LoRa_Sketch::Loom_LoRa_Sketch(
     Manager& manager,
     const uint8_t address, 
@@ -18,33 +20,34 @@ Loom_LoRa_Sketch::Loom_LoRa_Sketch(
         receiveRetryCount(retryCount),
         retryTimeout(retryTimeout)
 {
-    this->radioManager = new RHReliableDatagram(radioDriver, this->deviceAddress);
+    this->radioManager = new RHReliableDatagram(
+        radioDriver, this->deviceAddress);
     this->manager->registerModule(this);
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_LoRa_Sketch::Loom_LoRa_Sketch(
     Manager& manager,
     const uint8_t powerLevel, 
     const uint8_t retryCount, 
     const uint16_t retryTimeout
-) : Module("LoRa"),
-        manager(&manager), 
-        radioDriver{RFM95_CS, RFM95_INT},
-        deviceAddress(0),
-        powerLevel(powerLevel),
-        sendRetryCount(retryCount),
-        receiveRetryCount(retryCount),
-        retryTimeout(retryTimeout)
-{
-    this->deviceAddress = this->manager->get_instance_num();
-    this->radioManager = new RHReliableDatagram(radioDriver, this->deviceAddress);
-    this->manager->registerModule(this);
-}
+) : Loom_LoRa_Sketch(
+    manager, 
+    manager.get_instance_num(), 
+    powerLevel, 
+    retryCount, 
+    retryTimeout
+) {}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_LoRa_Sketch::~Loom_LoRa_Sketch() {
     delete radioManager;
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LoRa_Sketch::initialize() {
     // Set CS pin as pull up
     pinMode(RFM95_CS, INPUT_PULLUP);
@@ -104,19 +107,25 @@ void Loom_LoRa_Sketch::initialize() {
 	radioDriver.setCodingRate4(5);	
 	radioDriver.sleep();
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LoRa_Sketch::power_up() {
     if (poweredUp) {
         radioDriver.available();
     }
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LoRa_Sketch::power_down() {
     if (poweredUp) {
         radioDriver.sleep();
     }
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LoRa_Sketch::package() {
     if (!moduleInitialized) {
         return;
@@ -125,8 +134,11 @@ void Loom_LoRa_Sketch::package() {
     JsonObject json = manager->get_data_object(getModuleName());
     json["RSSI"] = signalStrength;
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Loom_LoRa_Sketch::receiveFromLoRa(uint8_t *buf, uint8_t buf_size, uint timeout, uint8_t *fromAddress) {
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa_Sketch::receiveFromLoRa(uint8_t *buf, uint8_t buf_size, 
+                                       uint timeout, uint8_t *fromAddress) {
     bool status = true;
 
     memset(buf, 0, buf_size);
@@ -134,9 +146,11 @@ bool Loom_LoRa_Sketch::receiveFromLoRa(uint8_t *buf, uint8_t buf_size, uint time
     LOG(F("Waiting for message..."));
 
     if (timeout) {
-        status = radioManager->recvfromAckTimeout(buf, &buf_size, timeout, fromAddress);
+        status = radioManager->recvfromAckTimeout(buf, &buf_size, timeout, 
+                                                  fromAddress);
     } else {
-        status = radioManager->recvfromAck(buf, &buf_size, fromAddress);
+        status = radioManager->recvfromAck(buf, &buf_size, 
+                                           fromAddress);
     }
 
     if (!status) {
@@ -146,7 +160,9 @@ bool Loom_LoRa_Sketch::receiveFromLoRa(uint8_t *buf, uint8_t buf_size, uint time
     radioDriver.sleep();
     return status;
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa_Sketch::receiveFrag(uint timeout, bool *isReady) {
     if (!moduleInitialized) {
         ERROR(F("LoRa module not initialized!"));
@@ -190,8 +206,11 @@ bool Loom_LoRa_Sketch::receiveFrag(uint timeout, bool *isReady) {
 
     return true;
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Loom_LoRa_Sketch::handleFragHeader(JsonDocument &workingDoc, uint8_t fromAddress) {
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa_Sketch::handleFragHeader(JsonDocument &workingDoc, 
+                                        uint8_t fromAddress) {
     int expectedFragCount = workingDoc["numPackets"].as<int>();
     workingDoc.remove("numPackets");
 
@@ -207,15 +226,20 @@ bool Loom_LoRa_Sketch::handleFragHeader(JsonDocument &workingDoc, uint8_t fromAd
     // this should never fail
     auto inserted = frags.emplace(std::make_pair(
         fromAddress,
-        PartialPacket { expectedFragCount, DynamicJsonDocument(packetSpace) }));
+        PartialPacket { 
+            expectedFragCount, 
+            DynamicJsonDocument(packetSpace) }));
 
     // TODO(rwheary): does this copy data over to the correctly sized buffer??
     inserted.first->second.working = workingDoc;
 
     return false;
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Loom_LoRa_Sketch::handleFragBody(JsonDocument &workingDoc, uint8_t fromAddress) {
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa_Sketch::handleFragBody(JsonDocument &workingDoc, 
+                                      uint8_t fromAddress) {
     PartialPacket *partialPacket = &frags.find(fromAddress)->second;
 
     JsonArray contents = partialPacket->working["contents"].as<JsonArray>();
@@ -235,24 +259,32 @@ bool Loom_LoRa_Sketch::handleFragBody(JsonDocument &workingDoc, uint8_t fromAddr
 
     return false;
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa_Sketch::handleSingleFrag(JsonDocument &workingDoc) {
     // TODO(rwheary): does this copy data over to the correctly sized buffer??
     manager->getDocument() = workingDoc;
     
     return true;
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Loom_LoRa_Sketch::handleLostFrag(JsonDocument &workingDoc, uint8_t fromAddress) {
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa_Sketch::handleLostFrag(JsonDocument &workingDoc, 
+                                      uint8_t fromAddress) {
     snprintf(logOutput, OUTPUT_SIZE, "Dropping fragmented packet body with no header received from %i", fromAddress);
     WARNING(logOutput);
 
     return false;
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa_Sketch::receive(uint timeout) {
     // TODO(rwheary): i think this like, sucks? But if we assume interleaved
-    // fragments we lose nice properties like knowing how many packets to expect.
+    // fragments we lose nice properties like knowing how many packets to 
+    // expect.
     // I think this should work but it needs testing.
     bool documentIsReady = false;
 
@@ -271,4 +303,118 @@ bool Loom_LoRa_Sketch::receive(uint timeout) {
 
     return false;
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa_Sketch::transmitToLoRa(JsonObject json, 
+                                      uint8_t destinationAddress) {
+    uint8_t buffer[MAX_MESSAGE_LENGTH] = {};
+    bool status = false;
+    
+    status = serializeMsgPack(json, buffer, MAX_MESSAGE_LENGTH);
+    if (!status) {
+        ERROR(F("Failed to convert JSON to MsgPack"));
+        return false;
+    }
+
+    status = radioManager->sendtoWait(buffer, sizeof(buffer), 
+                                      destinationAddress);
+    if (!status) {
+        ERROR(F("Failed to send packet to specified address!"));
+        return false;
+    }
+
+    LOG(F("Successfully transmitted packet!"));
+    signalStrength = radioDriver.lastRssi();
+    radioDriver.sleep();
+    return true;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa_Sketch::sendFullPacket(JsonObject json, 
+                                      uint8_t destinationAddress) {
+    return transmitToLoRa(json, destinationAddress);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa_Sketch::sendFragmentedPacket(JsonObject json, 
+                                            uint8_t destinationAddress) {
+    LOG(F("Packet was greater than the maximum packet length; the packet will be fragmented"));
+    bool status = false;
+
+    status = json.containsKey("contents");
+    if (!status) {
+        ERROR(F("JSON data is malformed and cannot be fragmented"));
+        return false;
+    }
+    int numFrags = json["contents"].size();
+
+    status = sendPacketHeader(json, destinationAddress);
+    if (!status) {
+        ERROR(F("Unable to transmit initial packet header! Split packets will not be sent"));
+        return false;
+    }
+
+    for (int i = 0; i < numFrags; i++) {
+        snprintf(logOutput, OUTPUT_SIZE, "Sending fragmented packet (%i/$i)...", i+1, numFrags);
+        status = transmitToLoRa(json["contents"][i].as<JsonObject>(), 
+                                destinationAddress);
+        if (!status) {
+            ERROR(F("Failed to transmit fragmented packet!"));
+        }
+
+        delay(500);
+    }
+
+    return true;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa_Sketch::sendPacketHeader(JsonObject json, uint8_t destinationAddress) {
+    StaticJsonDocument<MAX_MESSAGE_LENGTH * 2> sendDoc;
+
+    sendDoc["type"] = json["type"].as<const char*>();
+    sendDoc["numPackets"] = json["contents"].size();
+    
+    JsonObject objId = sendDoc.createNestedObject("id");
+    objId["name"] = json["id"]["name"].as<const char*>();
+    objId["instance"] = json["id"]["instance"].as<int>();
+
+    sendDoc.createNestedObject("contents");
+
+    if (!json["timestamp"].isNull()) {
+        JsonObject objTimestamp = sendDoc.createNestedObject("timestamp");
+        objTimestamp["time_utc"] = 
+            json["timestamp"]["time_utc"].as<const char*>();
+        objTimestamp["time_local"] = 
+            json["timestamp"]["time_local"].as<const char*>();
+    }
+
+    return transmitToLoRa(sendDoc.as<JsonObject>(), destinationAddress);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa_Sketch::send(const uint8_t destinationAddress) {
+  return send(destinationAddress, manager->getDocument().as<JsonObject>());
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa_Sketch::send(const uint8_t destinationAddress, 
+                            JsonObject json) {
+  if (!moduleInitialized) {
+    ERROR(F("Module not initialized!"));
+    return false;
+  }
+
+  if (measureMsgPack(json) > MAX_MESSAGE_LENGTH) {
+    return sendFragmentedPacket(json, destinationAddress);
+  } else {
+    return sendFullPacket(json, destinationAddress);
+  }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
