@@ -2,6 +2,7 @@
 
 #include "ArduinoJson.hpp"
 #include "ArduinoJson/Object/JsonObject.hpp"
+#include "Hardware/Loom_BatchSD/Loom_BatchSD.h"
 #include <ArduinoJson.h>
 #include <Logger.h>
 #include <RHReliableDatagram.h>
@@ -21,6 +22,13 @@
 #define RF95_FREQ 915.0 // LoRa Radio Frequency
 
 #define RECV_DATA_SIZE 256
+
+enum class FragReceiveStatus {
+    Incomplete,  // no packet has been completed
+    Complete,    // packet has been loaded into the global document
+    BatchHeader, // batch header has been received
+    Error        // could not receive fragment
+};
 
 struct PartialPacket {
     int remainingFragments;
@@ -101,6 +109,8 @@ public:
      */
     bool receive(uint timeout);
 
+    bool Loom_LoRa::receiveBatch(uint timeout, int* numberOfPackets);
+
     /**
      * Send the current JSON data to the specified address.
      *
@@ -116,12 +126,15 @@ public:
      */ 
     bool send(const uint8_t destinationAddress, JsonObject json);
 
+    bool sendBatch(const uint8_t destinationAddress);
+
 private:
     // receives some data from lora
     bool receiveFromLoRa(uint8_t *buf, uint8_t buf_size, uint timeout, 
                          uint8_t *fromAddress);
-    bool receiveFrag(uint timeout, bool *isReady);
+    FragReceiveStatus receiveFrag(uint timeout);
 
+    // TODO(rwheary): consider changing JsonDocument& to JsonVariant
     // returns whether a packet has been loaded into the global document
     bool handleFragHeader(JsonDocument &workingDoc, uint8_t fromAddress);
     bool handleFragBody(JsonDocument &workingDoc, uint8_t fromAddress);
@@ -141,6 +154,8 @@ private:
     Manager* manager;                  // Instance of the Loom manager
     RHReliableDatagram* radioManager;  // Radio manager
     RH_RF95 radioDriver;               // Underlying radio driver
+    
+    Loom_BatchSD *batchSD = nullptr;   // Pointer to the batchSD
     
     bool poweredUp = true;
 
