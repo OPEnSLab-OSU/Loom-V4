@@ -150,11 +150,11 @@ void Manager::power_up(){
     FUNCTION_START;
     char noInitLog[50];
     for(int i = 0; i < modules.size(); i++){
-        Wathchdog.reset()
+        Watchdog.reset()
         if(modules[i].second->moduleInitialized){
             // If we are about to power up the LTE we should turn off the watchdog
             if(strcmp(modules[i].second->getModuleName(), "LTE") == 0){
-                Wathchdog.disable();
+                Watchdog.disable();
             }
             modules[i].second->power_up();
         }
@@ -168,7 +168,7 @@ void Manager::power_up(){
     }
 
     // If we didn't already disable the timer from finding the LTE we should disable it now
-    Wathchdog.disable();
+    Watchdog.disable();
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
