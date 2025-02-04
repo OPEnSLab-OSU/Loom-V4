@@ -16,7 +16,9 @@ Loom_MAX31856::Loom_MAX31856(Manager& man, int samples, int chip_select, int mos
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MAX31856::initialize(){
+    SPI.setDataMode(SPI_MODE1)
     if (!maxthermo->begin()) {
+        SPI.setDataMode(SPI_MODE0)
         ERROR(F("Could not initialize thermocouple."));
         moduleInitialized = false;
         return;
@@ -24,7 +26,9 @@ void Loom_MAX31856::initialize(){
     else{
         LOG(F("Successfully initialized thermocouple."));
     }
+    SPI.setDataMode(SPI_MODE1)
     maxthermo->setThermocoupleType(MAX31856_TCTYPE_K);
+    SPI.setDataMode(SPI_MODE0)
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -33,12 +37,15 @@ void Loom_MAX31856::measure(){
     if(moduleInitialized){
         float temp = 0;
 
+       
         // Collect the data however many times as specified
         for(int i = 0; i < num_samples; i++){
+            SPI.setDataMode(SPI_MODE1)
             temp += maxthermo->readThermocoupleTemperature();
 
             // Check and print any faults
             uint8_t fault = maxthermo->readFault();
+            SPI.setDataMode(SPI_MODE0)
             if (fault) {
                 if (fault & MAX31856_FAULT_CJRANGE) ERROR(F("Cold Junction Range Fault"));
                 if (fault & MAX31856_FAULT_TCRANGE) ERROR(F("Thermocouple Range Fault"));
@@ -51,6 +58,7 @@ void Loom_MAX31856::measure(){
                 break;
             }
         }
+        
         
         // Get the average temperature
         temperature = temp / num_samples;
