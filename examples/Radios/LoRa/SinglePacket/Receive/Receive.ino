@@ -5,13 +5,13 @@
  */
 #include <Loom_Manager.h>
 
-#include <Radio/Loom_LoRa/Loom_LoRa_Sketch.h>
+#include <Radio/Loom_LoRa/Loom_LoRa.h>
 #include <Logger.h>
 
 Manager manager("Device", 0);
 
 // Create a new lora instance using the instance number as the address
-Loom_LoRa_Sketch lora(manager);
+Loom_LoRa lora(manager);
 
 void setup() {
   manager.beginSerial();
