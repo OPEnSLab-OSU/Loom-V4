@@ -486,7 +486,7 @@ void Loom_Hypnos::sleep(bool waitForSerial){
         pre_sleep();                                            // Pre-sleep cleanup
         shouldPowerUp = true;
         LowPower.sleep();                                       // Go to sleep and hang
-        Watchdog.enable(WATCHDOG_TIMEOUT)
+        Watchdog.enable(WATCHDOG_TIMEOUT);
     }
     // If it has we want to trigger a resample which requires powering the sensors back up
     else{
@@ -496,7 +496,7 @@ void Loom_Hypnos::sleep(bool waitForSerial){
             manInst->power_up();
         }
     }
-    Watchdog.reset()
+    Watchdog.reset();
 
     // If the alarm hadn't triggered last time we want to wake up like normal
     if(!hasAlarmTriggered)
@@ -528,31 +528,31 @@ void Loom_Hypnos::pre_sleep(){
 void Loom_Hypnos::post_sleep(bool waitForSerial){
     // Enable the Watchdog timer when waking up
     TIMER_ENABLE;
-    Watchdog.reset()
+    Watchdog.reset();
     
     if(shouldPowerUp){
         USBDevice.attach();
-        Watchdog.reset()
+        Watchdog.reset();
         Serial.begin(115200);
-        Watchdog.reset()
+        Watchdog.reset();
 
         // Check if they are not disabled to see if they should be enabled
         bool enable5 = !is5VDisabled(DEVICE_STATE::EXITING_SLEEP);
-        Watchdog.reset()
+        Watchdog.reset();
         bool enable33 = !is3VDisabled(DEVICE_STATE::EXITING_SLEEP);
-        Watchdog.reset()
+        Watchdog.reset();
 
         enable(enable33, enable5); // Checks if the 3.3v or 5v are disabled and re-enables them
-        Watchdog.reset()
+        Watchdog.reset();
         delay(1000);
-        Watchdog.reset()
+        Watchdog.reset();
 
         LOG(F("Device has awoken from sleep!"));
-        Watchdog.reset()
+        Watchdog.reset();
 
         // Clear any pending RTC alarms
         RTC_DS.clearAlarm();
-        Watchdog.reset()
+        Watchdog.reset();
 
         // Re-init the modules that need it
         manInst->power_up();
@@ -562,9 +562,7 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
             TIMER_DISABLE;
             while(!Serial);
             TIMER_ENABLE;
-        }
-
-        
+        }        
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
