@@ -109,7 +109,7 @@ public:
      */
     bool receive(uint timeout);
 
-    bool Loom_LoRa::receiveBatch(uint timeout, int* numberOfPackets);
+    bool receiveBatch(uint timeout);
 
     /**
      * Send the current JSON data to the specified address.
