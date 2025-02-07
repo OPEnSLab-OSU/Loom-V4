@@ -380,7 +380,8 @@ bool Loom_LoRa::sendFragmentedPacket(JsonObject json,
             return false;
         }
 
-        delay(500);
+        // randomizing the delay helps decrease collisions
+        delay(random(400, 1000));
     }
 
     return true;
@@ -458,8 +459,8 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
     int batchSize = batchSD->getBatchSize();
     batchNotify["batch_size"] = batchSize;
 
-    // Send the notification to the other radio to tell it to prepare to expect a
-    // batch of data. The packet is formatted as follows:
+    // Send the notification to the other radio to tell it to prepare to expect
+    // a batch of data. The packet is formatted as follows:
     // {
     //     "batch_size": <size>
     // }
@@ -488,16 +489,16 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
         }
 
         // deserialze packet into main document
-        deserializeJson(manager->getDocument(), (const char *)packet,
+        deserializeJson(manager->getDocument(), (const char *)packetBuf,
                         sizeof(packetBuf));
 
         status = send(destinationAddress);
         if (status) {
             snprintf(logOutput, OUTPUT_SIZE, "Successfully transmitted packet (%i/%i)", i+1, batchSize);
-            LOG(output);
+            LOG(logOutput);
         } else {
             snprintf(logOutput, OUTPUT_SIZE, "Failed to transmit packet (%i/%i)", i+1, batchSize);
-            ERROR(output);
+            ERROR(logOutput);
             // TODO(rwheary): should this fail the entire send?
         }
 
@@ -506,5 +507,5 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
         Serial.println();
     }
 
-    fileOutput.close()
+    fileOutput.close();
 }
