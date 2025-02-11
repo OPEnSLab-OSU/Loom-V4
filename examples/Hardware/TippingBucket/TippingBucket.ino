@@ -17,10 +17,22 @@ Manager manager("Device", 1);
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 
 // (This one uses a I2C counter on the PCB) Manger Instance, Inches of rainfall per tip
-Loom_TippingBucket bucket(manager, 0.01f);
+// Loom_TippingBucket bucket(manager, COUNTER_TYPE::I2C, 0.01f);
 
 // (This one uses an interrupt) Manger Instance, Interrupt Pin, Inches of rainfall per tip (WIP)
-//Loom_TippingBucket bucket(manager, A0, 0.01f);
+Loom_TippingBucket bucket(manager, COUNTER_TYPE::MANUAL, 0.01f);
+
+// Pin to have the secondary interrupt triggered from
+#define INT_PIN A0
+
+volatile bool tipFlag = false;
+
+void tipTrigger() {
+  hypnos.shouldPowerUp = false;
+  tipFlag = true;
+  detachInterrupt(INT_PIN);
+}
+
 
 void setup() {
 
@@ -36,6 +48,7 @@ void setup() {
   // Initialize the manager
   manager.initialize();
 
+  attachInterrupt(INT_PIN, tipTrigger, FALLING);
 }
 
 void loop() {
@@ -49,6 +62,17 @@ void loop() {
   manager.display_data();
 
   // Wait for 2 seconds
-  manager.pause(2000);
+  manager.pause(500);
+
+  // Log tip if the flag was set to true through an interrupt
+  if(tipFlag){
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(50);
+    bucket.incrementCount();
+    tipFlag = false;
+    attachInterrupt(INT_PIN, tipTrigger, FALLING);
+    attachInterrupt(INT_PIN, tipTrigger, FALLING);
+    digitalWrite(LED_BUILTIN, HIGH);
+  }
 
 }
