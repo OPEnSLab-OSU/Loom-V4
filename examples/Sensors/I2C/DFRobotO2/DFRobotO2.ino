@@ -11,7 +11,7 @@
  
  Manager manager("Device", 1);
  
- // Reads the battery voltage
+ // Initialize the DFRobotO2 Sensor
  Loom_DFRobotO2 oxygen(manager);
  
  void setup() {
