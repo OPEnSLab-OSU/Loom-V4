@@ -68,6 +68,11 @@ class Loom_MongoDB : public MQTTComponent{
         bool publish(Loom_BatchSD& batchSD);
 
         /**
+         * Publish metadata to the database
+         */ 
+        bool publishMetadata(char* metadata);
+
+        /**
          * Load the MQTT credentials from a JSON string, used to pull credentials from a file
          * @param jsonString JSON formatted string containing the login credentials, this is freed at the end
          */

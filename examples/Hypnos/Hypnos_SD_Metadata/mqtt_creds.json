@@ -1,0 +1,9 @@
+{
+    "broker": "cas-mosquitto.biossys.oregonstate.edu",
+    "port": 1883,
+    "username": "",
+    "password": "",
+    "database": "",
+    "project": ""
+    }
+    
