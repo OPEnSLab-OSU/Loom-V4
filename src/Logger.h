@@ -13,7 +13,6 @@
 #define ERROR(msg) Logger::getInstance()->errorLog(msg, false, __FILE__, __func__, __LINE__)                // Log an error message
 #define WARNING(msg) Logger::getInstance()->warningLog(msg, false, __FILE__, __func__, __LINE__)            // Log a warning message
 
-// TODO(rwheary): make sure __LINE__ gives expected output
 #define LOGF(msg, ...) do { \
     char buf[OUTPUT_SIZE]; \
     snprintf_P(buf, sizeof(buf), PSTR(msg), __VA_ARGS__); \
