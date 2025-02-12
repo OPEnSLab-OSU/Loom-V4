@@ -164,17 +164,16 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, uint8_t* fromAddress) {
     if (!moduleInitialized) {
         ERROR(F("LoRa module not initialized!"));
         return FragReceiveStatus::Error;
-    } 
+    }
 
     uint8_t buf[MAX_MESSAGE_LENGTH] = {};
-    uint8_t fromAddress;
 
-    bool recvStatus = receiveFromLoRa(buf, sizeof(buf), timeout, &fromAddress);
+    bool recvStatus = receiveFromLoRa(buf, sizeof(buf), timeout, fromAddress);
     if (!recvStatus) {
         return FragReceiveStatus::Error;
     }
 
-    LOGF("Received packet from %i", fromAddress);
+    LOGF("Received packet from %i", *fromAddress);
 
     StaticJsonDocument<300> tempDoc;
 
@@ -186,20 +185,20 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, uint8_t* fromAddress) {
     }
 
     if (tempDoc.containsKey("batch_size")) {
-        LOG("Received batch header, expecting %i packets", 
-            tempDoc["batch_size"].as<int>);
+        LOGF("Received batch header, expecting %i packets", 
+            tempDoc["batch_size"].as<int>());
         return FragReceiveStatus::Incomplete;
     }
 
     bool isReady = false;
     if (tempDoc.containsKey("numPackets")) {
-        isReady = handleFragHeader(tempDoc, fromAddress);
+        isReady = handleFragHeader(tempDoc, *fromAddress);
 
-    } else if (frags.find(fromAddress) != frags.end()) {
-        isReady = handleFragBody(tempDoc, fromAddress);
+    } else if (frags.find(*fromAddress) != frags.end()) {
+        isReady = handleFragBody(tempDoc, *fromAddress);
     
     } else if (tempDoc.containsKey("module")) {
-        isReady = handleLostFrag(tempDoc, fromAddress);
+        isReady = handleLostFrag(tempDoc, *fromAddress);
 
     } else {
         isReady = handleSingleFrag(tempDoc);
@@ -297,7 +296,7 @@ bool Loom_LoRa::receive(uint timeout, uint8_t* fromAddress) {
 
 bool Loom_LoRa::receive(uint timeout) {
     uint8_t fromAddress;
-    return receive(timeout, fromAddress);
+    return receive(timeout, &fromAddress);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////

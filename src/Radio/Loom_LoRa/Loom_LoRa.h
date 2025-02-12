@@ -141,7 +141,7 @@ private:
     // receives some data from lora
     bool receiveFromLoRa(uint8_t *buf, uint8_t buf_size, uint timeout, 
                          uint8_t *fromAddress);
-    FragReceiveStatus receiveFrag(uint timeout);
+    FragReceiveStatus receiveFrag(uint timeout, uint8_t *fromAddress);
 
     // TODO(rwheary): consider changing JsonDocument& to JsonVariant
     // returns whether a packet has been loaded into the global document
