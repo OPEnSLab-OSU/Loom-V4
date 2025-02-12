@@ -5,6 +5,7 @@
 #include "Module.h"
 #include <cstdint>
 #include <cstdio>
+#include <exception>
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_LoRa::Loom_LoRa(
@@ -70,8 +71,7 @@ void Loom_LoRa::initialize() {
 
     // Set the radio frequency
     if (radioDriver.setFrequency(RF95_FREQ)) {
-        snprintf(logOutput, OUTPUT_SIZE, "Radio frequency successfully set to: %f", RF95_FREQ);
-        LOG(logOutput);
+        LOGF("Radio frequency successfully set to: %f", RF95_FREQ);
     } else {
         ERROR(F("Failed to set frequency!"));
         moduleInitialized = false;
@@ -79,23 +79,19 @@ void Loom_LoRa::initialize() {
     }
 
     // Set radio power level
-    snprintf(logOutput, OUTPUT_SIZE, "Setting device power level to: %i", powerLevel);
-    LOG(logOutput);
+    LOGF("Setting device power level to: %i", powerLevel);
     radioDriver.setTxPower(powerLevel, false);
 
     // Set timeout time
-    snprintf(logOutput, OUTPUT_SIZE, "Timeout time set to: %i,", retryTimeout);
-    LOG(logOutput);
+    LOGF("Timeout time set to: %i,", retryTimeout);
     radioManager->setTimeout(retryTimeout);
 
     // Set retry attempts
-    snprintf(logOutput, OUTPUT_SIZE, "Transmit retry count set to: %i", sendRetryCount);
-    LOG(logOutput);
+    LOGF("Transmit retry count set to: %i", sendRetryCount);
     radioManager->setRetries(sendRetryCount);
 
     // Print the set address of the device
-    snprintf(logOutput, OUTPUT_SIZE, "Address set to: %i", radioManager->thisAddress());
-    LOG(logOutput);
+    LOGF("Address set to: %i", radioManager->thisAddress());
     
     // https://cdn.sparkfun.com/assets/a/e/7/e/b/RFM95_96_97_98W.pdf, Page 22
 
@@ -165,7 +161,7 @@ bool Loom_LoRa::receiveFromLoRa(uint8_t *buf, uint8_t buf_size,
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout) {
+FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, uint8_t* fromAddress) {
     if (!moduleInitialized) {
         ERROR(F("LoRa module not initialized!"));
         return FragReceiveStatus::Error;
@@ -179,20 +175,20 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout) {
         return FragReceiveStatus::Error;
     }
 
-    snprintf(logOutput, OUTPUT_SIZE, "Received packet from %i", fromAddress);
-    LOG(logOutput);
+    LOGF("Received packet from %i", fromAddress);
 
     StaticJsonDocument<300> tempDoc;
 
     // cast buf to const to avoid mutation
     auto err = deserializeMsgPack(tempDoc, (const char *)buf, sizeof(buf));
     if (err != DeserializationError::Ok) {
-        snprintf(logOutput, OUTPUT_SIZE, "Error occurred parsing MsgPack: %s", err.c_str());
-        ERROR(logOutput);
+        ERRORF("Error occurred parsing MsgPack: %s", err.c_str());
         return FragReceiveStatus::Error;
     }
 
     if (tempDoc.containsKey("batch_size")) {
+        LOG("Received batch header, expecting %i packets", 
+            tempDoc["batch_size"].as<int>);
         return FragReceiveStatus::Incomplete;
     }
 
@@ -223,8 +219,7 @@ bool Loom_LoRa::handleFragHeader(JsonDocument &workingDoc,
     int packetSpace = 300 * (expectedFragCount + 1);
 
     if (frags.find(fromAddress) != frags.end()) {
-        snprintf(logOutput, OUTPUT_SIZE, "Dropping corrupted packet received from %i", fromAddress);
-        WARNING(logOutput);
+        WARNINGF("Dropping corrupted packet received from %i", fromAddress);
 
         frags.erase(fromAddress);
     }
@@ -276,24 +271,17 @@ bool Loom_LoRa::handleSingleFrag(JsonDocument &workingDoc) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::handleLostFrag(JsonDocument &workingDoc, 
                                       uint8_t fromAddress) {
-    snprintf(logOutput, OUTPUT_SIZE, "Dropping fragmented packet body with no header received from %i", fromAddress);
-    WARNING(logOutput);
+    WARNINGF("Dropping fragmented packet body with no header received from %i", fromAddress);
 
     return false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LoRa::receive(uint timeout) {
-    // TODO(rwheary): i think this like, sucks? But if we assume interleaved
-    // fragments we lose nice properties like knowing how many packets to 
-    // expect.
-    // I think this should work but it needs testing.
-    bool documentIsReady = false;
-
+bool Loom_LoRa::receive(uint timeout, uint8_t* fromAddress) {
     int retryCount = receiveRetryCount;
     while (retryCount > 0) {
-        FragReceiveStatus status = receiveFrag(timeout);
+        FragReceiveStatus status = receiveFrag(timeout, fromAddress);
 
         switch (status) {
         case FragReceiveStatus::Complete:
@@ -308,13 +296,9 @@ bool Loom_LoRa::receive(uint timeout) {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Loom_LoRa::receiveBatch(uint timeout) {
-    bool status = false;
-
-    if (!moduleInitialized) {
-        ERROR(F("Module not initialized!"));
-        return false;
-    }
+bool Loom_LoRa::receive(uint timeout) {
+    uint8_t fromAddress;
+    return receive(timeout, fromAddress);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -368,8 +352,7 @@ bool Loom_LoRa::sendFragmentedPacket(JsonObject json,
     }
 
     for (int i = 0; i < numFrags; i++) {
-        snprintf(logOutput, OUTPUT_SIZE, "Sending fragmented packet (%i/%i)...", i+1, numFrags);
-        LOG(logOutput);
+        LOGF("Sending fragmented packet (%i/%i)...", i+1, numFrags);
 
         JsonObject frag = json["contents"][i].as<JsonObject>();
         status = transmitToLoRa(frag, destinationAddress);
@@ -453,22 +436,8 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
         return true;
     }
 
-    StaticJsonDocument<100> batchNotify;
-    int batchSize = batchSD->getBatchSize();
-    batchNotify["batch_size"] = batchSize;
-
-    // Send the notification to the other radio to tell it to prepare to expect
-    // a batch of data. The packet is formatted as follows:
-    // {
-    //     "batch_size": <size>
-    // }
-    status = send(destinationAddress, batchNotify.as<JsonObject>());
-    if (!status) {
-        ERROR(F("Could not send initial batch notification!"));
-        return false;
-    }
-
     File fileOutput = batchSD->getBatch();
+    int batchSize = batchSD->getBatchSize();
 
     for (int i = 0; i < batchSize && fileOutput.available(); i++) {
         uint8_t packetBuf[2000];
@@ -492,11 +461,9 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
 
         status = send(destinationAddress);
         if (status) {
-            snprintf(logOutput, OUTPUT_SIZE, "Successfully transmitted packet (%i/%i)", i+1, batchSize);
-            LOG(logOutput);
+            LOGF("Successfully transmitted packet (%i/%i)", i+1, batchSize);
         } else {
-            snprintf(logOutput, OUTPUT_SIZE, "Failed to transmit packet (%i/%i)", i+1, batchSize);
-            ERROR(logOutput);
+            ERRORF("Failed to transmit packet (%i/%i)", i+1, batchSize);
             // TODO(rwheary): should this fail the entire send?
         }
 

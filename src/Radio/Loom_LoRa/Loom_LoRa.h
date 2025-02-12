@@ -108,7 +108,17 @@ public:
      */
     bool receive(uint timeout);
 
-    bool receiveBatch(uint timeout);
+    /**
+     * Receive a JSON packet from another radio, blocking until the wait time 
+     * expires or a packet is received. Note that this method may block for an
+     * arbitrary time to receive a fragmented packet. If this is undesireable
+     * then open a PR I guess?
+     *
+     * @param maxWaitTime The maximum time to wait before continuing execution 
+     *                    (Set to 0 for non-blocking)
+     * @param senderAddr out param, the address of the sending device.
+     */
+    bool receive(uint timeout, uint8_t *fromAddress);
 
     /**
      * Send the current JSON data to the specified address.
@@ -147,8 +157,6 @@ private:
     bool sendFullPacket(JsonObject json, uint8_t destinationAddress);
     bool sendFragmentedPacket(JsonObject json, uint8_t destinationAddress);
     bool sendPacketHeader(JsonObject json, uint8_t destinationAddress);
-
-    char logOutput[OUTPUT_SIZE] = {};
 
     Manager* manager;                  // Instance of the Loom manager
     RHReliableDatagram* radioManager;  // Radio manager
