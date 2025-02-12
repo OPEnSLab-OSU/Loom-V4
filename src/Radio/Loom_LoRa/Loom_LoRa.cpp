@@ -108,6 +108,12 @@ void Loom_LoRa::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LoRa::power_up() {
+    if (batchSD) {
+        int currentBatch = batchSD->getCurrentBatch();
+        int batchSize = batchSD->getBatchSize();
+        poweredUp = currentBatch == batchSize - 1;
+    }
+
     if (poweredUp) {
         radioDriver.available();
     }
@@ -160,7 +166,8 @@ bool Loom_LoRa::receiveFromLoRa(uint8_t *buf, uint8_t buf_size,
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, uint8_t* fromAddress) {
+FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
+                                         uint8_t* fromAddress) {
     if (!moduleInitialized) {
         ERROR(F("LoRa module not initialized!"));
         return FragReceiveStatus::Error;
@@ -204,7 +211,19 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, uint8_t* fromAddress) {
         isReady = handleSingleFrag(tempDoc);
     }
 
-    return isReady ? FragReceiveStatus::Complete : FragReceiveStatus::Incomplete;
+    if (isReady) {
+        if (shouldProxy) {
+            char *name = manager->getDocument()["id"]["name"].as<char *>;
+            manager->set_device_name(name);
+
+            int instNum = manager->getDocument()["id"]["instance"].as<int>;
+            manager->set_device_name(instNum);
+        }
+
+        return FragReceiveStatus::Complete;
+    } else {
+        return FragReceiveStatus::Incomplete;
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -277,10 +296,10 @@ bool Loom_LoRa::handleLostFrag(JsonDocument &workingDoc,
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LoRa::receive(uint timeout, uint8_t* fromAddress) {
+bool Loom_LoRa::receive(uint timeout, bool shouldProxy, uint8_t* fromAddress) {
     int retryCount = receiveRetryCount;
     while (retryCount > 0) {
-        FragReceiveStatus status = receiveFrag(timeout, fromAddress);
+        FragReceiveStatus status = receiveFrag(timeout, shouldProxy, fromAddress);
 
         switch (status) {
         case FragReceiveStatus::Complete:
@@ -295,9 +314,9 @@ bool Loom_LoRa::receive(uint timeout, uint8_t* fromAddress) {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Loom_LoRa::receive(uint timeout) {
+bool Loom_LoRa::receive(uint timeout, bool shouldProxy) {
     uint8_t fromAddress;
-    return receive(timeout, &fromAddress);
+    return receive(timeout, shouldProxy, &fromAddress);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////

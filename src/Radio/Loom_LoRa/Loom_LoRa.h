@@ -77,6 +77,13 @@ public:
     ~Loom_LoRa();
 
     /**
+     * Sets the address of the device
+     *
+     * @param newAddress The new address to use
+     */
+    void setAddress(const uint8_t newAddress);
+
+    /**
      * Initialize the module
      */ 
     void initialize() override;
@@ -96,29 +103,30 @@ public:
      */ 
     void package() override;
 
-    // TODO(rwheary): maybe this should be fixed
     /**
      * Receive a JSON packet from another radio, blocking until the wait time 
      * expires or a packet is received. Note that this method may block for an
-     * arbitrary time to receive a fragmented packet. If this is undesireable
-     * then open a PR I guess?
+     * arbitrary time to receive a fragmented packet.
      *
      * @param maxWaitTime The maximum time to wait before continuing execution 
      *                    (Set to 0 for non-blocking)
+     * @param shouldProxy Whether the device's name and instance number should
+     *                    be set to match the received packet.
      */
-    bool receive(uint timeout);
+    bool receive(uint timeout, bool shouldProxy = false);
 
     /**
      * Receive a JSON packet from another radio, blocking until the wait time 
      * expires or a packet is received. Note that this method may block for an
-     * arbitrary time to receive a fragmented packet. If this is undesireable
-     * then open a PR I guess?
+     * arbitrary time to receive a fragmented packet.
      *
      * @param maxWaitTime The maximum time to wait before continuing execution 
      *                    (Set to 0 for non-blocking)
+     * @param shouldProxy Whether the device's name and instance number should
+     *                    be set to match the received packet.
      * @param senderAddr out param, the address of the sending device.
      */
-    bool receive(uint timeout, uint8_t *fromAddress);
+    bool receive(uint timeout, bool shouldProxy = false, uint8_t *fromAddress);
 
     /**
      * Send the current JSON data to the specified address.
@@ -135,13 +143,21 @@ public:
      */ 
     bool send(const uint8_t destinationAddress, JsonObject json);
 
+    /**
+     * Send the current batch of JSON data to the given address
+     *
+     * @param destinationAddress The address we want to send the data to
+     */ 
     bool sendBatch(const uint8_t destinationAddress);
 
 private:
     // receives some data from lora
     bool receiveFromLoRa(uint8_t *buf, uint8_t buf_size, uint timeout, 
                          uint8_t *fromAddress);
-    FragReceiveStatus receiveFrag(uint timeout, uint8_t *fromAddress);
+
+    // receives a single fragment from some device
+    FragReceiveStatus receiveFrag(uint timeout, bool shouldProxy, 
+                                  uint8_t *fromAddress);
 
     // returns whether a packet has been loaded into the global document
     bool handleFragHeader(JsonDocument &workingDoc, uint8_t fromAddress);
