@@ -26,7 +26,6 @@
 enum class FragReceiveStatus {
     Incomplete,  // no packet has been completed
     Complete,    // packet has been loaded into the global document
-    BatchHeader, // batch header has been received
     Error        // could not receive fragment
 };
 
