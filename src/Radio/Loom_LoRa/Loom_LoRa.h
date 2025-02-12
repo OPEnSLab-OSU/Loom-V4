@@ -46,14 +46,16 @@ public:
      * @param manager Reference to the manager
      * @param address This device's LoRa address
      * @param powerLevel Transmission power level, low to high
-     * @param retryCount Number of attempts to make before failing
+     * @param sendMaxRetries The number of transmission attempts to make before failing
+     * @param receiveMaxRetries The number of reception attempts to make before failing
      * @param retryTimeout Length of time between retransmissions (ms)
      */ 
     Loom_LoRa(
         Manager& manager,
         const uint8_t address,
         const uint8_t powerLevel,
-        const uint8_t retryCount,
+        const uint8_t sendMaxRetries,
+        const uint8_t receiveMaxRetries,
         const uint16_t retryTimeout
     );
 
@@ -126,7 +128,7 @@ public:
      *                    be set to match the received packet.
      * @param senderAddr out param, the address of the sending device.
      */
-    bool receive(uint timeout, bool shouldProxy = false, uint8_t *fromAddress);
+    bool receive(uint timeout, uint8_t *fromAddress, bool shouldProxy = false);
 
     /**
      * Send the current JSON data to the specified address.
@@ -185,8 +187,8 @@ private:
     int16_t signalStrength;     // Strength of the signal received
 
     uint8_t powerLevel;         // The power level we want to transmit at
-    uint8_t sendRetryCount;     // Number transmission retries allowed
-    uint8_t receiveRetryCount;  // Number fragment receive retries allowed
+    uint8_t sendRetryCount;     // Number of transmission retries allowed
+    uint8_t receiveRetryCount;  // Number of fragment receive retries allowed
     uint16_t retryTimeout;      // Delay between retries (MS)
 
     std::unordered_map<uint8_t, PartialPacket> frags; // Partial packets sorted by address

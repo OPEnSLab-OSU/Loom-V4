@@ -11,15 +11,16 @@ Loom_LoRa::Loom_LoRa(
     Manager& manager,
     const uint8_t address, 
     const uint8_t powerLevel,
-    const uint8_t retryCount, 
+    const uint8_t sendMaxRetries,
+    const uint8_t receiveMaxRetries,
     const uint16_t retryTimeout
 ) : Module("LoRa"),
         manager(&manager), 
         radioDriver{RFM95_CS, RFM95_INT},
         deviceAddress(address),
         powerLevel(powerLevel),
-        sendRetryCount(retryCount),
-        receiveRetryCount(retryCount),
+        sendRetryCount(sendMaxRetries),
+        receiveRetryCount(receiveMaxRetries),
         retryTimeout(retryTimeout)
 {
     this->radioManager = new RHReliableDatagram(
@@ -39,6 +40,7 @@ Loom_LoRa::Loom_LoRa(
     manager.get_instance_num(), 
     powerLevel, 
     retryCount, 
+    retryCount,
     retryTimeout
 ) {}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -213,11 +215,11 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
 
     if (isReady) {
         if (shouldProxy) {
-            char *name = manager->getDocument()["id"]["name"].as<char *>;
+            const char *name = manager->getDocument()["id"]["name"];
             manager->set_device_name(name);
 
-            int instNum = manager->getDocument()["id"]["instance"].as<int>;
-            manager->set_device_name(instNum);
+            int instNum = manager->getDocument()["id"]["instance"];
+            manager->set_instance_num(instNum);
         }
 
         return FragReceiveStatus::Complete;
@@ -296,7 +298,7 @@ bool Loom_LoRa::handleLostFrag(JsonDocument &workingDoc,
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LoRa::receive(uint timeout, bool shouldProxy, uint8_t* fromAddress) {
+bool Loom_LoRa::receive(uint timeout, uint8_t* fromAddress, bool shouldProxy) {
     int retryCount = receiveRetryCount;
     while (retryCount > 0) {
         FragReceiveStatus status = receiveFrag(timeout, shouldProxy, fromAddress);
@@ -316,7 +318,7 @@ bool Loom_LoRa::receive(uint timeout, bool shouldProxy, uint8_t* fromAddress) {
 
 bool Loom_LoRa::receive(uint timeout, bool shouldProxy) {
     uint8_t fromAddress;
-    return receive(timeout, shouldProxy, &fromAddress);
+    return receive(timeout, &fromAddress, shouldProxy);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
