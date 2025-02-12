@@ -29,7 +29,7 @@
    * 1. Directly calibrate the oxygen sensor by adding two parameters to the sensor.
    * 2. Waiting for stable oxygen sensors for about 10 minutes, 
    *    OXYGEN_CONECTRATION is the current concentration of oxygen in the air (20.9%mol except in special cases),
-   *    Not using the first calibration method, the OXYGEN MV must be 0.
+   *    Note using the first calibration method, the OXYGEN MV must be 0.
    * 
    * oxygen.calibrate(calOxygenConcentration, calOxygenMV);
    * @param calOxygenConcentration oxygen concentration unit vol
