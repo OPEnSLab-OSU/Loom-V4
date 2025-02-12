@@ -143,7 +143,6 @@ private:
                          uint8_t *fromAddress);
     FragReceiveStatus receiveFrag(uint timeout, uint8_t *fromAddress);
 
-    // TODO(rwheary): consider changing JsonDocument& to JsonVariant
     // returns whether a packet has been loaded into the global document
     bool handleFragHeader(JsonDocument &workingDoc, uint8_t fromAddress);
     bool handleFragBody(JsonDocument &workingDoc, uint8_t fromAddress);
@@ -174,8 +173,6 @@ private:
     uint8_t receiveRetryCount;  // Number fragment receive retries allowed
     uint16_t retryTimeout;      // Delay between retries (MS)
 
-    // TODO(rwheary): This could result in catastrophic memory leaks in the 
-    // worst case. Should probably have a mechanism to handle that.
     std::unordered_map<uint8_t, PartialPacket> frags; // Partial packets sorted by address
 };
 

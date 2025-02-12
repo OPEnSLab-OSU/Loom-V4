@@ -229,7 +229,6 @@ bool Loom_LoRa::handleFragHeader(JsonDocument &workingDoc,
             expectedFragCount, 
             DynamicJsonDocument(packetSpace) }));
 
-    // TODO(rwheary): does this copy data over to the correctly sized buffer??
     inserted.first->second.working = workingDoc;
 
     return false;
@@ -247,7 +246,8 @@ bool Loom_LoRa::handleFragBody(JsonDocument &workingDoc,
     partialPacket->remainingFragments--;
 
     if (partialPacket->remainingFragments == 0) { 
-        manager->getDocument() = std::move(partialPacket->working);
+        // overwrite the manager document by deep-copying the finalized packet
+        manager->getDocument().set(partialPacket->working);
         frags.erase(fromAddress);
 
         return true;
@@ -259,8 +259,8 @@ bool Loom_LoRa::handleFragBody(JsonDocument &workingDoc,
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::handleSingleFrag(JsonDocument &workingDoc) {
-    // TODO(rwheary): does this copy data over to the correctly sized buffer??
-    manager->getDocument() = workingDoc;
+    // overwrite the manager document by deep-copying the finalized packet
+    manager->getDocument().set(workingDoc);
     
     return true;
 }
@@ -269,7 +269,8 @@ bool Loom_LoRa::handleSingleFrag(JsonDocument &workingDoc) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::handleLostFrag(JsonDocument &workingDoc, 
                                       uint8_t fromAddress) {
-    WARNINGF("Dropping fragmented packet body with no header received from %i", fromAddress);
+    WARNINGF("Dropping fragmented packet body with no header received from %i",
+             fromAddress);
 
     return false;
 }
