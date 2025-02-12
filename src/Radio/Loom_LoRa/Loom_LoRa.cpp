@@ -193,7 +193,7 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout) {
     }
 
     if (tempDoc.containsKey("batch_size")) {
-        return FragReceiveStatus::BatchHeader;
+        return FragReceiveStatus::Incomplete;
     }
 
     bool isReady = false;
@@ -298,8 +298,6 @@ bool Loom_LoRa::receive(uint timeout) {
         switch (status) {
         case FragReceiveStatus::Complete:
             return true;
-        case FragReceiveStatus::BatchHeader:
-            return false; // not expecting to receive a batch
         case FragReceiveStatus::Error:
             retryCount--;
             break;
