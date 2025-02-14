@@ -36,9 +36,10 @@ private:
     Manager* manInst;                           // Instance of the manager
 };
 
-Manager manager("Device", 1);
+int id = 1;
+Manager manager("Device", id);
 
-Loom_LoRa lora(manager, 2, 23, 10, 10, 1000);
+Loom_LoRa lora(manager, id, 23, 10, 10, 1000);
 
 std::vector<Dummy_Module*> modules;
 
