@@ -14,6 +14,7 @@
 
 class Dummy_Module : public Module {
 protected:
+    void power_up() override {};
     void power_down() override {};
     void initialize() override {};  
     void measure() override {};
@@ -26,7 +27,7 @@ public:
         json["randomData"] = "very long string that forces packet fragmentation during lora transmission";
     }
 
-    Loom_Dummy(Manager& man, const char *name) : Module(name), manInst(&man) {
+    Dummy_Module(Manager& man, const char *name) : Module(name), manInst(&man) {
         // Register the module with the manager
         manInst->registerModule(this);
     };
@@ -35,9 +36,9 @@ private:
     Manager* manInst;                           // Instance of the manager
 };
 
-Manager manager("Device", 2);
+Manager manager("Device", 1);
 
-Loom_LoRa lora(manager, 2, 23, 10, 1000);
+Loom_LoRa lora(manager, 2, 23, 10, 10, 1000);
 
 std::vector<Dummy_Module*> modules;
 
