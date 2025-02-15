@@ -21,7 +21,8 @@ Loom_LoRa::Loom_LoRa(
         powerLevel(powerLevel),
         sendRetryCount(sendMaxRetries),
         receiveRetryCount(receiveMaxRetries),
-        retryTimeout(retryTimeout)
+        retryTimeout(retryTimeout),
+        expectedOutstandingPackets(0)
 {
     this->radioManager = new RHReliableDatagram(
         radioDriver, this->deviceAddress);
@@ -142,6 +143,14 @@ void Loom_LoRa::package() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LoRa::setAddress(const uint8_t newAddress) {
+    deviceAddress = newAddress;
+    radioManager->setThisAddress(newAddress);
+    radioDriver.sleep();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::receiveFromLoRa(uint8_t *buf, uint8_t buf_size, 
                                        uint timeout, uint8_t *fromAddress) {
     bool status = true;
@@ -193,14 +202,11 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
         return FragReceiveStatus::Error;
     }
 
-    if (tempDoc.containsKey("batch_size")) {
-        LOGF("Received batch header, expecting %i packets", 
-            tempDoc["batch_size"].as<int>());
-        return FragReceiveStatus::Incomplete;
-    }
-
     bool isReady = false;
-    if (tempDoc.containsKey("numPackets")) {
+    if (tempDoc.containsKey("batch_size")) {
+        isReady = handleBatchHeader(tempDoc);
+
+    } else if (tempDoc.containsKey("numPackets")) {
         isReady = handleFragHeader(tempDoc, *fromAddress);
 
     } else if (frags.find(*fromAddress) != frags.end()) {
@@ -222,10 +228,23 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
             manager->set_instance_num(instNum);
         }
 
+        if (expectedOutstandingPackets > 0) {
+            expectedOutstandingPackets--;
+        }
+
         return FragReceiveStatus::Complete;
     } else {
         return FragReceiveStatus::Incomplete;
     }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::handleBatchHeader(JsonDocument &tempDoc) {
+    int batch_size = tempDoc["batch_size"];
+    LOGF("Received batch header, expecting %i packets", batch_size);
+    expectedOutstandingPackets += batch_size;
+    return false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -494,3 +513,15 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
 
     fileOutput.close();
 }
+
+bool Loom_LoRa::receiveBatch(uint timeout, int* numberOfPackets) {
+    uint8_t fromAddress;
+    return receiveBatch(timeout, numberOfPackets, &fromAddress);
+}
+
+bool Loom_LoRa::receiveBatch(uint timeout, int* numberOfPackets, const uint8_t *fromAddress) {
+    bool status = receive(timeout, fromAddress);
+    *numberOfPackets = expectedOutstandingPackets;
+    return status;
+}
+

@@ -79,13 +79,6 @@ public:
     ~Loom_LoRa();
 
     /**
-     * Sets the address of the device
-     *
-     * @param newAddress The new address to use
-     */
-    void setAddress(const uint8_t newAddress);
-
-    /**
      * Initialize the module
      */ 
     void initialize() override;
@@ -104,6 +97,28 @@ public:
      * Package basic data about the device
      */ 
     void package() override;
+
+    /**
+     * Get this device's address
+     */ 
+    uint8_t getAddress() const { return deviceAddress; };
+
+    /**
+     * Set this device's address
+     */
+    void setAddress(const uint8_t newAddress);
+
+    /**
+     * Set a reference to the batchSD object
+     * 
+     * @param batch Reference to the BatchSD object being used
+     */
+    void setBatchSD(Loom_BatchSD& batch) { batchSD = &batch; };
+
+    /**
+     * Get the current signal strength of the radio
+     */ 
+    int16_t getSignalStrength() const { return signalStrength; };
 
     /**
      * Receive a JSON packet from another radio, blocking until the wait time 
@@ -152,6 +167,33 @@ public:
      */ 
     bool sendBatch(const uint8_t destinationAddress);
 
+    /**
+     * Receive multiple batch packets 
+     *
+     * @param maxWaitTime The maximum time to wait before continuing execution
+     *        (Set to 0 for non-blocking)
+     * @param numberOfPackets Integer pointer so we can control the number of
+     *        times we loop the function.
+     *        IMPORTANT: numberOfPackets represents the number of outstanding
+     *        packets that receiveBatch expects: this number may increase,
+     *        or not reflect the actual number.
+     */ 
+    bool receiveBatch(uint timeout, int *numberOfPackets);
+
+    /**
+     * Receive multiple batch packets 
+     *
+     * @param maxWaitTime The maximum time to wait before continuing execution
+     *        (Set to 0 for non-blocking)
+     * @param numberOfPackets Integer pointer so we can control the number of
+     *        times we loop the function.
+     *        IMPORTANT: numberOfPackets represents the number of outstanding
+     *        packets that receiveBatch expects: this number may increase,
+     *        or not reflect the actual number.
+     * @param fromAddress out The address the packet was received from
+     */ 
+    bool receiveBatch(uint timeout, int *numberOfPackets, const uint8_t *fromAddress);
+
 private:
     // receives some data from lora
     bool receiveFromLoRa(uint8_t *buf, uint8_t buf_size, uint timeout, 
@@ -162,6 +204,7 @@ private:
                                   uint8_t *fromAddress);
 
     // returns whether a packet has been loaded into the global document
+    bool handleBatchHeader(JsonDocument &workingDoc);
     bool handleFragHeader(JsonDocument &workingDoc, uint8_t fromAddress);
     bool handleFragBody(JsonDocument &workingDoc, uint8_t fromAddress);
     bool handleSingleFrag(JsonDocument &workingDoc);
@@ -192,5 +235,7 @@ private:
     uint16_t retryTimeout;      // Delay between retries (MS)
 
     std::unordered_map<uint8_t, PartialPacket> frags; // Partial packets sorted by address
+    
+    uint expectedOutstandingPackets;   // estimated number of outstanding packets
 };
 
