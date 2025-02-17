@@ -55,6 +55,7 @@ class Loom_MultiGasSensor : public I2CDevice{
 
     Manager* manInst;
     DFRobot_GAS_I2C gas;
+    uint8_t addr;
     bool moduleInitialized = false;
     bool needsReinit = false;
     std::unordered_map<std::string, float> *gasData = nullptr;

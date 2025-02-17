@@ -4,9 +4,9 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MultiGasSensor::Loom_MultiGasSensor(
                             Manager& man,
-                            int address,
+                            uint8_t address,
                             bool useMux
-                    ) : I2CDevice("MultiGasSensor"), manInst(&man), gas(&Wire, address) {
+                    ) : I2CDevice("MultiGasSensor"), manInst(&man), addr(address) {
                         module_address = address;
 
                         // Register the module with the manager
@@ -15,40 +15,52 @@ Loom_MultiGasSensor::Loom_MultiGasSensor(
                     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-uint8_t Loom_MultiGasSensor::get_gas_i2c(const std::string gasType){
-    if(gasType == "O2")
-        return 0x05;
-    if (gasType == "CO")
-        return 0x04;
-    if (gasType == "H2S")
-        return 0x03;
-    if (gasType == "NO2")
-        return 0x2C;
-    if (gasType == "O3")
-        return 0x2A;
-    if (gasType == "CL2")
-        return 0x31;
-    if (gasType == "NH3")
-        return 0x02;
-    if (gasType == "H2")
-        return 0x06;
-    if (gasType == "HCL")
-        return 0x2E;
-    if (gasType == "SO2")
-        return 0x2B;
-    if (gasType == "HF")
-        return 0x33;
-    if (gasType == "PH3")
-        return 0x45;
-    return 0x00;
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+uint8_t Loom_MultiGasSensor::get_gas_i2c(const std::string& gasType) {
+    static const std::unordered_map<std::string, uint8_t> GAS_ADDRESSES = {
+        {"O2",  0x05},
+        {"CO",  0x04},
+        {"H2S", 0x03},
+        {"NO2", 0x2C},
+        {"O3",  0x2A},
+        {"CL2", 0x31},
+        {"NH3", 0x02},
+        {"H2",  0x06},
+        {"HCL", 0x2E},
+        {"SO2", 0x2B},
+        {"HF",  0x33},
+        {"PH3", 0x45}
+    };
+
+    auto it = GAS_ADDRESSES.find(gasType);
+    return (it != GAS_ADDRESSES.end()) ? it->second : 0x00;
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MultiGasSensor::initialize() {
     FUNCTION_START;
-    int retries = 0;
-    gas.setI2cAddr(0x05);
 
+    gas.setI2cAddr(addr);
+    delay(100);
+
+    // If scan is necessary
+    if (!checkDeviceConnection()){
+        LOG(F("Scanning I2C for MultiGasSensor..."));
+        addr = scanI2C();
+        gas.setI2cAddr(addr);
+        module_address = addr;
+        needsReinit = false;
+        char *msg = (char*)malloc(100);
+        snprintf_P(msg, 100, PSTR("MultiGasSensor addr changed to: 0x%02X"), addr);
+        LOG(msg);
+        free(msg);
+    }
+    else{
+        LOG(F("MultiGasSensor connection found, no scan necessary!"));
+    }
+
+    int retries = 0;
     while (!gas.begin()){
         ERROR(F("Failed to initialize Gas Sensor! Retrying..."));
         moduleInitialized = false;
@@ -76,54 +88,43 @@ void Loom_MultiGasSensor::initialize() {
 void Loom_MultiGasSensor::measure() {
     FUNCTION_START;
     if(moduleInitialized){
-        // Get the current connection status
         bool connectionStatus = checkDeviceConnection();
-
-        // If we are connected and we need to reinit
         if(connectionStatus && needsReinit){
             initialize();
             needsReinit = false;
         }
-
-        // If we are not connected
         else if(!connectionStatus){
             ERROR(F("No acknowledge received from the device"));
             FUNCTION_END;
             return;
         }
-        if (gasData != nullptr){
-            delete gasData;
-            gasData = nullptr;
+
+        const std::vector<std::string> gasTypes = {
+            "O2", "CO", "H2S", "NO2", "O3", "CL2",
+            "NH3", "H2", "HCL", "SO2", "HF", "PH3"
+        };
+
+        if (gasData == nullptr) {
+            gasData = new std::unordered_map<std::string, float>;
         }
 
-        gasData = new std::unordered_map<std::string, float>;
-
-        gasData->insert({"CO", 0.0});
-        gasData->insert({"O2", 0.0});
-        gasData->insert({"NH3", 0.0});
-        gasData->insert({"H2S", 0.0});
-        gasData->insert({"NO2", 0.0});
-        gasData->insert({"HCL", 0.0});
-        gasData->insert({"H2", 0.0});
-        gasData->insert({"PH3", 0.0});
-        gasData->insert({"SO2", 0.0});
-        gasData->insert({"O3", 0.0});
-        gasData->insert({"CL2", 0.0});
-        gasData->insert({"HF", 0.0});
-
-        for (auto i = gasData->begin(); i != gasData->end(); ++i){
-            const std::string currentGas = i->first;
-            gas.changeI2cAddrGroup(get_gas_i2c(currentGas));
+        String queryResult;
+        for(const auto& type : gasTypes) {
+            (*gasData)[type] = 0.0;
+            gas.changeI2cAddrGroup(get_gas_i2c(type));
             delay(50);
 
-            if (gas.queryGasType() == String(i->first.c_str())){
-                i->second = gas.readGasConcentrationPPM();
-            }
-            else{
-                ERROR(F("Gas type was set but does not query correctly"));
+            queryResult = gas.queryGasType();
+            if (queryResult.length() > 0 && queryResult == String(type.c_str())) {
+                float concentration = gas.readGasConcentrationPPM();
+                if (concentration >= 0.0) {
+                    (*gasData)[type] = concentration;
+                }
             }
         }
-    gasData->insert({"Temperature(C)", gas.readTempC()});
+
+        float temp = gas.readTempC();
+        (*gasData)["Temperature(C)"] = temp;
     }
     FUNCTION_END;
 }
@@ -137,8 +138,6 @@ void Loom_MultiGasSensor::package() {
         for (auto i = gasData->begin(); i != gasData->end(); ++i){
             json[i->first] = i->second;
         }
-        delete gasData;
-        gasData = nullptr;
     }
     FUNCTION_END;
 }
