@@ -575,7 +575,6 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
         return TimeSpan(0, 0, 20, 0);
     }
     else{
-        serializeJson(json, Serial);
         LOG(F("Config successfully loaded from SD!"));
         if(!json["timezone"].isNull()){
             const char* timezoneStr = json["timezone"].as<const char*>();
