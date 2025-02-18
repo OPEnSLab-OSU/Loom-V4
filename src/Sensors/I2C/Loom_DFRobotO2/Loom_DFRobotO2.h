@@ -31,7 +31,7 @@ class Loom_DFRobotO2 : public I2CDevice{
     private:
         Manager* manInst;               // Instance of the manager
         DFRobot_OxygenSensor oxygen;    // Instance of the DFRobot Oxygen sensor library
-        int collectNumber;               // Number of data points to collect; default is 10
+        int collectNumber;              // Number of data points to collect; default is 10
 
-        float oxygenConcentration; // Acceleration of the gyroscope
+        float oxygenConcentration;      // Oxygen Concentration
 };

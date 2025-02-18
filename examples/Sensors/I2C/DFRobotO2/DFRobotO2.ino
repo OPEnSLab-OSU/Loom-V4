@@ -23,13 +23,13 @@
    manager.initialize();
 
    /**
-   * Callibration Instructions: 
-   *  
-   * Choose method 1 or method 2 to calibrate the oxygen sensor.
+   * Choose method 1 or method 2 or method 3 to calibrate the oxygen sensor.
    * 1. Directly calibrate the oxygen sensor by adding two parameters to the sensor.
    * 2. Waiting for stable oxygen sensors for about 10 minutes, 
-   *    OXYGEN_CONECTRATION is the current concentration of oxygen in the air (20.9%mol except in special cases),
+   *    OXYGEN_CONECTRATION is the current concentration of oxygen in the air (20.9% by volume except in special cases),
    *    Note using the first calibration method, the OXYGEN MV must be 0.
+   * 3. Click the button on the back of the Gravity breakout board when in air after the value stabilizes, and it
+   *    will calibrate the current concentration reading to be 20.9% by volume
    * 
    * oxygen.calibrate(calOxygenConcentration, calOxygenMV);
    * @param calOxygenConcentration oxygen concentration unit vol
