@@ -471,14 +471,14 @@ void Loom_Hypnos::sleep(bool waitForSerial){
     if(shouldPowerUp){
         manInst->power_down();
 
+        // 50ms delay allows this last message to be sent before the bus disconnects
+        LOG("Entering Standby Sleep...");
+        delay(50);
+
         // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
         uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
         uint32_t currentTime = RTC_DS.now().unixtime();
         hasAlarmTriggered = alarmedTime <= currentTime;
-        
-        // 50ms delay allows this last message to be sent before the bus disconnects
-        LOG("Entering Standby Sleep...");
-        delay(50);
     }
 
     // If it hasn't we should preform our sleep as before
@@ -538,7 +538,6 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
         enable(enable33, enable5); // Checks if the 3.3v or 5v are disabled and re-enables them
         delay(1000);
 
-        LOG(F("Device has awoken from sleep!"));
 
         // Clear any pending RTC alarms
         RTC_DS.clearAlarm();
@@ -553,7 +552,7 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
             TIMER_ENABLE;
         }
 
-        
+        LOG(F("Device has awoken from sleep!"));
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -566,7 +565,6 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
     char output[OUTPUT_SIZE];
     char* fileRead = sdMan->readFile(fileName);
     DeserializationError deserialError = deserializeJson(doc, fileRead);
-    free(fileRead);
 
     // Create json object to easily pull data from
     JsonObject json = doc.as<JsonObject>();
@@ -577,6 +575,7 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
         return TimeSpan(0, 0, 20, 0);
     }
     else{
+        serializeJson(json, Serial);
         LOG(F("Config successfully loaded from SD!"));
         if(!json["timezone"].isNull()){
             const char* timezoneStr = json["timezone"].as<const char*>();
@@ -596,6 +595,7 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
             return TimeSpan(0, 0, 20, 0);
         }
     }
+    free(fileRead);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

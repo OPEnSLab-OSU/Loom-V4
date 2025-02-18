@@ -2,7 +2,7 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_MAX31856::Loom_MAX31856(Manager& man, int samples, int chip_select, int mosi, int miso, int sclk) : Module("MAX31856"), manInst(&man), num_samples(samples) {
+Loom_MAX31856::Loom_MAX31856(Manager& man, int samples, int chip_select, int mosi, int miso, int sclk, bool farenheit) : Module("MAX31856"), manInst(&man), num_samples(samples), farenheit_display(farenheit) {
     manInst->registerModule(this);
     if(mosi != -1 && miso != -1 && sclk != -1){
         maxthermo = new Adafruit_MAX31856(chip_select, mosi, miso, sclk);
@@ -70,7 +70,10 @@ void Loom_MAX31856::measure(){
 void Loom_MAX31856::package(){
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        json["Temperature"] = temperature;
+        json["TemperatureC"] = temperature;
+        if (fer_display){
+            json["TemperatureF"] = (temperature*9/5)+32;
+        }
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

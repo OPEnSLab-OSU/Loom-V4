@@ -7,7 +7,7 @@
 
 
 /**
- * Class for managing the MAX31865 NOT TO BE CONFUSED WITH THE MAX31865
+ * Class for managing the MAX31856 NOT TO BE CONFUSED WITH THE MAX31865
  * 
  * @author Will Richards
  */ 
@@ -28,7 +28,7 @@ class Loom_MAX31856 : public Module{
          * @param chip_select What pin SPI pin to use
          * @param num_samples The number of samples to collect and average
          */ 
-        Loom_MAX31856(Manager& man, int chip_select = 10, int samples = 1, int mosi = -1, int miso = -1, int sclk = -1);
+        Loom_MAX31856(Manager& man, int samples = 1, int chip_select = 10, int mosi = -1, int miso = -1, int sclk = -1, bool farenheit = true);
 
         ~Loom_MAX31856()
         {
@@ -43,8 +43,9 @@ class Loom_MAX31856 : public Module{
     private:
         Manager* manInst;           // Instance of the manager
 
-        Adafruit_MAX31856* maxthermo = nullptr;      // Instance of the MAX31865 library
+        Adafruit_MAX31856* maxthermo = nullptr;      // Instance of the MAX31856 library
         int num_samples;            // Number of samples to take and average
+        bool farenheit_display;
 
         float temperature = 0;      // Temperature that will be packaged
 };
