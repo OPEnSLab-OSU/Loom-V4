@@ -28,7 +28,7 @@ class Loom_MAX31856 : public Module{
          * @param chip_select What pin SPI pin to use
          * @param num_samples The number of samples to collect and average
          */ 
-        Loom_MAX31856(Manager& man, int samples = 1, int chip_select = 10, int mosi = -1, int miso = -1, int sclk = -1, bool farenheit = true);
+        Loom_MAX31856(Manager& man, int samples = 1, int chip_select = 10, int mosi = -1, int miso = -1, int sclk = -1, bool farenheit = false);
 
         ~Loom_MAX31856()
         {
