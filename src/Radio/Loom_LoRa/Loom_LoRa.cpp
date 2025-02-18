@@ -519,8 +519,8 @@ bool Loom_LoRa::receiveBatch(uint timeout, int* numberOfPackets) {
     return receiveBatch(timeout, numberOfPackets, &fromAddress);
 }
 
-bool Loom_LoRa::receiveBatch(uint timeout, int* numberOfPackets, const uint8_t *fromAddress) {
-    bool status = receive(timeout, fromAddress);
+bool Loom_LoRa::receiveBatch(uint timeout, int* numberOfPackets, uint8_t *fromAddress) {
+    bool status = receive(timeout, fromAddress, true);
     *numberOfPackets = expectedOutstandingPackets;
     return status;
 }

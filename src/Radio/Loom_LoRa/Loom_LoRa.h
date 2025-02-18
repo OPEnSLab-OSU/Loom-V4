@@ -192,7 +192,7 @@ public:
      *        or not reflect the actual number.
      * @param fromAddress out The address the packet was received from
      */ 
-    bool receiveBatch(uint timeout, int *numberOfPackets, const uint8_t *fromAddress);
+    bool receiveBatch(uint timeout, int *numberOfPackets, uint8_t *fromAddress);
 
 private:
     // receives some data from lora
