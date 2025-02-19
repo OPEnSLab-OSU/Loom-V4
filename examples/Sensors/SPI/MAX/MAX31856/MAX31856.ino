@@ -14,7 +14,7 @@ Manager manager("Device", 1);
 
 // create sensor
 // default parameters:
-// Manager& man, int samples = 1, int chip_select = 10, int mosi = -1, int miso = -1, int sclk = -1, bool farenheit = false
+// Manager& man, int samples = 1, int chip_select = 10, int mosi = -1, int miso = -1, int sclk = -1, TEMP_UNIT unit = CELCIUS
 Loom_MAX31856 maxthermo(manager);
 
 void setup() {

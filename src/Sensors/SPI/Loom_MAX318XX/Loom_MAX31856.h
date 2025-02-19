@@ -6,6 +6,11 @@
 #include "Loom_Manager.h"
 
 
+enum TEMP_UNIT{
+    FARENHEIT = true,
+    CELCIUS = false
+};
+
 /**
  * Class for managing the MAX31856 NOT TO BE CONFUSED WITH THE MAX31865
  * 
@@ -27,8 +32,9 @@ class Loom_MAX31856 : public Module{
          * @param man Reference to the manager
          * @param chip_select What pin SPI pin to use
          * @param num_samples The number of samples to collect and average
+         * @param TEMP_UNIT choose FARENHEIT or CELCIUS
          */ 
-        Loom_MAX31856(Manager& man, int samples = 1, int chip_select = 10, int mosi = -1, int miso = -1, int sclk = -1, bool farenheit = false);
+        Loom_MAX31856(Manager& man, int samples = 1, int chip_select = 10, int mosi = -1, int miso = -1, int sclk = -1, TEMP_UNIT unit = CELCIUS);
 
         ~Loom_MAX31856()
         {
@@ -45,7 +51,7 @@ class Loom_MAX31856 : public Module{
 
         Adafruit_MAX31856* maxthermo = nullptr;      // Instance of the MAX31856 library
         int num_samples;            // Number of samples to take and average
-        bool farenheit_display;
+        bool farenheit_display;     // if true will display and packege the temperature as farenheit
 
         float temperature = 0;      // Temperature that will be packaged
 };
