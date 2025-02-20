@@ -93,6 +93,18 @@ void Loom_LoRa::initialize(){
 void Loom_LoRa::package(){
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
+        manInst->addData("LoRa","1",1);
+        manInst->addData("Test","2",1);
+        manInst->addData("Test2","3",1);
+        manInst->addData("Test3","4",1);
+        manInst->addData("Test4","5",1);
+        manInst->addData("Test5","6",1);
+        manInst->addData("Test6","7",1);
+        manInst->addData("Test7","8",1);
+        manInst->addData("Test8","9",1);
+        manInst->addData("Test9","10",1);
+        manInst->addData("Test10","11",1);
+        
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -356,85 +368,71 @@ bool Loom_LoRa::receiveBatch(uint maxWaitTime, int* numberOfPackets){
 bool Loom_LoRa::receivePartial(uint waitTime) {
     char output[OUTPUT_SIZE];
 
-    if (moduleInitialized) {
-        int numPackets = manInst->getDocument()["numPackets"].as<int>();
-        JsonArray contents = manInst->getDocument()["contents"].as<JsonArray>();
-        StaticJsonDocument<300> tempDoc;
-
-        struct Packet {
-            int senderID;
-            int fragmentID;
-            JsonObject data;
-        };
-        Packet receivedPackets[numPackets];
-        int packetCount = 0;
-
-        // Ensure the contents array can hold all fragments
-        while (contents.size() < numPackets) {
-            contents.add(JsonObject());
-        }
-
-        // Loop through the expected number of packets
-        for (int i = 0; i < numPackets; i++) {
-            snprintf(output, OUTPUT_SIZE, "Waiting for packet %i / %i", i + 1, numPackets);
-            LOG(output);
-
-            if (recv(waitTime)) {
-                snprintf(output, OUTPUT_SIZE, "Fragment received %i / %i", i + 1, numPackets);
-                LOG(output);
-
-                deserializeJson(tempDoc, (const char*)recvData, RECV_DATA_SIZE);
-
-                int fragmentID = tempDoc["fragment_id"].as<int>();
-                int senderID = tempDoc["sender_id"].as<int>();
-
-                if (fragmentID >= 0 && fragmentID < numPackets) {
-                    receivedPackets[packetCount].senderID = senderID;
-                    receivedPackets[packetCount].fragmentID = fragmentID;
-                    receivedPackets[packetCount].data = tempDoc.as<JsonObject>();
-                    packetCount++;
-                } else {
-                    snprintf(output, OUTPUT_SIZE, "Invalid fragment ID: %i", fragmentID);
-                    WARNING(output);
-                }
-            } else {
-                ERROR(F("No Packet Received"));
-            }
-        }
-
-        // Manual sorting based on senderID and fragmentID
-        for (int i = 0; i < packetCount - 1; i++) {
-            for (int j = 0; j < packetCount - i - 1; j++) {
-                if ((receivedPackets[j].senderID > receivedPackets[j + 1].senderID) ||
-                    (receivedPackets[j].senderID == receivedPackets[j + 1].senderID &&
-                     receivedPackets[j].fragmentID > receivedPackets[j + 1].fragmentID)) {
-                    Packet temp = receivedPackets[j];
-                    receivedPackets[j] = receivedPackets[j + 1];
-                    receivedPackets[j + 1] = temp;
-                }
-            }
-        }
-
-        // Assign sorted packets to the contents array
-        for (int i = 0; i < packetCount; i++) {
-            contents[receivedPackets[i].fragmentID] = receivedPackets[i].data;
-        }
-
-        // Verify that all fragments are received
-        for (int i = 0; i < numPackets; i++) {
-            if (contents[i].isNull()) {
-                snprintf(output, OUTPUT_SIZE, "Missing fragment %i", i);
-                WARNING(output);
-                return false;
-            }
-        }
-
-        LOG(F("All fragments successfully received, sorted, and ordered"));
-        return true;
-    } else {
+    if (!moduleInitialized) {
         ERROR(F("Module not initialized!"));
         return false;
     }
+
+    int numPackets = manInst->getDocument()["numPackets"].as<int>();
+    JsonArray contents = manInst->getDocument()["contents"].as<JsonArray>();
+    StaticJsonDocument<300> tempDoc;
+
+    struct Packet {
+        int senderID;
+        int fragmentID;
+        JsonObject data;
+    };
+
+    std::vector<Packet> receivedPackets;
+
+    // Receive all packets
+    for (int i = 0; i < numPackets; i++) {
+        snprintf(output, OUTPUT_SIZE, "Waiting for packet %i / %i", i + 1, numPackets);
+        LOG(output);
+
+        if (recv(waitTime)) {
+            snprintf(output, OUTPUT_SIZE, "Fragment received %i / %i", i + 1, numPackets);
+            LOG(output);
+
+            deserializeJson(tempDoc, (const char*)recvData, RECV_DATA_SIZE);
+
+            Packet packet;
+            packet.senderID = tempDoc["sender_id"].as<int>();
+            packet.fragmentID = tempDoc["fragment_id"].as<int>();
+            packet.data = tempDoc.as<JsonObject>();
+
+            receivedPackets.push_back(packet);
+        } else {
+            ERROR(F("No Packet Received"));
+        }
+    }
+
+    // Sort received packets by senderID first, then fragmentID
+    std::sort(receivedPackets.begin(), receivedPackets.end(), [](const Packet &a, const Packet &b) {
+        return (a.senderID < b.senderID) || (a.senderID == b.senderID && a.fragmentID < b.fragmentID);
+    });
+
+    // Ensure the contents array is the correct size
+    while (contents.size() < numPackets) {
+        contents.add(JsonObject());
+    }
+
+    // Assign sorted packets to the contents array
+    for (const auto &packet : receivedPackets) {
+        contents[packet.fragmentID] = packet.data;
+    }
+
+    // Verify all fragments are received
+    for (int i = 0; i < numPackets; i++) {
+        if (contents[i].isNull()) {
+            snprintf(output, OUTPUT_SIZE, "Missing fragment %i", i);
+            WARNING(output);
+            return false;
+        }
+    }
+
+    LOG(F("All fragments successfully received and ordered"));
+    return true;
 }
 
 
@@ -503,7 +501,7 @@ bool Loom_LoRa::sendModules(JsonObject json, int numModules, const uint8_t desti
     char output[OUTPUT_SIZE];
 
     // Assign a unique identifier for each sender 
-    const char* senderID = "unique_sender_id"; 
+    const char* senderID = "unique_sender_id2"; 
 
     /*
         This is how each module will be sent across
