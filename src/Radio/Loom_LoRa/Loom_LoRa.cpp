@@ -383,7 +383,8 @@ bool Loom_LoRa::receivePartial(uint waitTime) {
         JsonObject data;
     };
 
-    std::vector<Packet> receivedPackets;
+    Packet receivedPackets[numPackets]; // Use a fixed-size array
+    int packetCount = 0; // Track how many packets we actually receive
 
     // Receive all packets
     for (int i = 0; i < numPackets; i++) {
@@ -396,21 +397,36 @@ bool Loom_LoRa::receivePartial(uint waitTime) {
 
             deserializeJson(tempDoc, (const char*)recvData, RECV_DATA_SIZE);
 
-            Packet packet;
-            packet.senderID = tempDoc["sender_id"].as<int>();
-            packet.fragmentID = tempDoc["fragment_id"].as<int>();
-            packet.data = tempDoc.as<JsonObject>();
+            int senderID = tempDoc["sender_id"].as<int>();
+            int fragmentID = tempDoc["fragment_id"].as<int>();
 
-            receivedPackets.push_back(packet);
+            if (fragmentID >= 0 && fragmentID < numPackets) {
+                receivedPackets[packetCount].senderID = senderID;
+                receivedPackets[packetCount].fragmentID = fragmentID;
+                receivedPackets[packetCount].data = tempDoc.as<JsonObject>();
+                packetCount++;
+            } else {
+                snprintf(output, OUTPUT_SIZE, "Invalid fragment ID: %i", fragmentID);
+                WARNING(output);
+            }
         } else {
             ERROR(F("No Packet Received"));
         }
     }
 
-    // Sort received packets by senderID first, then fragmentID
-    std::sort(receivedPackets.begin(), receivedPackets.end(), [](const Packet &a, const Packet &b) {
-        return (a.senderID < b.senderID) || (a.senderID == b.senderID && a.fragmentID < b.fragmentID);
-    });
+    for (int i = 0; i < packetCount - 1; i++) {
+        for (int j = 0; j < packetCount - i - 1; j++) {
+            bool swapNeeded = (receivedPackets[j].senderID > receivedPackets[j + 1].senderID) ||
+                              (receivedPackets[j].senderID == receivedPackets[j + 1].senderID &&
+                               receivedPackets[j].fragmentID > receivedPackets[j + 1].fragmentID);
+
+            if (swapNeeded) {
+                Packet temp = receivedPackets[j];
+                receivedPackets[j] = receivedPackets[j + 1];
+                receivedPackets[j + 1] = temp;
+            }
+        }
+    }
 
     // Ensure the contents array is the correct size
     while (contents.size() < numPackets) {
@@ -418,8 +434,8 @@ bool Loom_LoRa::receivePartial(uint waitTime) {
     }
 
     // Assign sorted packets to the contents array
-    for (const auto &packet : receivedPackets) {
-        contents[packet.fragmentID] = packet.data;
+    for (int i = 0; i < packetCount; i++) {
+        contents[receivedPackets[i].fragmentID] = receivedPackets[i].data;
     }
 
     // Verify all fragments are received
@@ -501,7 +517,9 @@ bool Loom_LoRa::sendModules(JsonObject json, int numModules, const uint8_t desti
     char output[OUTPUT_SIZE];
 
     // Assign a unique identifier for each sender 
-    const char* senderID = "unique_sender_id2"; 
+    char senderIDBuffer[10];  // Buffer to store the converted integer
+    snprintf(senderIDBuffer, sizeof(senderIDBuffer), "%d", manInst->get_instance_num());
+    const char* senderID = senderIDBuffer;
 
     /*
         This is how each module will be sent across
