@@ -503,11 +503,10 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
             LOGF("Successfully transmitted packet (%i/%i)", i+1, batchSize);
         } else {
             ERRORF("Failed to transmit packet (%i/%i)", i+1, batchSize);
-            // TODO(rwheary): should this fail the entire send?
         }
 
         delay(500);
-        // TODO(rwheary): why?
+
         Serial.println();
     }
 
