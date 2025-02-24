@@ -34,7 +34,7 @@ class Loom_MultiGasSensor : public I2CDevice{
          */
         Loom_MultiGasSensor(
                       Manager& man,
-                      int address = 0x77,
+                      uint8_t address = 0x77,
                       bool useMux = false
                 );
 
@@ -51,12 +51,12 @@ class Loom_MultiGasSensor : public I2CDevice{
 
 
     private:
-    uint8_t get_gas_i2c(const std::string gasType);
+        uint8_t get_gas_i2c(const std::string gasType);
 
-    Manager* manInst;
-    DFRobot_GAS_I2C gas;
-    uint8_t addr;
-    bool moduleInitialized = false;
-    bool needsReinit = false;
-    std::unordered_map<std::string, float> *gasData = nullptr;
+        Manager* manInst;
+        DFRobot_GAS_I2C gas;
+        uint8_t addr;
+        bool moduleInitialized = false;
+        bool needsReinit = false;
+        std::unordered_map<std::string, float> *gasData = nullptr;
 };

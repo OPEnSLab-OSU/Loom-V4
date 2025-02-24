@@ -16,7 +16,7 @@ Loom_MultiGasSensor::Loom_MultiGasSensor(
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-uint8_t Loom_MultiGasSensor::get_gas_i2c(const std::string& gasType) {
+uint8_t Loom_MultiGasSensor::get_gas_i2c(const std::string gasType) {
     static const std::unordered_map<std::string, uint8_t> GAS_ADDRESSES = {
         {"O2",  0x05},
         {"CO",  0x04},
