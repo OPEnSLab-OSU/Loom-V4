@@ -66,7 +66,7 @@ void Loom_MultiGasSensor::initialize() {
 
     if(moduleInitialized){
         LOG(F("Setting acquire mode"));
-        gas.changeAcquireMode(gas.PASSIVITY);
+        // gas.changeAcquireMode(gas.PASSIVITY);
         delay(1000);
         LOG(F("Acquire mode set to PASSIVITY"));
 
@@ -109,35 +109,11 @@ void Loom_MultiGasSensor::measure() {
             gasData = new std::unordered_map<std::string, float>;
         }
 
-        if (gas.dataIsAvailable()){
-            LOG(F("Gas data available"));
-        }
-        else{
-            LOG(F("No gas data available"));
-        }
-        // String arduinoGasType = gas.queryGasType();
-        // std::string gasType = arduinoGasType.c_str();
-        // float data = gas.readGasConcentrationPPM();
-        // char *msg = (char*)malloc(100);
-        // snprintf_P(msg, 100, PSTR("Gas type: %s, data: %f"), gasType.c_str(), data);
-        // LOG(msg);
-        // free(msg);
-
-        // if(gas.dataIsAvailable()){
-        //     char *msg = (char*)malloc(100);
-        //     float data = AllDataAnalysis.gasconcentration;
-        //     snprintf_P(msg, 100, PSTR("Gas data available: %f"), data);
-        //     LOG(msg);
-        //     free(msg);
-        // }
 
         String queryResult;
         for(const auto& type : gasTypes) {
             (*gasData)[type] = 0.0;
-            gas.changeI2cAddrGroup(get_gas_i2c(type));
-            delay(50);
 
-            queryResult = gas.queryGasType();
             if (queryResult.length() > 0 && queryResult == String(type.c_str())) {
                 float concentration = gas.readGasConcentrationPPM();
                 if (concentration >= 0.0) {
