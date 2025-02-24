@@ -40,7 +40,7 @@ void Loom_Hypnos::package(){
 
     time = getCurrentTime();
     localTime = getLocalTime(time);
-    
+
     dateTime_toString(time, timeStr);
     json["time_utc"] = timeStr;
 
@@ -180,7 +180,7 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
     // If the RTC hasn't already been initialized then do so now if we are trying to schedule an RTC interrupt
     if(!RTC_initialized && interruptPin == 12)
         initializeRTC();
-    
+
     // Make sure a callback function was supplied
     if(isrFunc != nullptr){
 
@@ -475,10 +475,10 @@ void Loom_Hypnos::sleep(bool waitForSerial){
         LOG("Entering Standby Sleep...");
         delay(50);
 
-        // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
-        uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
-        uint32_t currentTime = RTC_DS.now().unixtime();
-        hasAlarmTriggered = alarmedTime <= currentTime;
+    // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
+    uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
+    uint32_t currentTime = RTC_DS.now().unixtime();
+    hasAlarmTriggered = alarmedTime <= currentTime;
     }
 
     // If it hasn't we should preform our sleep as before
