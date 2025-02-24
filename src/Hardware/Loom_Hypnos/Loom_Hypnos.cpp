@@ -475,10 +475,10 @@ void Loom_Hypnos::sleep(bool waitForSerial){
         LOG("Entering Standby Sleep...");
         delay(50);
 
-    // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
-    uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
-    uint32_t currentTime = RTC_DS.now().unixtime();
-    hasAlarmTriggered = alarmedTime <= currentTime;
+        // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
+        uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
+        uint32_t currentTime = RTC_DS.now().unixtime();
+        hasAlarmTriggered = alarmedTime <= currentTime;
     }
 
     // If it hasn't we should preform our sleep as before
