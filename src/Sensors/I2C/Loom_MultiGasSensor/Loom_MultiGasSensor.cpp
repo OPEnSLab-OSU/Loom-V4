@@ -66,7 +66,7 @@ void Loom_MultiGasSensor::initialize() {
 
     if(moduleInitialized){
         LOG(F("Setting acquire mode"));
-        gas.changeAcquireMode(gas.INITIATIVE);
+        gas.changeAcquireMode(gas.PASSIVITY);
         delay(1000);
         LOG(F("Acquire mode set to PASSIVITY"));
 
