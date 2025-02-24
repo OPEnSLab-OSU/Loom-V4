@@ -165,3 +165,32 @@ void Loom_SEN55::adjustTempOffset(float offset) {
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+void Loom_SEN55::logDeviceStatus() {
+    FUNCTION_START;
+    char output[OUTPUT_SIZE];
+    char sensorError[OUTPUT_SIZE];
+
+    
+
+    uint32_t deviceStatus;
+
+    uint16_t error = sen5x.readDeviceStatus(deviceStatus);
+
+    std::bitset<32> bits(deviceStatus);
+
+    std::string bitString = bits.to_string();
+
+    snprintf(output, OUTPUT_SIZE, "Device Status: %s", bitString.c_str());
+    LOG(output);
+
+    if(error){
+            errorToString(error, sensorError, OUTPUT_SIZE);
+            snprintf(output, OUTPUT_SIZE, "Error occurred while logging device status: %s", sensorError);
+            ERROR(output);
+        }
+
+    FUNCTION_END;
+
+}
