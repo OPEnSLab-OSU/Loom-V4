@@ -7,44 +7,46 @@
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
 
+#define PM_AVERAGE_COUNT 10     // Number of times to read the pm values then average them over
 
 /**
  *  SEN55 Air Quality sensors, supports pm 1.0, 2.5, 4.0, 10 as well as Temp/Humidity and Nox and Voc index
- * 
+ *
  * NOTE: To get accurate results using the SE555 it should be powered on and remain on as according to the data sheet,
  * the switch-on behavior for the VOC Index is ~ 1 hr and the NOx is ~ 6 hours.
  * Data sheet: https://cdn.sparkfun.com/assets/5/b/f/2/8/Sensirion_Datasheet_SEN5x.pdf (Page 8)
- * 
+ *
  *  @author Will Richards
- */ 
+ */
 class Loom_SEN55 : public I2CDevice{
     protected:
-       
+
        // Manager controlled functions
-        void measure() override;                               
-        void initialize() override;    
+        void measure() override;
+        void initialize() override;
         void power_up() override {};
-        void power_down() override {}; 
-        void package() override;   
+        void power_down() override {};
+        void package() override;
 
     public:
         /**
          * Constructs a new SEN55 sensor
-         * 
+         *
          * @param man Reference to the manager that is used to universally package all data
          * @param measurePM This sets whether or not we should conduct measurements without PM readings (uses less power)
          * @param useMux Whether or not we are using the multiplexer class
-         */ 
+         */
         Loom_SEN55(
                     Manager& man,
                     bool measurePM = true,
-                    bool useMux = false
+                    bool useMux = false,
+                    bool numMode = true
                 );
 
         /**
          * Adjust the temperature reading offset in celsius. By default it accounts for the internal heating of the sensor.
          * Adjustments should be made based off this datasheet: https://cdn.sos.sk/productdata/a8/47/608a6927/sen54-sdn-t.pdf
-         * 
+         *
          * @param offset The additional temperature offset in degrees celsius
         */
         void adjustTempOffset(float offset);
@@ -142,7 +144,7 @@ class Loom_SEN55 : public I2CDevice{
                                                 int16_t gainFactor) { return sen5x.setNoxAlgorithmTuningParameters(indexOffset, learningTimeOffsetHours, learningTimeGainHours, gatingMaxDurationMinutes, stdInitial, gainFactor); };
         /**
          * Get the PM 1.0 reading
-         */ 
+         */
         float getPM1() { return massConcentrationPm1p0; };
 
         /**
@@ -154,12 +156,12 @@ class Loom_SEN55 : public I2CDevice{
          * Get the PM4.0 reading
         */
         float getPM4() { return massConcentrationPm4p0; };
-        
+
         /**
          * Get the PM 10 reading
         */
         float getPM10() { return massConcentrationPm10p0; };
-        
+
         /**
          * Get the PM2.5 reading
         */
@@ -167,12 +169,12 @@ class Loom_SEN55 : public I2CDevice{
 
         /**
          * Get the temperature reading
-         */ 
+         */
         float getTemperature() { return ambientTemperature; };
 
         /**
          * Get the VOX Index reading
-         */ 
+         */
         float getVOCIndex() { return vocIndex; };
 
         /**
@@ -184,13 +186,19 @@ class Loom_SEN55 : public I2CDevice{
          * Logs device register status 
         */
         void logDeviceStatus();
-
+        
+        /*
+        * Reset relevant values to 0, this is useful for preparing for another measurement cycle.
+        * @return An array of the values pre-reset
+        */
+        void resetValuesForMeasure();
 
     private:
         Manager* manInst;                           // Instance of the manager
         SensirionI2CSen5x sen5x;                    // Instance of the SEN55 object
 
         bool measurePM;                             // Are we measuring particulate matter or not
+        bool readNumVals;                           // Do we want to read the number concentration and typical particle size?
 
         /* Sensor readings */
         float massConcentrationPm1p0;
@@ -201,6 +209,15 @@ class Loom_SEN55 : public I2CDevice{
         float ambientTemperature;
         float vocIndex;
         float noxIndex;
+        /* PM number readings */
+        float numConcentrationPm0p5;
+        float numConcentrationPm1p0;
+        float numConcentrationPm2p5;
+        float numConcentrationPm4p0;
+        float numConcentrationPm10p0;
+        float typicalParticleSize;
 
-       
+        int pmReadFrequency = 0;                   // Counter for the number of times we have read the PM values
+
+
 };
