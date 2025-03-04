@@ -6,6 +6,7 @@
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 #include <Loom_Manager.h>
+#include <Logger.h>
 
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 
@@ -13,17 +14,27 @@
 #include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h>
 #include <Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h>
 #include <Sensors/I2C/Loom_MS5803/Loom_MS5803.h>
-
-// If using Teros 10, Uncoment this line
+#include <Hardware/Loom_TippingBucket/Loom_TippingBucket.h>
 #include <Sensors/Analog/Loom_Teros10/Loom_Teros10.h>
-
-// If using SDI12, GS3 or Teros 11 or 12 uncoment this line
-//#include <Sensors/SDI12/Loom_SDI12/Loom_SDI12.h>
 
 #include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h>
 #include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
+// #include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
 
-Manager manager("Chime", 1);
+
+// Pin to have the secondary interrupt triggered from
+#define INT_PIN A0
+
+volatile bool sampleFlag = true; // Sample flag set to 1 so we sample in the first cycle, set to 1 in the ISR, set ot 0 end of sample loop
+volatile bool tipFlag = false;
+
+// Used to track timing for debounce
+unsigned long tip_time = 0;
+unsigned long last_tip_time = 0;
+
+TimeSpan sleepInterval;
+
+Manager manager("NewChime", 1);
 
 // Create a new Hypnos object
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, true);
@@ -34,19 +45,16 @@ Loom_Analog analog(manager);
 // Create sensor classes
 Loom_SHT31 sht(manager);
 Loom_TSL2591 tsl(manager);
-Loom_MS5803 ms_water(manager, 119); // 119(0x77) if CSB=LOW external, 118(0x76) if CSB=HIGH on WC PCB
-Loom_MS5803 ms_air(manager, 118); // 118(0x76) if CSB=HIGH on WC PCB
+Loom_MS5803 ms_water(manager, 119); 
+Loom_MS5803 ms_air(manager, 118); 
+Loom_TippingBucket bucket(manager, COUNTER_TYPE::MANUAL, 0.01f);
+Loom_Teros10 teros(manager, A1);
 
 
-Loom_LTE lte(manager, "hologram", "", "");
+Loom_LTE lte(manager, "hologram","","");
+//Loom_WIFI wifi(manager, CommunicationMode::CLIENT, "Kuti", "kuti101!");
+
 Loom_MongoDB mqtt(manager, lte);
-
-// If using Teros 10, Uncoment this line
-Loom_Teros10 t10(manager, A0);
-
-// If using SDI12, GS3 or Teros 11 or 12 uncoment this line
-//Loom_SDI12 sdi(manager, A0);
-
 
 /* Calculate the water height based on the difference of pressures*/
 float calculateWaterHeight(){
@@ -56,16 +64,39 @@ float calculateWaterHeight(){
 
 // Called when the interrupt is triggered 
 void isrTrigger(){
+  sampleFlag = true;
+  detachInterrupt(INT_PIN);
   hypnos.wakeup();
+}
+
+void tipTrigger() {
+  hypnos.shouldPowerUp = false;
+  tipFlag = true;
+  //detachInterrupt(INT_PIN);
 }
 
 void setup() {
 
+  // Enable debug SD logging and function summaries
+  ENABLE_SD_LOGGING;
+  ENABLE_FUNC_SUMMARIES;
+
+  // Set the interrupt pin to pullup
+  pinMode(INT_PIN, INPUT);
+
   // Wait 20 seconds for the serial console to open
   manager.beginSerial();
 
+  hypnos.setNetworkInterface(&lte);
+
   // Enable the hypnos rails
   hypnos.enable();
+
+  //Load the timezone before we enable the hypnos
+  sleepInterval = hypnos.getConfigFromSD("SD_config.json");
+
+  // Give the bucket an instance of the hypnos
+  bucket.setHypnosInstance(hypnos);
 
   // Read the MQTT creds file to supply the device with MQTT credentials
   mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
@@ -75,33 +106,52 @@ void setup() {
 
   // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);
+
+  attachInterrupt(INT_PIN, tipTrigger, FALLING);
 }
 
 void loop() {
 
-  // Set the RTC interrupt alarm to wake the device in 15 min, at the top to schedule next interrupt asap
-  hypnos.setInterruptDuration(TimeSpan(0, 0, 15, 0));
+  if(sampleFlag){
+    detachInterrupt(INT_PIN);
+    //hypnos.networkTimeUpdate();
+    // Set the RTC interrupt alarm to wake the device in 15 min, this should be done as soon as the device enters sampling mode for consistant sleep cycles
+    hypnos.setInterruptDuration(sleepInterval);
 
-  // Measure and package the data
-  manager.measure();
-  manager.package();
+    // Measure and package the data
+    manager.measure();
+    manager.package();
 
-  // Add the water height calculation to the data
-  manager.addData("Water", "Height_(m)", calculateWaterHeight());
-  
-  // Print the current JSON packet
-  manager.display_data();            
+    // Add the water height calculation to the data
+    manager.addData("Water", "Height_(m)", calculateWaterHeight());
+    
+    // Print the current JSON packet
+    manager.display_data();            
 
-  // Log the data to the SD card              
-  hypnos.logToSD();
+    // Log the data to the SD card              
+    hypnos.logToSD();
 
-  // Publish the collected data to MQTT
-  mqtt.publish();
+    // Publish the collected data to MQTT
+    mqtt.publish();
 
-  // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
-  hypnos.reattachRTCInterrupt();
+    // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
+    hypnos.reattachRTCInterrupt();
+    attachInterrupt(INT_PIN, tipTrigger, FALLING);
+    attachInterrupt(INT_PIN, tipTrigger, FALLING);
+    sampleFlag = false;
+  }
+
+  if(tipFlag){
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(20);
+    bucket.incrementCount();
+    tipFlag = false;
+    attachInterrupt(INT_PIN, tipTrigger, FALLING);
+    attachInterrupt(INT_PIN, tipTrigger, FALLING);
+    digitalWrite(LED_BUILTIN, LOW);
+  }
   
   // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
   hypnos.sleep();
-  
+
 }
