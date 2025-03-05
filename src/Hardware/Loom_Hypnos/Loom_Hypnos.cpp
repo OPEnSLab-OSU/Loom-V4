@@ -1,5 +1,6 @@
 #include "Loom_Hypnos.h"
 #include "Logger.h"
+#include <cstdio>
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time, bool useSD) : Module("Hypnos"), custom_time(use_custom_time), sd_chip_select(version), enableSD(useSD), timezone(zone){
@@ -53,26 +54,38 @@ void Loom_Hypnos::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::enable(bool enable33, bool enable5){
+    #FUNCTION_START
 
     // Enable the 3.3v and 5v rails on the Hypnos
     digitalWrite(5, (enable33) ? LOW : HIGH);
     digitalWrite(6, (enable5) ? HIGH : LOW);
+    LOG(F("Successfully enabled power rails"));
+
     digitalWrite(LED_BUILTIN, HIGH);
+    LOG(F("Successfully enabled LEDs"));
 
     if(enableSD){
+        LOG(F("SD enabled, enabling.."));
         // Enable SPI pins
         pinMode(23, OUTPUT);
         pinMode(24, OUTPUT);
         pinMode(sd_chip_select, OUTPUT);
 
+        LOG(F("SPI pins enabled, activing SDManager..."));
         sdMan->begin();
+        LOG(F("SDManager enabled!"));
     }
 
     // If the RTC hasn't already been initialized then do so now
-    if(!RTC_initialized)
+    if(!RTC_initialized) {
+        LOG(F("RTC has not been initialized, initializing..."));
         initializeRTC();
+    }
 
+    LOG(F("Enabling Loom manager..."));
     manInst->setEnableState(true);
+
+    #FUNCTION_END
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -536,29 +549,35 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
         Serial.begin(115200);
         Watchdog.reset();
 
+        LOG(F("Device has awoken from sleep!"));
+        Watchdog.reset();
+
         // Check if they are not disabled to see if they should be enabled
         bool enable5 = !is5VDisabled(DEVICE_STATE::EXITING_SLEEP);
         Watchdog.reset();
         bool enable33 = !is3VDisabled(DEVICE_STATE::EXITING_SLEEP);
         Watchdog.reset();
 
+        char buf[1000];
+        snprintf(buf, 1000, "enabled status: 5V - %d, 3V - %d", enable5, enable33);
+
         enable(enable33, enable5); // Checks if the 3.3v or 5v are disabled and re-enables them
         Watchdog.reset();
         delay(1000);
         Watchdog.reset();
 
-        LOG(F("Device has awoken from sleep!"));
-        Watchdog.reset();
-
         // Clear any pending RTC alarms
+        LOG(F("Clearing pending RTC alarms..."));
         RTC_DS.clearAlarm();
         Watchdog.reset();
 
         // Re-init the modules that need it
+        LOG(F("Re-initializing modules..."));
         manInst->power_up();
 
         // We want to wait for the user to re-open the serial monitor before continuing to see readouts
         if(waitForSerial){
+            LOG(F("Waiting for serial monitor (watchdog is disabled)..."));
             TIMER_DISABLE;
             while(!Serial);
             TIMER_ENABLE;
