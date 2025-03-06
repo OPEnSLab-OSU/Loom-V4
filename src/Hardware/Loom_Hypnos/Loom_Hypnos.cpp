@@ -54,7 +54,7 @@ void Loom_Hypnos::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::enable(bool enable33, bool enable5){
-    #FUNCTION_START
+    FUNCTION_START;
 
     // Enable the 3.3v and 5v rails on the Hypnos
     digitalWrite(5, (enable33) ? LOW : HIGH);
@@ -85,7 +85,7 @@ void Loom_Hypnos::enable(bool enable33, bool enable5){
     LOG(F("Enabling Loom manager..."));
     manInst->setEnableState(true);
 
-    #FUNCTION_END
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
