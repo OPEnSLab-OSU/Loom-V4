@@ -113,6 +113,8 @@ void Loom_MultiGasSensor::measure() {
         String queryResult;
         for(const auto& type : gasTypes) {
             (*gasData)[type] = 0.0;
+            gas.changeI2cAddrGroup(get_gas_i2c(type));
+            queryResult = gas.queryGasType();
 
             if (queryResult.length() > 0 && queryResult == String(type.c_str())) {
                 float concentration = gas.readGasConcentrationPPM();
