@@ -1,5 +1,5 @@
 /**
- * Temperature Readings using teh MAX31856 sensor
+ * Temperature Readings using the MAX31856 sensor
  * Pass in a variable number of arguments to the construct to designate the number of samples and which chip pins you're using for SPI
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
