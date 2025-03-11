@@ -207,7 +207,7 @@ class Logger{
             truncateFileName(file, fileName);      
             
             /* If the hypnos is not included or the hypnos is included but the RTC hasn't been initialized or our hypnos hasn't been enabled yet we want to print without the time */
-            if(hypnosInst == nullptr || (hypnosInst != nullptr && !hypnosInst->isRTCInitialized() && !hypnosInst->IsEnabled())){
+            if(hypnosInst == nullptr || (hypnosInst != nullptr && !hypnosInst->isRTCInitialized()) || !hypnosInst->IsEnabled()){
                 snprintf_P( logMessage, 
                             OUTPUT_SIZE, 
                             PSTR("[%s] [%s:%s:%u] %s"), 
