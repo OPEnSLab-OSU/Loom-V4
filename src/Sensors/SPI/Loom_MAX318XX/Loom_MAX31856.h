@@ -7,7 +7,7 @@
 
 
 enum TEMP_UNIT{
-    FARENHEIT = true,
+    FAHRENHEIT = true,
     CELCIUS = false
 };
 
