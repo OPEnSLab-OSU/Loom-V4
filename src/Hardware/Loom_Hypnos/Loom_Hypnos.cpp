@@ -40,7 +40,7 @@ void Loom_Hypnos::package(){
 
     time = getCurrentTime();
     localTime = getLocalTime(time);
-    
+
     dateTime_toString(time, timeStr);
     json["time_utc"] = timeStr;
 
@@ -180,7 +180,7 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
     // If the RTC hasn't already been initialized then do so now if we are trying to schedule an RTC interrupt
     if(!RTC_initialized && interruptPin == 12)
         initializeRTC();
-    
+
     // Make sure a callback function was supplied
     if(isrFunc != nullptr){
 

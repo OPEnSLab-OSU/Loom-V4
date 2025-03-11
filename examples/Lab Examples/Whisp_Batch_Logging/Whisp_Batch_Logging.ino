@@ -24,7 +24,7 @@ Loom_SHT31 sht(manager);
 
 //Connectivity
 Loom_LTE lte(manager, "hologram", "", "");
-Loom_MongoDB mqtt(manager, lte.getClient());
+Loom_MongoDB mqtt(manager, lte);
 //A batch is logged every 5 minutes, so 12 per hour (12 * 6 = 72) so mqtt will publish at batch size of 72/ every 6 hours
 Loom_BatchSD batchSD(hypnos, 72);
 
