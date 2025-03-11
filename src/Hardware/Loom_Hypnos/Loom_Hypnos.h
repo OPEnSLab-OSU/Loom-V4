@@ -161,6 +161,8 @@ class Loom_Hypnos : public Module{
          */
         bool logToSD();
 
+        bool IsEnabled() const { if(manInst) { return manInst->GetEnableState(); } return false; }
+
         /* Sleep Functionality */
 
         /**

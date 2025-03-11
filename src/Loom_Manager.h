@@ -138,6 +138,8 @@ class Manager{
          */ 
         void setEnableState(bool state) { hypnosEnabled = state; };
 
+        bool GetEnableState() const { return hypnosEnabled; }
+
         /**
          * Get the JSON object to store the module data in
          * @param moduleName Name of the module we are trying to store data for
