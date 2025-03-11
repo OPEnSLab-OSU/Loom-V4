@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstring>
 #include <queue>
 #include <MemoryFree.h>
 #include "Hardware/Loom_Hypnos/Loom_Hypnos.h"
@@ -84,6 +85,15 @@ class Logger{
             int i;
             // Find the last \\ in the file path to know where the name is
             char *lastOccurance = strrchr(fileName, '\\');
+
+            if (lastOccurance == nullptr) {
+                lastOccurance = strrchr(fileName, '/');
+            }
+
+            if (lastOccurance == nullptr) {
+                strcpy(array, fileName);
+                return;
+            }
             
             int lastSlash = lastOccurance-fileName+1;
 
