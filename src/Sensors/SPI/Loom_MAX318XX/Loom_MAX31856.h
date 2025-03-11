@@ -51,7 +51,7 @@ class Loom_MAX31856 : public Module{
 
         Adafruit_MAX31856* maxthermo = nullptr;      // Instance of the MAX31856 library
         int num_samples;            // Number of samples to take and average
-        bool farenheit_display;     // if true will display and packege the temperature as farenheit
+        bool fahrenheit_display;     // if true will display and package the temperature as fahrenheit
 
         float temperature = 0;      // Temperature that will be packaged
 };
