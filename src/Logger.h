@@ -218,7 +218,7 @@ class Logger{
                             message
                         );
             }
-            else
+            else{
                 snprintf_P( logMessage, 
                             OUTPUT_SIZE, 
                             PSTR("[%s] [%s] [%s:%s:%u] %s"), 
@@ -229,6 +229,7 @@ class Logger{
                             lineNumber, 
                             message
                         );
+            }
             /* Log the message*/          
             log(logMessage, silent);
         }
