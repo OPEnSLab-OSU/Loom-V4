@@ -41,7 +41,7 @@ void Loom_Hypnos::package(){
     time = getCurrentTime();
     localTime = getLocalTime(time);
     
-    dateTime_toString(time, timeStr);
+    dateTime_toString(localTime, localStr, true);
     json["time_utc"] = timeStr;
 
     dateTime_toString(localTime, localStr);
@@ -272,10 +272,14 @@ bool Loom_Hypnos::networkTimeUpdate(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::dateTime_toString(DateTime time, char array[21]){
+void Loom_Hypnos::dateTime_toString(DateTime time, char array[21], bool isLocal){
 
     // Formatted as: YYYY-MM-DDTHH:MM:SSZ
-    snprintf_P(array, 21, PSTR("%u-%02u-%02uT%u:%u:%uZ"), time.year(), time.month(), time.day(), time.hour(), time.minute(), time.second());
+    if(isLocal){
+        snprintf_P(array, 21, PSTR("%u-%02u-%02uT%u:%u:%u"), time.year(), time.month(), time.day(), time.hour(), time.minute(), time.second());
+    }else{
+        snprintf_P(array, 21, PSTR("%u-%02u-%02uT%u:%u:%uZ"), time.year(), time.month(), time.day(), time.hour(), time.minute(), time.second());
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
