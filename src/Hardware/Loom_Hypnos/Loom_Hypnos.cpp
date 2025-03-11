@@ -41,10 +41,10 @@ void Loom_Hypnos::package(){
     time = getCurrentTime();
     localTime = getLocalTime(time);
     
-    dateTime_toString(localTime, localStr, true);
+    dateTime_toString(time, timeStr);
     json["time_utc"] = timeStr;
 
-    dateTime_toString(localTime, localStr);
+    dateTime_toString(localTime, localStr, true);
     json["time_local"] = localStr;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
