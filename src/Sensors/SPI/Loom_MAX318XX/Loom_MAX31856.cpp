@@ -70,7 +70,7 @@ void Loom_MAX31856::measure(){
 void Loom_MAX31856::package(){
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        if (farenheit_display){
+        if (fahrenheit_display){
             json["TemperatureF"] = (temperature*9/5)+32;
         }else{
             json["TemperatureC"] = temperature;
