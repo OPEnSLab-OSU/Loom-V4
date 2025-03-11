@@ -217,17 +217,17 @@ class Logger{
                             lineNumber, 
                             message
                         );
-            else
-                snprintf_P( logMessage, 
-                            OUTPUT_SIZE, 
-                            PSTR("[%s] [%s] [%s:%s:%u] %s"), 
-                            hypnosInst->getCurrentTime().text(), 
-                            level, 
-                            fileName, 
-                            func, 
-                            lineNumber, 
-                            message
-                        );
+            // else
+            //     snprintf_P( logMessage, 
+            //                 OUTPUT_SIZE, 
+            //                 PSTR("[%s] [%s] [%s:%s:%u] %s"), 
+            //                 hypnosInst->getCurrentTime().text(), 
+            //                 level, 
+            //                 fileName, 
+            //                 func, 
+            //                 lineNumber, 
+            //                 message
+            //             );
             /* Log the message*/          
             log(logMessage, silent);
         }
