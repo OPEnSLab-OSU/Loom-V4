@@ -2,7 +2,7 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_MAX31856::Loom_MAX31856(Manager& man, int samples, int chip_select, int mosi, int miso, int sclk, TEMP_UNIT unit) : Module("MAX31856"), manInst(&man), num_samples(samples), farenheit_display(unit) {
+Loom_MAX31856::Loom_MAX31856(Manager& man, int samples, int chip_select, int mosi, int miso, int sclk, TEMP_UNIT unit) : Module("MAX31856"), manInst(&man), num_samples(samples), fahrenheit_display(unit) {
     manInst->registerModule(this);
     if(mosi != -1 && miso != -1 && sclk != -1){
         maxthermo = new Adafruit_MAX31856(chip_select, mosi, miso, sclk);
