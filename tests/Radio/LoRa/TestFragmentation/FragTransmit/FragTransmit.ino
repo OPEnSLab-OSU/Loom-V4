@@ -1,4 +1,4 @@
-//TODO: 
+//TODO: make this an actual test (asserts and stuff?). potentially add automation.
 
 /**
  * This is a testing file for batched transmission
