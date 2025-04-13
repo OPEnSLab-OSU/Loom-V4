@@ -37,7 +37,7 @@ class Loom_MultiGasSensor : public I2CDevice{
                       uint8_t address = 0x77,
                       bool useMux = false
                 );
-
+        ~Loom_MultiGasSensor();
         /**
          * Get gas type that is currently being recorded
          */
@@ -59,4 +59,8 @@ class Loom_MultiGasSensor : public I2CDevice{
     bool moduleInitialized = false;
     bool needsReinit = false;
     std::unordered_map<std::string, float> *gasData = nullptr;
+    const std::vector<std::string> gasTypes = {
+            "O2", "CO", "H2S", "NO2", "O3", "CL2",
+            "NH3", "H2", "HCL", "SO2", "HF", "PH3"
+    };
 };

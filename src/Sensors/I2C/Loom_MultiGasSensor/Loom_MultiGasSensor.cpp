@@ -16,6 +16,16 @@ Loom_MultiGasSensor::Loom_MultiGasSensor(
                     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+Loom_MultiGasSensor::~Loom_MultiGasSensor(){
+    FUNCTION_START;
+    if (gasData != nullptr){
+        delete gasData;
+        gasData = nullptr;
+    }
+    LOG(F("MultiGasSensor successfully destroyed"));
+    FUNCTION_END;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 uint8_t Loom_MultiGasSensor::get_gas_i2c(const std::string& gasType) {
     static const std::unordered_map<std::string, uint8_t> GAS_ADDRESSES = {
@@ -99,11 +109,6 @@ void Loom_MultiGasSensor::measure() {
             FUNCTION_END;
             return;
         }
-
-        const std::vector<std::string> gasTypes = {
-            "O2", "CO", "H2S", "NO2", "O3", "CL2",
-            "NH3", "H2", "HCL", "SO2", "HF", "PH3"
-        };
 
         if (gasData == nullptr) {
             gasData = new std::unordered_map<std::string, float>;
