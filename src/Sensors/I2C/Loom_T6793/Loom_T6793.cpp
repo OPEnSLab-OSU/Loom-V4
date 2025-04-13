@@ -4,9 +4,9 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_T6793::Loom_T6793(
                         Manager& man,
-                        uint8_t addr = 0x15,
-                        uint8_t readDelay = 10, // Delay for reading Wire in ms
-                        bool useMux = false
+                        uint8_t addr,
+                        uint8_t readDelay, // Delay for reading Wire in ms
+                        bool useMux
                     ) : I2CDevice("T6793"), manInst(&man), i2s_addr(addr), wireReadDelay(readDelay){
 
                         // Register the module with the manager
@@ -23,9 +23,12 @@ void Loom_T6793::initialize() {
 
     /* Initialize wire and start the sensor using the standard I2C interface */
     Wire.begin();
-    sen5x.begin(Wire);
 
-    
+    // Wire init delay
+    unsigned long startMillis = millis();
+    while((millis() - startMillis) < 1000) {}
+
+
     if(this->GetSensorStatus()){
         LOG("Sensor successfully initialized!");
     }
@@ -87,7 +90,7 @@ void Loom_T6793::package() {
 bool Loom_T6793::GetSensorStatus() {
     FUNCTION_START;
     byte data[4];
-    Wire.beginTransmission(wireReadDelay);
+    Wire.beginTransmission(i2s_addr);
 
     Wire.write(0x04); 
     Wire.write(0x13); 

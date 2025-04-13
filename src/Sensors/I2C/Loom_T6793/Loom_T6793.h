@@ -28,8 +28,9 @@ class Loom_T6793 : public I2CDevice{
          * Constructs a new SEN55 sensor
          *
          * @param man Reference to the manager that is used to universally package all data
-         * @param measurePM This sets whether or not we should conduct measurements without PM readings (uses less power)
-         * @param useMux Whether or not we are using the multiplexer class
+         * @param addr Address of sensor
+         * @param readDelay Delay for reading from I2C bus
+         * @param useMux True if should use mux to aquire address
          */
         Loom_T6793(
                     Manager& man,
@@ -37,6 +38,18 @@ class Loom_T6793 : public I2CDevice{
                     uint8_t readDelay = 10, // Delay for reading Wire in ms
                     bool useMux = false
                 );
+
+        /**
+         * Get Status of Current T6793 Sensor
+         *
+        */
+        bool GetSensorStatus();
+
+        /**
+         * Get Serial Number of Current T6793 Sensor
+         *
+        */
+        unsigned long GetSerialNo();
 
     private:
         Manager* manInst;                           // Instance of the manager
