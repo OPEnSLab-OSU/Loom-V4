@@ -1,6 +1,6 @@
 /**
- * Temperature Readings using teh MAX31865 sensor
- * Pass in a variable number of arguments to the construct to designate the number of samples and which pin you're using
+ * Temperature Readings using the MAX31856 sensor
+ * Pass in a variable number of arguments to the construct to designate the number of samples and which chip pins you're using for SPI
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
@@ -10,11 +10,12 @@
 
 #include <Sensors/SPI/Loom_MAX318XX/Loom_MAX31856.h>
 
-
 Manager manager("Device", 1);
 
-// Reads the temperature
-Loom_MAX31856 max56(manager);
+// create sensor
+// default parameters:
+// Manager& man, int samples = 1, int chip_select = 10, int mosi = -1, int miso = -1, int sclk = -1, TEMP_UNIT unit = CELCIUS
+Loom_MAX31856 maxthermo(manager);
 
 void setup() {
 
