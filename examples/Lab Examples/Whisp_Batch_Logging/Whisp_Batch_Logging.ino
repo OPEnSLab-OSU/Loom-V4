@@ -1,6 +1,5 @@
 #include <Loom_Manager.h>
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
-// #include <Sensors/I2C/Loom_MultiGasSensor/Loom_MultiGasSensor.h>
 
 #include <Sensors/Loom_Analog/Loom_Analog.h>
 #include <Sensors/I2C/Loom_SEN55/Loom_SEN55.h>
@@ -76,8 +75,6 @@ void setup() {
 
   hypnos.networkTimeUpdate();
 
-  // SEN55.logDeviceStatus();
-
 }
 
 void loop() {
@@ -107,7 +104,5 @@ void loop() {
   // Set the hypnos to sleep, but with power still being supplied to the 5v rail (wait for serial when testing from a computer)
   hypnos.sleep(false);
 
-
   hypnos.networkTimeUpdate();
-  //manager.pause(2000);
 }
