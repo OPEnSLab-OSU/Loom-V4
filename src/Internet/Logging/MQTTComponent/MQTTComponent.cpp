@@ -87,7 +87,7 @@ bool MQTTComponent::publishMessage(const char* topic, const char* message, bool 
             }
 
             // Print the message to the topic
-            mqttClient.println(message);
+            mqttClient.print(message);
 
             // Check to see if we are actually closing messages properly
             if(mqttClient.endMessage() != 1){
@@ -118,6 +118,7 @@ bool MQTTComponent::getCurrentRetained(const char* topic, char message[MAX_JSON_
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     LOG(topic);
+
     if(mqttClient.connected()){
         /* Clear the incoming buffer */
         memset(message, '\0', MAX_JSON_SIZE);
@@ -131,11 +132,15 @@ bool MQTTComponent::getCurrentRetained(const char* topic, char message[MAX_JSON_
             LOG("Successfully subscribed to topic!");
         }
 
+        delay(1000);
+
         /* Attempt to parse a message on the current topic */
         int messageSize = mqttClient.parseMessage();
         if(messageSize){
             /* Copy the received message into the message string */
-            strncpy(message, mqttClient.messageTopic().c_str(), MAX_JSON_SIZE);
+            // strncpy(message, mqttClient.messageTopic().c_str(), MAX_JSON_SIZE);
+            delay(1000);
+            mqttClient.read((uint8_t *) message, MAX_JSON_SIZE);
 
             // Unsubscribe from the topic 
             mqttClient.unsubscribe(topic);
