@@ -48,6 +48,8 @@ bool Loom_RemoteManager::publish(){
     // Update the current device status
     updateDeviceStatus(true);
 
+    updateDummy(topic, message, tempDoc);
+
     // Check if we are using a hypnos and then update the parameters about the hypnos
     if(hypnosInst != nullptr){
 
@@ -103,6 +105,25 @@ void Loom_RemoteManager::loadConfigFromJSON(char* json){
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_RemoteManager::updateDummy(char topic[MAX_TOPIC_LENGTH], char message[MAX_JSON_SIZE], StaticJsonDocument<MAX_JSON_SIZE> &json){
+    // Clear message and topic and json
+    memset(topic, '\0', MAX_TOPIC_LENGTH);
+    memset(message, '\0', MAX_JSON_SIZE);
+    json.clear();
+
+    snprintf(topic, MAX_TOPIC_LENGTH, "RemoteManager/%s%i/setDummy", manInst->get_device_name(), manInst->get_instance_num());
+    if(getCurrentRetained((const char*)topic, message)){
+        LOGF("Recieved dummy message: %s", message);
+        
+        // And then delete the current retained message so we don't update it again
+        deleteRetained((const char*) topic);
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_RemoteManager::updateHypnosInterval(char topic[MAX_TOPIC_LENGTH], char message[MAX_JSON_SIZE], StaticJsonDocument<MAX_JSON_SIZE> &json){
