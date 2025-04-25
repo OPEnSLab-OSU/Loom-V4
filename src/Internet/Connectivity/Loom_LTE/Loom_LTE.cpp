@@ -296,7 +296,7 @@ void Loom_LTE::loadConfigFromJSON(char* json){
     char output[OUTPUT_SIZE];
     // Doc to store the JSON data from the SD card in
     StaticJsonDocument<300> doc;
-    DeserializationError deserialError = deserializeJson(doc, json);
+    DeserializationError deserialError = deserializeJson(doc, (const char *)json);
 
     // Check if an error occurred and if so print it
     if(deserialError != DeserializationError::Ok){
