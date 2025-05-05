@@ -13,6 +13,24 @@
 #define ERROR(msg) Logger::getInstance()->errorLog(msg, false, __FILE__, __func__, __LINE__)                // Log an error message
 #define WARNING(msg) Logger::getInstance()->warningLog(msg, false, __FILE__, __func__, __LINE__)            // Log a warning message
 
+#define LOGF(msg, ...) { \
+    char buf[OUTPUT_SIZE]; \
+    snprintf_P(buf, sizeof(buf), PSTR(msg), __VA_ARGS__); \
+    LOG(buf); \
+}
+
+#define ERRORF(msg, ...) { \
+    char buf[OUTPUT_SIZE]; \
+    snprintf_P(buf, sizeof(buf), PSTR(msg), __VA_ARGS__); \
+    ERROR(buf); \
+}
+
+#define WARNINGF(msg, ...) { \
+    char buf[OUTPUT_SIZE]; \
+    snprintf_P(buf, sizeof(buf), PSTR(msg), __VA_ARGS__); \
+    WARNING(buf); \
+}
+
 #define ENABLE_SD_LOGGING Logger::getInstance()->enableSD()                                                 // Enable SD logging of debug information
 #define ENABLE_FUNC_SUMMARIES Logger::getInstance()->enableSummaries()                                      // Enable logging of function mem usage summaries
 

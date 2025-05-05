@@ -40,7 +40,7 @@ void Loom_Hypnos::package(){
 
     time = getCurrentTime();
     localTime = getLocalTime(time);
-    
+
     dateTime_toString(time, timeStr);
     json["time_utc"] = timeStr;
 
@@ -180,7 +180,7 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
     // If the RTC hasn't already been initialized then do so now if we are trying to schedule an RTC interrupt
     if(!RTC_initialized && interruptPin == 12)
         initializeRTC();
-    
+
     // Make sure a callback function was supplied
     if(isrFunc != nullptr){
 
@@ -564,7 +564,8 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
     StaticJsonDocument<OUTPUT_SIZE> doc;
     char output[OUTPUT_SIZE];
     char* fileRead = sdMan->readFile(fileName);
-    DeserializationError deserialError = deserializeJson(doc, fileRead);
+    // avoid zero-copy behavior
+    DeserializationError deserialError = deserializeJson(doc, (const char *)fileRead);
     free(fileRead);
 
     // Create json object to easily pull data from
