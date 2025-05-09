@@ -101,6 +101,9 @@ void setup() {
   // Read the MQTT creds file to supply the device with MQTT credentials
   mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
 
+  //Publish the metadata.json file from the SD card during initialization
+  mqtt.publishMetadata(hypnos.readFile("metadata.json")); 
+
   // Initialize all in-use modules
   manager.initialize();
 
