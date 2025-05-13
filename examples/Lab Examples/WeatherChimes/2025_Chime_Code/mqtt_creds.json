@@ -3,6 +3,6 @@
     "port": 1883,
     "username": "User",
     "password": "password",
-    "database": "WhaleFest23",
+    "database": "SpringTermChimeTest",
     "project": ""
 }
