@@ -7,6 +7,10 @@
 
 /**
  * Slightly abstracted Radio class to allow for all radio modules to inherit from one spot
+ *
+ * WARNING: this class was previously used by both LoRa and Freewave, but after refactoring
+ * is now only used by Freewave. At some point this class should probably be merged into 
+ * Freewave and removed.
  * 
  * @author Will Richards
  */ 
