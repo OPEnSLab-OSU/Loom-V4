@@ -46,7 +46,7 @@ enum HYPNOS_VERSION{
 /**
  * Time zone abbreviations that map to the hour offset from UTC
  */
-enum TIME_ZONE{
+enum TIME_ZONE {
     WAT = -1,
     AT = -2,
     AST = -4,
@@ -70,7 +70,6 @@ enum TIME_ZONE{
     AWST = 8,
     ACST = 10, // Half an hour off so its -9.5
     AEST = 10
-
 };
 
 /**
@@ -301,7 +300,6 @@ class Loom_Hypnos : public Module{
 
         void initializeRTC();                                                               // Initialize RTC
 
-        void createTimezoneMap();                                                           // Map Timezone Strings to Timezone enum
         std::map<const char*, TIME_ZONE, cmp_str> timezoneMap;                              // String to Timezone enum, use custom compare to ensure that strings are compared correctly
 
         DateTime getLocalTime(DateTime time);                                               // Convert a given UTC time to local time

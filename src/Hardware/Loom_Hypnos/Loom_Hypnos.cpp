@@ -2,7 +2,43 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time, bool useSD) : Module("Hypnos"), custom_time(use_custom_time), sd_chip_select(version), enableSD(useSD), timezone(zone){
+Loom_Hypnos::Loom_Hypnos(
+    Manager& man, 
+    HYPNOS_VERSION version, 
+    TIME_ZONE zone, 
+    bool use_custom_time, 
+    bool useSD
+) : 
+    Module("Hypnos"),
+    custom_time(use_custom_time),
+    sd_chip_select(version),
+    enableSD(useSD),
+    timezoneMap{
+        { "AT",     TIME_ZONE::AT   },
+        { "AST",    TIME_ZONE::AST  },
+        { "EST",    TIME_ZONE::EST  },
+        { "CST",    TIME_ZONE::CST  },
+        { "MST",    TIME_ZONE::MST  },
+        { "PST",    TIME_ZONE::PST  },
+        { "AKST",   TIME_ZONE::AKST },
+        { "HST",    TIME_ZONE::HST  },
+        { "SST",    TIME_ZONE::SST  },
+        { "GMT",    TIME_ZONE::GMT  },
+        { "BST",    TIME_ZONE::BST  },
+        { "CET",    TIME_ZONE::CET  },
+        { "EET",    TIME_ZONE::EET  },
+        { "EEST",   TIME_ZONE::EEST },
+        { "BRT",    TIME_ZONE::BRT  },
+        { "ZP4",    TIME_ZONE::ZP4  },
+        { "ZP5",    TIME_ZONE::ZP5  },
+        { "ZP6",    TIME_ZONE::ZP6  },
+        { "ZP7",    TIME_ZONE::ZP7  },
+        { "AWST",   TIME_ZONE::AWST },
+        { "ACST",   TIME_ZONE::ACST },
+        { "AEST",   TIME_ZONE::AEST }
+    },
+    timezone(zone)
+{
     manInst = &man;
 
     // Set the pins to write mode
@@ -15,9 +51,6 @@ Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, b
         sdMan = new SDManager(manInst, sd_chip_select);
         Logger::getInstance()->setHypnos(this);
     }
-
-    // Create the map of timezone strings to actual timezones
-    createTimezoneMap();
 
     // Add the Hypnos to the module register
     manInst->registerModule(this);
@@ -597,34 +630,6 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
         }
     }
     FUNCTION_END;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::createTimezoneMap(){
-    timezoneMap.insert(std::make_pair("WAT", TIME_ZONE::WAT));
-    timezoneMap.insert(std::make_pair("AT", TIME_ZONE::AT));
-    timezoneMap.insert(std::make_pair("AST", TIME_ZONE::AST));
-    timezoneMap.insert(std::make_pair("EST", TIME_ZONE::EST));
-    timezoneMap.insert(std::make_pair("CST", TIME_ZONE::CST));
-    timezoneMap.insert(std::make_pair("MST", TIME_ZONE::MST));
-    timezoneMap.insert(std::make_pair("PST", TIME_ZONE::PST));
-    timezoneMap.insert(std::make_pair("AKST", TIME_ZONE::AKST));
-    timezoneMap.insert(std::make_pair("HST", TIME_ZONE::HST));
-    timezoneMap.insert(std::make_pair("SST", TIME_ZONE::SST));
-    timezoneMap.insert(std::make_pair("GMT", TIME_ZONE::GMT));
-    timezoneMap.insert(std::make_pair("BST", TIME_ZONE::BST));
-    timezoneMap.insert(std::make_pair("CET", TIME_ZONE::CET));
-    timezoneMap.insert(std::make_pair("EET", TIME_ZONE::EET));
-    timezoneMap.insert(std::make_pair("EEST", TIME_ZONE::EEST));
-    timezoneMap.insert(std::make_pair("BRT", TIME_ZONE::BRT));
-    timezoneMap.insert(std::make_pair("ZP4", TIME_ZONE::ZP4));
-    timezoneMap.insert(std::make_pair("ZP5", TIME_ZONE::ZP5));
-    timezoneMap.insert(std::make_pair("ZP6", TIME_ZONE::ZP6));
-    timezoneMap.insert(std::make_pair("ZP7", TIME_ZONE::ZP7));
-    timezoneMap.insert(std::make_pair("AWST", TIME_ZONE::AWST));
-    timezoneMap.insert(std::make_pair("ACST", TIME_ZONE::ACST));
-    timezoneMap.insert(std::make_pair("AEST", TIME_ZONE::AEST));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
