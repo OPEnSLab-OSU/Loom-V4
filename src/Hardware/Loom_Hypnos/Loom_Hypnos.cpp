@@ -287,17 +287,17 @@ void Loom_Hypnos::initializeRTC(){
     }
 
     // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't happen with coin cell batt backup
-	if (RTC_DS.lostPower()) {
-		WARNING(F("RTC lost power, let's set the time!"));
+    if (RTC_DS.lostPower()) {
+        WARNING(F("RTC lost power, let's set the time!"));
 
         // If we want to set a custom time
         if(Serial){
             set_custom_time();
         }
-	}
+    }
 
-	// Clear any pending alarms
-	RTC_DS.clearAlarm();
+    // Clear any pending alarms
+    RTC_DS.clearAlarm();
 
     RTC_DS.writeSqwPinMode(DS3231_OFF);
 
@@ -395,71 +395,64 @@ void Loom_Hypnos::dateTime_toString(DateTime time, char array[21], bool isLocal)
 void Loom_Hypnos::set_custom_time(){
     FUNCTION_START;
 
-   	// initialized variable for user input
-	String computer_year = "";
-	String computer_month = "";
-	String computer_day = "";
-	String computer_hour = "";
-	String computer_min = "";
-	String computer_sec = "";
+    // initialized variable for user input
+    String computer_year = "";
+    String computer_month = "";
+    String computer_day = "";
+    String computer_hour = "";
+    String computer_min = "";
+    String computer_sec = "";
     char output[OUTPUT_SIZE];
 
-	// Let the user know that they should enter local time
-	LOG(F("Please use UTC time, not local!"));
+    // Let the user know that they should enter local time
+    LOG(F("Please use UTC time, not local!"));
 
-	// Entering the year
-	LOG(F("Enter the Year (Four digits, e.g. 2020)"));
-
-	while(computer_year == ""){
-		computer_year = Serial.readStringUntil('\n');
-	}
-
+    // Entering the year
+    LOG(F("Enter the Year (Four digits, e.g. 2020)"));
+    while(computer_year == ""){
+            computer_year = Serial.readStringUntil('\n');
+    }
     snprintf(output, OUTPUT_SIZE, "Year Entered: %s", computer_year.c_str());
-	LOG(output);
+    LOG(output);
 
-	// Entering the month
-	LOG(F("Enter the Month (1 ~ 12)"));
-
-	while(computer_month == ""){
-		computer_month = Serial.readStringUntil('\n');
-	}
+    // Entering the month
+    LOG(F("Enter the Month (1 ~ 12)"));
+    while(computer_month == ""){
+            computer_month = Serial.readStringUntil('\n');
+    }
     snprintf(output, OUTPUT_SIZE, "Month Entered: %s", computer_month.c_str());
-	LOG(output);
+    LOG(output);
 
-	// Entering the day
-	LOG(F("Enter the Day (1 ~ 31)"));
-
-	while(computer_day  == ""){
-		computer_day = Serial.readStringUntil('\n');
-	}
+    // Entering the day
+    LOG(F("Enter the Day (1 ~ 31)"));
+    while(computer_day  == ""){
+            computer_day = Serial.readStringUntil('\n');
+    }
     snprintf(output, OUTPUT_SIZE, "Day Entered: %s", computer_day.c_str());
-	LOG(output);
+    LOG(output);
 
 
-	// Entering the hour
-	LOG(F("Enter the Hour (0 ~ 23)"));
-
-	while(computer_hour == ""){
-		computer_hour = Serial.readStringUntil('\n');
-	}
-
+    // Entering the hour
+    LOG(F("Enter the Hour (0 ~ 23)"));
+    while(computer_hour == ""){
+            computer_hour = Serial.readStringUntil('\n');
+    }
     snprintf(output, OUTPUT_SIZE, "Hour Entered: %s", computer_hour.c_str());
-	LOG(output);
+    LOG(output);
 
-	// Entering the minute
-	LOG(F("Enter the Minute (0 ~ 59)"));
-
-	while(computer_min == ""){
-		computer_min = Serial.readStringUntil('\n');
-	}
+    // Entering the minute
+    LOG(F("Enter the Minute (0 ~ 59)"));
+    while(computer_min == ""){
+            computer_min = Serial.readStringUntil('\n');
+    }
     snprintf(output, OUTPUT_SIZE, "Minute Entered: %s", computer_min.c_str());
-	LOG(output);
+    LOG(output);
 
-	// Entering the second
-	LOG(F("Enter the Second (0 ~ 59)"));
-	while(computer_sec == ""){
-		computer_sec = Serial.readStringUntil('\n');
-	}
+    // Entering the second
+    LOG(F("Enter the Second (0 ~ 59)"));
+    while(computer_sec == ""){
+            computer_sec = Serial.readStringUntil('\n');
+    }
 
     // Set the RTC to the custom time
     RTC_DS.adjust(DateTime(computer_year.toInt(), computer_month.toInt(), computer_day.toInt(), computer_hour.toInt(), computer_min.toInt(), computer_sec.toInt()));
@@ -467,7 +460,7 @@ void Loom_Hypnos::set_custom_time(){
 
     // Output
     snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
-	LOG(output);
+    LOG(output);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

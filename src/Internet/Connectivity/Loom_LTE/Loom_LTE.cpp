@@ -333,13 +333,14 @@ bool Loom_LTE::getNetworkTime(int* year, int* month, int* day, int* hour, int* m
     // Pull the current values from the GSM
     if(modem.getNetworkTime(year, month, day, hour, minute, second, tz)){
         // Create a date time object and then add the TimeZone back to get UTC time
-        DateTime time = DateTime(*year, *month, *day, *hour, *minute, *second) + TimeSpan(0,((int)(*tz))*(-1),0,0);
-        *year = time.year();
-        *month = time.month();
-        *day = time.day();
-        *hour = time.hour();
-        *minute = time.minute();
-        *second = time.second();
+        DateTime utc(*year, *month, *day, *hour, *minute, *second);
+        DateTime local = utc + TimeSpan(0, tzInt * -1, 0, 0);
+        *year = local.year();
+        *month = local.month();
+        *day = local.day();
+        *hour = local.hour();
+        *minute = local.minute();
+        *second = local.second();
         return true;
     }
     return false;
