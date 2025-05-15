@@ -6,6 +6,7 @@
 #include <Loom_Manager.h>
 
 #include <Radio/Loom_LoRa/Loom_LoRa.h>
+#include <Logger.h>
 
 Manager manager("Device", 0);
 
