@@ -101,10 +101,10 @@ void setup() {
   // Read the MQTT creds file to supply the device with MQTT credentials
   mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
 
-  // Initialize all in-use modules
+  // Initialize all in-use modules 
   manager.initialize();
 
-  //Publish the metadata.json file from the SD card during initialization
+  //Publish the metadata.json file from the SD card during initialization (this must be after manager.initialize)
   mqtt.publishMetadata(hypnos.readFile("metadata.json")); 
 
   // Register the ISR and attach to the interrupt
