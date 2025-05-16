@@ -1,0 +1,253 @@
+/*
+ * Title: Evaporometer SDI-12 Implementation
+ *
+ * Description: Uses ADS1232 to measure voltage 
+ * across a load cell and thermistor temperature.
+ * Responds to SDI-12 commands on data bus to provide measurements.
+ *
+ * Date: May 5, 2025
+ */
+
+// Loom manager must be included first
+#include <Loom_Manager.h>
+#include <ADS1232_Lib.h>
+#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
+#include <SDI12.h>
+#include <Wire.h>
+#include <algorithm>
+
+// --------------------------------------------------------------------
+//                          Pin Definitions
+// --------------------------------------------------------------------
+constexpr int PIN_PDWN      = A5;
+constexpr int PIN_SCLK      = A4;
+constexpr int PIN_DOUT      = A3;
+constexpr int PIN_VBAT      = A7;
+constexpr int PIN_THERM     = A1;
+#define SDI12_DATA_PIN      10
+
+// --------------------------------------------------------------------
+//                           Constants
+// --------------------------------------------------------------------
+// Calibration constants
+constexpr long  LOAD_CELL_OFFSET    = 9617696; 
+constexpr long LOAD_CELL_SCALE     = 2093; 
+
+// Temperature-Correction Parameters
+constexpr float TEMP_CORR_M         = -0.1143f;
+constexpr float TEMP_CORR_B         = 399.44f;
+constexpr float REF_WEIGHT          = 0.0f;
+
+// Battery measurement constants
+constexpr float VBAT_SCALE_FACTOR   = (2.0f * 3.3f / 1024.0f);
+
+// Number of samples
+constexpr int   NUM_WEIGHT_SAMPLES  = 3;
+constexpr int   NUM_READINGS        = 10; // readings per sample
+
+// --------------------------------------------------------------------
+//                      SDI-12 Variables
+// --------------------------------------------------------------------
+char sensorAddress = '0';
+int  state         = 0;
+#define WAIT 0
+#define INITIATE_MEASUREMENT   1
+
+// Create SDI-12 slave instance
+SDI12 sdi(SDI12_DATA_PIN);
+
+// --------------------------------------------------------------------
+//                       Global Objects
+// --------------------------------------------------------------------
+Manager     manager("Device", 1);
+ADS1232_Lib ads(PIN_PDWN, PIN_SCLK, PIN_DOUT);
+Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, true, false);
+
+// --------------------------------------------------------------------
+//                    Forward Declarations
+// --------------------------------------------------------------------
+void pollSensor(float* measurementValues);
+void parseSdi12Cmd(String command, String* dValues, float* measurementValues);
+void formatOutputSDI(float* measurementValues, String* dValues, unsigned int maxChar);
+float measureWeight();
+float measureBatteryVoltage();
+float computeCorrectedWeight(float wMeasured, float temperature);
+
+// --------------------------------------------------------------------
+//                         Sensor Polling
+// --------------------------------------------------------------------
+void pollSensor(float* measurementValues) {
+    // Power up and stabilize ADS1232
+    ads.power_up();
+    delay(1000);
+
+    float weight = measureWeight();
+    int rawTherm = analogRead(PIN_THERM);
+    float temperature = static_cast<float>(rawTherm);
+    float corrected = computeCorrectedWeight(weight, temperature);
+    float vbat = measureBatteryVoltage();
+
+    // I think raw thrm will suffice for now.
+    // Next rev of PCB will have an ADC_count -> degrees 
+    // conversion -E
+    //measurementValues[0] = static_cast<float>(rawTherm);
+    measurementValues[0] = temperature;
+    measurementValues[1] = weight;
+    measurementValues[2] = corrected;
+
+    Serial.println(weight);
+    //measurementValues[3] = vbat;
+}
+
+// --------------------------------------------------------------------
+//                       SDI-12 Command Parser
+// --------------------------------------------------------------------
+void parseSdi12Cmd(String command, String* dValues, float* measurementValues) {
+    char garb_chars[5] = {'@',' ', '`', '|','~'};
+    for (char c : garb_chars) {
+        if (command.startsWith(String(c))) {
+            command.remove(0, 1);
+        }
+    }
+
+    if (command.charAt(0) != sensorAddress && command.charAt(0) != '?') {
+        Serial.print("wrong addr: "); Serial.println(command);
+        return;
+    }
+
+    Serial.println("COMMAND RECEIVED: " + command);
+    String responseStr = "";
+
+    if (command.length() > 1) {
+        switch (command.charAt(1)) {
+            case '?':
+                responseStr = ""; break;
+            case 'I':
+                responseStr = "14EVAPRMTR000001.0001"; break;
+            case 'M':
+                // 000 seconds until data, 05 values to follow
+                responseStr = "0053";
+                state = INITIATE_MEASUREMENT;
+                break;
+            case 'D': {
+                int index = command.charAt(2) - '0';
+                responseStr = dValues[index];
+                break;
+            }
+            case 'A':
+                sensorAddress = command.charAt(2);
+                break;
+            default:
+                responseStr = "UNKN"; break;
+        }
+    }
+
+    String out = String(sensorAddress) + responseStr + "\r\n";
+    Serial.println(out);
+    sdi.sendResponse(out);
+    sdi.forceListen();
+}
+
+// --------------------------------------------------------------------
+//                    SDI-12 Data Formatter
+// --------------------------------------------------------------------
+void formatOutputSDI(float* measurementValues, String* dValues, unsigned int maxChar) {
+    dValues[0] = "";
+    int j = 0;
+    for (int i = 0; i < 5; i++) {
+        String valStr = String(measurementValues[i], 2);
+        if (valStr.charAt(0) != '-') { valStr = "+" + valStr; }
+        if (dValues[j].length() + valStr.length() < maxChar) {
+            dValues[j] += valStr;
+        } else {
+            j++;
+            dValues[j] = valStr;
+        }
+    }
+    while (j < 9) { dValues[++j] = ""; }
+}
+
+// --------------------------------------------------------------------
+//                       Setup Function
+// --------------------------------------------------------------------
+void setup() {
+    pinMode(SDI12_DATA_PIN, INPUT_PULLDOWN);
+    Serial.begin(115200);
+    manager.beginSerial();
+    Serial.println("Program Start");
+    hypnos.enable();
+    manager.initialize();
+    
+    sdi.begin();
+    
+    ads.set_scale(LOAD_CELL_SCALE);
+    ads.set_offset(LOAD_CELL_OFFSET);
+
+    delay(500);
+    Serial.println("Setup Ended");
+    sdi.forceListen();
+}
+
+// --------------------------------------------------------------------
+//                       measureWeight
+// --------------------------------------------------------------------
+float measureWeight() {
+    float weights[NUM_WEIGHT_SAMPLES];
+    for (int i = 0; i < NUM_WEIGHT_SAMPLES; i++) {
+        weights[i] = ads.units_read(NUM_READINGS);
+    }
+    std::sort(weights, weights + NUM_WEIGHT_SAMPLES);
+    return weights[NUM_WEIGHT_SAMPLES / 2];
+}
+
+// --------------------------------------------------------------------
+//                   computeCorrectedWeight
+// --------------------------------------------------------------------
+float computeCorrectedWeight(float wMeasured, float temperature) {
+    float drift = (TEMP_CORR_M * temperature) + TEMP_CORR_B;
+    return (wMeasured - drift - REF_WEIGHT);
+}
+
+// --------------------------------------------------------------------
+//                 measureBatteryVoltage
+// --------------------------------------------------------------------
+float measureBatteryVoltage() {
+    float raw = static_cast<float>(analogRead(PIN_VBAT));
+    return raw * VBAT_SCALE_FACTOR;
+}
+
+// --------------------------------------------------------------------
+//                          Loop Function
+// --------------------------------------------------------------------
+void loop() {
+    static float measurementValues[9];
+    static String dValues[10];
+    static String cmd = "";
+
+    int avail = sdi.available();
+    if (avail < 0) {
+        sdi.clearBuffer();
+    }
+    if (avail > 0) {
+        //Serial.println("here");
+        for (int i = 0; i < avail; i++) {
+            char c = sdi.read();
+            if (c == '!') {
+                parseSdi12Cmd(cmd, dValues, measurementValues);
+                cmd = "";
+                sdi.clearBuffer();
+                break;
+            } else {
+                cmd += c;
+            }
+        }
+    }
+
+    if (state == INITIATE_MEASUREMENT) {
+        pollSensor(measurementValues);
+        formatOutputSDI(measurementValues, dValues, 35);
+        state = WAIT;
+        sdi.clearBuffer();
+        sdi.forceListen();
+    }
+}
