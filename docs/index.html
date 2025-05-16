@@ -74,18 +74,6 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
-<h1>Welcome to Loom 4</h1>
-
-<p><strong>Loom</strong> is a modular, open-source Arduino library designed to accelerate Internet of Things (IoT) prototyping for environmental, agricultural, and ecological sensing projects.</p>
-
-<h2>🚀 Project Overview</h2>
-<ul>
-  <li><strong>Version:</strong> 4.5</li>
-  <li><strong>Timeline:</strong> Fall 2024 – Spring 2025</li>
-  <li><strong>Team:</strong> David Saucier, [Your Teammates Here]</li>
-  <li><strong>Status:</strong> Completed and maintained</li>
-</ul>
-
 <h2>🎯 Project Purpose</h2>
 <p>Researchers and citizen scientists often struggle with the complexity and cost of deploying custom sensor networks in the field. Loom provides a plug-and-play framework that simplifies sensor integration, wireless communication, and data collection.</p>
 
@@ -101,28 +89,53 @@ $(function() {
   <li>Supports I2C, Serial, LoRa, MQTT, and SD logging</li>
   <li>Flexible configuration via JSON metadata</li>
   <li>Lightweight and low-power for remote deployment</li>
-  <li>Well-documented, open-source, and extendable</li>
+  <li>open-source, and extendable</li>
 </ul>
 
 <h2>📐 Technical Architecture</h2>
-<p>Loom uses a modular, object-oriented design. Devices register sensors and communication modules through the <code>Manager</code> class, and data is routed through enabled services like MQTT or SD logging. Metadata is attached to every dataset for traceability.</p>
 
-<p><img src="img/loom-architecture.png" alt="Loom architecture diagram" width="600"/></p>
+<p>
+Loom is built on a modular, object-oriented architecture that emphasizes flexibility, extensibility, and low power consumption—key traits for environmental, agricultural, and remote IoT deployments.
+</p>
 
-<h2>📦 Access and Installation</h2>
+<h3>🔌 Hardware Foundation: Adafruit Feather M0</h3>
+<p>
+At the heart of most Loom-based deployments is the <strong>Adafruit Feather M0</strong>, a lightweight ARM Cortex-M0+ microcontroller with built-in USB, ample GPIO, and excellent compatibility with a wide range of I<sup>2</sup>C and serial sensors. Its compact size and low power draw make it ideal for field-deployed sensing devices.
+</p>
+
+<h3>🕒 Logging and Power Management: Hypnos Board</h3>
+<p>
+To meet the power and data integrity needs of long-term sensing projects, Loom integrates seamlessly with the <strong>Hypnos</strong> board—a custom shield developed by the OPEnS Lab. The Hypnos combines three essential features:
+</p>
 <ul>
-  <li><a href="https://github.com/OPEnS-Lab/Loom">GitHub Repository</a></li>
-  <li><a href="https://openslab-osu.github.io/Loom/">Documentation Site</a></li>
-  <li><a href="https://openslab-osu.github.io/Loom/assets/Loom4_Blog.pdf">Full PDF Blog</a></li>
+  <li><strong>SD Card Logging:</strong> Reliable, local data storage that complements or replaces cloud-based upload (e.g., MQTT), especially in areas with intermittent connectivity.</li>
+  <li><strong>Real-Time Clock (RTC):</strong> Timestamping of every sensor reading using a highly accurate time source, critical for syncing and later data analysis.</li>
+  <li><strong>Power Management:</strong> The Hypnos allows microcontrollers to enter deep sleep modes and wake on a timer, enabling ultra-low-power duty cycles that extend battery life over weeks or months.</li>
 </ul>
+<p>
+The Hypnos board was specifically designed to streamline deployment and reduce complexity across OPEnS Lab projects. Its cost-effectiveness and open-source design (see the <a href="https://www.sciencedirect.com/science/article/pii/S2468067221000420">HardwareX article</a>) make it ideal for scaling across diverse applications.
+</p>
 
-<h3>Quick Start</h3>
+ <img src="loom-hypnos.png" alt="This figure shows the current version of the Hypnos board." width="100%" style="max-width: 900px; border: 1px solid #ccc; padding: 10px; background: #f9f9f9;"/>
+
+<h3>⚙️ Software Layer: Loom Manager and Modules</h3>
+<p>
+Loom uses a central <code>Manager</code> class to register and coordinate sensors, actuators, and services. Each module—whether a sensor like a BME280 or a service like MQTT—is encapsulated in its own class, allowing plug-and-play extensibility without affecting the rest of the system.
+</p>
+
+<h3>🔄 Data Flow</h3>
 <ol>
-  <li>Install the Arduino IDE and required libraries</li>
-  <li>Clone the Loom repo</li>
-  <li>Edit the config file to match your sensors and services</li>
-  <li>Compile and deploy</li>
+  <li>Sensors are initialized and registered with the <code>Manager</code>.</li>
+  <li>At each loop interval, data is collected, timestamped (via the RTC), and optionally labeled with user-defined <code>metadata</code>.</li>
+  <li>Data is routed to output modules such as SD card logging, MQTT publishing, or serial output.</li>
+  <li>If using the Hypnos board, the device then enters a low-power sleep mode until the next cycle.</li>
 </ol>
+
+<p>
+The Loom framework follows a structured data processing model consisting of four main stages: <strong>Data Acquisition</strong>, <strong>Collection & Processing</strong>, <strong>Data Logging/Transfer</strong>, and <strong>Long-Term Storage</strong>. This pipeline ensures that environmental data collected from sensors is efficiently processed, logged, and made ready for analysis or long-term archiving.
+</p>
+
+<img src="loom-data-pipeline.png" alt="Loom Data Pipeline Diagram" width="100%" style="max-width: 900px; border: 1px solid #ccc; padding: 10px; background: #f9f9f9;"/>
 
 </div><!-- contents -->
 <!-- start footer part -->
