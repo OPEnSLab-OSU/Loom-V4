@@ -11,6 +11,7 @@
 #define DF_MAX_RETRIES 10
 #endif
 
+
 /**
  * DFRobot MultiGasSensor
  *
@@ -60,3 +61,6 @@ class Loom_MultiGasSensor : public I2CDevice{
     bool needsReinit = false;
     std::unordered_map<std::string, float> *gasData = nullptr;
 };
+
+
+uint8_t findGasBoard(void);

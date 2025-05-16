@@ -42,17 +42,33 @@ uint8_t Loom_MultiGasSensor::get_gas_i2c(const std::string& gasType) {
 void Loom_MultiGasSensor::initialize() {
     FUNCTION_START;
 
+    char output[OUTPUT_SIZE];
+
     LOG(F("Scanning I2C for MultiGasSensor..."));
-    addr = scanI2C();
-    gas.setI2cAddr(addr);
+
+    addr = findGasBoard();
+    if (addr == -1) {
+        ERROR(F("No gas board found on this channel."));
+        moduleInitialized = false;
+        return;
+    }
+    
+    // addr = scanI2C();
+    // gas.setI2cAddr(addr);
+    // module_address = addr;
+    // LOG(F("I2C address set"));
+
+    // uint8_t addr = *maybeAddr;
+    gas.setI2cAddr(addr);                     // fine, or skip if ctor already had it
     module_address = addr;
-    LOG(F("I2C address set"));
 
 
     int retries = 0;
     moduleInitialized = true;
-    while (!gas.begin()){
-        LOG(F("Failed to initialize Gas Sensor! Retrying..."));
+    while (!gas.begin()) {
+
+        snprintf(output, OUTPUT_SIZE, "Gas sensor present at 0x%02X but did not initialise. Retrying...", addr);
+        ERROR(output);
         moduleInitialized = false;
         delay(1000);
         retries++;
@@ -62,11 +78,26 @@ void Loom_MultiGasSensor::initialize() {
         }
         moduleInitialized = true;
     }
+
+
+    // int retries = 0;
+    // moduleInitialized = true;
+    // while (!gas.begin()){
+    //     LOG(F("Failed to initialize Gas Sensor! Retrying..."));
+    //     moduleInitialized = false;
+    //     delay(1000);
+    //     retries++;
+    //     if(retries > DF_MAX_RETRIES){
+    //         LOG(F("Failed to initialize Gas Sensor... Check connections and try again!"));
+    //         break;
+    //     }
+    //     moduleInitialized = true;
+    // }
     LOG(F("Gas sensor initialized"));
 
     if(moduleInitialized){
         LOG(F("Setting acquire mode"));
-        // gas.changeAcquireMode(gas.PASSIVITY);
+        gas.changeAcquireMode(gas.PASSIVITY);
         delay(1000);
         LOG(F("Acquire mode set to PASSIVITY"));
 
@@ -87,6 +118,9 @@ void Loom_MultiGasSensor::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MultiGasSensor::measure() {
     FUNCTION_START;
+
+    char output[OUTPUT_SIZE];
+
     if(moduleInitialized){
         LOG(F("Checking device connection"));
         bool connectionStatus = checkDeviceConnection();
@@ -113,11 +147,16 @@ void Loom_MultiGasSensor::measure() {
         String queryResult;
         for(const auto& type : gasTypes) {
             (*gasData)[type] = 0.0;
-            gas.changeI2cAddrGroup(get_gas_i2c(type));
+            // gas.changeI2cAddrGroup(get_gas_i2c(type));
             queryResult = gas.queryGasType();
+            
+            snprintf(output, OUTPUT_SIZE, "queryResult: %s for gas type: %s", queryResult.c_str(), type.c_str());
+            LOG(output);
 
             if (queryResult.length() > 0 && queryResult == String(type.c_str())) {
                 float concentration = gas.readGasConcentrationPPM();
+                snprintf(output, OUTPUT_SIZE, "queryResult: %s , concentration: %f", queryResult.c_str(), concentration);
+                LOG(output);
                 if (concentration >= 0.0) {
                     (*gasData)[type] = concentration;
                 }
@@ -137,6 +176,7 @@ void Loom_MultiGasSensor::measure() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MultiGasSensor::package() {
     FUNCTION_START;
+    
     if(moduleInitialized && gasData != nullptr){
         JsonObject json = manInst->get_data_object(getModuleName());
         for (auto i = gasData->begin(); i != gasData->end(); ++i){
@@ -146,3 +186,19 @@ void Loom_MultiGasSensor::package() {
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+uint8_t findGasBoard(void)
+{
+
+char output[OUTPUT_SIZE];
+  for (uint8_t addr = 0x70; addr <= 0x77; ++addr) {   // only range that matters
+    Wire.beginTransmission(addr);
+    if (Wire.endTransmission() == 0) {
+        snprintf(output, OUTPUT_SIZE, "Found addr: %x", addr);
+        LOG(output);
+        return addr;     // found it
+    }
+  }
+  return -1;                                // none found
+}

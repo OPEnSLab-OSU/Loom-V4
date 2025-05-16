@@ -6,6 +6,8 @@
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
 
+#define CO2_AVERAGE_COUNT 10
+
 /**
  *  The T6793-5K supports CO@ measurements up to 5k ppm
  *

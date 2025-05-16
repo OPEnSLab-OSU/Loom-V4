@@ -29,7 +29,7 @@ void Loom_T6793::initialize() {
     while((millis() - startMillis) < 1000) {}
 
 
-    if(this->GetSensorStatus()){
+    if(GetSensorStatus()){
         LOG("Sensor successfully initialized!");
     }
     else{
@@ -48,28 +48,53 @@ void Loom_T6793::measure() {
     char output[OUTPUT_SIZE];
     char sensorError[OUTPUT_SIZE];
 
-    byte data[4];
-    Wire.beginTransmission(i2s_addr);
+    float CO2_Sample_Sum = 0;
+    float CO2_Sample = 0;
+    bool failed_read;
+    unsigned long startMillis;
 
-    Wire.write(0x04); 
-    Wire.write(0x13); 
-    Wire.write(0x8B); 
-    Wire.write(0x00); 
-    Wire.write(0x01);
-    
-    if (Wire.endTransmission() != 0) { CO2_Val = -1; }
+    for(int i = 0; i < CO2_AVERAGE_COUNT; i++) {
 
-    // Read delay
-    unsigned long startMillis = millis();
-    while((millis() - startMillis) < wireReadDelay) {}
+        failed_read = false;
 
-    Wire.requestFrom(i2s_addr, 4);
-    for (int i = 0; i < 4; i++) {
-        if (Wire.available()) data[i] = Wire.read();
-        else { CO2_Val = -1; }
+        byte data[4];
+        Wire.beginTransmission(i2s_addr);
+
+        Wire.write(0x04); 
+        Wire.write(0x13); 
+        Wire.write(0x8B); 
+        Wire.write(0x00); 
+        Wire.write(0x01);
+        
+        if (Wire.endTransmission() != 0) { 
+            failed_read = true;
+        }
+
+        // Read delay
+        startMillis = millis();
+        while((millis() - startMillis) < wireReadDelay) {}
+
+        Wire.requestFrom(i2s_addr, 4);
+        for (int j = 0; j < 4; j++) {
+            if (Wire.available()) {
+                 data[j] = Wire.read();
+            } else { 
+                failed_read = true; 
+            }
+        }
+
+        if(!failed_read)
+            CO2_Sample = ((data[2] & 0x3F) << 8) | data[3];
+        // If sample fails use last measurement in average
+
+        CO2_Sample_Sum += CO2_Sample;
+
+        // Delay 250 ms between samples
+        startMillis = millis();
+        while((millis() - startMillis) < 200) {}
     }
 
-    CO2_Val = ((data[2] & 0x3F) << 8) | data[3];
+    CO2_Val = CO2_Sample_Sum / CO2_AVERAGE_COUNT;
 
     FUNCTION_END;
 }
