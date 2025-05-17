@@ -74,17 +74,35 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
-<h2>🎯 Project Purpose</h2>
-<p>Researchers and citizen scientists often struggle with the complexity and cost of deploying custom sensor networks in the field. Loom provides a plug-and-play framework that simplifies sensor integration, wireless communication, and data collection.</p>
+<h2>Installation</h2>
+<ul>
+  <li>Loom Installation Instructions: <a href="https://github.com/OPEnSLab-OSU/Loom-V4/tree/main?tab=readme-ov-file#install">https://github.com/OPEnSLab-OSU/Loom-V4/tree/main?tab=readme-ov-file#install</a></li>
+  <li>Arduino IDE: <a href="https://www.arduino.cc/en/Main/Software">https://www.arduino.cc/en/software/</a></li>
+</ul>
 
-<h3>Who is it for?</h3>
+<h2>Guides</h2>
+<ul>
+  <li><a href="https://media.oregonstate.edu/media/t/1_csq6zrae">Loom Manager Walkthrough</a></li>
+  <li><a href="https://media.oregonstate.edu/media/t/1_7owroc4a">Loom Hypnos Walkthrough</a></li>
+  <li><a href="https://media.oregonstate.edu/media/t/1_7hq18o2d">Hypnos Interrupts</a></li>
+  <li><a href="https://www.cprogramming.com/tutorial/c++-tutorial.html?inl=nv">C++ Tutorials</a></li>
+  <li><a href="https://www.youtube.com/watch?v=AU5vwO4RJqE&list=PLGLI7V_o5-ahvLrscgoZRVfLx5KtgjEVV&index=3">Loom Sensor Hookup Tutorials</a></li>
+  <li><a href="https://youtu.be/jRJ6Aklc4iQ">How to use Git</a></li>
+  <li><a href="https://youtu.be/O3mnjWIp8MI">Loom Logger</a></li>
+  <li><a href="https://youtu.be/TrAzs9ex4kE">I2C and I2C</a></li>
+</ul>
+
+<h2>Project Purpose</h2>
+<p>Loom aims to address the growing need for reliable environmental monitoring in the context of population growth, climate instability, resource scarcity, and natural hazards. While satellite data provide broad Earth observations, dependable insights require complementary ground-based measurements using in situ sensor systems. To accelerate research and monitoring efforts, this project introduces Loom, an open-source development environment for rapidly prototyping environmental datalogging systems using low-power, Arduino-compatible microcontrollers. Loom integrates a variety of components—sensors, data formats, connectivity options (Wi-Fi and LTE), radio telemetry, timing and debugging tools, and power management—into a modular, reconfigurable platform. It supports both scientific research and STEM education by streamlining system development and enabling shared improvements across projects. Ultimately, Loom empowers small teams to support complex, multidisciplinary environmental sensing initiatives, providing a flexible foundation for applications in water, soil, air, agriculture, hazard detection, and more.</p>
+
+<h2>Who is it for?</h2>
 <ul>
   <li>Environmental scientists</li>
   <li>Agricultural researchers</li>
   <li>Educators and students</li>
 </ul>
 
-<h2>🔧 Features and Benefits</h2>
+<h2>Features and Benefits</h2>
 <ul>
   <li>Supports I2C, Serial, LoRa, MQTT, and SD logging</li>
   <li>Flexible configuration via JSON metadata</li>
@@ -92,18 +110,18 @@ $(function() {
   <li>open-source, and extendable</li>
 </ul>
 
-<h2>📐 Technical Architecture</h2>
+<h2>Technical Architecture</h2>
 
 <p>
 Loom is built on a modular, object-oriented architecture that emphasizes flexibility, extensibility, and low power consumption—key traits for environmental, agricultural, and remote IoT deployments.
 </p>
 
-<h3>🔌 Hardware Foundation: Adafruit Feather M0</h3>
+<h3>Hardware Foundation: Adafruit Feather M0</h3>
 <p>
 At the heart of most Loom-based deployments is the <strong>Adafruit Feather M0</strong>, a lightweight ARM Cortex-M0+ microcontroller with built-in USB, ample GPIO, and excellent compatibility with a wide range of I<sup>2</sup>C and serial sensors. Its compact size and low power draw make it ideal for field-deployed sensing devices.
 </p>
 
-<h3>🕒 Logging and Power Management: Hypnos Board</h3>
+<h3>Logging and Power Management: Hypnos Board</h3>
 <p>
 To meet the power and data integrity needs of long-term sensing projects, Loom integrates seamlessly with the <strong>Hypnos</strong> board—a custom shield developed by the OPEnS Lab. The Hypnos combines three essential features:
 </p>
@@ -118,12 +136,12 @@ The Hypnos board was specifically designed to streamline deployment and reduce c
 
  <img src="loom-hypnos.png" alt="This figure shows the current version of the Hypnos board." width="100%" style="max-width: 900px; border: 1px solid #ccc; padding: 10px; background: #f9f9f9;"/>
 
-<h3>⚙️ Software Layer: Loom Manager and Modules</h3>
+<h3>Software Layer: Loom Manager and Modules</h3>
 <p>
 Loom uses a central <code>Manager</code> class to register and coordinate sensors, actuators, and services. Each module—whether a sensor like a BME280 or a service like MQTT—is encapsulated in its own class, allowing plug-and-play extensibility without affecting the rest of the system.
 </p>
 
-<h3>🔄 Data Flow</h3>
+<h3>Data Flow</h3>
 <ol>
   <li>Sensors are initialized and registered with the <code>Manager</code>.</li>
   <li>At each loop interval, data is collected, timestamped (via the RTC), and optionally labeled with user-defined <code>metadata</code>.</li>
