@@ -34,34 +34,40 @@ class StackFrame:
     children: list[StackFrame] = field(default_factory=list)
 
     def asdict(self):
-        data = OrderedDict()
+        has_header = self.header is not None
+        has_footer = self.footer is not None
 
-        if self.header is None:
-            data["header"] = "missing! (summaries are probably corrupted)"
+        data = OrderedDict()
 
         if self.header is not None:
             data["name"] = (
                 f"{self.header.filename}:{self.header.funcname}:{self.header.linenum}"
             )
-            data["free memory at call"] = self.header.startMemUsage
-
-        if self.footer is not None:
-            data["free memory at return"] = self.footer.stopMemUsage
+        else:
+            data["[call]  "] = "missing! (summaries are probably corrupted)"
 
         if self.header is not None:
-            data["call time"] = self.header.startTime
+            data["[call]   time (ms)"] = self.header.startTime
 
         if self.footer is not None:
-            data["return time"] = self.footer.stopTime
+            data["[return] time (ms)"] = self.footer.stopTime
 
-        if self.footer is None:
-            data["footer"] = "missing!"
+        if self.footer is not None and self.header is not None:
+            data["elapsed time (ms)"] = self.footer.stopTime - self.header.startTime
+
+        if self.header is not None:
+            data["[call]   free memory"] = self.header.startMemUsage
+
+        if self.footer is not None:
+            data["[return] free memory"] = self.footer.stopMemUsage
 
         if self.header is not None and self.footer is not None:
             memUsage = self.footer.stopMemUsage - self.header.startMemUsage
-            data["time delta (ms)"] = self.footer.stopTime - self.header.startTime
             data["memory leaked (bytes)"] = -memUsage
-            data["mem %"] = float(memUsage) / 32000 * 100
+            data["mem %"] = f"{self.footer.stopMemUsage / 32000 * 100:.2f}%"
+
+        if self.footer is None:
+            data["[return]"] = "missing!"
 
         children = [c.asdict() for c in self.children]
         if len(children) != 0:
