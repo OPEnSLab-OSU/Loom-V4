@@ -193,10 +193,11 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
 
     LOGF("Received packet from %i", *fromAddress);
 
-    StaticJsonDocument<300> tempDoc;
+    //510 is our expected maximum size
+    StaticJsonDocument<510> tempDoc;
 
     // cast buf to const to avoid mutation
-    auto err = deserializeMsgPack(tempDoc, (const char *)buf, sizeof(buf));
+    auto err = deserializeMsgPack(tempDoc, buf, sizeof(buf));
     if (err != DeserializationError::Ok) {
         ERRORF("Error occurred parsing MsgPack: %s", err.c_str());
         return FragReceiveStatus::Error;
