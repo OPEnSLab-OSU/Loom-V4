@@ -225,34 +225,23 @@ void Loom_MongoDB::loadConfigFromJSON(char* json){
     port = 0;
     
     /* We should check if any parameter is null */
-    if(!doc["broker"].isNull())
+    if(!doc["broker"].isNull() && !doc["database"].isNull() && !doc["username"].isNull() && !doc["password"].isNull() &&
+    !doc["project"].isNull() && !doc["port"].isNull() && strlen(projectServer) > 0){
         strncpy(address, doc["broker"].as<const char*>(), 100);
-
-    if(!doc["database"].isNull())
         strncpy(database_name, doc["database"].as<const char*>(), 100);
-    
-    if(!doc["username"].isNull())
         strncpy(username, doc["username"].as<const char*>(), 100);
-
-    if(!doc["password"].isNull())
         strncpy(password, doc["password"].as<const char*>(), 100);
-
-    if(!doc["project"].isNull())
         strncpy(projectServer, doc["project"].as<const char*>(), 100);
-
-    if(!doc["port"].isNull())
         port = doc["port"].as<int>();
-   
-    if(strlen(projectServer) > 0){
-        // Formulate a topic to publish on with the format "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
         snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s/%s%i"), projectServer, database_name, manInst->get_device_name(), manInst->get_instance_num());
+        moduleInitialized = true;
     }
     else{
         // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
         snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
+        moduleInitialized = false; 
     }
     
-    moduleInitialized = true;
     free(json);
     FUNCTION_END;
 }
