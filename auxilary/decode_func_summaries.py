@@ -39,29 +39,29 @@ class StackFrame:
 
         data = OrderedDict()
 
-        if self.header is not None:
+        if has_header:
             data["name"] = (
                 f"{self.header.filename}:{self.header.funcname}:{self.header.linenum}"
             )
         else:
             data["[call]  "] = "missing! (summaries are probably corrupted)"
 
-        if self.header is not None:
+        if has_header:
             data["[call]   time (ms)"] = self.header.startTime
 
-        if self.footer is not None:
+        if has_footer:
             data["[return] time (ms)"] = self.footer.stopTime
 
-        if self.footer is not None and self.header is not None:
+        if has_footer and has_header:
             data["elapsed time (ms)"] = self.footer.stopTime - self.header.startTime
 
-        if self.header is not None:
+        if has_header:
             data["[call]   free memory"] = self.header.startMemUsage
 
-        if self.footer is not None:
+        if has_footer:
             data["[return] free memory"] = self.footer.stopMemUsage
 
-        if self.header is not None and self.footer is not None:
+        if has_header and has_footer:
             memUsage = self.footer.stopMemUsage - self.header.startMemUsage
             data["memory leaked (bytes)"] = -memUsage
             data["mem %"] = f"{self.footer.stopMemUsage / 32000 * 100:.2f}%"
