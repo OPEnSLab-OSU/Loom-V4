@@ -1,11 +1,15 @@
 #pragma once
 
-#include <queue>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
 #include <MemoryFree.h>
 #include "Hardware/Loom_Hypnos/Loom_Hypnos.h"
 
-#define FUNCTION_START Logger::getInstance()->startFunction(__FILE__, __func__, __LINE__, freeMemory())     // Marks the start of a function
-#define FUNCTION_END Logger::getInstance()->endFunction(freeMemory())                                       // Marks the end of a function
+// #define FUNCTION_START Logger::getInstance()->startFunction(__FILE__, __func__, __LINE__, freeMemory())     // Marks the start of a function
+// #define FUNCTION_END Logger::getInstance()->endFunction(freeMemory())                                       // Marks the end of a function
+#define FUNCTION_START FunctionInstrumentor _instrumentor##__LINE__(__FILE__, __func__, __LINE__);
+#define FUNCTION_END
 
 #define SLOG(msg) Logger::getInstance()->debugLog(msg, true, __FILE__, __func__, __LINE__)                  // Log a message without printing to the serial
 #define LOG(msg) Logger::getInstance()->debugLog(msg, false, __FILE__, __func__, __LINE__)                  // Log a generic message
@@ -15,24 +19,25 @@
 
 #define LOGF(msg, ...) { \
     char buf[OUTPUT_SIZE]; \
-    snprintf_P(buf, sizeof(buf), PSTR(msg), __VA_ARGS__); \
+    snprintf_P(buf, sizeof(buf), PSTR(msg), ##__VA_ARGS__); \
     LOG(buf); \
 }
 
 #define ERRORF(msg, ...) { \
     char buf[OUTPUT_SIZE]; \
-    snprintf_P(buf, sizeof(buf), PSTR(msg), __VA_ARGS__); \
+    snprintf_P(buf, sizeof(buf), PSTR(msg), ##__VA_ARGS__); \
     ERROR(buf); \
 }
 
 #define WARNINGF(msg, ...) { \
     char buf[OUTPUT_SIZE]; \
-    snprintf_P(buf, sizeof(buf), PSTR(msg), __VA_ARGS__); \
+    snprintf_P(buf, sizeof(buf), PSTR(msg), ##__VA_ARGS__); \
     WARNING(buf); \
 }
 
 #define ENABLE_SD_LOGGING Logger::getInstance()->enableSD()                                                 // Enable SD logging of debug information
 #define ENABLE_FUNC_SUMMARIES Logger::getInstance()->enableSummaries()                                      // Enable logging of function mem usage summaries
+
 
 /**
  * Arduino Logger class that allows for standardized log outputs as well as function memory usage summaries to find memory leaks that may lead to unexpected crashing
@@ -41,28 +46,9 @@
  */ 
 class Logger{
     private:
-
-        /**
-         * Function Info - Contains important information of the run state of the function
-         * fileName - Name of the file that we are in
-         * funcName - Name of the function that we are in
-         * lineNumber - The current line number of the function
-         * netMemoryUsage - The amount of memory that was allocated or deallocated in that function alone (bytes)
-         * time - The time the function took to return (ms)
-         * indentCount - This is allows for better formatting in the funcSummaries output
-        */
-        struct functionInfo{
-            char fileName[260];
-            char funcName[260];
-            unsigned long lineNumber;
-            int netMemoryUsage;
-            unsigned long time;
-            int indentCount;
-        };
+        friend class FunctionInstrumentor;
         
-        // Function call list
-        std::queue<struct functionInfo*> callStack;
-        int indentNum = 0;
+        unsigned int stackDepth = 0;
 
         // Whether or not to use the SD card or log function summaries
         bool enableFunctionSummaries = false;
@@ -91,26 +77,6 @@ class Logger{
                 sdInst->writeLineToFile(filePath, message);
         }
 
-        /**
-         * Truncate the __FILE__ output to just show the name instead of the whole path
-         * @param fileName String to truncate
-         * 
-         * @return Pointer to a malloced char*
-        */
-        void truncateFileName(const char* fileName, char array[260]){
-           
-            int i;
-            // Find the last \\ in the file path to know where the name is
-            char *lastOccurance = strrchr(fileName, '\\');
-            
-            int lastSlash = lastOccurance-fileName+1;
-
-            // Loop from the last slash to the end of the string
-            for(i = lastSlash; i < strlen(fileName); i++){
-                array[i-lastSlash] = fileName[i];
-            }
-            array[i-lastSlash] = '\0';
-        };
 
         Logger() {};
     
@@ -221,8 +187,8 @@ class Logger{
         */
         void genericLog(const char* level, const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber){
             char logMessage[OUTPUT_SIZE];
-            char fileName[260];
-            truncateFileName(file, fileName);      
+            char fileName[260] = {};
+            truncateFileName(fileName, file);      
             
             /* If the hypnos is not included or the hypnos is included but the RTC hasn't been initialized yet we want to print without the time */
             if(hypnosInst == nullptr || (hypnosInst != nullptr && !hypnosInst->isRTCInitialized()))
@@ -257,80 +223,95 @@ class Logger{
             log(message, silent);
         };
 
-
-        /**
-         * Marks the start of a new function
-         * @param file File name that the function is in
-         * @param func Function name that this call is in
-         * @param num Current line number in the file of which this call is located
-        */
-        void startFunction(const char* file, const char* func, unsigned long num, int freeMemory){
-            if(enableFunctionSummaries){
-                // Log the start time of the function
-                char fileName[260];
-                memset(fileName, '\0', 260);
-                truncateFileName(file, fileName);
-                struct functionInfo* newFunction = (struct functionInfo*) malloc(sizeof(struct functionInfo));
-                strncpy(newFunction->fileName, fileName, 260);
-                strncpy(newFunction->funcName, func, 260);
-                newFunction->lineNumber = num;
-                newFunction->netMemoryUsage = freeMemory;
-                newFunction->time = millis();
-                newFunction->indentCount = callStack.size();
-                callStack.push(newFunction);
-            }
-        };
-
-        /**
-         * Marks the end of a function, logs summary to SD card
-         * @param freeMemory The amount of available memory on the device
-        */
-        void endFunction(int freeMemory){
-            if(enableFunctionSummaries){
-                char fileName[100];
-                char file[260];
-                char func[260];
-                char output[300];
-                char indents[10];
-
-                // 0 fill the indents array
-                memset(indents, '\0', 10);
-
-                struct functionInfo* info = callStack.front();
-                int memUsage = info->netMemoryUsage;
-                unsigned long time = millis() - info->time;
-                int percentage = ((float)memUsage / 32000.0) * 100;
-
-                // Copy to internal variables
-                strncpy(file, info->fileName, 260);
-                strncpy(func, info->funcName, 260);
-
-                // Cap the number of inents at the size of the array
-                if(info->indentCount > 10){
-                    info->indentCount = 10;
-                }
-
-                // Set the number of tab characters we need to add
-                memset(indents, '\t', info->indentCount);
-            
-                // Pop the last function off the call stack
-                free(info);
-                callStack.pop();
-                
-                // Format the fileName and log output, this function uses 976 bytes
-                snprintf_P(fileName, 100,PSTR("/debug/funcSummaries_%i.log"), sdInst->getCurrentFileNumber());
-                snprintf_P(output, 300, PSTR("%s[%s:%s] Summary\n%s\tInitial Free Memory: %i B (%i %% Free)\n%s\tEnding Free Memory: %i B\n%s\tNet Usage: %i B\n%s\tElapsed Time: %u MS"), indents, file, func, indents, memUsage, percentage, indents, freeMemory, indents, memUsage-freeMemory, indents, time);
-                
-                // Log as long as we have given it a SD card instance
-                if(sdInst != nullptr && enableSDLogging)
-                    sdInst->writeLineToFile(fileName, output);
-            }
-        };
-
         /* Enable function summaries to view memory usage */
         void enableSummaries(){ enableFunctionSummaries = true; };
 
         /* Save flash write by not logging everything to SD */
         void enableSD(){ enableSDLogging = true; };
+
+        bool shouldLogSummaries() {
+            return enableFunctionSummaries && sdInst != nullptr && enableSDLogging;
+        }
+
+        /**
+        * Truncate the __FILE__ output to just show the name instead of the whole path
+        * Expects dst to be at least as large as src
+        */
+        static void truncateFileName(char *dst, const char* src) {
+            const char *name = strrchr(src, '\\');
+
+            if (name == nullptr) name = strrchr(src, '/');
+            else name += 1; // shift off '\'
+
+            if (name == nullptr) name = src;
+            else name += 1; // shift off '/'
+
+            memcpy(dst, name, strlen(name));
+        }
 };
+
+// Offset to correct for the difference in the size of the FunctionInstrumentor
+// constructor and destructor stack frames.
+const int CONSTRUCTOR_SIZE_DIFFERENCE = 320;
+
+class FunctionInstrumentor {
+public:
+    FunctionInstrumentor(
+        const char* file, const char* func, int lineNum
+    ) : marker('M')
+    {
+        int freemem = freeMemory() + CONSTRUCTOR_SIZE_DIFFERENCE;
+
+        Logger *logger = Logger::getInstance();
+
+        logger->stackDepth++;
+
+        if (!logger->shouldLogSummaries()) return;
+
+        char fileName[300] = {};
+        Logger::truncateFileName(fileName, file);
+
+        char logfileName[100];
+        snprintf_P(
+            logfileName, 
+            sizeof(logfileName), 
+            PSTR("/debug/funcSummaries_%i.log"), 
+            logger->sdInst->getCurrentFileNumber()
+        );
+
+        char output[300] = {};
+        snprintf_P(output, sizeof(output), PSTR("start,%d,%s,%s,%d,%d,%lu"), 
+                   logger->stackDepth - 1, fileName, func, lineNum, freemem, millis());
+        bool worked = logger->sdInst->writeLineToFile(logfileName, output);
+        if (!worked) WARNINGF("Could not write instrumentation to file!");
+    }
+
+    ~FunctionInstrumentor() {
+        int freemem = freeMemory();
+
+        Logger *logger = Logger::getInstance();
+
+        logger->stackDepth--;
+
+        if (!logger->shouldLogSummaries()) return;
+
+        char logfileName[100];
+        snprintf_P(
+            logfileName, 
+            sizeof(logfileName), 
+            PSTR("/debug/funcSummaries_%i.log"), 
+            logger->sdInst->getCurrentFileNumber()
+        );
+
+        char output[300];
+        snprintf_P(output, sizeof(output), PSTR("end,%d, , , ,%d,%lu"), 
+                   logger->stackDepth, freemem, millis());
+        bool worked = logger->sdInst->writeLineToFile(logfileName, output);
+        if (!worked) WARNINGF("Could not write instrumentation to file!");
+    }
+
+private:
+    char marker; // exists only to normalize memory
+};
+
 
