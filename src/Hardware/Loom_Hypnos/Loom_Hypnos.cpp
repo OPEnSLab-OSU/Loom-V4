@@ -445,8 +445,8 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
     char output[OUTPUT_SIZE];
 
     // The time in the future that the alarm will be set for
-    DateTime future(RTC_DS.now() + duration);
-    RTC_DS.setAlarm(future);
+    alarmTime = RTC_DS.now() + duration;
+    RTC_DS.setAlarm(alarmTime);
 
     // Print the time that the next interrupt is set to trigger
     snprintf(output, OUTPUT_SIZE, PSTR("Current Time (Local): %s"), getLocalTime(RTC_DS.now()).text());
@@ -463,43 +463,34 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::sleep(bool waitForSerial){
     // Try to power down the active modules
-
-    // If the alarm set time is less than the current time we missed our next alarm so we need to set a new one, we need to check if we have powered on already so we dont use the RTC that isn't enabled
-    bool hasAlarmTriggered = false;
-
-    // Try to power down the active modules
-    if(shouldPowerUp){
+    if (shouldPowerUp) {
         manInst->power_down();
 
         // 50ms delay allows this last message to be sent before the bus disconnects
         LOG("Entering Standby Sleep...");
         delay(50);
 
-        // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
-        uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
-        uint32_t currentTime = RTC_DS.now().unixtime();
-        hasAlarmTriggered = alarmedTime <= currentTime;
-    }
+        DateTime currentTime = RTC_DS.now();
 
-    // If it hasn't we should preform our sleep as before
-    if(!hasAlarmTriggered){
-        pre_sleep();                                            // Pre-sleep cleanup
-        shouldPowerUp = true;
-        LowPower.sleep();                                       // Go to sleep and hang
-    }
-    // If it has we want to trigger a resample which requires powering the sensors back up
-    else{
-        WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");
-        reattachRTCInterrupt();
-        if(shouldPowerUp){
-            manInst->power_up();
+        // If the alarm time has already passed, don't bother going to sleep
+        if (currentTime < alarmTime) {
+            pre_sleep();
+            shouldPowerUp = true;
+
+            // Puts device to sleep - hypnos is responsible for waking it up
+            LowPower.sleep();
+            
+            // Wake up
+            post_sleep(waitForSerial);
+
+        } else {
+            WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");
+            reattachRTCInterrupt();
+            if(shouldPowerUp){
+                manInst->power_up();
+            }
         }
     }
-
-    // If the alarm hadn't triggered last time we want to wake up like normal
-    if(!hasAlarmTriggered)
-        post_sleep(waitForSerial);         // Wake up
-   
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
