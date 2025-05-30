@@ -202,7 +202,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_MongoDB::loadConfigFromJSON(char* json){
+bool Loom_MongoDB::loadConfigFromJSON(char* json){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     char topic[MAX_TOPIC_LENGTH];
@@ -225,8 +225,12 @@ void Loom_MongoDB::loadConfigFromJSON(char* json){
     port = 0;
     
     /* We should check if any parameter is null */
-    if(!doc["broker"].isNull() && !doc["database"].isNull() && !doc["username"].isNull() && !doc["password"].isNull() &&
-    !doc["project"].isNull() && !doc["port"].isNull() && strlen(projectServer) > 0){
+    if(!doc["broker"].isNull() && 
+    !doc["database"].isNull() && 
+    !doc["username"].isNull() && 
+    !doc["password"].isNull() && 
+    !doc["port"].isNull() && 
+    strlen(projectServer) > 0){
         strncpy(address, doc["broker"].as<const char*>(), 100);
         strncpy(database_name, doc["database"].as<const char*>(), 100);
         strncpy(username, doc["username"].as<const char*>(), 100);
@@ -235,14 +239,19 @@ void Loom_MongoDB::loadConfigFromJSON(char* json){
         port = doc["port"].as<int>();
         snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s/%s%i"), projectServer, database_name, manInst->get_device_name(), manInst->get_instance_num());
         moduleInitialized = true;
+        free(json);
+        FUNCTION_END;
+        return true;
     }
     else{
         // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
         snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
         moduleInitialized = false; 
+        free(json);
+        FUNCTION_END;
+        return false;
     }
     
-    free(json);
-    FUNCTION_END;
+    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
