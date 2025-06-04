@@ -162,12 +162,13 @@ uint16_t AS5311::getFilteredPosition()
 void AS5311::measure(Manager &manager)
 {
     int filteredPosition = (int)getFilteredPosition();
+    int rawPosition = (int)getPosition();
 
     recordMagnetStatus(manager);
     manager.addData("AS5311", "mag", getFieldStrength());
-    manager.addData("AS5311", "pos_raw", (int)getPosition());
+    manager.addData("AS5311", "pos_raw", rawPosition);
     manager.addData("AS5311", "pos_avg", filteredPosition);
-    manager.addData("displacement", "um", measureDisplacement(filteredPosition));
+    manager.addData("displacement", "um", measureDisplacement(rawPosition));
 }
 
 /**

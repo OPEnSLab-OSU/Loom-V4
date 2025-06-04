@@ -1,0 +1,8 @@
+{
+    "broker": "",
+    "port": 1883,
+    "username": "User",
+    "password": "password",
+    "database": "Hazelnut_hub",
+    "project": ""
+}
