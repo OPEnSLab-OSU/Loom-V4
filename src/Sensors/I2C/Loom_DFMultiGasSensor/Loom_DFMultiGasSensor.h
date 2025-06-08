@@ -32,7 +32,7 @@ class Loom_DFMultiGasSensor : public I2CDevice{
          */
         Loom_DFMultiGasSensor(
                       Manager& man,
-                      uint8_t address = 0x77,
+                      uint8_t address = 0x74,
                       uint8_t initializationRetyLimit = 10,
                       bool useMux = false
                 );
@@ -63,7 +63,7 @@ class Loom_DFMultiGasSensor : public I2CDevice{
         bool attemptConnectionToSensor();
         void configureSensorProperties(
             DFRobot_GAS::eMethod_t aquireMode   =     DFRobot_GAS::eMethod_t::PASSIVITY, 
-            DFRobot_GAS::eSwitch_t gasCompMode  =    DFRobot_GAS::eSwitch_t::OFF
+            DFRobot_GAS::eSwitch_t gasCompMode  =    DFRobot_GAS::eSwitch_t::ON
         );
 
         // --- Sensor Readings
@@ -73,3 +73,5 @@ class Loom_DFMultiGasSensor : public I2CDevice{
         float currentTemperature = 0.0f;
     
 };
+
+uint8_t findGasBoard(void);

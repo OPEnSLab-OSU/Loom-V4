@@ -19,6 +19,9 @@
 #include "../../Sensors/I2C/Loom_K30/Loom_K30.h"
 #include "../../Sensors/I2C/Loom_MMA8451/Loom_MMA8451.h"
 #include "../../Sensors/I2C/Loom_ZXGesture/Loom_ZXGesture.h"
+#include "../../Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h"
+#include "../../Sensors/I2C/Loom_T6793/Loom_T6793.h"
+
 
 /**
  * Adds Hot Swappable functionality for TCA9548 multiplexer
@@ -44,6 +47,14 @@ class Loom_Multiplexer : public Module{
          */ 
         Loom_Multiplexer(Manager& man);
 
+		/**
+         * Construct a new Multiplexer with specified addresses 
+         * 
+         * @param man Reference to the manager
+		 * @param addresses Vector of addresses you want to pass in to known addresses
+         */ 
+        Loom_Multiplexer(Manager& man, const std::vector<byte>& addresses);
+
 		// Destructor removes all new sensor instances
 		~Loom_Multiplexer();
         
@@ -61,12 +72,15 @@ class Loom_Multiplexer : public Module{
 		void refreshSensors();									// Checks to see if any new sensors were swapped in allows for hot swapping
 		Module* loadSensor(const byte addr);					// Load the correct sensor based on the I2C address
 
+		std::vector<byte> known_addresses = {};
+
 		// Used to optimize searching for sensors:
 		// search addresses in array rather than 0-127 
-		const std::array<byte, 21> known_addresses = 
+		const std::vector<byte> default_addresses = 
 		{
 			0x10, ///< ZXGESTURESENSOR
 			0x11, ///< ZXGESTURESENSOR
+			0x15, ///< T6793
 			0x19, ///< LIS3DH
 			0x1C, ///< MMA8451
 			0x1D, ///< MMA8451
@@ -79,6 +93,7 @@ class Loom_Multiplexer : public Module{
 			0x68, ///< K30
 			0x69, ///< MPU6050
 			0x70, ///< MB1232
+			0x74, ///< DFMultiGasSensor
 			0x76, ///< MS5803
 			0x77  ///< MS5803
 		};

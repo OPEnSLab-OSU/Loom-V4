@@ -24,13 +24,25 @@ Loom_DFMultiGasSensor::Loom_DFMultiGasSensor(
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_DFMultiGasSensor::initialize() {
     FUNCTION_START;
+    char output[OUTPUT_SIZE];
 
     LOG(F("Begin DFRobot Multi Gas Sensor Initialization..."));
+
+    uint8_t addr = findGasBoard();
+    if (addr == -1) {
+        ERROR(F("No gas board found on this channel."));
+        moduleInitialized = false;
+        // return false;
+    }
+
+    snprintf(output, OUTPUT_SIZE, "[Find Gass Board Func] Gas sensor present at 0x%02X attempting to initialize. Retry limit: %d", addr, retryLimit);
+    LOG(output);
 
     // The result of this determines if we are good to go
     moduleInitialized = attemptConnectionToSensor();
 
     if(moduleInitialized){
+        LOG(F("No acknowledge received from DFRobot Multi Gas Sensor."));
         // Configure in passive mode with temperature compenstation off (default)
         configureSensorProperties();
     }
@@ -53,6 +65,12 @@ void Loom_DFMultiGasSensor::measure() {
             currentGasType = gasSensor.queryGasTypeCstr();
             if(strlen(currentGasType) <= 0){
                 currentGasType = "INV_TYPE";
+            }
+
+            if (gasSensor.dataIsAvailable()) {
+                LOG(F("Sensor has data availible. Reading ..."));
+            } else {
+                LOG(F("Sensor Data not availible yet!"));
             }
 
             // Read the concentration
@@ -86,6 +104,7 @@ void Loom_DFMultiGasSensor::package() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_DFMultiGasSensor::power_up() {
     FUNCTION_START;
+    char output[OUTPUT_SIZE];
 
     // If we are unable to connect to the sensor in power up this should disable the module for atleast this run, decide if we want to do this or not
     moduleInitialized = attemptConnectionToSensor();
@@ -107,6 +126,7 @@ void Loom_DFMultiGasSensor::power_up() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_DFMultiGasSensor::attemptConnectionToSensor() {
     FUNCTION_START;
+    char output[OUTPUT_SIZE];
 
     /* Attempt a set number of times to initialize the sensor */
     for(uint8_t retryCount = 0; retryCount < retryLimit; retryCount++){
@@ -115,6 +135,7 @@ bool Loom_DFMultiGasSensor::attemptConnectionToSensor() {
         // If we do successfully begin the sensor we want to stop the loop immediatly and move on to the next part of initialization
         if(gasSensor.begin()){
             LOG(F("DFRobot Multi Gas Sensor connected! "));
+            moduleInitialized = true;
             FUNCTION_END;
             return true;
         }
@@ -147,8 +168,25 @@ void Loom_DFMultiGasSensor::configureSensorProperties(DFRobot_GAS::eMethod_t aqu
 
         // Set temperature compensation
         LOG(F("Setting temp compensation..."));
-        gasSensor.setTempCompensation(gasSensor.OFF);
+        gasSensor.setTempCompensation(gasSensor.ON);
         delay(1000);
         LOGF("Temp compensation set to %hs", gasCompMode == gasSensor.OFF ? "OFF" : "ON");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+uint8_t findGasBoard(void)
+{
+
+char output[OUTPUT_SIZE];
+  for (uint8_t addr = 0x70; addr <= 0x77; ++addr) {   // only range that matters
+    Wire.beginTransmission(addr);
+    if (Wire.endTransmission() == 0) {
+        snprintf(output, OUTPUT_SIZE, "Found addr: %x", addr);
+        LOG(output);
+        return addr;     // found it
+    }
+  }
+  return -1;                                // none found
+}
