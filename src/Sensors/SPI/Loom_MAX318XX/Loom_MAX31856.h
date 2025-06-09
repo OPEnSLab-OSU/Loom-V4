@@ -27,11 +27,13 @@ class Loom_MAX31856 : public Module{
          * @param man Reference to the manager
          * @param chip_select What pin SPI pin to use
          * @param num_samples The number of samples to collect and average
-         * @param mosi
-         * @param miso
-         * @param sclk
          */ 
-        Loom_MAX31856(Manager& man, int chip_select = 10, int samples = 1, int mosi = 11, int miso = 12, int sclk = 13 );
+        Loom_MAX31856(Manager& man, int chip_select = 10, int samples = 1, int mosi = -1, int miso = -1, int sclk = -1);
+
+        ~Loom_MAX31856()
+        {
+            delete maxthermo;
+        };
 
         /**
          * Get the recorded temperature
@@ -41,7 +43,7 @@ class Loom_MAX31856 : public Module{
     private:
         Manager* manInst;           // Instance of the manager
 
-        Adafruit_MAX31856 maxthermo;      // Instance of the MAX31865 library
+        Adafruit_MAX31856* maxthermo = nullptr;      // Instance of the MAX31865 library
         int num_samples;            // Number of samples to take and average
 
         float temperature = 0;      // Temperature that will be packaged

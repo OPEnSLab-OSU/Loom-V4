@@ -49,6 +49,9 @@ void loop() {
   // Set the RTC interrupt alarm to wake the device in 10 seconds
   hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 10));
 
+  // Measure data from connected sensors
+  manager.measure()
+    
   // Package data
   manager.package();
 
