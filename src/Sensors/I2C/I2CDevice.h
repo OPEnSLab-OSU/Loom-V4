@@ -28,5 +28,20 @@ class I2CDevice : public Module{
             return false;
         };
 
+        uint8_t scanI2C(){
+            FUNCTION_START;
+            Wire.begin();
+            for(uint8_t address = 1; address < 127; address++ ) {
+                Wire.beginTransmission(address);
+                if (Wire.endTransmission() == 0){
+                    FUNCTION_END;
+                    return address;
+                }
+            }
+            FUNCTION_END;
+            return 0xff;
+        };
+
+
         bool needsReinit = false;                      // Whether or not the device needs to be reinitialized
 };
