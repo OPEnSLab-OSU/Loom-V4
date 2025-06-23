@@ -6,6 +6,14 @@
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
 
+enum class AnalogChannelEnable {
+    ENABLE_NONE,
+    ENABLE_1,
+    ENABLE_1_2,
+    ENABLE_1_2_3,
+    ENABLE_1_2_3_4
+};
+
 /**
  * Functionality for the ADS1115
  * 
@@ -35,7 +43,8 @@ class Loom_ADS1115 : public I2CDevice{
                 Manager& man,
                 byte address            = ADS1X15_ADDRESS,
                 bool useMux             = false, 
-                bool enable_analog      = true,
+                AnalogChannelEnable     enable_analog  = AnalogChannelEnable::ENABLE_1_2_3_4,
+                bool enableVolts        = false,
                 bool enable_diff        = false,
                 adsGain_t gain          = adsGain_t::GAIN_ONE
             );
@@ -59,10 +68,11 @@ class Loom_ADS1115 : public I2CDevice{
 
         adsGain_t adc_gain;                                         // Gain to set the amplifier to
         byte i2c_address;                                           // I2C address
-        bool enableAnalog;                                          // Read from the analog pins
+        AnalogChannelEnable enableAnalog;                                          // Read from the analog pins
         bool enableDiff;                                            // Read differentials
+        bool enableVolts;                                            // Read differentials
 
-        int16_t analogData[4];                                      // Stores the analog ADS1115 data
-        int16_t diffData[2];                                        // Stores the differential data from the sensor
+        uint16_t analogData[4];                                      // Stores the analog ADS1115 data
+        uint16_t diffData[2];                                        // Stores the differential data from the sensor
         float volts[4];						                        // Stores Computed Voltage Conversions
 };

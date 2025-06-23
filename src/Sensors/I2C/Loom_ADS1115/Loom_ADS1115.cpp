@@ -2,7 +2,7 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_ADS1115::Loom_ADS1115(Manager& man, byte address, bool useMux,  bool enable_analog, bool enable_diff, adsGain_t gain) : I2CDevice("ADS1115"), manInst(&man), i2c_address(address), enableAnalog(enable_analog), enableDiff(enable_diff), adc_gain(gain) {
+Loom_ADS1115::Loom_ADS1115(Manager& man, byte address, bool useMux, AnalogChannelEnable enable_analog, bool enable_voltage, bool enable_diff, adsGain_t gain) : I2CDevice("ADS1115"), manInst(&man), i2c_address(address), enableAnalog(enable_analog), enableVolts(enable_voltage), enableDiff(enable_diff), adc_gain(gain) {
     module_address = i2c_address;
 
     if(!useMux)
@@ -45,17 +45,17 @@ void Loom_ADS1115::measure(){
         }
 
     
-        if(enableAnalog){
-            for(int i = 0; i < 4; i++){
-                analogData[i] = ads.readADC_SingleEnded(i);
-		        volts[i] = ads.computeVolts(analogData[i]);
-            }
-
-            if(enableDiff){
-                diffData[0] = (int)ads.readADC_Differential_0_1();
-                diffData[1] = (int)ads.readADC_Differential_2_3();
-            }
+       
+        for(int i = 0; i < 4; i++){
+            analogData[i] = ads.readADC_SingleEnded(i);
+            volts[i] = ads.computeVolts(analogData[i]);
         }
+
+        if(enableDiff){
+            diffData[0] = (int)ads.readADC_Differential_0_1();
+            diffData[1] = (int)ads.readADC_Differential_2_3();
+        }
+    
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -64,16 +64,45 @@ void Loom_ADS1115::measure(){
 void Loom_ADS1115::package(){
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        if(enableAnalog){
-            json["A0"] = analogData[0];
-            json["A1"] = analogData[1];
-            json["A2"] = analogData[2];
-            json["A3"] = analogData[3];
-
-            json["A0_Volts"] = volts[0];
-            json["A1_Volts"] = volts[1];
-            json["A2_Volts"] = volts[2];
-            json["A3_Volts"] = volts[3];
+        switch (enableAnalog){
+            case AnalogChannelEnable::ENABLE_NONE:
+                break;
+            case AnalogChannelEnable::ENABLE_1:
+                json["A0"] = analogData[0];
+                if(enableVolts){
+                    json["A0_Volts"] = volts[0];
+                }
+                break;
+            case AnalogChannelEnable::ENABLE_1_2:
+                json["A0"] = analogData[0];
+                json["A1"] = analogData[1];
+                if(enableVolts){
+                    json["A0_Volts"] = volts[0];
+                    json["A1_Volts"] = volts[1];
+                }
+                break;
+            case AnalogChannelEnable::ENABLE_1_2_3:
+                json["A0"] = analogData[0];
+                json["A1"] = analogData[1];
+                json["A2"] = analogData[2];
+                if(enableVolts){
+                    json["A0_Volts"] = volts[0];
+                    json["A1_Volts"] = volts[1];
+                    json["A2_Volts"] = volts[2];
+                }
+                break;
+            case AnalogChannelEnable::ENABLE_1_2_3_4:
+                json["A0"] = analogData[0];
+                json["A1"] = analogData[1];
+                json["A2"] = analogData[2];
+                json["A3"] = analogData[3];
+                if(enableVolts){
+                    json["A0_Volts"] = volts[0];
+                    json["A1_Volts"] = volts[1];
+                    json["A2_Volts"] = volts[2];
+                    json["A3_Volts"] = volts[3];
+                }
+                break;
         }
 
         if(enableDiff){
