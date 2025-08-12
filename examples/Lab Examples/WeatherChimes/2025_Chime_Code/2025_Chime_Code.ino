@@ -111,6 +111,7 @@ void setup() {
   hypnos.registerInterrupt(isrTrigger);
 
   attachInterrupt(INT_PIN, tipTrigger, FALLING);
+  attachInterrupt(INT_PIN, tipTrigger, FALLING);
 }
 
 void loop() {
