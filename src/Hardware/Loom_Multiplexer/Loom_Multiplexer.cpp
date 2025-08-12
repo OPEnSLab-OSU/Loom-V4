@@ -127,7 +127,7 @@ void Loom_Multiplexer::measure(){
     FUNCTION_START;
 
     // Refresh sensors before measuring
-    refreshSensors();
+    // refreshSensors();
 
     for(int i = 0; i < sensors.size(); i++){
         selectPin(std::get<2>(sensors[i]));
@@ -239,7 +239,8 @@ Module* Loom_Multiplexer::loadSensor(const byte addr){
         case 0x15: return new Loom_T6793(*manInst, 0x15, 10, true);
 
         // MPU6050
-        case 0x69: return new Loom_MPU6050(*manInst, true);
+        // case 0x69: return new Loom_MPU6050(*manInst, true);
+        case 0x69: return new Loom_SEN55(*manInst,0x69, true);
 
         // MS5803
         case 0x76: return new Loom_MS5803(*manInst, 0x76, true);

@@ -21,6 +21,7 @@
 #include "../../Sensors/I2C/Loom_ZXGesture/Loom_ZXGesture.h"
 #include "../../Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h"
 #include "../../Sensors/I2C/Loom_T6793/Loom_T6793.h"
+#include "../../Sensors/I2C/Loom_SEN55/Loom_SEN55.h"
 
 
 /**
