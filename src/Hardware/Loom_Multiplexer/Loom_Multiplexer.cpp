@@ -127,7 +127,7 @@ void Loom_Multiplexer::measure(){
     FUNCTION_START;
 
     // Refresh sensors before measuring
-    // refreshSensors();
+    refreshSensors();
 
     for(int i = 0; i < sensors.size(); i++){
         selectPin(std::get<2>(sensors[i]));
