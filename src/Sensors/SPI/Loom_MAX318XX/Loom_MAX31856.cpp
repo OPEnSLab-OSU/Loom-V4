@@ -55,7 +55,7 @@ void Loom_MAX31856::measure(){
 void Loom_MAX31856::package(){
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        json["Temperature"] = temperature;
+        json["Temperature_°C"] = temperature;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

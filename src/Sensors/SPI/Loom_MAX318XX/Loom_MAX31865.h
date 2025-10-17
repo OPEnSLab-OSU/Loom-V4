@@ -9,7 +9,7 @@
 #define RREF        4300.0
 
 /**
- * Class for managing the MAX31865 NOT TO BE CONFUSED WITH THE MAX31865
+ * Class for managing the MAX31865 NOT TO BE CONFUSED WITH THE MAX31856
  * 
  * @author Will Richards
  */ 

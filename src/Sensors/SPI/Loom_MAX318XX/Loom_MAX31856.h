@@ -7,7 +7,7 @@
 
 
 /**
- * Class for managing the MAX31865 NOT TO BE CONFUSED WITH THE MAX31865
+ * Class for managing the MAX31856 NOT TO BE CONFUSED WITH THE MAX31865
  * 
  * @author Will Richards
  */ 
@@ -41,7 +41,7 @@ class Loom_MAX31856 : public Module{
     private:
         Manager* manInst;           // Instance of the manager
 
-        Adafruit_MAX31856 maxthermo;      // Instance of the MAX31865 library
+        Adafruit_MAX31856 maxthermo;      // Instance of the MAX31856 library
         int num_samples;            // Number of samples to take and average
 
         float temperature = 0;      // Temperature that will be packaged
