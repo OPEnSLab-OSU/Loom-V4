@@ -35,8 +35,8 @@ void Loom_EZODO::measure(){
 void Loom_EZODO::package(){
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        json["D-Ox"] = oxygen;
-        json["Sat"] = saturation;
+        json["D-Ox_mg/L"] = oxygen;
+        json["Sat_%"] = saturation;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

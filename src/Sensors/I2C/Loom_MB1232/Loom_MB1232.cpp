@@ -93,7 +93,7 @@ void Loom_MB1232::measure() {
 void Loom_MB1232::package() {
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        json["Range"] = range;
+        json["Range_cm"] = range;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

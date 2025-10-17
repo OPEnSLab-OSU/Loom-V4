@@ -35,7 +35,7 @@ void Loom_EZOPH::measure(){
 void Loom_EZOPH::package(){
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        json["PH"] = ph;
+        json["PH"] = ph; // PH is unitless 
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
