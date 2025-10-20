@@ -1,5 +1,6 @@
 #include "Loom_MongoDB.h"
 #include "Logger.h"
+#include "Loom_Analog.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MongoDB::Loom_MongoDB(
@@ -35,6 +36,13 @@ Loom_MongoDB::Loom_MongoDB(Manager& man, NetworkComponent& internet_client) : MQ
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_MongoDB::publish(){
     FUNCTION_START;
+
+    if(getBatteryVoltage() < 3.4){
+        WARNING(F("Module not initialized! Battery doesn't have enough power."));
+        FUNCTION_END;
+        return false;    
+    }
+    
     
     char jsonString[MAX_JSON_SIZE];
     if(moduleInitialized){
