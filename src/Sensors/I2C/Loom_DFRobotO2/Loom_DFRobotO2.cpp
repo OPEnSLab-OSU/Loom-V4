@@ -55,7 +55,7 @@
 // void Loom_DFRobotO2::package(){
 //     JsonObject json = manInst->get_data_object(getModuleName());
 
-//     json["Oxygen Concentration"] = oxygenConcentration;
+//     json["Oxygen Concentration_%Vol"] = oxygenConcentration;
 // }
 // //////////////////////////////////////////////////////////////////////////////////////////////////////
 
