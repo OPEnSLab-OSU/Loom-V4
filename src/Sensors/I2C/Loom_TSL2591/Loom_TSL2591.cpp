@@ -85,9 +85,10 @@ void Loom_TSL2591::package() {
     FUNCTION_START;
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        json["Visible"] = lightLevels[0];
-        json["Infrared"] = lightLevels[1];
-        json["Full_Spectrum"] = lightLevels[2];
+        //unitless, higher values indicate more light of that type.
+        json["Visible_counts"] = lightLevels[0];
+        json["Infrared_counts"] = lightLevels[1];
+        json["Full_Spectrum_counts"] = lightLevels[2];
     }
     FUNCTION_END;
 }

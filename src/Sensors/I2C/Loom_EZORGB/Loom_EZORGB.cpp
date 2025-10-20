@@ -35,6 +35,8 @@ void Loom_EZORGB::measure(){
 void Loom_EZORGB::package(){
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
+
+        // these are rgb intensity values (0-255). These are unitless.
         json["Red"] = rgb[0];
         json["Green"] = rgb[1];
         json["Blue"] = rgb[2];

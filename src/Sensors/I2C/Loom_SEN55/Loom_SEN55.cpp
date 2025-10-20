@@ -135,15 +135,15 @@ void Loom_SEN55::package() {
 
     // Only include the PM measurements if we are actually measuring PM
     if(measurePM){
-        json["PM1_0"] = massConcentrationPm10p0;
-        json["PM2_5"] = massConcentrationPm2p5;
-        json["PM4_0"] = massConcentrationPm4p0;
-        json["PM10_0"] = massConcentrationPm10p0;
+        json["PM1_0_μg/m³"] = massConcentrationPm1p0; 
+        json["PM2_5_μg/m³"] = massConcentrationPm2p5;
+        json["PM4_0_μg/m³"] = massConcentrationPm4p0;
+        json["PM10_0_μg/m³"] = massConcentrationPm10p0;
     }
-    json["AmbientHumidity"] = (isnan(ambientHumidity) ? -1 : ambientHumidity);
-    json["AmbientTemperature"] = (isnan(ambientTemperature) ? -1 : ambientTemperature);
-    json["VocIndex"] = (isnan(vocIndex) ? -1 : vocIndex);
-    json["NoxIndex"] = (isnan(noxIndex) ? -1 : noxIndex);
+    json["AmbientHumidity_%RH"] = (isnan(ambientHumidity) ? -1 : ambientHumidity);
+    json["AmbientTemperature_°C"] = (isnan(ambientTemperature) ? -1 : ambientTemperature);
+    json["VocIndex_0-500"] = (isnan(vocIndex) ? -1 : vocIndex);
+    json["NoxIndex_1-500"] = (isnan(noxIndex) ? -1 : noxIndex);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

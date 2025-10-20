@@ -32,7 +32,7 @@ void Loom_EZOCO2::measure(){
 void Loom_EZOCO2::package(){
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        json["CO2"] = co2;
+        json["CO2_ppm"] = co2;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

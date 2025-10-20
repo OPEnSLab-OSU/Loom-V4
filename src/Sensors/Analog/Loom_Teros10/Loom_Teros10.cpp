@@ -24,7 +24,7 @@ void Loom_Teros10::package(){
     JsonObject json = manInst->get_data_object(getModuleName());
     json["Millivolt_Reading"] = milliVolt;
     json["Dielectric_Permittivity"] = dielecPerm;
-    json["Volumetric_Water_Content"] = volumetricWater;
+    json["Volumetric_Water_Content_%Vol"] = volumetricWater;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

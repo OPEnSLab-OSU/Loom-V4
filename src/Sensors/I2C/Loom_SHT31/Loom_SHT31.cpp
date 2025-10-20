@@ -70,8 +70,8 @@ void Loom_SHT31::package() {
     FUNCTION_START;
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        json["Temperature"] = sensorData[0];
-        json["Humidity"] = sensorData[1];
+        json["Temperature_C"] = sensorData[0];
+        json["Humidity_%RH"] = sensorData[1];
     }
     FUNCTION_END;
 }

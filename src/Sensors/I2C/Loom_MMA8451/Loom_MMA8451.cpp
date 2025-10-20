@@ -95,9 +95,9 @@ void Loom_MMA8451::package() {
     char orientationString[25];
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        json["X_Acc"] = accel[2];
-        json["Y_Acc"] = accel[0];
-        json["Z_Acc"] = accel[1];
+        json["X_Acc_g"] = accel[2];
+        json["Y_Acc_g"] = accel[0];
+        json["Z_Acc_g"] = accel[1];
         
         switch (orientation) {
             case MMA8451_PL_PUF: strncpy(orientationString, "Portrait_Up_Front\0", 25);       break;
@@ -111,7 +111,8 @@ void Loom_MMA8451::package() {
         }
         
         // Package the orientation string
-        json["Orien"] = orientationString;
+        
+        json["Orientation"] = orientationString;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

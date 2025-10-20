@@ -76,12 +76,12 @@ void Loom_AS7263::measure() {
 void Loom_AS7263::package() {
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        json["NIR_1"] = nir[0];
-        json["NIR_2"] = nir[1];
-        json["NIR_3"] = nir[2];
-        json["NIR_4"] = nir[3];
-        json["NIR_5"] = nir[4];
-        json["NIR_6"] = nir[5];
+        json["NIR_610nm"] = nir[0];
+        json["NIR_680nm"] = nir[1];
+        json["NIR_730nm"] = nir[2];
+        json["NIR_760nm"] = nir[3];
+        json["NIR_810nm"] = nir[4];
+        json["NIR_860nm"] = nir[5];
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

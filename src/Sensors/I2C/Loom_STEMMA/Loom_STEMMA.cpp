@@ -66,8 +66,9 @@ void Loom_STEMMA::package() {
     FUNCTION_START;
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        json["Temperature"] = temperature;
-        json["Capacitive"] = cap;
+        //no units for capacitive, lower values means dry, higher values mean very wet. 
+        json["Temperature_C"] = temperature;
+        json["Capacitive_counts"] = cap;
     }
     FUNCTION_END;
 }

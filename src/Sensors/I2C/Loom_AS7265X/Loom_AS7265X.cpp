@@ -86,26 +86,26 @@ void Loom_AS7265X::measure() {
 void Loom_AS7265X::package() {
 	if(moduleInitialized){
 		JsonObject json = manInst->get_data_object(getModuleName());
-		json["UV_1"] = uv[0];
-		json["UV_2"] = uv[1];
-		json["UV_3"] = uv[2];
-		json["UV_4"] = uv[3];
-		json["UV_5"] = uv[4];
-		json["UV_6"] = uv[5];
+		json["UV_410nm"] = uv[0];
+		json["UV_435nm"] = uv[1];
+		json["UV_460nm"] = uv[2];
+		json["UV_485nm"] = uv[3];
+		json["UV_510nm"] = uv[4];
+		json["UV_535nm"] = uv[5];
 
-		json["Color_1"] = color[0];
-		json["Color_2"] = color[1];
-		json["Color_3"] = color[2];
-		json["Color_4"] = color[3];
-		json["Color_5"] = color[4];
-		json["Color_6"] = color[5];
+		json["Color_560nm"] = color[0];
+		json["Color_585nm"] = color[1];
+		json["Color_645nm"] = color[2];
+		json["Color_705nm"] = color[3];
+		json["Color_900nm"] = color[4];
+		json["Color_940nm"] = color[5];
 
-		json["NIR_1"] = nir[0];
-		json["NIR_2"] = nir[1];
-		json["NIR_3"] = nir[2];
-		json["NIR_4"] = nir[3];
-		json["NIR_5"] = nir[4];
-		json["NIR_6"] = nir[5];
+		json["NIR_610nm"] = nir[0];
+		json["NIR_680nm"] = nir[1];
+		json["NIR_730nm"] = nir[2];
+		json["NIR_760nm"] = nir[3];
+		json["NIR_810nm"] = nir[4];
+		json["NIR_860nm"] = nir[5];
 	}
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
