@@ -446,6 +446,7 @@ bool Loom_LoRa::send(const uint8_t destinationAddress) {
     
     bool sentStatus = false;
     if(isHeartbeatMode()) {
+        // this is 150 because it is safely within the P2P and LoRaWAN limits for maximum size.
         const u_int16_t JSON_HEARTBEAT_BUFFER_SIZE = 150;
 
         StaticJsonDocument<JSON_HEARTBEAT_BUFFER_SIZE> heartbeatDoc;
