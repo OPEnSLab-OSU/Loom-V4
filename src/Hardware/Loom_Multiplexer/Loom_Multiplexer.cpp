@@ -127,7 +127,7 @@ void Loom_Multiplexer::measure(){
     FUNCTION_START;
 
     // Refresh sensors before measuring
-    refreshSensors();
+    // refreshSensors();
 
     for(int i = 0; i < sensors.size(); i++){
         selectPin(std::get<2>(sensors[i]));
@@ -166,7 +166,7 @@ void Loom_Multiplexer::power_down(){
     for(int i = 0; i < sensors.size(); i++){
         selectPin(std::get<2>(sensors[i]));
         delay(50);
-        std::get<1>(sensors[i])->power_up();
+        std::get<1>(sensors[i])->power_down();
     }
     FUNCTION_END;
 }
@@ -227,19 +227,22 @@ Module* Loom_Multiplexer::loadSensor(const byte addr){
         case 0x48: return new Loom_ADS1115(*manInst, 0x48, true);
 
         // K30
-        case 0x68: return new Loom_K30(*manInst, true, 0x68, true);
+        // case 0x68: return new Loom_K30(*manInst, true, 0x68, true);
 
         //MMA8451
         case 0x1D: return new Loom_MMA8451(*manInst, 0x1D, true);
 
         //Loom_DFMultiGasSensor
-        case 0x74: return new Loom_DFMultiGasSensor(*manInst, 0x74, 10, true);
+        case 0x74: return new Loom_DFMultiGasSensor(*manInst, 0x74, 10,false, true);
+        case 0x75: return new Loom_DFMultiGasSensor(*manInst, 0x75, 10,false, true);
 
         // Loom_T6793
         case 0x15: return new Loom_T6793(*manInst, 0x15, 10, true);
 
         // MPU6050
-        // case 0x69: return new Loom_MPU6050(*manInst, true);
+        // case 0x69: return new Loom_MPU6050(*manInst,  true);
+
+        // SEN55
         case 0x69: return new Loom_SEN55(*manInst,0x69, true);
 
         // MS5803

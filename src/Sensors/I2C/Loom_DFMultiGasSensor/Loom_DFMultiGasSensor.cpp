@@ -7,6 +7,7 @@ Loom_DFMultiGasSensor::Loom_DFMultiGasSensor(
                             Manager& man,
                             uint8_t address,
                             uint8_t initializationRetyLimit,
+                            bool sensorPowersDown,
                             bool useMux
                     ) : I2CDevice("DFR_MultiGasSensor"), 
                         manInst(&man), 
@@ -14,6 +15,8 @@ Loom_DFMultiGasSensor::Loom_DFMultiGasSensor(
                         gasSensor(&Wire, address) 
                     {
                         module_address = address;
+
+                        powersDown = sensorPowersDown;
 
                         // Register the module with the manager
                         if(!useMux)
@@ -35,7 +38,7 @@ void Loom_DFMultiGasSensor::initialize() {
         // return false;
     }
 
-    snprintf(output, OUTPUT_SIZE, "[Find Gass Board Func] Gas sensor present at 0x%02X attempting to initialize. Retry limit: %d", addr, retryLimit);
+    snprintf(output, OUTPUT_SIZE, " Gas sensor present at 0x%02X attempting to initialize. Retry limit: %d", addr, retryLimit);
     LOG(output);
 
     // The result of this determines if we are good to go
@@ -81,6 +84,7 @@ void Loom_DFMultiGasSensor::measure() {
         }
         else{
             ERROR(F("No acknowledge received from DFRobot Multi Gas Sensor."));
+            moduleInitialized = false;
         }
     }
     FUNCTION_END;
@@ -106,12 +110,20 @@ void Loom_DFMultiGasSensor::power_up() {
     FUNCTION_START;
     char output[OUTPUT_SIZE];
 
-    // If we are unable to connect to the sensor in power up this should disable the module for atleast this run, decide if we want to do this or not
-    moduleInitialized = attemptConnectionToSensor();
+    
+    if(powersDown) {
+        // If we are unable to connect to the sensor in power up this should disable the module for atleast this run, decide if we want to do this or not
+        moduleInitialized = attemptConnectionToSensor();
+    } else {
+        // Module assumed to be initialized and to have called .begin() if never powered down
+        // Prevents too many duplicate .begin() calls
+        // moduleInitialized = checkDeviceConnection();
+        moduleInitialized = true; 
+    }
 
     if(moduleInitialized){
         // Configure in passive mode with temperature compenstation off (default)
-        configureSensorProperties();
+        // configureSensorProperties();
         LOG(F("DFRobot Multi Gas sensor powered on successfully!"));
     }
     else{
@@ -148,7 +160,9 @@ bool Loom_DFMultiGasSensor::attemptConnectionToSensor() {
         }
 
         LOG(F("Waiting 3 seconds before attempting to retry..."));
-        delay(3000);
+        // Read delay
+        unsigned long startMillis = millis();
+        while((millis() - startMillis) < 3000) {}
     }
 
     // We shouldn't be able to make it here but if we do it was probably bad
