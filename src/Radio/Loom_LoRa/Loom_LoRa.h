@@ -57,6 +57,7 @@ public:
         const uint8_t sendMaxRetries,
         const uint8_t receiveMaxRetries,
         const uint16_t retryTimeout
+        const bool heartbeatMode = false;
     );
 
     /**
@@ -225,6 +226,10 @@ private:
     Loom_BatchSD *batchSD = nullptr;   // Pointer to the batchSD
     
     bool poweredUp = true;
+
+    bool heartbeatMode = false;
+    void setHeartbeatMode(const bool newMode) { heartbeatMode = newMode; }
+    bool isHeartbeatMode() const { return heartbeatMode; }
 
     uint8_t deviceAddress;      // Device address
     int16_t signalStrength;     // Strength of the signal received

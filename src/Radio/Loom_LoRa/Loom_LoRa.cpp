@@ -13,8 +13,9 @@ Loom_LoRa::Loom_LoRa(
     const uint8_t powerLevel,
     const uint8_t sendMaxRetries,
     const uint8_t receiveMaxRetries,
-    const uint16_t retryTimeout
-) : Module("LoRa"),
+    const uint16_t retryTimeout,
+    const bool heartbeatMode
+) :     Module("LoRa"),
         manager(&manager), 
         radioDriver{RFM95_CS, RFM95_INT},
         deviceAddress(address),
@@ -22,7 +23,8 @@ Loom_LoRa::Loom_LoRa(
         sendRetryCount(sendMaxRetries),
         receiveRetryCount(receiveMaxRetries),
         retryTimeout(retryTimeout),
-        expectedOutstandingPackets(0)
+        expectedOutstandingPackets(0),
+        heartbeatMode(heartbeatMode)
 {
     this->radioManager = new RHReliableDatagram(
         radioDriver, this->deviceAddress);
@@ -35,14 +37,16 @@ Loom_LoRa::Loom_LoRa(
     Manager& manager,
     const uint8_t powerLevel, 
     const uint8_t retryCount, 
-    const uint16_t retryTimeout
+    const uint16_t retryTimeout,
+    const bool heartbeatMode = false
 ) : Loom_LoRa(
     manager, 
     manager.get_instance_num(), 
     powerLevel, 
     retryCount, 
     retryCount,
-    retryTimeout
+    retryTimeout,
+    heartbeatMode
 ) {}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -437,7 +441,34 @@ bool Loom_LoRa::sendPacketHeader(JsonObject json,
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::send(const uint8_t destinationAddress) {
-    return send(destinationAddress, manager->getDocument().as<JsonObject>());
+
+    JsonObject managerJson = manager->getDocument().as<JsonObject>();
+    
+    bool sentStatus = false;
+    if(isHeartbeatMode()) {
+        const u_int16_t JSON_HEARTBEAT_BUFFER_SIZE = 150;
+
+        StaticJsonDocument<JSON_HEARTBEAT_BUFFER_SIZE> heartbeatDoc;
+        heartbeatDoc["type"] = "LoRa_heartbeat";
+        heartbeatDoc.createNestedArray("contents");
+
+        JsonObject objNestedId = heartbeatDoc.createNestedObject("id");
+        objNestedId["name"] = managerJson["id"]["name"];
+        objNestedId["instance"] = managerJson["id"]["instance"];
+
+        if (!managerJson["timestamp"].isNull()) {
+            JsonObject objNestedTimestamp = heartbeatDoc.createNestedObject("timestamp");
+            objNestedTimestamp["time_utc"] = managerJson["timestamp"]["time_utc"];
+            objNestedTimestamp["time_local"] = managerJson["timestamp"]["time_local"];
+        }
+        
+        sentStatus = send(destinationAddress, heartbeatDoc.as<JsonObject>());
+    }
+    else {
+        sentStatus = send(destinationAddress, managerJson);
+    }
+
+    return sentStatus;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
