@@ -38,7 +38,7 @@ Loom_LoRa::Loom_LoRa(
     const uint8_t powerLevel, 
     const uint8_t retryCount, 
     const uint16_t retryTimeout,
-    const bool heartbeatMode = false
+    const bool heartbeatMode
 ) : Loom_LoRa(
     manager, 
     manager.get_instance_num(), 

@@ -56,8 +56,8 @@ public:
         const uint8_t powerLevel,
         const uint8_t sendMaxRetries,
         const uint8_t receiveMaxRetries,
-        const uint16_t retryTimeout
-        const bool heartbeatMode = false;
+        const uint16_t retryTimeout,
+        const bool heartbeatMode = false
     );
 
     /**
@@ -74,7 +74,8 @@ public:
         Manager& manager,
         const uint8_t powerLevel = 23,
         const uint8_t retryCount = 3,
-        const uint16_t retryTimeout = 200
+        const uint16_t retryTimeout = 200,
+        const bool heartbeatMode = false
     );
 
     ~Loom_LoRa();
