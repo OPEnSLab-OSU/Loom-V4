@@ -25,13 +25,13 @@ class Loom_MAX31856 : public Module{
         /**
          * Construct a new sensor class
          * @param man Reference to the manager
-         * @param chip_select What pin SPI pin to use
          * @param num_samples The number of samples to collect and average
+         * @param chip_select What pin SPI pin to use
          * @param mosi
          * @param miso
          * @param sclk
          */ 
-        Loom_MAX31856(Manager& man, int chip_select = 10, int samples = 1, int mosi = 11, int miso = 12, int sclk = 13 );
+        Loom_MAX31856(Manager& man, int samples = 1, int chip_select = 10, int mosi = 11, int miso = 12, int sclk = 13 );
 
         /**
          * Get the recorded temperature
