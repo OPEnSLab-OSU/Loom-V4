@@ -8,11 +8,11 @@ Logs sensor data to the SD card and publishes it to MongoDB over MQTT.
 
 ```json
 {
-  "broker": "mqtt.example.com",
-  "port": 1883,
-  "username": "your-username",
-  "password": "your-password",
-  "database": "your-database",
-  "project": "your-project"
+    "broker": "mqtt.example.com",
+    "port": 1883,
+    "username": "your-username",
+    "password": "your-password",
+    "database": "your-database",
+    "project": "your-project"
 }
 ```
