@@ -18,7 +18,7 @@ Stores data locally on the SD card and publishes to MongoDB over LTE.
 }
 ```
 
-**`mqtt_creds.json`** — defines MQTT/MongoDB connection settings:
+**`wifi_creds.json`** — defines Wi-Fi network credentials:
 
 ```json
 {
