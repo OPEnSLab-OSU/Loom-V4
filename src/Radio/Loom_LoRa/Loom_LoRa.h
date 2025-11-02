@@ -12,6 +12,8 @@
 #include <unordered_map>
 #include <Module.h>
 #include <RH_RF95.h>
+#include <FreeRTOS_SAMD21.h>
+#include "../../Sensors/Loom_Analog/Loom_Analog.h"
 
 #define MAX_MESSAGE_LENGTH RH_RF95_MAX_MESSAGE_LEN
 
@@ -22,6 +24,8 @@
 #define RF95_FREQ 915.0 // LoRa Radio Frequency
 
 #define RECV_DATA_SIZE 256
+
+#define HEARTBEAT_INTERVAL_S 10  // Heartbeat interval in seconds
 
 enum class FragReceiveStatus {
     Incomplete,  // no packet has been completed
@@ -49,6 +53,8 @@ public:
      * @param sendMaxRetries The number of transmission attempts to make before failing
      * @param receiveMaxRetries The number of reception attempts to make before failing
      * @param retryTimeout Length of time between retransmissions (ms)
+     * @param heartbeatMode Whether or not heartbeat mode is enabled
+     * @param heartbeatDestAddress The address heartbeats are sent to
      */ 
     Loom_LoRa(
         Manager& manager,
@@ -57,7 +63,8 @@ public:
         const uint8_t sendMaxRetries,
         const uint8_t receiveMaxRetries,
         const uint16_t retryTimeout,
-        const bool heartbeatMode = false
+        const bool heartbeatMode = false,
+        const uint8_t heartbeatDestAddress = 0
     );
 
     /**
@@ -69,13 +76,16 @@ public:
      * @param powerLevel Transmission power level, low to high
      * @param retryCount Number of attempts to make before failing
      * @param retryTimeout Length of time between retransmissions (ms)
+     * @param heartbeatMode Whether or not heartbeat mode is enabled
+     * @param heartbeatDestAddress The address heartbeats are sent to
      */ 
     Loom_LoRa(
         Manager& manager,
         const uint8_t powerLevel = 23,
         const uint8_t retryCount = 3,
         const uint16_t retryTimeout = 200,
-        const bool heartbeatMode = false
+        const bool heartbeatMode = false,
+        const uint8_t heartbeatDestAddress = 0
     );
 
     ~Loom_LoRa();
@@ -196,6 +206,38 @@ public:
      */ 
     bool receiveBatch(uint timeout, int *numberOfPackets, uint8_t *fromAddress);
 
+    /**
+     * Set whether or not heartbeat mode is enabled
+     */
+    void setHeartbeatMode(const bool newMode) { heartbeatMode = newMode; }
+
+    /**
+     * Get whether or not heartbeat mode is enabled
+     */
+    bool isHeartbeatMode() const { return heartbeatMode; }
+
+    /**
+     * Set the destination address for heartbeats
+     */
+    void setHeartbeatDestAddress(const uint8_t newAddress) { heartbeatDestAddress = newAddress; }
+
+    /**
+     * Get the destination address for heartbeats
+     */
+    uint8_t getHeartbeatDestAddress() const { return heartbeatDestAddress; }
+
+    /**
+     * Heartbeat task to send periodic heartbeats
+     * 
+     * @param parameter Pointer to parameters (should be instance of Loom_LoRa)
+     */
+    static void heartbeatTask(void* parameter);
+
+    /**
+     * Send a heartbeat packet with basic device info
+     */
+    bool sendHeartbeat();
+
 private:
     // receives some data from lora
     bool receiveFromLoRa(uint8_t *buf, uint8_t buf_size, uint timeout, 
@@ -229,8 +271,7 @@ private:
     bool poweredUp = true;
 
     bool heartbeatMode = false;
-    void setHeartbeatMode(const bool newMode) { heartbeatMode = newMode; }
-    bool isHeartbeatMode() const { return heartbeatMode; }
+    uint8_t heartbeatDestAddress = 0;
 
     uint8_t deviceAddress;      // Device address
     int16_t signalStrength;     // Strength of the signal received

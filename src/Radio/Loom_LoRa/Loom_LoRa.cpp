@@ -14,7 +14,8 @@ Loom_LoRa::Loom_LoRa(
     const uint8_t sendMaxRetries,
     const uint8_t receiveMaxRetries,
     const uint16_t retryTimeout,
-    const bool heartbeatMode
+    const bool heartbeatMode,
+    const uint8_t heartbeatDestAddress
 ) :     Module("LoRa"),
         manager(&manager), 
         radioDriver{RFM95_CS, RFM95_INT},
@@ -24,7 +25,8 @@ Loom_LoRa::Loom_LoRa(
         receiveRetryCount(receiveMaxRetries),
         retryTimeout(retryTimeout),
         expectedOutstandingPackets(0),
-        heartbeatMode(heartbeatMode)
+        heartbeatMode(heartbeatMode),
+        heartbeatDestAddress(heartbeatDestAddress)
 {
     this->radioManager = new RHReliableDatagram(
         radioDriver, this->deviceAddress);
@@ -38,7 +40,8 @@ Loom_LoRa::Loom_LoRa(
     const uint8_t powerLevel, 
     const uint8_t retryCount, 
     const uint16_t retryTimeout,
-    const bool heartbeatMode
+    const bool heartbeatMode,
+    const uint8_t heartbeatDestAddress
 ) : Loom_LoRa(
     manager, 
     manager.get_instance_num(), 
@@ -46,7 +49,8 @@ Loom_LoRa::Loom_LoRa(
     retryCount, 
     retryCount,
     retryTimeout,
-    heartbeatMode
+    heartbeatMode,
+    heartbeatDestAddress
 ) {}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -110,6 +114,25 @@ void Loom_LoRa::initialize() {
     // Coding rate should be 4/5
     radioDriver.setCodingRate4(5);	
     radioDriver.sleep();
+
+    if(isHeartbeatMode()) {
+        if (pdPASS == xTaskCreate(
+            heartbeatTask,  // function
+            "HeartbeatTask",
+            4096,
+            this,           // pass current instance of object pointer
+            1,
+            NULL
+        )) 
+        {
+            LOG(F("Heartbeat timer started"));
+        }
+        else
+            ERROR(F("Failed to start heartbeat timer"));
+    }
+
+    // hand over control of threads to scheduler
+    vTaskStartScheduler();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -440,36 +463,47 @@ bool Loom_LoRa::sendPacketHeader(JsonObject json,
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LoRa::send(const uint8_t destinationAddress) {
-
-    JsonObject managerJson = manager->getDocument().as<JsonObject>();
-    
-    bool sentStatus = false;
-    if(isHeartbeatMode()) {
-        // this is 150 because it is safely within the P2P and LoRaWAN limits for maximum size.
-        const u_int16_t JSON_HEARTBEAT_BUFFER_SIZE = 150;
-
-        StaticJsonDocument<JSON_HEARTBEAT_BUFFER_SIZE> heartbeatDoc;
-        heartbeatDoc["type"] = "LoRa_heartbeat";
-        heartbeatDoc.createNestedArray("contents");
-
-        JsonObject objNestedId = heartbeatDoc.createNestedObject("id");
-        objNestedId["name"] = managerJson["id"]["name"];
-        objNestedId["instance"] = managerJson["id"]["instance"];
-
-        if (!managerJson["timestamp"].isNull()) {
-            JsonObject objNestedTimestamp = heartbeatDoc.createNestedObject("timestamp");
-            objNestedTimestamp["time_utc"] = managerJson["timestamp"]["time_utc"];
-            objNestedTimestamp["time_local"] = managerJson["timestamp"]["time_local"];
+void Loom_LoRa::heartbeatTask(void* parameter) {
+    Loom_LoRa* self = static_cast<Loom_LoRa*>(parameter);
+    for (;;) {
+        if(!self->sendHeartbeat()) {
+            ERROR(F("Failed to send heartbeat"));
         }
-        
-        sentStatus = send(destinationAddress, heartbeatDoc.as<JsonObject>());
+        vTaskDelay(pdMS_TO_TICKS(HEARTBEAT_INTERVAL_S * 1000));
     }
-    else {
-        sentStatus = send(destinationAddress, managerJson);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::sendHeartbeat() {
+    const JsonObject managerJson = manager->getDocument().as<JsonObject>();
+
+    // this is 150 because it is safely within the P2P and LoRaWAN limits for maximum size.
+    const u_int16_t JSON_HEARTBEAT_BUFFER_SIZE = 150;
+
+    StaticJsonDocument<JSON_HEARTBEAT_BUFFER_SIZE> heartbeatDoc;
+    heartbeatDoc["type"] = "LoRa_heartbeat";
+    heartbeatDoc.createNestedArray("contents");
+
+    JsonObject objNestedId = heartbeatDoc.createNestedObject("id");
+    objNestedId["name"] = managerJson["id"]["name"];
+    objNestedId["instance"] = managerJson["id"]["instance"];
+
+    objNestedId["battery_voltage"] = Loom_Analog::getBatteryVoltage();
+
+    if (!managerJson["timestamp"].isNull()) {
+        JsonObject objNestedTimestamp = heartbeatDoc.createNestedObject("timestamp");
+        objNestedTimestamp["time_utc"] = managerJson["timestamp"]["time_utc"];
+        objNestedTimestamp["time_local"] = managerJson["timestamp"]["time_local"];
     }
 
-    return sentStatus;
+    return send(getHeartbeatDestAddress(), heartbeatDoc.as<JsonObject>());
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::send(const uint8_t destinationAddress) {
+    return send(destinationAddress, manager->getDocument().as<JsonObject>());
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
