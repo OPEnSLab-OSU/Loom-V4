@@ -238,6 +238,13 @@ public:
      */
     bool sendHeartbeat();
 
+    /**
+     * Pause execution for a specified length of time
+     * 
+     * @param ms Time to wait for in milliseconds
+     */
+    void pause(const uint32_t ms) const override;
+
 private:
     // receives some data from lora
     bool receiveFromLoRa(uint8_t *buf, uint8_t buf_size, uint timeout, 
