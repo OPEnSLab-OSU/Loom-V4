@@ -588,17 +588,3 @@ bool Loom_LoRa::receiveBatch(uint timeout, int* numberOfPackets, uint8_t *fromAd
     *numberOfPackets = expectedOutstandingPackets;
     return status;
 }
-
-void Loom_LoRa::pause(const uint32_t ms) const {
-    TIMER_DISABLE;
-
-    if(isHeartbeatMode())
-        vTaskDelay(pdMS_TO_TICKS(ms));  // threaded non-blocking wait
-    else {
-        int waitTime = millis() + ms;
-        while (millis() < waitTime);    // non-threaded blocking wait
-    }
-
-    TIMER_ENABLE;
-}
-

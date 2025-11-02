@@ -89,7 +89,7 @@ class Manager{
          * Pause execution for a specified length of time
          * @param ms Time to wait for in milliseconds
          */ 
-        virtual void pause(const uint32_t ms) const;
+        void pause(const uint32_t ms) const;
 
         /** 
          * Get a serialized version of the JSON packet as a string
