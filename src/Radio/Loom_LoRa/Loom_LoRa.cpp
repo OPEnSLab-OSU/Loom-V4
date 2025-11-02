@@ -115,21 +115,18 @@ void Loom_LoRa::initialize() {
     radioDriver.setCodingRate4(5);	
     radioDriver.sleep();
 
-    if(isHeartbeatMode()) {
-        if (pdPASS == xTaskCreate(
-            heartbeatTask,  // function
-            "HeartbeatTask",
-            4096,
-            this,           // pass current instance of object pointer
-            1,
-            NULL
-        )) 
-        {
-            LOG(F("Heartbeat timer started"));
-        }
-        else
-            ERROR(F("Failed to start heartbeat timer"));
-    }
+    // creates task regardless of heartbeat mode, task decides to msg or not
+    if (pdPASS == xTaskCreate(
+        heartbeatTask,  // function
+        "HeartbeatTask",
+        4096,
+        this,           // pass current instance of object pointer
+        1,
+        NULL
+    )) 
+        LOG(F("Heartbeat timer started"));
+    else
+        ERROR(F("Failed to start heartbeat timer"));
 
     // hand over control of threads to scheduler
     vTaskStartScheduler();
