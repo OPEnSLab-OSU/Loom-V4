@@ -24,7 +24,11 @@
  * Adds Hot Swappable functionality for TCA9548 multiplexer
  * 
  * NOTE: This significantly increases flash size and resulting storage used
- * 
+ * TODO:Rory Issue #209- Change array to struct array for default sensors, pull custom address 
+ * from SD, but would like a serial interface input for custom addresses as an option. 
+ * , call Change sesnor address to new one. Will need
+ * to go through existing code that uses these addresses and change method
+ * for indexing. ALSO, measure memory usage by looking at the JSON data.
  * @author Will Richards
  */ 
 class Loom_Multiplexer : public Module{
@@ -42,7 +46,7 @@ class Loom_Multiplexer : public Module{
          * 
          * @param man Reference to the manager
          */ 
-        Loom_Multiplexer(Manager& man);
+        Loom_Multiplexer(Manager& man, bool useSD = false);
 
 		// Destructor removes all new sensor instances
 		~Loom_Multiplexer();
@@ -60,9 +64,41 @@ class Loom_Multiplexer : public Module{
 
 		void refreshSensors();									// Checks to see if any new sensors were swapped in allows for hot swapping
 		Module* loadSensor(const byte addr);					// Load the correct sensor based on the I2C address
+		
+		/**
+		 * 
+		 * @brief function that pulls config file from SD, may have return value be bool, which will indicate if we want to use known_addresses
+		 * vs default_addresses
+		 * @author Rory L. Groom
+		 */
+		void loadConfigFromSD();
 
-		// Used to optimize searching for sensors:
-		// search addresses in array rather than 0-127 
+		
+		struct Sensor {
+			char name[20];
+			byte addr[4];
+		}
+
+		// used for indexing array. Will want to use address array by doing default_addresses[zxgesturesensor].addr for custom cases
+		const enum sensorIndex = {
+			ZXGESTURESENSOR
+			LIS3DH
+			MMA8451
+			TSL2591
+			STEMMA
+			SHT31D
+			ADS1115
+			AS726X_AS7265X
+			K30
+			MPU6050
+			MB1232
+			MS5803
+		};
+		
+		//use following line of code IFF using custom addresses, may put in .cpp 
+		//	std::array<sensor, 21> custom_addresses = default_addresses; 
+		
+		
 		const std::array<byte, 21> known_addresses = 
 		{
 			0x10, ///< ZXGESTURESENSOR
@@ -82,6 +118,30 @@ class Loom_Multiplexer : public Module{
 			0x76, ///< MS5803
 			0x77  ///< MS5803
 		};
+
+		/**
+		 * @brief array to use if using custom addresses, maps addresses to sensornames. 
+		 * With the use of a look up table, having names with the addresses may be redundant,
+		 * could potentially save some space. 
+		 * @author Rory L. Groom
+		 */
+		const std::array<sensor, 21> default_addresses = 
+		{
+			{{"ZXGESTURESENSOR"}, {0x10, 0x11}}, 
+			{{"LIS3DH"}, {0x19}},
+			{{"MMA8451"}, {0x1C, 0x1D}},
+			{{"TSL2591"}, {0x29}},
+			{{"STEMMA"}, {0x36}},
+			{{"SHT31D"}, {0x44, 0x45}},
+			{{"ADS1115"}, {0x48}},
+			{{"AS726X / AS7265X"}, {0x49}},
+			{{"K30"}, {0x68}},
+			{{"MPU6050"}, {0x69}},
+			{{"MB1232"}, {0x70}},
+			{{"MS5803"}, {0x76, 0x77}}
+
+		};
+		
 
 		/**
 		 * Possible alternate addresses for the TCA9548

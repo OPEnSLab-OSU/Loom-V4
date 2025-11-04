@@ -22,6 +22,7 @@ void Loom_Multiplexer::initialize(){
     Wire.begin();
     int moduleIndex = 0;
     // Find the multiplexer at the possible addresses
+    // if(!(useCustom && loadConfig))
     for(byte addr : alt_addresses){
 
         // Check if there is a device on the current I2C device
