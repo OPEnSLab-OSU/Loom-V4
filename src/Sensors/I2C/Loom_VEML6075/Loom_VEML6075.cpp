@@ -65,8 +65,8 @@ void Loom_VEML6075::package() {
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
         //Unitless, higher values indicate more light
-        json["UltravioletA_counts"] = UVA;
-        json["UltravioletB_counts"] = UVB;
+        json["UltravioletA_counts/(µW/cm^-2)"] = UVA;
+        json["UltravioletB_counts/(µW/cm^-2)"] = UVB;
         json["UltravioletIndex"] = UVI;
     } 
     Serial.println(UVA);
