@@ -114,24 +114,6 @@ void Loom_LoRa::initialize() {
     // Coding rate should be 4/5
     radioDriver.setCodingRate4(5);	
     radioDriver.sleep();
-
-    if(isHeartbeatMode()){
-        if (pdPASS == xTaskCreate(
-            heartbeatTask,  // function
-            "HeartbeatTask",
-            4096,
-            this,           // pass current instance of object pointer
-            1,
-            NULL
-        )) 
-        {
-            LOG(F("Heartbeat timer started"));
-            // hand over control of threads to scheduler
-            vTaskStartScheduler();
-        }
-        else
-            ERROR(F("Failed to start heartbeat timer"));
-    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -463,13 +445,7 @@ bool Loom_LoRa::sendPacketHeader(JsonObject json,
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LoRa::heartbeatTask(void* parameter) {
-    Loom_LoRa* self = static_cast<Loom_LoRa*>(parameter);
-    for (;;) {
-        if(!self->sendHeartbeat()) {
-            ERROR(F("Failed to send heartbeat"));
-        }
-        vTaskDelay(pdMS_TO_TICKS(HEARTBEAT_INTERVAL_S * 1000));
-    }
+    return;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
