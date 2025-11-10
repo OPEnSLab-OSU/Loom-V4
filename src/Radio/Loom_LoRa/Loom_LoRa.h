@@ -223,6 +223,16 @@ public:
     int32_t hbNextEvent();
 
     /**
+     * Set the heartbeat flag bool
+     */
+    void setHeartbeatFlag(const bool flag) { heartbeatFlag = flag; };
+
+    /**
+     * Get the status of the heartbeat flag bool
+     */
+    bool getHeartbeatFlag() const { return heartbeatFlag; };
+
+    /**
      * Send a heartbeat packet with basic device info
      */
     bool sendHeartbeat();
@@ -263,9 +273,9 @@ private:
     uint32_t heartbeatInterval = 0;
     uint32_t normWorkTimer = 0;
     uint32_t normWorkInterval = 0;
+    uint8_t heartbeatDestAddress = 0;
 
     bool heartbeatFlag = false;
-    uint8_t heartbeatDestAddress = 0;
 
     uint8_t deviceAddress;      // Device address
     int16_t signalStrength;     // Strength of the signal received
