@@ -436,6 +436,37 @@ bool Loom_LoRa::sendPacketHeader(JsonObject json,
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LoRa::heartbeatInit( const uint8_t newAddress, 
+                    const uint32_t pHeartbeatInterval
+                    const uint32_t pNormalWorkInterval)
+{
+    heartbeatDestAddress = newAddress;
+    heartbeatInterval = pHeartbeatInterval;
+    normWorkInterval = pNormalWorkInterval;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+int32_t Loom_LoRa::hbNextEvent() {
+    int32_t timeToReturn;
+    if(heartbeatTimer < normWorkTimer) {
+        timeToReturn = heartbeatTimer;
+        normWorkTimer = normWorkTimer - timeToReturn;
+        heartbeatTimer = heartbeatInterval;
+        heartbeatFlag = true;
+    }
+    else {
+        timeToReturn = normWorkTimer;
+        heartbeatTimer = heartbeatTimer - timeToReturn;
+        normWorkTimer = normWorkInterval;
+        heartbeatFlag = false;
+    }
+
+    return timeToReturn;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::sendHeartbeat() {
     const JsonObject managerJson = manager->getDocument().as<JsonObject>();
 
@@ -458,7 +489,7 @@ bool Loom_LoRa::sendHeartbeat() {
         objNestedTimestamp["time_local"] = managerJson["timestamp"]["time_local"];
     }
 
-    return send(getHeartbeatDestAddress(), heartbeatDoc.as<JsonObject>());
+    return send(heartbeatDestAddress, heartbeatDoc.as<JsonObject>());
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -201,24 +201,26 @@ public:
     bool receiveBatch(uint timeout, int *numberOfPackets, uint8_t *fromAddress);
 
     /**
-     * Set whether or not heartbeat mode is enabled
+     * Initialize heartbeat variables with specified parameters
+     * 
+     * @param newAddress Destination address for heartbeats
+     * @param heartbeatInterval Interval between heartbeats (any unit of time)
+     * @param normalWorkInterval Interval between normal work cycles (any unit of time)
+     * 
+     * @note heartbeatInterval and normalWorkInterval must be in the same unit of time
      */
-    void setHeartbeatMode(const bool newMode) { heartbeatMode = newMode; }
+    void heartbeatInit( const uint8_t newAddress, 
+                        const uint32_t pHeartbeatInterval
+                        const uint32_t pNormalWorkInterval);
 
     /**
-     * Get whether or not heartbeat mode is enabled
+     * when heartbeat has been initialized, find the time until the next wake up / upnause event 
+     * to either do heartbeat or normal logic.
+     * 
+     * @note returns time values up to 32 bits (max int32_t), so if using this with types less than
+     *       that size, be careful of overflow, as you will not be storing correct time results.
      */
-    bool isHeartbeatMode() const { return heartbeatMode; }
-
-    /**
-     * Set the destination address for heartbeats
-     */
-    void setHeartbeatDestAddress(const uint8_t newAddress) { heartbeatDestAddress = newAddress; }
-
-    /**
-     * Get the destination address for heartbeats
-     */
-    uint8_t getHeartbeatDestAddress() const { return heartbeatDestAddress; }
+    int32_t hbNextEvent();
 
     /**
      * Send a heartbeat packet with basic device info
@@ -261,7 +263,7 @@ private:
     uint32_t heartbeatInterval = 0;
     uint32_t normWorkTimer = 0;
     uint32_t normWorkInterval = 0;
-    
+
     bool heartbeatFlag = false;
     uint8_t heartbeatDestAddress = 0;
 
