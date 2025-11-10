@@ -12,7 +12,6 @@
 #include <unordered_map>
 #include <Module.h>
 #include <RH_RF95.h>
-#include <FreeRTOS_SAMD21.h>
 #include "../../Sensors/Loom_Analog/Loom_Analog.h"
 
 #define MAX_MESSAGE_LENGTH RH_RF95_MAX_MESSAGE_LEN
@@ -24,8 +23,6 @@
 #define RF95_FREQ 915.0 // LoRa Radio Frequency
 
 #define RECV_DATA_SIZE 256
-
-#define HEARTBEAT_INTERVAL_S 10  // Heartbeat interval in seconds
 
 enum class FragReceiveStatus {
     Incomplete,  // no packet has been completed
