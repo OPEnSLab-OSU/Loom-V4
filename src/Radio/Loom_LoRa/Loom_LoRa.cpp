@@ -13,9 +13,7 @@ Loom_LoRa::Loom_LoRa(
     const uint8_t powerLevel,
     const uint8_t sendMaxRetries,
     const uint8_t receiveMaxRetries,
-    const uint16_t retryTimeout,
-    const bool heartbeatMode,
-    const uint8_t heartbeatDestAddress
+    const uint16_t retryTimeout
 ) :     Module("LoRa"),
         manager(&manager), 
         radioDriver{RFM95_CS, RFM95_INT},
@@ -24,9 +22,7 @@ Loom_LoRa::Loom_LoRa(
         sendRetryCount(sendMaxRetries),
         receiveRetryCount(receiveMaxRetries),
         retryTimeout(retryTimeout),
-        expectedOutstandingPackets(0),
-        heartbeatMode(heartbeatMode),
-        heartbeatDestAddress(heartbeatDestAddress)
+        expectedOutstandingPackets(0)
 {
     this->radioManager = new RHReliableDatagram(
         radioDriver, this->deviceAddress);
@@ -39,18 +35,14 @@ Loom_LoRa::Loom_LoRa(
     Manager& manager,
     const uint8_t powerLevel, 
     const uint8_t retryCount, 
-    const uint16_t retryTimeout,
-    const bool heartbeatMode,
-    const uint8_t heartbeatDestAddress
+    const uint16_t retryTimeout
 ) : Loom_LoRa(
     manager, 
     manager.get_instance_num(), 
     powerLevel, 
     retryCount, 
     retryCount,
-    retryTimeout,
-    heartbeatMode,
-    heartbeatDestAddress
+    retryTimeout
 ) {}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -440,12 +432,6 @@ bool Loom_LoRa::sendPacketHeader(JsonObject json,
 
     JsonObject sendOut = sendDoc.as<JsonObject>();
     return transmitToLoRa(sendOut, destinationAddress);
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LoRa::heartbeatTask(void* parameter) {
-    return;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

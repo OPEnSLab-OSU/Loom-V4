@@ -53,8 +53,6 @@ public:
      * @param sendMaxRetries The number of transmission attempts to make before failing
      * @param receiveMaxRetries The number of reception attempts to make before failing
      * @param retryTimeout Length of time between retransmissions (ms)
-     * @param heartbeatMode Whether or not heartbeat mode is enabled
-     * @param heartbeatDestAddress The address heartbeats are sent to
      */ 
     Loom_LoRa(
         Manager& manager,
@@ -62,9 +60,7 @@ public:
         const uint8_t powerLevel,
         const uint8_t sendMaxRetries,
         const uint8_t receiveMaxRetries,
-        const uint16_t retryTimeout,
-        const bool heartbeatMode = false,
-        const uint8_t heartbeatDestAddress = 0
+        const uint16_t retryTimeout
     );
 
     /**
@@ -83,9 +79,7 @@ public:
         Manager& manager,
         const uint8_t powerLevel = 23,
         const uint8_t retryCount = 3,
-        const uint16_t retryTimeout = 200,
-        const bool heartbeatMode = false,
-        const uint8_t heartbeatDestAddress = 0
+        const uint16_t retryTimeout = 200
     );
 
     ~Loom_LoRa();
@@ -227,13 +221,6 @@ public:
     uint8_t getHeartbeatDestAddress() const { return heartbeatDestAddress; }
 
     /**
-     * Heartbeat task to send periodic heartbeats
-     * 
-     * @param parameter Pointer to parameters (should be instance of Loom_LoRa)
-     */
-    static void heartbeatTask(void* parameter);
-
-    /**
      * Send a heartbeat packet with basic device info
      */
     bool sendHeartbeat();
@@ -270,7 +257,12 @@ private:
     
     bool poweredUp = true;
 
-    bool heartbeatMode = false;
+    uint32_t heartbeatTimer = 0;
+    uint32_t heartbeatInterval = 0;
+    uint32_t normWorkTimer = 0;
+    uint32_t normWorkInterval = 0;
+    
+    bool heartbeatFlag = false;
     uint8_t heartbeatDestAddress = 0;
 
     uint8_t deviceAddress;      // Device address
