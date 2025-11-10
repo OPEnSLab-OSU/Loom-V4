@@ -437,32 +437,45 @@ bool Loom_LoRa::sendPacketHeader(JsonObject json,
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LoRa::heartbeatInit( const uint8_t newAddress, 
-                    const uint32_t pHeartbeatInterval
+                    const uint32_t pHeartbeatInterval,
                     const uint32_t pNormalWorkInterval)
 {
     heartbeatDestAddress = newAddress;
-    heartbeatInterval = pHeartbeatInterval;
-    normWorkInterval = pNormalWorkInterval;
+    heartbeatInterval_s = pHeartbeatInterval;
+    normWorkInterval_s = pNormalWorkInterval;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+TimeSpan Loom_LoRa::secondsToTimeSpan(const uint32_t totalSeconds) {
+    // Build from d/h/m/s:
+    uint32_t rem = 0;
+    uint32_t days = totalSeconds / 86400;
+    rem  = totalSeconds % 86400;
+    uint8_t hours = rem / 3600;
+    rem = rem % 3600;
+    uint8_t minutes = rem / 60;
+    uint8_t seconds = rem % 60;
+
+    return TimeSpan((int16_t)days, (int8_t)hours, (int8_t)minutes, (int8_t)seconds);
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-int32_t Loom_LoRa::hbNextEvent() {
-    int32_t timeToReturn;
-    if(heartbeatTimer < normWorkTimer) {
-        timeToReturn = heartbeatTimer;
-        normWorkTimer = normWorkTimer - timeToReturn;
-        heartbeatTimer = heartbeatInterval;
+TimeSpan Loom_LoRa::hbNextEvent() {
+    uint32_t secondsToWait = 0;
+    if(heartbeatTimer_s < normWorkTimer_s) {
+        secondsToWait = heartbeatTimer_s;
+        normWorkTimer_s = normWorkTimer_s - secondsToWait;
+        heartbeatTimer_s = heartbeatInterval_s;
         heartbeatFlag = true;
     }
     else {
-        timeToReturn = normWorkTimer;
-        heartbeatTimer = heartbeatTimer - timeToReturn;
-        normWorkTimer = normWorkInterval;
+        secondsToWait = normWorkTimer_s;
+        heartbeatTimer_s = heartbeatTimer_s - secondsToWait;
+        normWorkTimer_s = normWorkInterval_s;
         heartbeatFlag = false;
     }
 
-    return timeToReturn;
+    return secondsToTimeSpan(secondsToWait);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -204,23 +204,32 @@ public:
      * Initialize heartbeat variables with specified parameters
      * 
      * @param newAddress Destination address for heartbeats
-     * @param heartbeatInterval Interval between heartbeats (any unit of time)
-     * @param normalWorkInterval Interval between normal work cycles (any unit of time)
+     * @param heartbeatInterval Interval between heartbeats (scalar)
+     * @param normalWorkInterval Interval between normal work cycles (scalar)
      * 
      * @note heartbeatInterval and normalWorkInterval must be in the same unit of time
+     *      (e.g., seconds, milliseconds). It is recommended to use seconds as the type used can 
+     *      handle up to 136 years.
      */
     void heartbeatInit( const uint8_t newAddress, 
-                        const uint32_t pHeartbeatInterval
+                        const uint32_t pHeartbeatInterval,
                         const uint32_t pNormalWorkInterval);
+
+    /**
+     * Convert seconds to a TimeSpan object
+     * 
+     * @param secondsToConvert The number of seconds to convert
+     */ 
+    TimeSpan secondsToTimeSpan(const uint32_t secondsToConvert);
 
     /**
      * when heartbeat has been initialized, find the time until the next wake up / upnause event 
      * to either do heartbeat or normal logic.
      * 
-     * @note returns time values up to 32 bits (max int32_t), so if using this with types less than
-     *       that size, be careful of overflow, as you will not be storing correct time results.
+     * @return time until next event in the same unit as heartbeatInit parameters. 
+     * 
      */
-    int32_t hbNextEvent();
+    TimeSpan hbNextEvent();
 
     /**
      * Set the heartbeat flag bool
@@ -269,10 +278,12 @@ private:
     
     bool poweredUp = true;
 
-    uint32_t heartbeatTimer = 0;
-    uint32_t heartbeatInterval = 0;
-    uint32_t normWorkTimer = 0;
-    uint32_t normWorkInterval = 0;
+    // maximum time for uint32_t is 4294967295, which is ~136 years in seconds.
+    uint32_t heartbeatTimer_s = 0;
+    uint32_t heartbeatInterval_s = 0;
+    uint32_t normWorkTimer_s = 0;
+    uint32_t normWorkInterval_s = 0;
+
     uint8_t heartbeatDestAddress = 0;
 
     bool heartbeatFlag = false;
