@@ -442,7 +442,9 @@ void Loom_LoRa::heartbeatInit( const uint8_t newAddress,
 {
     heartbeatDestAddress = newAddress;
     heartbeatInterval_s = pHeartbeatInterval;
+    heartbeatTimer_s = heartbeatInterval_s;
     normWorkInterval_s = pNormalWorkInterval;
+    normWorkTimer_s = normWorkInterval_s;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -464,16 +466,25 @@ TimeSpan Loom_LoRa::hbNextEvent() {
     uint32_t secondsToWait = 0;
     if(heartbeatTimer_s < normWorkTimer_s) {
         secondsToWait = heartbeatTimer_s;
-        normWorkTimer_s = normWorkTimer_s - secondsToWait;
+
+        if(normWorkTimer_s - secondsToWait > 0)
+            normWorkTimer_s = normWorkTimer_s - secondsToWait;
+
         heartbeatTimer_s = heartbeatInterval_s;
         heartbeatFlag = true;
     }
     else {
         secondsToWait = normWorkTimer_s;
-        heartbeatTimer_s = heartbeatTimer_s - secondsToWait;
+
+        if (heartbeatTimer_s - secondsToWait > 0)
+            heartbeatTimer_s = heartbeatTimer_s - secondsToWait;
+
         normWorkTimer_s = normWorkInterval_s;
         heartbeatFlag = false;
     }
+
+    if (secondsToWait < 5)
+        secondsToWait = 5; // minimum wait time of 5 seconds for safety/stability.
 
     return secondsToTimeSpan(secondsToWait);
 }

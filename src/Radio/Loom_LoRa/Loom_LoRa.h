@@ -225,6 +225,11 @@ public:
      * 
      * @return time until next event in the same unit as heartbeatInit parameters. 
      * 
+     * @note enforces a minimum wait time of 5 seconds to ensure stability/safety. This is because
+     *      very short sleep times can cause undefined behavior with firmware/hardware systems like 
+     *      sleep/interrupt overhead, Serial/LoRa Cleanup, RTC rounding, Power Rails and Peripheral
+     *      power down/up times. 
+     *      Intervals will still be followed, after the minimum 5 second wait.
      */
     TimeSpan hbNextEvent();
 
