@@ -69,8 +69,6 @@ public:
      * @param powerLevel Transmission power level, low to high
      * @param retryCount Number of attempts to make before failing
      * @param retryTimeout Length of time between retransmissions (ms)
-     * @param heartbeatMode Whether or not heartbeat mode is enabled
-     * @param heartbeatDestAddress The address heartbeats are sent to
      */ 
     Loom_LoRa(
         Manager& manager,
@@ -204,9 +202,7 @@ public:
      * @param heartbeatInterval Interval between heartbeats (scalar)
      * @param normalWorkInterval Interval between normal work cycles (scalar)
      * 
-     * @note heartbeatInterval and normalWorkInterval must be in the same unit of time
-     *      (e.g., seconds, milliseconds). It is recommended to use seconds as the type used can 
-     *      handle up to 136 years.
+     * @note heartbeatInterval and normalWorkInterval must be seconds.
      */
     void heartbeatInit( const uint8_t newAddress, 
                         const uint32_t pHeartbeatInterval,
