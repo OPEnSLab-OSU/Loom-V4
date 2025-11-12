@@ -6,18 +6,33 @@ Loom_Freewave::Loom_Freewave(
         const uint8_t address, 
         const uint16_t max_message_len, 
         const uint8_t retryCount, 
-        const uint16_t retryTimeout
-    ) : Radio("Freewave"), manInst(&man), serial1(Serial1), driver(serial1)
+        const uint16_t retryTimeout,
+        RadioDriverInterface* driverPtr = nullptr,
+        DatagramManagerInterface* managerPtr = nullptr,
+        Stream& serialPort = Serial1
+    ) : Radio("Freewave"), manInst(&man), serial1(serialPort)
     {
         if(address == -1)
             this->deviceAddress = manInst->get_instance_num();
         else
             this->deviceAddress = address;
 
-        manager = new RHReliableDatagram(driver, this->deviceAddress);
         this->retryCount = retryCount;
         this->retryTimeout = retryTimeout;
         this->maxMessageLength = max_message_len;
+
+        // Driver
+        if(driverPtr)
+            driver = driverPtr;                     // injected (mock)
+        else
+            driver(serial1);  // production driver
+
+        // Manager
+        if(managerPtr)
+            manager = managerPtr;            // injected (mock)
+        else
+            manager = new RHReliableDatagram(*driver, this->deviceAddress);
+
         manInst->registerModule(this);
     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
