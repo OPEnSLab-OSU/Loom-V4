@@ -95,7 +95,7 @@ class Loom_Analog : public Module{
         /**
          * Get the current voltage of the battery
          */ 
-        float getBatteryVoltage();
+        static float getBatteryVoltage();
 
         /**
          * Get the Millivolts of a specified pin
