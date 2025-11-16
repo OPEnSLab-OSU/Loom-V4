@@ -27,15 +27,15 @@ void isrTrigger(){
 }
 
 void setup() {
-  // Start the serial interface
-  manager.beginSerial();
-  manager.initialize();
-
   // Enable the hypnos rails
   hypnos.enable();
   
   // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);
+
+  // Start the serial interface
+  manager.beginSerial();
+  manager.initialize();
 
   // initialize heartbeat operations
   uint8_t destAddr = 0;
@@ -46,32 +46,34 @@ void setup() {
 
 void loop() {
   manager.package();
-  manager.display_data();
 
   // logic to execute this loop
   if(lora.getHeartbeatFlag())
   {
-    Serial.println("Within Heartbeat Branch");
+    Serial.println("__________________Hello from Heartbeat Branch________________");
     lora.sendHeartbeat();
   }
-
   else {
     // do work
-    Serial.println("Within Normal Work Branch");
+    Serial.println("~~~~~~~~~~~~~~~~~~~~~~~Hello from Normal Work Branch~~~~~~~~~~~~~~~~~~~~");
     lora.send(0);
   }
 
   TimeSpan tSpan = lora.hbNextEvent();
-  Serial.print("Sleep for: ");
+  Serial.print(":::::::::::::::::::::::::::::Sleep for: ");
   Serial.print(String(tSpan.seconds()));
-  Serial.println(" Seconds");
+  Serial.println(" Seconds:::::::::::::::::::::::");
 
   // Set the RTC interrupt alarm to wake the device based on preset intervals declared in heartbeatInit();
   hypnos.setInterruptDuration(tSpan);
 
   // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
   hypnos.reattachRTCInterrupt();
+
+  Serial.flush(); // Forces all serial log messages in buffer to print now.
   
   // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
   hypnos.sleep();
+
+  delay(100);  // CRITICAL: Need to let hardware wake up
 }
