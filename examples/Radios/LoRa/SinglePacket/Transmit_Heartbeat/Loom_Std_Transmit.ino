@@ -39,7 +39,7 @@ void loop() {
     lora.send(0);
   }
 
-  int seconds = lora.hbNextEvent().seconds() * 1000;
+  int seconds = lora.hbNextEvent().totalseconds() * 1000;
   Serial.print("Sleep for: ");
   Serial.print(String(seconds));
   Serial.println("");
