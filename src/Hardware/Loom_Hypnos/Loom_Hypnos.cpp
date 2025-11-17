@@ -575,7 +575,6 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
     char output[OUTPUT_SIZE];
     char* fileRead = sdMan->readFile(fileName);
     DeserializationError deserialError = deserializeJson(doc, fileRead);
-    free(fileRead);
 
     // Create json object to easily pull data from
     JsonObject json = doc.as<JsonObject>();
@@ -605,6 +604,7 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
             return TimeSpan(0, 0, 20, 0);
         }
     }
+    free(fileRead);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

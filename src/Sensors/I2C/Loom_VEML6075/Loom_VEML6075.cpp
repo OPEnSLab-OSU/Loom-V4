@@ -1,13 +1,13 @@
-#include "Loom_STEMMA.h"
+#include "Loom_VEML6075.h"
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_STEMMA::Loom_STEMMA(
-                        Manager& man, 
-                        int addr,
-                        bool useMux  
-                    ) : I2CDevice("STEMMA"), manInst(&man), address(addr) {
-                        module_address = addr;
+Loom_VEML6075::Loom_VEML6075(
+                            Manager& man,
+                            int address,
+                            bool useMux
+                    ) : I2CDevice("VEML6075"), manInst(&man), veml() {
+                        module_address = address;
 
                         // Register the module with the manager
                         if(!useMux)
@@ -16,25 +16,23 @@ Loom_STEMMA::Loom_STEMMA(
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_STEMMA::initialize() {
+void Loom_VEML6075::initialize() {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
-    if(!stemma.begin(address)){
-        LOG(F("Failed to initialize STEMMA! Check connections and try again..."));
+    if(!veml.begin()){
+        ERROR(F("Failed to initialize VEML6075! Check connections and try again..."));
         moduleInitialized = false;
     }
     else{
-        snprintf(output, OUTPUT_SIZE, "Successfully initialized STEMMA Version: %u", stemma.getVersion());
-        LOG(output);
-        
+        LOG(F("Successfully initialized VEML6075!"));
     }
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_STEMMA::measure() {
+void Loom_VEML6075::measure() {
     FUNCTION_START;
+    printf("VEML6075 Measure\n");
     if(moduleInitialized){
         // Get the current connection status
         bool connectionStatus = checkDeviceConnection();
@@ -47,29 +45,34 @@ void Loom_STEMMA::measure() {
 
         // If we are not connected
         else if(!connectionStatus){
-            LOG(F("No acknowledge received from the device"));
+            ERROR(F("No acknowledge received from the device"));
+            FUNCTION_END;
             return;
         }
-        
-
+        LOG(F("Measure VEML6075"));
         // Pull the data from the sensor
-        temperature = stemma.getTemp();
-        cap = stemma.touchRead(0);
+        UVA = veml.readUVA();
+        UVB = veml.readUVB();
+        UVI = veml.readUVI();
     }
     FUNCTION_END;
-    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_STEMMA::package() {
+void Loom_VEML6075::package() {
     FUNCTION_START;
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        //no units for capacitive, lower values means dry, higher values mean very wet. 
-        json["Temperature_C"] = temperature;
-        json["Capacitive_counts"] = cap;
-    }
+        //Unitless, higher values indicate more light
+        json["UltravioletA_counts/(µW/cm^-2)"] = UVA;
+        json["UltravioletB_counts/(µW/cm^-2)"] = UVB;
+        json["UltravioletIndex"] = UVI;
+    } 
+    Serial.println(UVA);
+    Serial.println(UVB);
+    Serial.println(UVI);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+

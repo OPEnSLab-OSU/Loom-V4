@@ -22,6 +22,16 @@ void Loom_MPU6050::initialize(){
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/*
+
+MPU6050 appears to have the ability to set accelerometer(±2G, ±4G, ±6G, ±8G) and gyro ranges(±250deg/s, ±500deg/s, ±1000deg/s, ± 2000deg/s). 
+https://github.com/tockn/MPU6050_tockn/blob/master/src/MPU6050_tockn.cpp defaults to 2G and 500 deg/s
+Should add to issues to fix in the future.
+
+@author Reid Pettibone
+*/
+
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MPU6050::measure(){
 
@@ -51,19 +61,19 @@ void Loom_MPU6050::package(){
     JsonObject json = manInst->get_data_object(getModuleName());
 
     // Acceleration
-    json["ax"] = acc[0];
-    json["ay"] = acc[1];
-    json["az"] = acc[2];
+    json["ax_g"] = acc[0];
+    json["ay_g"] = acc[1];
+    json["az_g"] = acc[2];
 
     // Rotation Rate
-    json["gx"] = rate[1];
-    json["gy"] = rate[0];
-    json["gz"] = rate[2];
+    json["gx_°/s"] = rate[0]; 
+    json["gy_°/s"] = rate[1];                      
+    json["gz_°/s"] = rate[2];
 
     // Angle
-    json["pitch"] = angle[0];
-    json["roll"] = angle[1];
-    json["yaw"] = angle[2];
+    json["roll_x"] = angle[0];
+    json["pitch_y"] = angle[1];
+    json["yaw_z"] = angle[2];
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

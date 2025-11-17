@@ -64,8 +64,9 @@ void Loom_VCNL4010::package() {
     FUNCTION_START;
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        json["Ambient Light"] = ambientLight;
-        json["Proximity"] = proximity;
+        //unitless, higher values indicate more light
+        json["Ambient Light_counts"] = ambientLight;
+        json["Proximity_mm"] = proximity;
     } 
     Serial.println(ambientLight);
     Serial.println(proximity);
