@@ -1,8 +1,8 @@
-#include "../../Testing_Components/Mocks/RadioDriverMock"
-#include "../../Testing_Components/Mocks/DatagramManagerMock"
+#include "../../Test_Components/Mocks/RadioDriverMock.cpp"
+#include "../../Test_Components/Mocks/DatagramManagerMock.cpp"
 
-#include "../../../Loom_Manager.h"
-#include "../Loom_Freewave.h"
+#include "../../../src/Loom_Manager.h"
+#include "../../../src/Radio/Loom_Freewave/Loom_Freewave.h"
 
 #include <cassert>
 
