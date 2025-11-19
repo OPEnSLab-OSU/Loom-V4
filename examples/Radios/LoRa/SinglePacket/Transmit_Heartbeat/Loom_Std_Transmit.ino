@@ -38,7 +38,7 @@ void loop() {
     lora.send(0);
   }
 
-  int milliseconds = lora.hbNextEvent().seconds() * 1000;
+  int milliseconds = lora.hbNextEvent().totalseconds() * 1000;
   Serial.print("Sleep for: ");
   Serial.print(String(milliseconds));
   Serial.println("");
