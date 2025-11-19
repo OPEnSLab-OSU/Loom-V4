@@ -8,6 +8,14 @@ Loom_Multiplexer::Loom_Multiplexer(Manager& man) : Module("Multiplexer"), manIns
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+Loom_Multiplexer::Loom_Multiplexer(Manager& man, const std::vector<byte>& addresses) : Module("Multiplexer"), manInst(&man){
+    moduleInitialized = false;
+    manInst->registerModule(this);
+    known_addresses = addresses;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Multiplexer::~Loom_Multiplexer()  {
     for(int i = 0; i < sensors.size(); i++){
         delete std::get<1>(sensors[i]);
@@ -26,7 +34,7 @@ void Loom_Multiplexer::initialize(){
 
         // Check if there is a device on the current I2C device
         if(isDeviceConnected(addr)) {
-            snprintf(output, OUTPUT_SIZE, "Multiplexer found at address %u", addr);
+            snprintf(output, OUTPUT_SIZE, "Multiplexer found at address %x", addr);
             LOG(output);
             activeMuxAddr = addr;
             moduleInitialized = true;
@@ -38,10 +46,11 @@ void Loom_Multiplexer::initialize(){
 
                 // Loop over address that we know to speed up refreshing
                 for(byte addr : known_addresses){
+
                     if(addr > 0){
                         // Is there any device at this address
                         if(isDeviceConnected(addr)){
-                            snprintf(output, OUTPUT_SIZE, "Found I2C Device on Pin %i at address %u", i, addr);
+                            snprintf(output, OUTPUT_SIZE, "Found I2C Device on Pin %i at address %x", i, addr);
                             LOG(output);
 
                             sensors.push_back(std::make_tuple(addr, loadSensor(addr), i));
@@ -86,6 +95,7 @@ void Loom_Multiplexer::refreshSensors(){
        
         // Loop over address that we know to speed up refreshing
         for(byte addr : known_addresses){
+
             // Is there any device at this address
             if(isDeviceConnected(addr) && addr > 0){
 
@@ -95,7 +105,7 @@ void Loom_Multiplexer::refreshSensors(){
                     sensors[moduleIndex] = std::make_tuple(addr, loadSensor(addr), i);
 
                     // Initialize the new sensor
-                    snprintf(output, OUTPUT_SIZE, "New sensor detected on port %i at I2C address of type %s", i, addr, std::get<1>(sensors[moduleIndex])->getModuleName());
+                    snprintf(output, OUTPUT_SIZE, "New sensor detected on port %i at I2C address %x of type %s", i, addr, std::get<1>(sensors[moduleIndex])->getModuleName());
                     LOG(output);
                     
                     // Update name for unique instances in the Mux
@@ -117,7 +127,7 @@ void Loom_Multiplexer::measure(){
     FUNCTION_START;
 
     // Refresh sensors before measuring
-    refreshSensors();
+    // refreshSensors();
 
     for(int i = 0; i < sensors.size(); i++){
         selectPin(std::get<2>(sensors[i]));
@@ -156,7 +166,7 @@ void Loom_Multiplexer::power_down(){
     for(int i = 0; i < sensors.size(); i++){
         selectPin(std::get<2>(sensors[i]));
         delay(50);
-        std::get<1>(sensors[i])->power_up();
+        std::get<1>(sensors[i])->power_down();
     }
     FUNCTION_END;
 }
@@ -216,14 +226,24 @@ Module* Loom_Multiplexer::loadSensor(const byte addr){
         // ADS1115  
         case 0x48: return new Loom_ADS1115(*manInst, 0x48, true);
 
-        // K30
+        // K30 - 
         case 0x68: return new Loom_K30(*manInst, true, 0x68, true);
 
         //MMA8451
         case 0x1D: return new Loom_MMA8451(*manInst, 0x1D, true);
 
+        //Loom_DFMultiGasSensor
+        case 0x74: return new Loom_DFMultiGasSensor(*manInst, 0x74, 10,false, true);
+        case 0x75: return new Loom_DFMultiGasSensor(*manInst, 0x75, 10,false, true);
+
+        // Loom_T6793
+        case 0x15: return new Loom_T6793(*manInst, 0x15, 10, true);
+
         // MPU6050
-        case 0x69: return new Loom_MPU6050(*manInst, true);
+        // case 0x69: return new Loom_MPU6050(*manInst,  true);
+
+        // SEN55
+        case 0x69: return new Loom_SEN55(*manInst,0x69, true);
 
         // MS5803
         case 0x76: return new Loom_MS5803(*manInst, 0x76, true);

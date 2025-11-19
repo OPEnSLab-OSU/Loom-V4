@@ -1,5 +1,6 @@
 #include "Loom_MongoDB.h"
 #include "Logger.h"
+#include "../../../Sensors/Loom_Analog/Loom_Analog.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MongoDB::Loom_MongoDB(
@@ -116,6 +117,13 @@ bool Loom_MongoDB::publishMetadata(char* metadata){
 bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
+
+    if(Loom_Analog::getBatteryVoltage() < 3.4){
+        WARNING(F("Module not initialized! Battery doesn't have enough power."));
+        FUNCTION_END;
+        return false;    
+    }
+    
     char line[MAX_JSON_SIZE];
     int packetNumber = 0, index = 0;
     char c;
