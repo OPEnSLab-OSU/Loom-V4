@@ -16,7 +16,7 @@ void setup() {
   manager.beginSerial();
   manager.initialize();
 
-  // initialize heartbeat operations
+    // initialize heartbeat operations
   uint8_t destAddr = 0;
   uint32_t hbInterval_s = 15;
   uint32_t normalInterval_s = 35;
@@ -25,7 +25,6 @@ void setup() {
 
 void loop() {
   manager.package();
-  manager.display_data();
 
     // logic to execute this loop
   if(lora.getHeartbeatFlag())
@@ -39,11 +38,11 @@ void loop() {
     lora.send(0);
   }
 
-  int seconds = lora.hbNextEvent().totalseconds() * 1000;
+  int milliseconds = lora.hbNextEvent().seconds() * 1000;
   Serial.print("Sleep for: ");
-  Serial.print(String(seconds));
+  Serial.print(String(milliseconds));
   Serial.println("");
 
   // Wait X seconds between transmits
-  manager.pause(seconds);
+  manager.pause(milliseconds);
 }
