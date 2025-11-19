@@ -472,7 +472,7 @@ TimeSpan Loom_LoRa::hbNextEvent() {
             if(normWorkTimer_s - secondsToWait > 0)
                 normWorkTimer_s = normWorkTimer_s - secondsToWait;
             else
-                normWorkTimer_s = 0;
+                normWorkTimer_s = 5;
 
             heartbeatTimer_s = heartbeatInterval_s;
             heartbeatFlag = true;
@@ -483,7 +483,7 @@ TimeSpan Loom_LoRa::hbNextEvent() {
             if (heartbeatTimer_s - secondsToWait > 0)
                 heartbeatTimer_s = heartbeatTimer_s - secondsToWait;
             else
-                heartbeatTimer_s = 0;
+                heartbeatTimer_s = 5;
 
             normWorkTimer_s = normWorkInterval_s;
             heartbeatFlag = false;
