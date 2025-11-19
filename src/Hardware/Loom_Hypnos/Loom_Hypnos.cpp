@@ -598,6 +598,7 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
             return TimeSpan(0, 0, 20, 0);
         }
     }
+    free(fileRead);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

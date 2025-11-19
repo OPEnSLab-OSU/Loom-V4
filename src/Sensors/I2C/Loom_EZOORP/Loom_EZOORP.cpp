@@ -35,7 +35,7 @@ void Loom_EZOORP::measure(){
 void Loom_EZOORP::package(){
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
-        json["ORP"] = orp;
+        json["ORP_mV"] = orp;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
