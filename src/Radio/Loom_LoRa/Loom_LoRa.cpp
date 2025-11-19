@@ -437,7 +437,7 @@ bool Loom_LoRa::sendPacketHeader(JsonObject json,
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LoRa::heartbeatInit( const uint8_t newAddress, 
-                    const uint32_t pHeartbeatInterval,
+                    const uint32_t pHeartbeatInterval, 
                     const uint32_t pNormalWorkInterval)
 {
     heartbeatDestAddress = newAddress;
@@ -464,28 +464,34 @@ TimeSpan Loom_LoRa::secondsToTimeSpan(const uint32_t totalSeconds) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 TimeSpan Loom_LoRa::hbNextEvent() {
     uint32_t secondsToWait = 0;
-    if(heartbeatTimer_s < normWorkTimer_s) {
-        secondsToWait = heartbeatTimer_s;
+    if(heartbeatTimer_s > 0 && normWorkTimer_s > 0) // check if heartbeat was initialized
+    {
+        if(heartbeatTimer_s < normWorkTimer_s) {
+            secondsToWait = heartbeatTimer_s;
 
-        if(normWorkTimer_s - secondsToWait > 0)
-            normWorkTimer_s = normWorkTimer_s - secondsToWait;
+            if(normWorkTimer_s - secondsToWait > 0)
+                normWorkTimer_s = normWorkTimer_s - secondsToWait;
+            else
+                normWorkTimer_s = 0;
 
-        heartbeatTimer_s = heartbeatInterval_s;
-        heartbeatFlag = true;
+            heartbeatTimer_s = heartbeatInterval_s;
+            heartbeatFlag = true;
+        }
+        else {
+            secondsToWait = normWorkTimer_s;
+
+            if (heartbeatTimer_s - secondsToWait > 0)
+                heartbeatTimer_s = heartbeatTimer_s - secondsToWait;
+            else
+                heartbeatTimer_s = 0;
+
+            normWorkTimer_s = normWorkInterval_s;
+            heartbeatFlag = false;
+        }
+
+        if (secondsToWait < 5)
+            secondsToWait = 5; // minimum wait time of 5 seconds for safety/stability.
     }
-    else {
-        secondsToWait = normWorkTimer_s;
-
-        if (heartbeatTimer_s - secondsToWait > 0)
-            heartbeatTimer_s = heartbeatTimer_s - secondsToWait;
-
-        normWorkTimer_s = normWorkInterval_s;
-        heartbeatFlag = false;
-    }
-
-    if (secondsToWait < 5)
-        secondsToWait = 5; // minimum wait time of 5 seconds for safety/stability.
-
     return secondsToTimeSpan(secondsToWait);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
