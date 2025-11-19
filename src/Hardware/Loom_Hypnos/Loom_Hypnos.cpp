@@ -463,31 +463,37 @@ void Loom_Hypnos::sleep(bool waitForSerial){
     if (shouldPowerUp) {
         manInst->power_down();
 
+        // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
+        uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
+        uint32_t currentTime = RTC_DS.now().unixtime();
+        hasAlarmTriggered = alarmedTime <= currentTime;
+        
         // 50ms delay allows this last message to be sent before the bus disconnects
         LOG("Entering Standby Sleep...");
         delay(50);
+    }
 
-        DateTime currentTime = RTC_DS.now();
-
-        // If the alarm time has already passed, don't bother going to sleep
-        if (currentTime < alarmTime) {
-            pre_sleep();
-            shouldPowerUp = true;
-
-            // Puts device to sleep - hypnos is responsible for waking it up
-            LowPower.sleep();
-            
-            // Wake up
-            post_sleep(waitForSerial);
-
-        } else {
-            WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");
-            reattachRTCInterrupt();
-            if(shouldPowerUp){
-                manInst->power_up();
-            }
+    // If it hasn't we should preform our sleep as before
+    if(!hasAlarmTriggered){
+        pre_sleep();                                            // Pre-sleep cleanup
+        shouldPowerUp = true;
+        LowPower.sleep();                                       // Go to sleep and hang
+        Watchdog.enable(WATCHDOG_TIMEOUT);
+    }
+    // If it has we want to trigger a resample which requires powering the sensors back up
+    else{
+        WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");
+        reattachRTCInterrupt();
+        if(shouldPowerUp){
+            manInst->power_up();
         }
     }
+    Watchdog.reset();
+
+    // If the alarm hadn't triggered last time we want to wake up like normal
+    if(!hasAlarmTriggered)
+        post_sleep(waitForSerial);         // Wake up
+   
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -514,21 +520,31 @@ void Loom_Hypnos::pre_sleep(){
 void Loom_Hypnos::post_sleep(bool waitForSerial){
     // Enable the Watchdog timer when waking up
     TIMER_ENABLE;
+    Watchdog.reset();
     
     if(shouldPowerUp){
         USBDevice.attach();
+        Watchdog.reset();
         Serial.begin(115200);
+        Watchdog.reset();
 
         // Check if they are not disabled to see if they should be enabled
         bool enable5 = !is5VDisabled(DEVICE_STATE::EXITING_SLEEP);
+        Watchdog.reset();
         bool enable33 = !is3VDisabled(DEVICE_STATE::EXITING_SLEEP);
+        Watchdog.reset();
 
         enable(enable33, enable5); // Checks if the 3.3v or 5v are disabled and re-enables them
+        Watchdog.reset();
         delay(1000);
+        Watchdog.reset();
 
+        LOG(F("Device has awoken from sleep!"));
+        Watchdog.reset();
 
         // Clear any pending RTC alarms
         RTC_DS.clearAlarm();
+        Watchdog.reset();
 
         // Re-init the modules that need it
         manInst->power_up();
@@ -538,9 +554,7 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
             TIMER_DISABLE;
             while(!Serial);
             TIMER_ENABLE;
-        }
-
-        LOG(F("Device has awoken from sleep!"));
+        }        
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
