@@ -1,7 +1,5 @@
 .vscode
 .DS_Store
-build
-shell.nix
 .clang-format
 .clangd
 .justfile
