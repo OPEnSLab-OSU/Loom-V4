@@ -450,15 +450,15 @@ void Loom_LoRa::heartbeatInit( const uint8_t newAddress,
 
 TimeSpan Loom_LoRa::secondsToTimeSpan(const uint32_t totalSeconds) {
     // Build from d/h/m/s:
-    uint32_t rem = 0;
-    uint32_t days = totalSeconds / 86400;
+    uint16_t rem = 0;
+    uint16_t days = totalSeconds / 86400;
     rem  = totalSeconds % 86400;
     uint8_t hours = rem / 3600;
     rem = rem % 3600;
     uint8_t minutes = rem / 60;
     uint8_t seconds = rem % 60;
 
-    return TimeSpan((int16_t)days, (int8_t)hours, (int8_t)minutes, (int8_t)seconds);
+    return TimeSpan(days, hours, minutes, seconds);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -501,7 +501,7 @@ bool Loom_LoRa::sendHeartbeat() {
     const JsonObject managerJson = manager->getDocument().as<JsonObject>();
 
     // this is 150 because it is safely within the P2P and LoRaWAN limits for maximum size.
-    const u_int16_t JSON_HEARTBEAT_BUFFER_SIZE = 150;
+    const uint16_t JSON_HEARTBEAT_BUFFER_SIZE = 150;
 
     StaticJsonDocument<JSON_HEARTBEAT_BUFFER_SIZE> heartbeatDoc;
     heartbeatDoc["type"] = "LoRa_heartbeat";
