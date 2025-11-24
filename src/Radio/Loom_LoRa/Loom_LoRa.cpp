@@ -511,7 +511,7 @@ bool Loom_LoRa::sendHeartbeat() {
     objNestedId["name"] = managerJson["id"]["name"];
     objNestedId["instance"] = managerJson["id"]["instance"];
 
-    objNestedId["battery_voltage"] = Loom_Analog::getBatteryVoltage();
+    HeartbeatDoc["battery_voltage"] = Loom_Analog::getBatteryVoltage();
 
     if (!managerJson["timestamp"].isNull()) {
         JsonObject objNestedTimestamp = heartbeatDoc.createNestedObject("timestamp");
