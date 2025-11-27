@@ -30,8 +30,9 @@ void Loom_Multiplexer::initialize(){
     Wire.begin();
     int moduleIndex = 0;
 
-    // set known addresses to addresses from SD
-    if(config_addresses.size() > 0)
+    // if addresses havent been set in sketch and configFromSD pulled addresses,
+    // set known addresses to config_addresses
+    if((config_addresses.size() > 0) && !(known_addresses.size() > 0))
         known_addresses = config_addresses;
 
     // Find the multiplexer at the possible addresses
@@ -281,6 +282,9 @@ void Loom_Multiplexer::loadConfigFromSD(const char* fileName){
     if(deserialError != DeserializationError::Ok){
         snprintf(output, OUTPUT_SIZE, "There was an error reading the config from SD: %s, multiplexer will use default_addresses", deserialError.c_str());
         ERROR(output);
+        // known addresses empty vector by default, set if it has not been set already. 
+        if(!(known_addresses.size() > 0))
+            known_addresses = default_addresses;
     }
     else{
             LOG(F("Config successfully loaded from SD!"));
