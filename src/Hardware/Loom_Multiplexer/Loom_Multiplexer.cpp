@@ -30,10 +30,11 @@ void Loom_Multiplexer::initialize(){
     Wire.begin();
     int moduleIndex = 0;
 
-    // if addresses havent been set in sketch and configFromSD pulled addresses,
-    // set known addresses to config_addresses
-    if((config_addresses.size() > 0) && !(known_addresses.size() > 0))
-        known_addresses = config_addresses;
+    // if second mux constructor has not been used and SD addresses are not being used, 
+    // set known_addresses to default addresses
+    if(!(known_addresses.size() > 0)){
+        known_addresses = default_addresses;
+    }
 
     // Find the multiplexer at the possible addresses
     for(byte addr : alt_addresses){
@@ -214,6 +215,24 @@ bool Loom_Multiplexer::isDeviceConnected(byte addr){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Loom_Multiplexer::setAddresses(std::vector<byte> configAddresses){
+    char output[OUTPUT_SIZE];
+    // know addresses initialized as empty, is only filled if the second mux constructor is used with 
+    // a vector defined in the ino. If this second constructor was used, we wont use the config addresses. 
+    if(!(known_addresses.size() > 0)){
+        known_addresses = configAddresses;
+        snprintf(output, OUTPUT_SIZE, "Using %d sensor addresses from SD", known_addresses.size());
+        LOG(output);
+    }
+    else{
+    snprintf(output, OUTPUT_SIZE, "Sensor addresses are already configured. SD addresses will not be used");
+    LOG(output);
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 Module* Loom_Multiplexer::loadSensor(const byte addr){
     // Select the correct sensor to load based on the address
     switch (addr){
@@ -238,11 +257,11 @@ Module* Loom_Multiplexer::loadSensor(const byte addr){
         case 0x1D: return new Loom_MMA8451(*manInst, 0x1D, true);
 
         //Loom_DFMultiGasSensor
-        case 0x74: return new Loom_DFMultiGasSensor(*manInst, 0x74, 10,false, true);
-        case 0x75: return new Loom_DFMultiGasSensor(*manInst, 0x75, 10,false, true);
+        //case 0x74: return new Loom_DFMultiGasSensor(*manInst, 0x74, 10,false, true);
+        //case 0x75: return new Loom_DFMultiGasSensor(*manInst, 0x75, 10,false, true);
 
         // Loom_T6793
-        case 0x15: return new Loom_T6793(*manInst, 0x15, 10, true);
+        //case 0x15: return new Loom_T6793(*manInst, 0x15, 10, true);
 
         // MPU6050
         // case 0x69: return new Loom_MPU6050(*manInst,  true);
@@ -264,48 +283,3 @@ Module* Loom_Multiplexer::loadSensor(const byte addr){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void Loom_Multiplexer::loadConfigFromSD(const char* fileName){
-    FUNCTION_START;
-    // Doc to store the JSON data from the SD card in
-    StaticJsonDocument<OUTPUT_SIZE> doc;
-    char output[OUTPUT_SIZE];
-    char* fileRead = sdMan->readFile(fileName);
-    // avoid zero-copy behavior
-    DeserializationError deserialError = deserializeJson(doc, (const char *)fileRead);
-    free(fileRead);
-
-    // Create JsonArray object to store sensor array
-    JsonArray sensorMap = doc["sensors"];
-    
-
-    if(deserialError != DeserializationError::Ok){
-        snprintf(output, OUTPUT_SIZE, "There was an error reading the config from SD: %s, multiplexer will use default_addresses", deserialError.c_str());
-        ERROR(output);
-        // known addresses empty vector by default, set if it has not been set already. 
-        if(!(known_addresses.size() > 0))
-            known_addresses = default_addresses;
-    }
-    else{
-            LOG(F("Config successfully loaded from SD!"));
-            if(!sensorMap.isNull()){
-                //reserve space in config_addresses before loop
-                config_addresses.reserve(sensorMap.size());
-                // just takes addresses and pushes them onto config_addresses. Could also display what sensors were using if wanted. 
-                for(int i = 0; i < sensorMap.size(); i++){
-                    config_addresses.push_back(sensorMap[i]["addr"]);
-                }
-                snprintf(output, OUTPUT_SIZE, "Retrieved %u addresses from SD.", config_addresses.size());
-                LOG(output);
-            }
-
-            // If the sensors array is empty or null, use default_addresses. 
-            else{
-                snprintf(output, OUTPUT_SIZE, "There was an error retrieving the sensor addresses from the JSON document, default_address's will be used");
-                // known addresses empty vector by default, set if it has not been set already. 
-                if(!(known_addresses.size() > 0))
-                    known_addresses = default_addresses;
-                ERROR(output);
-            }
-        }
-}

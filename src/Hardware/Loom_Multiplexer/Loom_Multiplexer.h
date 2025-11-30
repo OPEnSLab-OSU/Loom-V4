@@ -19,8 +19,8 @@
 #include "../../Sensors/I2C/Loom_K30/Loom_K30.h"
 #include "../../Sensors/I2C/Loom_MMA8451/Loom_MMA8451.h"
 #include "../../Sensors/I2C/Loom_ZXGesture/Loom_ZXGesture.h"
-#include "../../Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h"
-#include "../../Sensors/I2C/Loom_T6793/Loom_T6793.h"
+//#include "../../Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h"
+//#include "../../Sensors/I2C/Loom_T6793/Loom_T6793.h"
 #include "../../Sensors/I2C/Loom_SEN55/Loom_SEN55.h"
 
 
@@ -59,14 +59,9 @@ class Loom_Multiplexer : public Module{
 		// Destructor removes all new sensor instances
 		~Loom_Multiplexer();
 
-		/**
-		 * @brief Loads custom addresses from SD card, and loads them to vector config_addresses. 
-		 * Will be ran once during setup. For now, SD addresses will take higher priority than the 
-		 * addresses vector defined in the sketch. This can be changed pretty easily though. 
-		 * 
-		 * @param fileName name of json file in SD 
-		 */
-		void loadConfigFromSD(const char* fileName);
+		// way to load addresses returned from SD function, will be ran after hypnos is enabled
+		// and loadAddressesFromSD is called. Used for testing 
+		void setAddresses(std::vector<byte> configAddresses);
         
     private:
         Manager* manInst;                                       // Instance of the manager
@@ -83,8 +78,6 @@ class Loom_Multiplexer : public Module{
 		Module* loadSensor(const byte addr);					// Load the correct sensor based on the I2C address
 
 		std::vector<byte> known_addresses = {};
-
-		std::vector<byte> config_addresses = {};
 
 		// Used to optimize searching for sensors:
 		// search addresses in array rather than 0-127 
@@ -121,4 +114,4 @@ class Loom_Multiplexer : public Module{
 			0x75,
 			0x78
 		};
-	}
+	};

@@ -459,35 +459,45 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::sleep(bool waitForSerial){
+   
     // Try to power down the active modules
+    // If the alarm set time is less than the current time we missed our next alarm so we need to set a new one, we need to check if we have powered on already so we dont use the RTC that isn't enabled
+    bool hasAlarmTriggered = false;
+    
     if (shouldPowerUp) {
         manInst->power_down();
 
+        // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
+        uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
+        uint32_t currentTime = RTC_DS.now().unixtime();
+        hasAlarmTriggered = alarmedTime <= currentTime;
+        
         // 50ms delay allows this last message to be sent before the bus disconnects
         LOG("Entering Standby Sleep...");
         delay(50);
+    }
 
-        DateTime currentTime = RTC_DS.now();
-
-        // If the alarm time has already passed, don't bother going to sleep
-        if (currentTime < alarmTime) {
-            pre_sleep();
-            shouldPowerUp = true;
-
-            // Puts device to sleep - hypnos is responsible for waking it up
-            LowPower.sleep();
-            
-            // Wake up
-            post_sleep(waitForSerial);
-
-        } else {
-            WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");
-            reattachRTCInterrupt();
-            if(shouldPowerUp){
-                manInst->power_up();
-            }
+    // If it hasn't we should preform our sleep as before
+    if(!hasAlarmTriggered){
+        pre_sleep();                                            // Pre-sleep cleanup
+        shouldPowerUp = true;
+        LowPower.sleep();                                       // Go to sleep and hang
+        Watchdog.enable(WATCHDOG_TIMEOUT);
+    }
+    // If it has we want to trigger a resample which requires powering the sensors back up
+    else{
+        WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");
+        reattachRTCInterrupt();
+        if(shouldPowerUp){
+            manInst->power_up();
         }
     }
+    Watchdog.reset();
+
+    // If the alarm hadn't triggered last time we want to wake up like normal
+    if(!hasAlarmTriggered)
+        post_sleep(waitForSerial);         // Wake up
+   
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -514,21 +524,31 @@ void Loom_Hypnos::pre_sleep(){
 void Loom_Hypnos::post_sleep(bool waitForSerial){
     // Enable the Watchdog timer when waking up
     TIMER_ENABLE;
+    Watchdog.reset();
     
     if(shouldPowerUp){
         USBDevice.attach();
+        Watchdog.reset();
         Serial.begin(115200);
+        Watchdog.reset();
 
         // Check if they are not disabled to see if they should be enabled
         bool enable5 = !is5VDisabled(DEVICE_STATE::EXITING_SLEEP);
+        Watchdog.reset();
         bool enable33 = !is3VDisabled(DEVICE_STATE::EXITING_SLEEP);
+        Watchdog.reset();
 
         enable(enable33, enable5); // Checks if the 3.3v or 5v are disabled and re-enables them
+        Watchdog.reset();
         delay(1000);
+        Watchdog.reset();
 
+        LOG(F("Device has awoken from sleep!"));
+        Watchdog.reset();
 
         // Clear any pending RTC alarms
         RTC_DS.clearAlarm();
+        Watchdog.reset();
 
         // Re-init the modules that need it
         manInst->power_up();
@@ -538,9 +558,7 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
             TIMER_DISABLE;
             while(!Serial);
             TIMER_ENABLE;
-        }
-
-        LOG(F("Device has awoken from sleep!"));
+        }        
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -584,7 +602,56 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
             return TimeSpan(0, 0, 20, 0);
         }
     }
+    free(fileRead);
     FUNCTION_END;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+std::vector<byte> Loom_Hypnos::loadAddressesFromSD(const char* fileName){
+    FUNCTION_START;
+    // Doc to store the JSON data from the SD card in
+    StaticJsonDocument<OUTPUT_SIZE> doc;
+    char output[OUTPUT_SIZE];
+    char* fileRead = sdMan->readFile(fileName);
+    // avoid zero-copy behavior
+    DeserializationError deserialError = deserializeJson(doc, (const char *)fileRead);
+    free(fileRead);
+
+    // Create JsonArray object to store sensor array
+    JsonArray sensorMap = doc["sensors"];
+    // vector to store addresses found in SD
+    std::vector<byte> config_addresses = {};
+    
+
+    if(deserialError != DeserializationError::Ok){
+        snprintf(output, OUTPUT_SIZE, "There was an error reading the config from SD: %s, multiplexer will use default_addresses", deserialError.c_str());
+        ERROR(output);
+
+    }
+    else{
+            LOG(F("Config successfully loaded from SD!"));
+            if(!sensorMap.isNull()){
+                //reserve space in config_addresses before loop
+                config_addresses.reserve(sensorMap.size());
+                // just takes addresses and pushes them onto config_addresses. Could also display what sensors were using if wanted. 
+                for(int i = 0; i < sensorMap.size(); i++){
+                    config_addresses.push_back(sensorMap[i]["addr"]);
+                }
+                snprintf(output, OUTPUT_SIZE, "Retrieved %u addresses from SD.", config_addresses.size());
+                LOG(output);
+                return config_addresses;
+            }
+
+            // If the sensors array is empty or null, use default_addresses. 
+            else{
+                snprintf(output, OUTPUT_SIZE, "There was an error retrieving the sensor addresses from the JSON document, default_address's will be used");
+                // known addresses empty vector by default, set if it has not been set already. 
+                
+                ERROR(output);
+            }
+        }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
