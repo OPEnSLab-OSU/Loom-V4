@@ -14,7 +14,7 @@ Loom_LoRa::Loom_LoRa(
     const uint8_t sendMaxRetries,
     const uint8_t receiveMaxRetries,
     const uint16_t retryTimeout
-) : Module("LoRa"),
+) :     Module("LoRa"),
         manager(&manager), 
         radioDriver{RFM95_CS, RFM95_INT},
         deviceAddress(address),
@@ -436,6 +436,102 @@ bool Loom_LoRa::sendPacketHeader(JsonObject json,
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LoRa::heartbeatInit( const uint8_t newAddress, 
+                    const uint32_t pHeartbeatInterval, 
+                    const uint32_t pNormalWorkInterval,
+                    Loom_Hypnos* hypnosInstance)
+{
+    heartbeatDestAddress = newAddress;
+    heartbeatInterval_s = pHeartbeatInterval;
+    heartbeatTimer_s = heartbeatInterval_s;
+    normWorkInterval_s = pNormalWorkInterval;
+    normWorkTimer_s = normWorkInterval_s;
+    hypnosPtr = hypnosInstance;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+TimeSpan Loom_LoRa::secondsToTimeSpan(const uint32_t totalSeconds) {
+    // Build from d/h/m/s:
+    uint16_t rem = 0;
+    uint16_t days = totalSeconds / 86400;
+    rem  = totalSeconds % 86400;
+    uint8_t hours = rem / 3600;
+    rem = rem % 3600;
+    uint8_t minutes = rem / 60;
+    uint8_t seconds = rem % 60;
+
+    return TimeSpan(days, hours, minutes, seconds);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+TimeSpan Loom_LoRa::hbNextEvent() {
+    uint32_t secondsToWait = 0;
+    if(heartbeatTimer_s > 0 && normWorkTimer_s > 0) // check if heartbeat was initialized
+    {
+        if(heartbeatTimer_s < normWorkTimer_s) {
+            secondsToWait = heartbeatTimer_s;
+
+            if(normWorkTimer_s - secondsToWait > 0)
+                normWorkTimer_s = normWorkTimer_s - secondsToWait;
+            else
+                normWorkTimer_s = 5;
+
+            heartbeatTimer_s = heartbeatInterval_s;
+            heartbeatFlag = true;
+        }
+        else {
+            secondsToWait = normWorkTimer_s;
+
+            if (heartbeatTimer_s - secondsToWait > 0)
+                heartbeatTimer_s = heartbeatTimer_s - secondsToWait;
+            else
+                heartbeatTimer_s = 5;
+
+            normWorkTimer_s = normWorkInterval_s;
+            heartbeatFlag = false;
+        }
+
+        if (secondsToWait < 5)
+            secondsToWait = 5; // minimum wait time of 5 seconds for safety/stability.
+    }
+    return secondsToTimeSpan(secondsToWait);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::sendHeartbeat() {
+
+    // this is 200 because it is safely within the P2P and LoRaWAN limits for maximum size.
+    const uint16_t JSON_HEARTBEAT_BUFFER_SIZE = 200;
+
+    StaticJsonDocument<JSON_HEARTBEAT_BUFFER_SIZE> heartbeatDoc;
+    heartbeatDoc["type"] = "LoRa_heartbeat";
+    heartbeatDoc.createNestedArray("contents");
+
+    JsonObject objNestedId = heartbeatDoc.createNestedObject("id");
+    objNestedId["name"] = manager->get_device_name();
+    objNestedId["instance"] = manager->get_instance_num();
+
+    heartbeatDoc["battery_voltage"] = Loom_Analog::getBatteryVoltage();
+
+    if(hypnosPtr != nullptr) {
+        char utcTimeStr[21];
+        char localTimeStr[21];
+        DateTime utcTime = hypnosPtr->getCurrentTime();
+        DateTime localTime = hypnosPtr->getLocalTime(utcTime);
+        hypnosPtr->dateTime_toString(utcTime, utcTimeStr);
+        hypnosPtr->dateTime_toString(localTime, localTimeStr, true); // set third arg to true for local time format
+
+        JsonObject objNestedTimestamp = heartbeatDoc.createNestedObject("timestamp");
+        objNestedTimestamp["time_utc"] = utcTimeStr;
+        objNestedTimestamp["time_local"] = localTimeStr;
+    }
+
+    return send(heartbeatDestAddress, heartbeatDoc.as<JsonObject>());
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::send(const uint8_t destinationAddress) {
     return send(destinationAddress, manager->getDocument().as<JsonObject>());
 }
@@ -448,6 +544,10 @@ bool Loom_LoRa::send(const uint8_t destinationAddress,
         ERROR(F("Module not initialized!"));
         return false;
     }
+
+    Serial.println(F("JSON About to be Sent:"));
+    serializeJsonPretty(json, Serial);
+    Serial.println();
 
     if (measureMsgPack(json) > MAX_MESSAGE_LENGTH) {
         return sendFragmentedPacket(json, destinationAddress);
@@ -523,4 +623,3 @@ bool Loom_LoRa::receiveBatch(uint timeout, int* numberOfPackets, uint8_t *fromAd
     *numberOfPackets = expectedOutstandingPackets;
     return status;
 }
-
