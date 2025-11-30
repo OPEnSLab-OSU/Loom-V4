@@ -438,13 +438,15 @@ bool Loom_LoRa::sendPacketHeader(JsonObject json,
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LoRa::heartbeatInit( const uint8_t newAddress, 
                     const uint32_t pHeartbeatInterval, 
-                    const uint32_t pNormalWorkInterval)
+                    const uint32_t pNormalWorkInterval,
+                    Loom_Hypnos* hypnosInstance)
 {
     heartbeatDestAddress = newAddress;
     heartbeatInterval_s = pHeartbeatInterval;
     heartbeatTimer_s = heartbeatInterval_s;
     normWorkInterval_s = pNormalWorkInterval;
     normWorkTimer_s = normWorkInterval_s;
+    hypnosPtr = hypnosInstance;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -498,25 +500,31 @@ TimeSpan Loom_LoRa::hbNextEvent() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::sendHeartbeat() {
-    const JsonObject managerJson = manager->getDocument().as<JsonObject>();
 
-    // this is 150 because it is safely within the P2P and LoRaWAN limits for maximum size.
-    const uint16_t JSON_HEARTBEAT_BUFFER_SIZE = 150;
+    // this is 200 because it is safely within the P2P and LoRaWAN limits for maximum size.
+    const uint16_t JSON_HEARTBEAT_BUFFER_SIZE = 200;
 
     StaticJsonDocument<JSON_HEARTBEAT_BUFFER_SIZE> heartbeatDoc;
     heartbeatDoc["type"] = "LoRa_heartbeat";
     heartbeatDoc.createNestedArray("contents");
 
     JsonObject objNestedId = heartbeatDoc.createNestedObject("id");
-    objNestedId["name"] = managerJson["id"]["name"];
-    objNestedId["instance"] = managerJson["id"]["instance"];
+    objNestedId["name"] = manager->get_device_name();
+    objNestedId["instance"] = manager->get_instance_num();
 
-    HeartbeatDoc["battery_voltage"] = Loom_Analog::getBatteryVoltage();
+    heartbeatDoc["battery_voltage"] = Loom_Analog::getBatteryVoltage();
 
-    if (!managerJson["timestamp"].isNull()) {
+    if(hypnosPtr != nullptr) {
+        char utcTimeStr[21];
+        char localTimeStr[21];
+        DateTime utcTime = hypnosPtr->getCurrentTime();
+        DateTime localTime = hypnosPtr->getLocalTime(utcTime);
+        hypnosPtr->dateTime_toString(utcTime, utcTimeStr);
+        hypnosPtr->dateTime_toString(localTime, localTimeStr, true); // set third arg to true for local time format
+
         JsonObject objNestedTimestamp = heartbeatDoc.createNestedObject("timestamp");
-        objNestedTimestamp["time_utc"] = managerJson["timestamp"]["time_utc"];
-        objNestedTimestamp["time_local"] = managerJson["timestamp"]["time_local"];
+        objNestedTimestamp["time_utc"] = utcTimeStr;
+        objNestedTimestamp["time_local"] = localTimeStr;
     }
 
     return send(heartbeatDestAddress, heartbeatDoc.as<JsonObject>());
@@ -536,6 +544,10 @@ bool Loom_LoRa::send(const uint8_t destinationAddress,
         ERROR(F("Module not initialized!"));
         return false;
     }
+
+    Serial.println(F("JSON About to be Sent:"));
+    serializeJsonPretty(json, Serial);
+    Serial.println();
 
     if (measureMsgPack(json) > MAX_MESSAGE_LENGTH) {
         return sendFragmentedPacket(json, destinationAddress);

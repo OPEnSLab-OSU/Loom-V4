@@ -13,6 +13,8 @@
 #include <Module.h>
 #include <RH_RF95.h>
 #include "../../Sensors/Loom_Analog/Loom_Analog.h"
+#include "../../Hardware/Loom_Hypnos/Loom_Hypnos.h"
+#include <OPEnS_RTC.h> // for DateTime
 
 #define MAX_MESSAGE_LENGTH RH_RF95_MAX_MESSAGE_LEN
 
@@ -206,7 +208,8 @@ public:
      */
     void heartbeatInit( const uint8_t newAddress, 
                         const uint32_t pHeartbeatInterval,
-                        const uint32_t pNormalWorkInterval);
+                        const uint32_t pNormalWorkInterval,
+                        Loom_Hypnos* hypnosInstance = nullptr);
 
     /**
      * Convert seconds to a TimeSpan object
@@ -285,6 +288,7 @@ private:
     uint8_t heartbeatDestAddress = 0;
 
     bool heartbeatFlag = false;
+    Loom_Hypnos* hypnosPtr = nullptr; // Pointer to the hypnos instance
 
     uint8_t deviceAddress;      // Device address
     int16_t signalStrength;     // Strength of the signal received
