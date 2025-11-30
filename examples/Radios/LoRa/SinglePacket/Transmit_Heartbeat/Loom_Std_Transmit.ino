@@ -24,8 +24,6 @@ void setup() {
 }
 
 void loop() {
-  manager.package();
-
     // logic to execute this loop
   if(lora.getHeartbeatFlag())
   {
@@ -34,12 +32,13 @@ void loop() {
   }
   else {
     // do work
+    manager.package();
     Serial.println("Within Normal Work Branch");
     lora.send(0);
   }
 
   int milliseconds = lora.hbNextEvent().totalseconds() * 1000;
-  Serial.print("Sleep for: ");
+  Serial.print("Pause for: ");
   Serial.print(String(milliseconds));
   Serial.println("");
 

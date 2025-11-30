@@ -41,12 +41,10 @@ void setup() {
   uint8_t destAddr = 0;
   uint32_t hbInterval_s = 15;
   uint32_t normalInterval_s = 35;
-  lora.heartbeatInit(destAddr, hbInterval_s, normalInterval_s);
+  lora.heartbeatInit(destAddr, hbInterval_s, normalInterval_s, &hypnos);
 }
 
 void loop() {
-  manager.package();
-
   // logic to execute this loop
   if(lora.getHeartbeatFlag())
   {
@@ -55,6 +53,7 @@ void loop() {
   }
   else {
     // do work
+    manager.package();
     Serial.println("~~~~~~~~~~~~~~~~~~~~~~~Hello from Normal Work Branch~~~~~~~~~~~~~~~~~~~~");
     lora.send(0);
   }
