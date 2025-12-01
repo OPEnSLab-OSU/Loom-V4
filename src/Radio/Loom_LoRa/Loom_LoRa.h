@@ -234,6 +234,8 @@ public:
 
     /**
      * Set the heartbeat flag bool
+     * 
+     * @param flag The value to set the heartbeat flag to
      */
     void setHeartbeatFlag(const bool flag) { heartbeatFlag = flag; };
 
