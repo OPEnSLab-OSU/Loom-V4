@@ -441,10 +441,23 @@ void Loom_LoRa::heartbeatInit( const uint8_t newAddress,
                     const uint32_t pNormalWorkInterval,
                     Loom_Hypnos* hypnosInstance)
 {
+    if(pHeartbeatInterval < 60) {
+        WARNING(F("Heartbeat interval too low, setting to minimum of 60 seconds"));
+        heartbeatInterval_s = 60;
+    }
+    else 
+        heartbeatInterval_s = pHeartbeatInterval;
+
+    if(pNormalWorkInterval < 5) {
+        WARNING(F("Normal work interval too low, setting to minimum of 5 seconds"));
+        normWorkInterval_s = 5;
+    }
+    else 
+        normWorkInterval_s = pNormalWorkInterval;
+
     heartbeatDestAddress = newAddress;
-    heartbeatInterval_s = pHeartbeatInterval;
+
     heartbeatTimer_s = heartbeatInterval_s;
-    normWorkInterval_s = pNormalWorkInterval;
     normWorkTimer_s = normWorkInterval_s;
     hypnosPtr = hypnosInstance;
 }
@@ -532,9 +545,9 @@ bool Loom_LoRa::sendHeartbeat() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LoRa::ensureHypnosAlarmsActive() {
+void Loom_LoRa::ensureHeartbeatHypnosAlarmsActive() {
     if(hypnosPtr == nullptr) {
-        WARNING(F("Hypnos pointer not set - cannot ensure alarms are active"));
+        WARNING(F("Hypnos pointer not set - cannot ensure heartbeat alarm is active"));
         return;
     }
 
@@ -545,15 +558,20 @@ void Loom_LoRa::ensureHypnosAlarmsActive() {
     if(alarmOneTime <= currentTime) {
         if(currentTime + normWorkInterval_s > alarmTwoTime - 5
             && currentTime + normWorkInterval_s < alarmTwoTime + 5) {
-                uint32_t remainingSecondsAlarmTwo = alarmTwoTime - currentTime;
+                uint32_t remainingSecondsAlarmTwo = 0;
+                if(alarmTwoTime - currentTime > 0)
+                    remainingSecondsAlarmTwo = alarmTwoTime - currentTime;
+                else
+                    remainingSecondsAlarmTwo = 0;
+
                 hypnosPtr->clearAlarms();
 
                 TimeSpan timeSpanToSetWith = secondsToTimeSpan(normWorkInterval_s);
                 hypnosPtr->setInterruptDuration(timeSpanToSetWith);
-                Serial.println("skipping heartbeat since normal work will overlap");
-
                 timeSpanToSetWith = secondsToTimeSpan(heartbeatInterval_s + remainingSecondsAlarmTwo);
                 hypnosPtr->setSecondAlarmInterruptDuration(timeSpanToSetWith);
+
+                Serial.println("skipping heartbeat since normal work will overlap");
 
                 return; // set both alarms already in this branch, so return.
         }
@@ -563,6 +581,8 @@ void Loom_LoRa::ensureHypnosAlarmsActive() {
             Serial.println("Alarm set for normal work interval");
         }
     }
+
+    alarmOneTime = hypnosPtr->getAlarmDate(1).unixtime(); // re-fetch alarm one time after potential reset above.
 
     if(alarmTwoTime <= currentTime) {
         if(currentTime + heartbeatInterval_s > alarmOneTime - 5

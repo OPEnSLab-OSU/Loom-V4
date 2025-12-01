@@ -250,7 +250,7 @@ public:
     /**
      * Ensure that the normal work alarm (1) and heartbeat alarm (2) are both set
      */
-    void ensureHypnosAlarmsActive();
+    void ensureHeartbeatHypnosAlarmsActive();
 
     /**
      * Adjust the heartbeat flag based on which alarm triggered

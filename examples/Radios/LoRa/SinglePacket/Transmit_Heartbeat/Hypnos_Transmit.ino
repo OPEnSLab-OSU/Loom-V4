@@ -43,7 +43,7 @@ void setup() {
   // initialize heartbeat operations
   uint8_t destAddr = 0;
   uint32_t hbInterval_s = 60;
-  uint32_t normalInterval_s = 15;
+  uint32_t normalInterval_s = 25;
   lora.heartbeatInit(destAddr, hbInterval_s, normalInterval_s, &hypnos);
 }
 
@@ -63,8 +63,8 @@ void loop() {
     lora.send(0);
   }
 
-  // ADD: re-init timers. [ensureTimersActive()] Ideally, this function auto checks timers for safety.
-  lora.ensureHypnosAlarmsActive();
+  // set up both alarms for the heartbeat mode using the specified intervals earlier.
+  lora.ensureHeartbeatHypnosAlarmsActive();
 
   // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
   hypnos.reattachRTCInterrupt();
