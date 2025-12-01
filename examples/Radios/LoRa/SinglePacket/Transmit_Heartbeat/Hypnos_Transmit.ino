@@ -11,9 +11,6 @@
 
 #include <Radio/Loom_LoRa/Loom_LoRa.h>
 
-#define DS3231_ADDRESS 0x68
-#define DS3231_STATUSREG 0x0F
-
 // Manager to control the device
 Manager manager("Device", 1);
 
