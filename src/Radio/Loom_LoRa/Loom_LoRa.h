@@ -230,7 +230,7 @@ public:
      *      power down/up times. 
      *      Intervals will still be followed, after the minimum 5 second wait.
      */
-    TimeSpan hbNextEvent();
+    TimeSpan calculateNextEvent();
 
     /**
      * Set the heartbeat flag bool

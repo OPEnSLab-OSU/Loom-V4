@@ -58,7 +58,7 @@ void loop() {
     lora.send(0);
   }
 
-  TimeSpan tSpan = lora.hbNextEvent();
+  TimeSpan tSpan = lora.calculateNextEvent();
   Serial.print(":::::::::::::::::::::::::::::Sleep for: ");
   Serial.print(String(tSpan.seconds()));
   Serial.println(" Seconds:::::::::::::::::::::::");

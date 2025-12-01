@@ -464,7 +464,7 @@ TimeSpan Loom_LoRa::secondsToTimeSpan(const uint32_t totalSeconds) {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-TimeSpan Loom_LoRa::hbNextEvent() {
+TimeSpan Loom_LoRa::calculateNextEvent() {
     uint32_t secondsToWait = 0;
     if(heartbeatTimer_s > 0 && normWorkTimer_s > 0) // check if heartbeat was initialized
     {
