@@ -191,6 +191,12 @@ class Loom_Hypnos : public Module{
         void setInterruptDuration(const TimeSpan duration);
 
         /**
+         * Set the second alarm interrupt to be triggered at a set interval in the future
+         * @param duration The time that will elapse before the second alarm interrupt is triggered
+         */
+        void setSecondAlarmInterruptDuration(const TimeSpan duration);
+
+        /**
          * Drops the Feather M0 and Hypnos board into a low power sleep waiting for an interrupt to wake it up and pull it out of sleep
          * @param waitForSerial Whether or not we should wait for the user to open the serial monitor before continuing execution
          */

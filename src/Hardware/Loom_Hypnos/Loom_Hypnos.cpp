@@ -458,6 +458,26 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::setSecondAlarmInterruptDuration(const TimeSpan duration) {
+    FUNCTION_START;
+    char output[OUTPUT_SIZE];
+
+    // The time in the future that the second alarm will be set for
+    Ds3231_ALARM_TYPES_t alarmType = ALM2_MATCH_DATE;
+    DateTime future(RTC_DS.now() + duration);
+    RTC_DS.setAlarm(alarmType, future.minute(), future.hour(), future.day()); // 2nd alarm doesn't take seconds.
+
+    // Print the time that the next interrupt is set to trigger
+    snprintf(output, OUTPUT_SIZE, PSTR("Current Time (Local): %s"), getLocalTime(RTC_DS.now()).text());
+    LOG(output);
+
+    snprintf(output, OUTPUT_SIZE, PSTR("2nd Interrupt Alarm Set For: %s"), getLocalTime(future).text());
+    LOG(output);
+    FUNCTION_END;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /* Sleep Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -476,9 +496,11 @@ void Loom_Hypnos::sleep(bool waitForSerial){
         delay(50);
 
         // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
-        uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
+        uint32_t alarmedTimeOne = RTC_DS.getAlarm(1).unixtime();
+        uint32_t alarmedTimeTwo = RTC_DS.getAlarm(2).unixtime();
         uint32_t currentTime = RTC_DS.now().unixtime();
-        hasAlarmTriggered = alarmedTime <= currentTime;
+        hasAlarmTriggered = alarmedTimeOne <= currentTime
+                         && alarmedTimeTwo <= currentTime;
     }
 
     // If it hasn't we should preform our sleep as before
