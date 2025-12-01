@@ -203,6 +203,7 @@ public:
      * @param newAddress Destination address for heartbeats
      * @param heartbeatInterval Interval between heartbeats (scalar)
      * @param normalWorkInterval Interval between normal work cycles (scalar)
+     * @param hypnosInstance Pointer to the Hypnos instance being used.
      * 
      * @note heartbeatInterval and normalWorkInterval must be seconds.
      */

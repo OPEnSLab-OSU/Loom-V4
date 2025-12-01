@@ -441,9 +441,13 @@ void Loom_LoRa::heartbeatInit( const uint8_t newAddress,
                     const uint32_t pNormalWorkInterval,
                     Loom_Hypnos* hypnosInstance)
 {
-    if(pHeartbeatInterval < 60) {
-        WARNING(F("Heartbeat interval too low, setting to minimum of 60 seconds"));
+    if(hypnosInstance != nullptr && pHeartbeatInterval < 60) {
+        WARNING(F("Heartbeat interval too low for Hypnos, setting to minimum of 60 seconds"));
         heartbeatInterval_s = 60;
+    }
+    else if(pHeartbeatInterval < 5) {
+        WARNING(F("Heartbeat interval too low, setting to minimum of 5 seconds"));
+        heartbeatInterval_s = 5;
     }
     else 
         heartbeatInterval_s = pHeartbeatInterval;
