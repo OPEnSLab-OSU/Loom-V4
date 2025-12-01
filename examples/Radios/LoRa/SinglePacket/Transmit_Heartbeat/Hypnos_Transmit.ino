@@ -73,4 +73,6 @@ void loop() {
   
   // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
   hypnos.sleep();
+
+  delay(100); // CRITICAL: Small delay to ensure stability after waking up 
 }
