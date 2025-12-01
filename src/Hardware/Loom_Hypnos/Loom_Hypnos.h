@@ -197,6 +197,22 @@ class Loom_Hypnos : public Module{
         void setSecondAlarmInterruptDuration(const TimeSpan duration);
 
         /**
+         * Get which alarm triggered the wakeup
+         */
+        uint8_t getTriggeredAlarm();
+
+        /**
+         * Clear any active RTC alarms
+         */
+        void clearAlarms();
+
+        /**
+         * Get the date (in the form of a DateTime) for when a given alarm is set to trigger
+         * @param alarmNumber The alarm number to get the date for (1 or 2)
+         */
+        DateTime getAlarmDate(const uint8_t alarmNumber);
+
+        /**
          * Drops the Feather M0 and Hypnos board into a low power sleep waiting for an interrupt to wake it up and pull it out of sleep
          * @param waitForSerial Whether or not we should wait for the user to open the serial monitor before continuing execution
          */

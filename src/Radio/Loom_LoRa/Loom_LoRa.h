@@ -247,6 +247,16 @@ public:
      */
     bool sendHeartbeat();
 
+    /**
+     * Ensure that the normal work alarm (1) and heartbeat alarm (2) are both set
+     */
+    void ensureHypnosAlarmsActive();
+
+    /**
+     * Adjust the heartbeat flag based on which alarm triggered
+     */
+    void adjustHbFlagFromAlarms();
+
 private:
     // receives some data from lora
     bool receiveFromLoRa(uint8_t *buf, uint8_t buf_size, uint timeout, 

@@ -532,6 +532,76 @@ bool Loom_LoRa::sendHeartbeat() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LoRa::ensureHypnosAlarmsActive() {
+    if(hypnosPtr == nullptr) {
+        WARNING(F("Hypnos pointer not set - cannot ensure alarms are active"));
+        return;
+    }
+
+    uint32_t alarmOneTime = hypnosPtr->getAlarmDate(1).unixtime();
+    uint32_t alarmTwoTime = hypnosPtr->getAlarmDate(2).unixtime();
+    uint32_t currentTime = hypnosPtr->getCurrentTime().unixtime();
+
+    if(alarmOneTime <= currentTime) {
+        if(currentTime + normWorkInterval_s > alarmTwoTime - 5
+            && currentTime + normWorkInterval_s < alarmTwoTime + 5) {
+                uint32_t remainingSecondsAlarmTwo = alarmTwoTime - currentTime;
+                hypnosPtr->clearAlarms();
+
+                TimeSpan timeSpanToSetWith = secondsToTimeSpan(normWorkInterval_s);
+                hypnosPtr->setInterruptDuration(timeSpanToSetWith);
+                Serial.println("skipping heartbeat since normal work will overlap");
+
+                timeSpanToSetWith = secondsToTimeSpan(heartbeatInterval_s + remainingSecondsAlarmTwo);
+                hypnosPtr->setSecondAlarmInterruptDuration(timeSpanToSetWith);
+
+                return; // set both alarms already in this branch, so return.
+        }
+        else {
+            TimeSpan timeSpanToSetWith = secondsToTimeSpan(normWorkInterval_s);
+            hypnosPtr->setInterruptDuration(timeSpanToSetWith);
+            Serial.println("Alarm set for normal work interval");
+        }
+    }
+
+    if(alarmTwoTime <= currentTime) {
+        if(currentTime + heartbeatInterval_s > alarmOneTime - 5
+            && currentTime + heartbeatInterval_s < alarmOneTime + 5) {
+                // do nothing and skip heartbeat.
+                Serial.println("Skipping heartbeat alarm to avoid conflict with normal work alarm");
+        }
+        else {
+            TimeSpan timeSpanToSetWith = secondsToTimeSpan(heartbeatInterval_s);
+            hypnosPtr->setSecondAlarmInterruptDuration(timeSpanToSetWith);
+            Serial.println("Alarm set for heartbeat interval");
+        }
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LoRa::adjustHbFlagFromAlarms() {
+    if(hypnosPtr == nullptr) {
+        WARNING(F("Hypnos pointer not set - cannot adjust heartbeat flag based on alarms"));
+        return;
+    }
+
+    uint8_t alarmNumber = hypnosPtr->getTriggeredAlarm(); 
+    
+    if(alarmNumber == 0) {
+        ERROR(F("No alarms have triggered - cannot adjust heartbeat flag"));
+        return;
+    }
+
+    if(alarmNumber == 1) 
+        setHeartbeatFlag(false); 
+    else if (alarmNumber == 2) 
+        setHeartbeatFlag(true);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::send(const uint8_t destinationAddress) {
     return send(destinationAddress, manager->getDocument().as<JsonObject>());
 }

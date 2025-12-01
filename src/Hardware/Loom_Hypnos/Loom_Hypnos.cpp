@@ -478,6 +478,38 @@ void Loom_Hypnos::setSecondAlarmInterruptDuration(const TimeSpan duration) {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+uint8_t Loom_Hypnos::getTriggeredAlarm() {
+    uint32_t alarmOneTime = getAlarmDate(1).unixtime();
+    uint32_t alarmTwoTime = getAlarmDate(2).unixtime();
+    uint32_t currentTime = getCurrentTime().unixtime();
+
+    if(alarmOneTime <= currentTime)
+        return 1;
+    else if(alarmTwoTime <= currentTime)
+        return 2;
+
+    ERROR("No alarms have been triggered!");
+    return 0;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+DateTime Loom_Hypnos::getAlarmDate(const uint8_t alarmNumber) {
+    if(alarmNumber < 1 || alarmNumber > 2){
+        ERROR("Attempted to get alarm date for invalid alarm number, valid numbers are 1 and 2");
+        return DateTime();
+    }
+
+    return RTC_DS.getAlarm(alarmNumber);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::clearAlarms() {
+    // Clear any pending RTC alarms
+    RTC_DS.clearAlarm();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /* Sleep Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
