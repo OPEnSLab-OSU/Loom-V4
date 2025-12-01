@@ -221,9 +221,15 @@ void Loom_Multiplexer::setAddresses(std::vector<byte> configAddresses){
     // know addresses initialized as empty, is only filled if the second mux constructor is used with 
     // a vector defined in the ino. If this second constructor was used, we wont use the config addresses. 
     if(!(known_addresses.size() > 0)){
-        known_addresses = configAddresses;
-        snprintf(output, OUTPUT_SIZE, "Using %d sensor addresses from SD", known_addresses.size());
-        LOG(output);
+        if(configAddresses.size() > 0){
+            known_addresses = configAddresses;
+            snprintf(output, OUTPUT_SIZE, "Using %d sensor addresses from SD", known_addresses.size());
+            LOG(output);
+        }
+        else{
+            snprintf(output, OUTPUT_SIZE, "No configured addresses. Multiplexer will use default addresses");
+            LOG(output);
+        }
     }
     else{
     snprintf(output, OUTPUT_SIZE, "Sensor addresses are already configured. SD addresses will not be used");

@@ -644,12 +644,12 @@ std::vector<byte> Loom_Hypnos::loadAddressesFromSD(const char* fileName){
                 return config_addresses;
             }
 
-            // If the sensors array is empty or null, use default_addresses. 
+            // If the sensors array is empty or null, return empty vector.  
             else{
                 snprintf(output, OUTPUT_SIZE, "There was an error retrieving the sensor addresses from the JSON document, default_address's will be used");
-                // known addresses empty vector by default, set if it has not been set already. 
-                
+                // known addresses empty vector by default. There is a check in multiplexer code that checks for empty addresses.  
                 ERROR(output);
+                return config_addresses;
             }
         }
 }
