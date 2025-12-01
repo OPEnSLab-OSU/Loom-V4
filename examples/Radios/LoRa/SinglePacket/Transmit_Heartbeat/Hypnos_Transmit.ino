@@ -11,6 +11,9 @@
 
 #include <Radio/Loom_LoRa/Loom_LoRa.h>
 
+#define DS3231_ADDRESS 0x68
+#define DS3231_STATUSREG 0x0F
+
 // Manager to control the device
 Manager manager("Device", 1);
 
@@ -39,12 +42,14 @@ void setup() {
 
   // initialize heartbeat operations
   uint8_t destAddr = 0;
-  uint32_t hbInterval_s = 15;
-  uint32_t normalInterval_s = 35;
+  uint32_t hbInterval_s = 60;
+  uint32_t normalInterval_s = 15;
   lora.heartbeatInit(destAddr, hbInterval_s, normalInterval_s, &hypnos);
 }
 
 void loop() {
+  lora.adjustHbFlagFromAlarms();
+
   // logic to execute this loop
   if(lora.getHeartbeatFlag())
   {
@@ -58,13 +63,8 @@ void loop() {
     lora.send(0);
   }
 
-  TimeSpan tSpan = lora.calculateNextEvent();
-  Serial.print(":::::::::::::::::::::::::::::Sleep for: ");
-  Serial.print(String(tSpan.seconds()));
-  Serial.println(" Seconds:::::::::::::::::::::::");
-
-  // Set the RTC interrupt alarm to wake the device based on preset intervals declared in heartbeatInit();
-  hypnos.setInterruptDuration(tSpan);
+  // ADD: re-init timers. [ensureTimersActive()] Ideally, this function auto checks timers for safety.
+  lora.ensureHypnosAlarmsActive();
 
   // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
   hypnos.reattachRTCInterrupt();
@@ -73,6 +73,4 @@ void loop() {
   
   // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
   hypnos.sleep();
-
-  delay(100);  // CRITICAL: Need to let hardware wake up
 }
