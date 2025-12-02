@@ -12,7 +12,7 @@
 Manager manager("Chime", 1);
 
 // Create a new Hypnos object setting the version to determine the SD Chip select pin
-Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, false, false);
+Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3);
 Loom_TSL2591 tsl2591(manager);
 
 void setup() {
