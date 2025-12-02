@@ -459,7 +459,7 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::sleep(bool waitForSerial){
-    // Try to power down the active modules
+	
     // If the alarm set time is less than the current time we missed our next alarm so we need to set a new one, we need to check if we have powered on already so we dont use the RTC that isn't enabled
     bool hasAlarmTriggered = false;
 	
