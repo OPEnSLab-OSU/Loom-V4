@@ -176,11 +176,17 @@ public:
     static void truncateFileName(char *dst, const char* src) {
         const char *name = strrchr(src, '\\');
 
-        if (name == nullptr) name = strrchr(src, '/');
-        else name += 1; // shift off '\'
+        if (name == nullptr) {
+          name = strrchr(src, '/');
+        }
+        
+        // If we found a separator, skip it. Otherwise, use the full string.
+        if (name != nullptr) {
+            name += 1; 
+        } else {
+            name = src;
+        }
 
-        if (name == nullptr) name = src;
-        else name += 1; // shift off '/'
 
         memcpy(dst, name, strlen(name));
     }
