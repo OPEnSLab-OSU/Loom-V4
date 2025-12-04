@@ -626,7 +626,7 @@ std::vector<byte> Loom_Hypnos::loadAddressesFromSD(const char* fileName){
     
 
     if(deserialError != DeserializationError::Ok){
-        snprintf(output, OUTPUT_SIZE, "There was an error reading the config from SD: %s, multiplexer will use default_addresses", deserialError.c_str());
+        snprintf(output, OUTPUT_SIZE, "There was an error reading the config from SD: %s", deserialError.c_str());
         ERROR(output);
 
     }
