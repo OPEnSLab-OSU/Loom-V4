@@ -68,15 +68,10 @@ class Loom_Multiplexer : public Module{
 		// Destructor removes all new sensor instances
 		~Loom_Multiplexer();
 
-		// way to load addresses returned from SD function, will be ran after hypnos is enabled
-		// and loadAddressesFromSD is called. Used for testing 
-		//void setAddresses(std::vector<byte> configAddresses);
-
 		/**
-         * @brief Load custom addresses for multiplexer stored in SD (addresses)
+         * @brief Load custom multiplexer addresses stored in SD 
          * 
          * @param fileName The file name of the json in root of SD card
-         * @return Vector containing addresses to be used by multiplexer. 
          */
         void loadAddressesFromSD(const char* fileName);
         
