@@ -5,7 +5,7 @@
 #include <ArduinoLowPower.h>
 #include <map>
 #include <tuple>
-#include <vector>
+
 #include "Arduino.h"
 #include "Module.h"
 #include "Internet/Connectivity/NetworkComponent.h"
@@ -221,13 +221,6 @@ class Loom_Hypnos : public Module{
          */
         TimeSpan getConfigFromSD(const char* fileName);
 
-        /**
-         * @brief Load custom addresses for multiplexer stored in SD (addresses)
-         * 
-         * @param fileName The file name of the json in root of SD card
-         * @return Vector containing addresses to be used by multiplexer. 
-         */
-        std::vector<byte> loadAddressesFromSD(const char* fileName);
 
         /**
          * Read file from SD

@@ -605,54 +605,7 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
     free(fileRead);
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-std::vector<byte> Loom_Hypnos::loadAddressesFromSD(const char* fileName){
-    FUNCTION_START;
-    // Doc to store the JSON data from the SD card in
-    StaticJsonDocument<OUTPUT_SIZE> doc;
-    char output[OUTPUT_SIZE];
-    char* fileRead = sdMan->readFile(fileName);
-    // avoid zero-copy behavior
-    DeserializationError deserialError = deserializeJson(doc, (const char *)fileRead);
-    free(fileRead);
-
-    // Create JsonArray object to store sensor array
-    JsonArray sensorMap = doc["sensors"];
-    // vector to store addresses found in SD
-    std::vector<byte> config_addresses = {};
-    
-
-    if(deserialError != DeserializationError::Ok){
-        snprintf(output, OUTPUT_SIZE, "There was an error reading the config from SD: %s", deserialError.c_str());
-        ERROR(output);
-
-    }
-    else{
-            LOG(F("Config successfully loaded from SD!"));
-            if(!sensorMap.isNull()){
-                //reserve space in config_addresses before loop
-                config_addresses.reserve(sensorMap.size());
-                // just takes addresses and pushes them onto config_addresses. Could also display what sensors were using if wanted. 
-                for(int i = 0; i < sensorMap.size(); i++){
-                    config_addresses.push_back(sensorMap[i]["addr"]);
-                }
-                snprintf(output, OUTPUT_SIZE, "Retrieved %u addresses from SD.", config_addresses.size());
-                LOG(output);
-                return config_addresses;
-            }
-
-            // If the sensors array is empty or null, return empty vector.  
-            else{
-                snprintf(output, OUTPUT_SIZE, "There was an error retrieving the sensor addresses from the JSON document, default_address's will be used");
-                // known addresses empty vector by default. There is a check in multiplexer code that checks for empty addresses.  
-                ERROR(output);
-                return config_addresses;
-            }
-        }
-}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
