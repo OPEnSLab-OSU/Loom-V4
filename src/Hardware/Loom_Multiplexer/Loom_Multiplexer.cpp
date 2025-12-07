@@ -249,9 +249,9 @@ void Loom_Multiplexer::loadAddressesFromSD(const char* fileName){
             LOG(F("Config successfully loaded from SD!"));
             if(!sensorMap.isNull()){
                 if(sensorMap.size()){
-                    //reserve space in config_addresses before loop
+                    //reserve space in known_addresses before loop
                     known_addresses.reserve(sensorMap.size());
-                    // just takes addresses and pushes them onto config_addresses. Could also display what sensors were using if wanted. 
+
                     for(int i = 0; i < sensorMap.size(); i++){
                         known_addresses.push_back(sensorMap[i]["addr"]);
                     }
@@ -259,7 +259,7 @@ void Loom_Multiplexer::loadAddressesFromSD(const char* fileName){
                     LOG(output);
                 }
                 else{
-                    snprintf(output, OUTPUT_SIZE, "JSON Sensor array empty. Using default addresses");
+                    snprintf(output, OUTPUT_SIZE, "JSON \"Sensors\" array empty. Using default addresses");
                     LOG(output);
                     known_addresses = default_addresses;
                 }
@@ -267,10 +267,9 @@ void Loom_Multiplexer::loadAddressesFromSD(const char* fileName){
                 
             }
 
-            // If the sensors array is empty or null, return empty vector.  
+            // If the sensors array is null.  
             else{
                 snprintf(output, OUTPUT_SIZE, "There was an error retrieving addresses from the JSON document, default address's will be used");
-                // known addresses empty vector by default. There is a check in multiplexer code that checks for empty addresses.  
                 ERROR(output);
                 known_addresses = default_addresses;
             }
