@@ -31,6 +31,8 @@ class Loom_SEN55 : public I2CDevice{
     public:
         /**
          * Constructs a new SEN55 sensor
+         * 
+         * Note: SEN55 addr: 0x69
          *
          * @param man Reference to the manager that is used to universally package all data
          * @param measurePM This sets whether or not we should conduct measurements without PM readings (uses less power)
