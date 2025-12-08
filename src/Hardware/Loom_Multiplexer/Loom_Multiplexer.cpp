@@ -302,11 +302,11 @@ Module* Loom_Multiplexer::loadSensor(const byte addr){
         case 0x1D: return new Loom_MMA8451(*manInst, 0x1D, true);
 
         //Loom_DFMultiGasSensor
-        //case 0x74: return new Loom_DFMultiGasSensor(*manInst, 0x74, 10,false, true);
-        //case 0x75: return new Loom_DFMultiGasSensor(*manInst, 0x75, 10,false, true);
+        case 0x74: return new Loom_DFMultiGasSensor(*manInst, 0x74, 10,false, true);
+        case 0x75: return new Loom_DFMultiGasSensor(*manInst, 0x75, 10,false, true);
 
         // Loom_T6793
-        //case 0x15: return new Loom_T6793(*manInst, 0x15, 10, true);
+        case 0x15: return new Loom_T6793(*manInst, 0x15, 10, true);
 
         // MPU6050
         // case 0x69: return new Loom_MPU6050(*manInst,  true);
