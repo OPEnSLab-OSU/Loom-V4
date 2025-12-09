@@ -643,6 +643,8 @@ void Loom_LoRa::adjustHbFlagFromAlarms() {
         return;
     }
 
+    hypnosPtr->clearAlarmFlags();
+
     uint8_t alarmNumber = hypnosPtr->getTriggeredAlarm(); 
 
     Serial.print("Triggered Alarm Number: ");

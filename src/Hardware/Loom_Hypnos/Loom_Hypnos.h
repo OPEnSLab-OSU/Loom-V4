@@ -193,6 +193,13 @@ class Loom_Hypnos : public Module{
         /**
          * Set the second alarm interrupt to be triggered at a set interval in the future
          * @param duration The time that will elapse before the second alarm interrupt is triggered
+         * 
+         * @note DS3231 Alarm 2 only supports minute/hour/day/date resolution and ignores seconds.
+         *          As a result, when setting the second alarm with a TimeSpan that includes seconds,
+         *          the alarm will trigger at the start of the target minute rather than the exact second.
+         *          The first wakeup may therefore occur slightly earlier than intended, but subsequent
+         *          intervals remain correct because the alarm is reset relative to the current RTC time.
+         *          If precise second-level timing is required, consider using Alarm 1, which supports seconds.
          */
         void setSecondAlarmInterruptDuration(const TimeSpan duration);
 
