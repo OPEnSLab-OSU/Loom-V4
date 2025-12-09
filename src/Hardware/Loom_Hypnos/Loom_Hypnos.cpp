@@ -466,13 +466,17 @@ void Loom_Hypnos::setSecondAlarmInterruptDuration(const TimeSpan duration) {
     // The time in the future that the second alarm will be set for
     Ds3231_ALARM_TYPES_t alarmType = ALM2_MATCH_DATE;
     DateTime future(RTC_DS.now() + duration);
-    RTC_DS.setAlarm(alarmType, future.minute(), future.hour(), future.day()); // 2nd alarm doesn't take seconds.
+    // 2nd alarm doesn't take seconds.
+    RTC_DS.setAlarm(alarmType, future.minute(), future.hour(), future.day()); 
+
+    // Adjust future for logging to match actual trigger time (seconds set to 0)
+    DateTime futureLogged(future.year(), future.month(), future.day(), future.hour(), future.minute(), 0);
 
     // Print the time that the next interrupt is set to trigger
     snprintf(output, OUTPUT_SIZE, PSTR("Current Time (Local): %s"), getLocalTime(RTC_DS.now()).text());
     LOG(output);
 
-    snprintf(output, OUTPUT_SIZE, PSTR("2nd Interrupt Alarm Set For: %s"), getLocalTime(future).text());
+    snprintf(output, OUTPUT_SIZE, PSTR("2nd Interrupt Alarm Set For: %s"), getLocalTime(futureLogged).text());
     LOG(output);
     FUNCTION_END;
 }
