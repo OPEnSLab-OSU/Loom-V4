@@ -11,6 +11,9 @@
 
 #include <Radio/Loom_LoRa/Loom_LoRa.h>
 
+#define DS3231_ADDRESS 0x68
+#define DS3231_STATUSREG 0x0F
+
 // Manager to control the device
 Manager manager("Device", 1);
 
@@ -40,7 +43,7 @@ void setup() {
   // initialize heartbeat operations
   uint8_t destAddr = 0;
   uint32_t hbInterval_s = 60;
-  uint32_t normalInterval_s = 25;
+  uint32_t normalInterval_s = 35;
   lora.heartbeatInit(destAddr, hbInterval_s, normalInterval_s, &hypnos);
 }
 
@@ -71,5 +74,5 @@ void loop() {
   // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
   hypnos.sleep();
 
-  delay(100); // CRITICAL: Small delay to ensure stability after waking up 
+  delay(100);
 }
