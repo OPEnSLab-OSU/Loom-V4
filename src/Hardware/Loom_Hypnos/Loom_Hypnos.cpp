@@ -478,7 +478,11 @@ void Loom_Hypnos::setSecondAlarmInterruptDuration(const TimeSpan duration) {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 uint8_t Loom_Hypnos::getTriggeredAlarm() {
+    if(isAlarm1Cleared() && isAlarm2Cleared())
+        return 0;
+    
     uint32_t alarmOneTime = getAlarmDate(1).unixtime();
     uint32_t alarmTwoTime = getAlarmDate(2).unixtime();
     uint32_t currentTime = getCurrentTime().unixtime();
@@ -491,6 +495,7 @@ uint8_t Loom_Hypnos::getTriggeredAlarm() {
     ERROR("No alarms have been triggered!");
     return 0;
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 DateTime Loom_Hypnos::getAlarmDate(const uint8_t alarmNumber) {
@@ -504,9 +509,99 @@ DateTime Loom_Hypnos::getAlarmDate(const uint8_t alarmNumber) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::clearAlarm1Register() {
+    Wire.beginTransmission(DS3231_ADDRESS);
+    Wire.write(ALM1_SECONDS);
+    Wire.write(0x80); // seconds
+    Wire.write(0x80); // minutes
+    Wire.write(0x80); // hours
+    Wire.write(0x80); // day/date
+    Wire.endTransmission();
+    Serial.println("Alarm 1 register reset");
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::clearAlarm2Register() {
+    Wire.beginTransmission(DS3231_ADDRESS);
+    Wire.write(ALM2_MINUTES);
+    Wire.write(0x80); // minutes
+    Wire.write(0x80); // hours
+    Wire.write(0x80); // day/date
+    Wire.endTransmission();
+    Serial.println("Alarm 2 register reset");
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::clearAlarmRegisters() {
+    // Clear Alarm 1 Registers
+    clearAlarm1Register();
+
+    // Clear Alarm 2 Registers
+    clearAlarm2Register();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::clearAlarmFlags() {
+    // Clear Alarm Flags (A1F, A2F)
+    Wire.beginTransmission(DS3231_ADDRESS);
+    Wire.write(DS3231_STATUSREG);
+    Wire.endTransmission();
+
+    Wire.requestFrom(DS3231_ADDRESS, (uint8_t)1);
+    uint8_t status = Wire.read();
+
+    // Clear both alarm flags
+    status &= ~0b00000001;   // clear A1F
+    status &= ~0b00000010;   // clear A2F
+
+    Wire.beginTransmission(DS3231_ADDRESS);
+    Wire.write(DS3231_STATUSREG);
+    Wire.write(status);
+    Wire.endTransmission();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::isAlarm1Cleared() {
+    // set I2C to point to alarm 1 seconds register
+    Wire.beginTransmission(DS3231_ADDRESS);
+    Wire.write(ALM1_SECONDS);
+    Wire.endTransmission();
+
+    // check if any alarm 1 registers are cleared
+    Wire.requestFrom(DS3231_ADDRESS, (uint8_t)4);
+    for (int i = 0; i < 4; i++) {
+        if (Wire.read() != 0x80)
+            return false;
+    }
+    return true;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::isAlarm2Cleared() {
+    // set I2C to point to alarm 2 minutes register
+    Wire.beginTransmission(DS3231_ADDRESS);
+    Wire.write(ALM2_MINUTES);
+    Wire.endTransmission();
+
+    // check if any alarm 1 registers are cleared
+    Wire.requestFrom(DS3231_ADDRESS, (uint8_t)4);
+    for (int i = 0; i < 3; i++) {
+        if (Wire.read() != 0x80)
+            return false;
+    }
+    return true;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::clearAlarms() {
-    // Clear any pending RTC alarms
-    RTC_DS.clearAlarm();
+    clearAlarmRegisters();
+    clearAlarmFlags();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

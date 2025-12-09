@@ -202,7 +202,37 @@ class Loom_Hypnos : public Module{
         uint8_t getTriggeredAlarm();
 
         /**
-         * Clear any active RTC alarms
+         * Clear the alarm 1 register on the DS3231 RTC
+         */
+        void clearAlarm1Register();
+
+        /**
+         * Clear the alarm 2 register on the DS3231 RTC
+         */
+        void clearAlarm2Register();
+
+        /**
+         * Clear the alarm registers on the DS3231 RTC
+         */
+        void clearAlarmRegisters();
+
+        /**
+         * Clear the alarm flags on the DS3231 RTC
+         */
+        void clearAlarmFlags();
+
+        /**
+         * Check if Alarm 1 is cleared
+         */
+        bool isAlarm1Cleared();
+
+        /**
+         * Check if Alarm 2 is cleared
+         */
+        bool isAlarm2Cleared();
+
+        /**
+         * Fully clear both alarms on the DS3231 RTC, including their status flags and actual registers.
          */
         void clearAlarms();
 
