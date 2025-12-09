@@ -74,5 +74,5 @@ void loop() {
   // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
   hypnos.sleep();
 
-  delay(100);
+  delay(100); // CRITICAL: Without this delay, output and operation does not align with expectations.
 }
