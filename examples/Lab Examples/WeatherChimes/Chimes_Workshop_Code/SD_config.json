@@ -1,0 +1,9 @@
+{
+    "SleepInterval": {
+        "days" : 0,
+        "hours" : 0,
+        "minutes" : 5,
+        "seconds" : 0
+    },
+    "timezone": "CST"
+}
