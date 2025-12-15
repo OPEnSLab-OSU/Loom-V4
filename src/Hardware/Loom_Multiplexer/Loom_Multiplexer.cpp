@@ -246,26 +246,30 @@ void Loom_Multiplexer::loadAddressesFromSD(const char* fileName){
         known_addresses = default_addresses;
     }
     else{
-            LOG(F("Config successfully loaded from SD!"));
-            if(!sensorMap.isNull()){
-                if(sensorMap.size()){
-                    //reserve space in known_addresses before loop
-                    known_addresses.reserve(sensorMap.size());
+        LOG(F("Config successfully loaded from SD!"));
+        if(!sensorMap.isNull()){
+            if(sensorMap.size()){
+                //reserve space in known_addresses before loop
+                known_addresses.reserve(sensorMap.size());
 
-                    for(int i = 0; i < sensorMap.size(); i++){
-                        known_addresses.push_back(sensorMap[i]["addr"]);
-                    }
-                    snprintf(output, OUTPUT_SIZE, "Using %u addresses from SD.", known_addresses.size());
+                for(int i = 0; i < sensorMap.size(); i++){
+
+                    known_addresses.push_back(static_cast<byte>(strtol(sensorMap[i]["addr"], nullptr, 16)));
+                    // debugging to see each address pulled
+                    snprintf(output, OUTPUT_SIZE, "Address 0x%lX pulled from SD", strtol(sensorMap[i]["addr"], NULL, 16));
                     LOG(output);
                 }
-                else{
-                    snprintf(output, OUTPUT_SIZE, "JSON \"Sensors\" array empty. Using default addresses");
-                    LOG(output);
-                    known_addresses = default_addresses;
-                }
-
-                
+                snprintf(output, OUTPUT_SIZE, "Using %u addresses from SD.", known_addresses.size());
+                LOG(output);
             }
+            else{
+                snprintf(output, OUTPUT_SIZE, "JSON \"Sensors\" array empty. Using default addresses");
+                LOG(output);
+                known_addresses = default_addresses;
+            }
+
+            
+        }
 
             // If the sensors array is null.  
             else{
