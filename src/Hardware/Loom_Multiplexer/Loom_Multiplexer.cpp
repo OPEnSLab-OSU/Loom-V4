@@ -254,9 +254,9 @@ void Loom_Multiplexer::loadAddressesFromSD(const char* fileName){
 
                 for(int i = 0; i < sensorMap.size(); i++){
 
-                    known_addresses.push_back(static_cast<byte>(strtol(sensorMap[i]["addr"], nullptr, 16)));
+                    known_addresses.push_back(static_cast<byte>(strtol(sensorMap[i]["addr"], NULL, 16)));
                     // debugging to see each address pulled
-                    snprintf(output, OUTPUT_SIZE, "Address 0x%lX pulled from SD", strtol(sensorMap[i]["addr"], NULL, 16));
+                    snprintf(output, OUTPUT_SIZE, "Address 0x%X pulled from SD", known_addresses[i]);
                     LOG(output);
                 }
                 snprintf(output, OUTPUT_SIZE, "Using %u addresses from SD.", known_addresses.size());

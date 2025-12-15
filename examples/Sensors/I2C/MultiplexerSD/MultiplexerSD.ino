@@ -8,18 +8,15 @@ File must include a json of the following structure:
   ...
   ...
   ...
-  "sensors": [{"addr": address, ...}, {"addr": address, ...}, {"addr": address, ...}, ...]
+  "sensors": [{"addr": "0x__", "name": "___"}, {"addr": "0x__", "name":"___"}, {"addr": "0x__", "name": "___"}, ...]
   ...
   ...
-  }
-address must be a decimal number, json does not accept hex as an integer, only as a string
-ex {"addr": 0x44} will cause an error, instead use {"addr": 68}. 
-You can put sensor names in sensor pairs for readability. 
-ex {"addr": 100, "name": "MultiGasSensor"}, {"addr": 101, "name": "MultiGasSensor"}
-if sensor address exists 
+  }  
 
 Purpose of this example is to make sure filename is recognized, and 
 addresses are retrieved. Output should reflect number of addresses in SD
+
+Name usage will be implemented in the future, for now, will just need addresses 
 
 MANAGER MUST BE INCLUDED FIRST IN ALL CODE
 */
