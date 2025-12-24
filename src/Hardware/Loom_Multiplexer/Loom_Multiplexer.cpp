@@ -9,7 +9,7 @@ Loom_Multiplexer::Loom_Multiplexer(Manager& man) : Module("Multiplexer"), manIns
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Multiplexer::Loom_Multiplexer(Manager& man, const std::vector<byte>& addresses) : Module("Multiplexer"), manInst(&man){
+Loom_Multiplexer::Loom_Multiplexer(Manager& man, const std::vector<addrNamePair>& addresses) : Module("Multiplexer"), manInst(&man){
     moduleInitialized = false;
     manInst->registerModule(this);
     known_addresses = addresses;
@@ -251,19 +251,21 @@ void Loom_Multiplexer::loadAddressesFromSD(const char* fileName){
             if(sensorMap.size()){
                 //reserve space in known_addresses before loop
                 known_addresses.reserve(sensorMap.size());
+                addrNamePair sensor; 
 
                 for(int i = 0; i < sensorMap.size(); i++){
-
-                    known_addresses.push_back(static_cast<byte>(strtol(sensorMap[i]["addr"], NULL, 16)));
-                    // debugging to see each address pulled
-                    snprintf(output, OUTPUT_SIZE, "Address 0x%X pulled from SD", known_addresses[i]);
+                    sensor.name = sensorMap[i]["name"];
+                    sensor.addr = static_cast<byte>(strtol(sensorMap[i]["addr"], NULL, 16));
+                    known_addresses.push_back(sensor);
+                    // debugging to see each sensor name and address pulled
+                    snprintf(output, OUTPUT_SIZE, "Using %s sensor with address %0X.", sensor.name, sensor.addr);
                     LOG(output);
                 }
                 snprintf(output, OUTPUT_SIZE, "Using %u addresses from SD.", known_addresses.size());
                 LOG(output);
             }
             else{
-                snprintf(output, OUTPUT_SIZE, "JSON \"Sensors\" array empty. Using default addresses");
+                snprintf(output, OUTPUT_SIZE, "JSON \"sensors\" array empty. Using default addresses");
                 LOG(output);
                 known_addresses = default_addresses;
             }
@@ -350,7 +352,7 @@ Module* Loom_Multiplexer::loadSensor(const addrNamePair& sensor){
         // SEN55
         if(!strcmp(sensor.name, "Loom_SEN55")){
             if(sensor.addr == 0x69)
-                case 0x69: return new Loom_SEN55(*manInst,0x69, true);
+                return new Loom_SEN55(*manInst,0x69, true);
         }
 
         // MS5803

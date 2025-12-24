@@ -42,6 +42,11 @@ class Loom_Multiplexer : public Module{
 		void power_down() override; 
 		void power_up() override;
 
+		struct addrNamePair{
+			byte addr;
+			const char* name;
+		};
+
         /**
          * Construct a new Multiplexer
          * 
@@ -55,7 +60,7 @@ class Loom_Multiplexer : public Module{
          * @param man Reference to the manager
 		 * @param addresses Vector of addresses you want to pass in to known addresses
          */ 
-        Loom_Multiplexer(Manager& man, const std::vector<byte>& addresses);
+        Loom_Multiplexer(Manager& man, const std::vector<addrNamePair>& addresses);
 
 		/**
 		 * @brief Construct a new Loom_Multiplexer object with hypnos object
@@ -74,6 +79,7 @@ class Loom_Multiplexer : public Module{
          * @param fileName The file name of the json in root of SD card
          */
         void loadAddressesFromSD(const char* fileName);
+
         
     private:
         Manager* manInst;                                       // Instance of the manager
@@ -81,11 +87,6 @@ class Loom_Multiplexer : public Module{
 		const char* sdFile = nullptr;							// name of file on SD card				
 		byte activeMuxAddr;										// The port which we want to try to communicate over
 		const uint8_t numPorts = 8;								// Number of ports on the multiplexer
-
-		struct addrNamePair{
-			byte addr;
-			char name[24];
-		}
 		
 
 		std::vector<std::tuple<byte, Module*, int>> sensors;			// List of sensors
@@ -97,7 +98,7 @@ class Loom_Multiplexer : public Module{
 		void refreshSensors();									// Checks to see if any new sensors were swapped in allows for hot swapping
 		Module* loadSensor(const addrNamePair& sensor);					// Load the correct sensor based on the I2C address
 
-		std::vector<byte> known_addresses = {};
+		std::vector<addrNamePair> known_addresses = {};
 
 		// Used to optimize searching for sensors:
 		// search addresses in array rather than 0-127 
