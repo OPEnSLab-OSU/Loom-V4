@@ -60,15 +60,15 @@ void Loom_Multiplexer::initialize(){
                 selectPin(i);
 
                 // Loop over address that we know to speed up refreshing
-                for(byte addr : known_addresses){
+                for(addrNamePair sensor : known_addresses){
 
-                    if(addr > 0){
+                    if(sensor.addr > 0){
                         // Is there any device at this address
-                        if(isDeviceConnected(addr)){
-                            snprintf(output, OUTPUT_SIZE, "Found I2C Device on Pin %i at address %x", i, addr);
+                        if(isDeviceConnected(sensor.addr)){
+                            snprintf(output, OUTPUT_SIZE, "Found I2C Device on Pin %i at address %x", i, sensor.addr);
                             LOG(output);
 
-                            sensors.push_back(std::make_tuple(addr, loadSensor(addr), i));
+                            sensors.push_back(std::make_tuple(sensor.addr, loadSensor(sensor), i));
 
                             // Initialize connected sensor
                             snprintf(output, OUTPUT_SIZE, "%s_%i", std::get<1>(sensors[moduleIndex])->getModuleName(), i);
@@ -109,18 +109,18 @@ void Loom_Multiplexer::refreshSensors(){
         delay(50);
        
         // Loop over address that we know to speed up refreshing
-        for(byte addr : known_addresses){
+        for(addrNamePair sensor : known_addresses){
 
             // Is there any device at this address
-            if(isDeviceConnected(addr) && addr > 0){
+            if(isDeviceConnected(sensor.addr) && sensor.addr > 0){
 
                 // If it was a new sensor plugged in then load a new sensor over top
-                if(std::get<1>(sensors[moduleIndex])->module_address != addr){
+                if(std::get<1>(sensors[moduleIndex])->module_address != sensor.addr){
                     delete std::get<1>(sensors[moduleIndex]);
-                    sensors[moduleIndex] = std::make_tuple(addr, loadSensor(addr), i);
+                    sensors[moduleIndex] = std::make_tuple(sensor.addr, loadSensor(sensor), i);
 
                     // Initialize the new sensor
-                    snprintf(output, OUTPUT_SIZE, "New sensor detected on port %i at I2C address %x of type %s", i, addr, std::get<1>(sensors[moduleIndex])->getModuleName());
+                    snprintf(output, OUTPUT_SIZE, "New sensor detected on port %i at I2C address %x of type %s", i, sensor.addr, std::get<1>(sensors[moduleIndex])->getModuleName());
                     LOG(output);
                     
                     // Update name for unique instances in the Mux
@@ -282,52 +282,95 @@ void Loom_Multiplexer::loadAddressesFromSD(const char* fileName){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Module* Loom_Multiplexer::loadSensor(const byte addr){
+Module* Loom_Multiplexer::loadSensor(const addrNamePair& sensor){
     // Select the correct sensor to load based on the address
-    switch (addr){
+
         //TSL2591
-        case 0x29: return new Loom_TSL2591(*manInst, 0x29, true);
+        if(!strcmp(sensor.name, "Loom_TSL2591")){
+            if(sensor.addr == 0x29)
+                return new Loom_TSL2591(*manInst, 0x29, true);
+            }
+        }
 
         // ZX Gesture
-        case 0x10: return new Loom_ZXGesture(*manInst, 0x10, true);
-        case 0x11: return new Loom_ZXGesture(*manInst, 0x11, true);
+        if(!strcmp(sensor.name, "Loom_ZXGesture")){
+            switch (sensor.addr){
+                case 0x10: return new Loom_ZXGesture(*manInst, 0x10, true);
+                case 0x11: return new Loom_ZXGesture(*manInst, 0x11, true);
+            }
+        }
 
         // SHT31
-        case 0x44: return new Loom_SHT31(*manInst, 0x44, true);
-        case 0x45: return new Loom_SHT31(*manInst, 0x45, true);
+        if(!strcmp(sensor.name, "Loom_SHT31")){
+            switch (sensor.addr){
+                case 0x44: return new Loom_SHT31(*manInst, 0x44, true);
+                case 0x45: return new Loom_SHT31(*manInst, 0x45, true);
+            }
+        }
 
-        // ADS1115  
-        case 0x48: return new Loom_ADS1115(*manInst, 0x48, true);
+        // ADS1115 
+        if(!strcmp(sensor.name, "Loom_ADS1115")){
+            if(sensor.addr == 0x48)
+                return new Loom_ADS1115(*manInst, 0x48, true);
+        }
 
         // K30 - 
-        case 0x68: return new Loom_K30(*manInst, true, 0x68, true);
+        if(!strcmp(sensor.name, "Loom_K30")){
+            if(sensor.addr == 0x68)
+                return new Loom_K30(*manInst, true, 0x68, true);
+        }
 
         //MMA8451
-        case 0x1D: return new Loom_MMA8451(*manInst, 0x1D, true);
+        if(!strcmp(sensor.name, "Loom_MMA8451")){
+            if(sensor.addr == 0x1D)
+                return new Loom_MMA8451(*manInst, 0x1D, true);
 
+        }
         //Loom_DFMultiGasSensor
-        case 0x74: return new Loom_DFMultiGasSensor(*manInst, 0x74, 10,false, true);
-        case 0x75: return new Loom_DFMultiGasSensor(*manInst, 0x75, 10,false, true);
+        if(!strcmp(sensor.name, "Loom_DFMultiGasSensor")){
+            switch (sensor.addr){
+                case 0x74: return new Loom_DFMultiGasSensor(*manInst, 0x74, 10,false, true);
+                case 0x75: return new Loom_DFMultiGasSensor(*manInst, 0x75, 10,false, true);
+            }
+        }
 
         // Loom_T6793
-        case 0x15: return new Loom_T6793(*manInst, 0x15, 10, true);
+        if(!strcmp(sensor.name, "Loom_T6793")){
+            if(sensor.addr == 0x15)
+                return new Loom_T6793(*manInst, 0x15, 10, true);
+        }
 
         // MPU6050
-        // case 0x69: return new Loom_MPU6050(*manInst,  true);
+        if(!strcmp(sensor.name, "Loom_MPU6050")){
+            if(sensor.addr == 0x69)
+                return new Loom_MPU6050(*manInst,  true);
+        }
 
         // SEN55
-        case 0x69: return new Loom_SEN55(*manInst,0x69, true);
+        if(!strcmp(sensor.name, "Loom_SEN55")){
+            if(sensor.addr == 0x69)
+                case 0x69: return new Loom_SEN55(*manInst,0x69, true);
+        }
 
         // MS5803
-        case 0x76: return new Loom_MS5803(*manInst, 0x76, true);
-        case 0x77: return new Loom_MS5803(*manInst, 0x77, true);
+        if(!strcmp(sensor.name, "Loom_MS5803")){
+            switch (sensor.addr){
+                case 0x76: return new Loom_MS5803(*manInst, 0x76, true);
+                case 0x77: return new Loom_MS5803(*manInst, 0x77, true);
+            }
+        }
 
         // STEMMA
-        case 0x36: return new Loom_STEMMA(*manInst, 0x36, true);
+        if(!strcmp(sensor.name, "Loom_STEMMA")){
+            if(sensor.addr == 0x36)
+                return new Loom_STEMMA(*manInst, 0x36, true);
+        }
 
         /// MB1232
-        case 0x70: return new Loom_MB1232(*manInst, 0x70, true);
-    }
+        if(!strcmp(sensor.name, "Loom_MB1232")){
+            if(sensor.addr == 0x70)
+                return new Loom_MB1232(*manInst, 0x70, true);
+        }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

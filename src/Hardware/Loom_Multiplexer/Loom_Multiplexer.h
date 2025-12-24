@@ -82,6 +82,12 @@ class Loom_Multiplexer : public Module{
 		byte activeMuxAddr;										// The port which we want to try to communicate over
 		const uint8_t numPorts = 8;								// Number of ports on the multiplexer
 
+		struct addrNamePair{
+			byte addr;
+			char name[24];
+		}
+		
+
 		std::vector<std::tuple<byte, Module*, int>> sensors;			// List of sensors
 
         void selectPin(uint8_t pin);                            // Select which pin of the multiplexer to transmit to
@@ -89,32 +95,32 @@ class Loom_Multiplexer : public Module{
 		bool isDeviceConnected(byte addr);						// Check if there is a device at the specified address
 
 		void refreshSensors();									// Checks to see if any new sensors were swapped in allows for hot swapping
-		Module* loadSensor(const byte addr);					// Load the correct sensor based on the I2C address
+		Module* loadSensor(const addrNamePair& sensor);					// Load the correct sensor based on the I2C address
 
 		std::vector<byte> known_addresses = {};
 
 		// Used to optimize searching for sensors:
 		// search addresses in array rather than 0-127 
-		const std::vector<byte> default_addresses = 
+		const std::vector<addrNamePair> default_addresses = 
 		{
-			0x10, ///< ZXGESTURESENSOR
-			0x11, ///< ZXGESTURESENSOR
-			0x15, ///< T6793
-			0x19, ///< LIS3DH
-			0x1C, ///< MMA8451
-			0x1D, ///< MMA8451
-			0x29, ///< TSL2591
-			0x36, ///< STEMMA
-			0x44, ///< SHT31D
-			0x45, ///< SHT31D
-			0x48, ///< ADS1115
-			0x49, ///< AS726X / AS7265X
-			0x68, ///< K30
-			0x69, ///< SEN55
-			0x70, ///< MB1232
-			0x74, ///< DFMultiGasSensor
-			0x76, ///< MS5803
-			0x77  ///< MS5803
+			{0x10, "Loom_ZXGesture"}, 		///< ZXGESTURESENSOR
+			{0x11,"Loom_ZXGesture"}, 		///< ZXGESTURESENSOR
+			{0x15, "Loom_T6793"},			///< T6793
+			{0x19,"Loom_LIS3DH"}, 			///< LIS3DH
+			{0x1C, "Loom_MMA8541"},			///< MMA8451
+			{0x1D, "Loom_MMA8541"},			///< MMA8451
+			{0x29, "Loom_TSL2591"},			///< TSL2591
+			{0x36, "Loom_STEMMA"},			///< STEMMA
+			{0x44, "Loom_SHT31"},			///< SHT31D
+			{0x45, "Loom_SHT31"}, 			///< SHT31D
+			{0x48, "Loom_ADS1115"},			///< ADS1115
+			// {0x49, "Loom_AS7262"},		///< AS726X / AS7265X
+			{0x68, "Loom_K30"},				///< K30
+			{0x69, "Loom_SEN55"},			///< SEN55
+			{0x70, "Loom_MB1232"},			///< MB1232
+			{0x74, "Loom_MultiGasSensor"},	///< DFMultiGasSensor
+			{0x76, "Loom_MS5803"},			///< MS5803
+			{0x77, "Loom_MS5803"}			///< MS5803
 		};
 
 		/**
