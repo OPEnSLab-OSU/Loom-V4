@@ -290,7 +290,7 @@ Module* Loom_Multiplexer::loadSensor(const addrNamePair& sensor){
             if(sensor.addr == 0x29)
                 return new Loom_TSL2591(*manInst, 0x29, true);
             }
-        }
+        
 
         // ZX Gesture
         if(!strcmp(sensor.name, "Loom_ZXGesture")){
@@ -326,6 +326,7 @@ Module* Loom_Multiplexer::loadSensor(const addrNamePair& sensor){
                 return new Loom_MMA8451(*manInst, 0x1D, true);
 
         }
+        
         //Loom_DFMultiGasSensor
         if(!strcmp(sensor.name, "Loom_DFMultiGasSensor")){
             switch (sensor.addr){
