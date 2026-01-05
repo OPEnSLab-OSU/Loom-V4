@@ -1,5 +1,6 @@
 #include "Loom_Hypnos.h"
 #include "Logger.h"
+#include "Sensors/Loom_Analog/Loom_Analog.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time, bool useSD) : Module("Hypnos"), custom_time(use_custom_time), sd_chip_select(version), enableSD(useSD), timezone(zone){
@@ -459,11 +460,10 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::sleep(bool waitForSerial){
-	
-    // If the alarm set time is less than the current time we missed our next alarm so we need to set a new one, we need to check if we have powered on already so we dont use the RTC that isn't enabled
-    bool hasAlarmTriggered = false;
-	
-	// Try to power down the active modules
+    // Try to power down the active modules
+
+    bool hasAlarmTriggered = false; 
+
     if (shouldPowerUp) {
         manInst->power_down();
 
@@ -633,14 +633,31 @@ void Loom_Hypnos::createTimezoneMap(){
     timezoneMap.insert(std::make_pair("ACST", TIME_ZONE::ACST));
     timezoneMap.insert(std::make_pair("AEST", TIME_ZONE::AEST));
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/*** SD Stuff ****/
+/* SD Stuff */
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::logToSD() {
     FUNCTION_START;
     sdMan->log(getCurrentTime());
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/* Voltage Checks */
+
+bool Loom_Hypnos::checkVoltage(float vmin, int analogPin, float scale){
+    INSTRUMENT();
+    analogReadResolution(12);                                                                               /* ADC bit resolution (2^12 == 4096 == 4095 raw counts) */
+    float voltage = 0.0f;
+    if(analogPin == A7){
+        voltage = Loom_Analog::getBatteryVoltage();
+    } else {
+        int raw = analogRead(analogPin);
+        voltage = (raw * VREF / 4095.0f) * scale;
+    }
+    uint8_t newFlags = (voltage >= vmin) ? VF_ACCEPTABLE : VF_DEGRADED;                                     /* Voltage flags will be useful for determistic responses to degraded voltage. Can add up to 5 more flags. */
+    newFlags |= VF_CHECKED;
+    voltage_flags = newFlags;
+    LOGF("Voltage read: %.2f V (min %.2f) on pin %d (scale %.2f)", voltage, vmin, analogPin, scale);
+    LOGF("Voltage Flags: %u", voltage_flags);                                                               /* Degraded+Checked = 6 || Acceptable+Checked = 5 */
+    return (voltage >= vmin);                                                                               /* Returns True if voltage is greater than VMIN */
+}

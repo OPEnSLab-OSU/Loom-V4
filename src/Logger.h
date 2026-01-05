@@ -87,13 +87,13 @@ private:
         // If we want to actually print to serial
         if (!silent)
             Serial.println(message);
-
-        snprintf_P(filePath, 100, PSTR("/debug/output_%i.log"), 
-                   sdInst->getCurrentFileNumber());
-
+            
         // Log as long as we have given it a SD card instance
-        if (sdInst != nullptr && enableSDLogging)
+        if (sdInst != nullptr && enableSDLogging && sdInst->hasSDInitialized()) {
+            snprintf_P(filePath, 100, PSTR("/debug/output_%i.log"), 
+                sdInst->getCurrentFileNumber());
             sdInst->writeLineToFile(filePath, message);
+        }
     }
 
 public:

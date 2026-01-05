@@ -31,7 +31,8 @@ enum POWERRAIL_CONFIG{
  */
 enum DEVICE_STATE{
     ENTERING_SLEEP,
-    EXITING_SLEEP
+    EXITING_SLEEP,
+    DEGRADED
 };
 
 /**
@@ -252,7 +253,17 @@ class Loom_Hypnos : public Module{
         void setLogName(const char* name) { sdMan->setLogName(name); };
 
         /* Return initialization state of the RTC */
-        bool isRTCInitialized() { return RTC_initialized; };
+        bool isRTCInitialized() { return RTC_initialized; };                                                            
+
+        /**
+          * @brief A minimum required voltage check for a complete cycle. Minimum voltage varies by device and should be determined by the user.
+          * 
+          * @param voltage_min Minimum required voltage for your device (default = 0.0)
+          * @param analogPin ADC Pin (default = A7 - Feather Pin 45)
+          * @param scale Resistance divisor for +VIN --> VOUT (default = 2.0)
+         */
+        bool checkVoltage(float vmin = 0.0, int analogPin = A7, float scale = 2.0f);        
+
 
     private:
 
@@ -293,6 +304,17 @@ class Loom_Hypnos : public Module{
 
         bool custom_time = false;                                                           // Set the RTC to a user specified time
 
+        /* Voltage check bitmaps 0-7 LSB-first */
+        static constexpr uint8_t VF_ACCEPTABLE = (1u << 0);                                 // 00000001 | 0x02
+        static constexpr uint8_t VF_DEGRADED = (1u << 1);                                   // 00000010 | 0x04
+        static constexpr uint8_t VF_CHECKED = (1u << 2);                                    // 00000100 | 0x06
+        static constexpr uint8_t VF_LIPO = (1u << 3);                                       // 00001000 | 0x08
+        static constexpr uint8_t VF_PINS = (1u << 4);                                       // 00010000 | 0x10
+
+        static constexpr float VREF = 3.3f;                                                 // Reference voltage based on the feather m0 3.3v rail
+
+        uint8_t voltage_flags = 0;                                                          // Flag mask defaults to 0x00           
+    
         // Map the given pin to an interrupt call back
         // 0th - ISR
         // 1st - Interrupt Trigger
@@ -315,7 +337,5 @@ class Loom_Hypnos : public Module{
         /* Sleep functionality */
         void pre_sleep();                            // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
         void post_sleep(bool waitForSerial);         // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
-
-
 
 };
