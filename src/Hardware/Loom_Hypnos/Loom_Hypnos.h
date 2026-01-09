@@ -70,7 +70,13 @@ enum TIME_ZONE{
     AWST = 8,
     ACST = 10, // Half an hour off so its -9.5
     AEST = 10
+};
 
+enum ALARM_BITMASKS{
+    BM_NONE = 0b00,
+    BM_ALARM_1 = 0b01,
+    BM_ALARM_2 = 0b10,
+    BM_BOTH = 0b11
 };
 
 /**
@@ -204,11 +210,6 @@ class Loom_Hypnos : public Module{
         void setSecondAlarmInterruptDuration(const TimeSpan duration);
 
         /**
-         * Get which alarm triggered the wakeup
-         */
-        uint8_t getTriggeredAlarm();
-
-        /**
          * Clear the alarm 1 register on the DS3231 RTC
          */
         void clearAlarm1Register();
@@ -320,6 +321,9 @@ class Loom_Hypnos : public Module{
         /* Return initialization state of the RTC */
         bool isRTCInitialized() { return RTC_initialized; };
 
+        /* Return a bitmask representing what alarm triggered the wakeup */
+        uint8_t getFiredAlarmsBM() { return firedAlarmsBitMask; };
+
     private:
 
         Manager* manInst = nullptr;                                                         // Instance of the manager
@@ -379,6 +383,17 @@ class Loom_Hypnos : public Module{
         void pre_sleep();                            // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
         void post_sleep(bool waitForSerial);         // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
 
+        uint8_t firedAlarmsBitMask = 0;                                                     // Which alarm triggered the wakeup
 
-
+        /**
+         * Get which alarm triggered the wakeup
+         * 
+         * This returns a bitmask representing which alarms triggered:
+         * - 0b00 (0): No alarms triggered
+         * - 0b01 (1): Alarm 1 triggered
+         * - 0b10 (2): Alarm 2 triggered
+         * - 0b11 (3): Both alarms triggered
+         * You can use the ALARM_BITMASKS enum for easier evaluation. 
+         */
+        uint8_t CheckTriggeredAlarms();
 };

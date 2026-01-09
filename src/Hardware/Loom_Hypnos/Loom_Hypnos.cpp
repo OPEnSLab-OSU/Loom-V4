@@ -483,24 +483,25 @@ void Loom_Hypnos::setSecondAlarmInterruptDuration(const TimeSpan duration) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-uint8_t Loom_Hypnos::getTriggeredAlarm() {
-    if(isAlarm1Cleared() && isAlarm2Cleared())
-        return 0;
+uint8_t Loom_Hypnos::CheckTriggeredAlarms() {
+    uint8_t triggeredAlarmsBitMask = 0;
+
+    if(RTC_DS.alarmFired(1))
+        triggeredAlarmsBitMask |= BM_ALARM_1;
     
-    uint32_t alarmOneTime = getAlarmDate(1).unixtime();
-    uint32_t alarmTwoTime = getAlarmDate(2).unixtime();
-    uint32_t currentTime = getCurrentTime().unixtime();
+    if(RTC_DS.alarmFired(2))
+        triggeredAlarmsBitMask |= BM_ALARM_2;
 
-    if(alarmOneTime <= currentTime)
-        return 1;
-    else if(alarmTwoTime <= currentTime)
-        return 2;
+    if(triggeredAlarmsBitMask & BM_NONE)
+        ERROR("No alarms have triggered!");
+    else if(triggeredAlarmsBitMask & BM_BOTH)
+        ERROR("Both alarms have triggered!");
 
-    ERROR("No alarms have been triggered!");
-    return 0;
+    return triggeredAlarmsBitMask;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// remove?
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 DateTime Loom_Hypnos::getAlarmDate(const uint8_t alarmNumber) {
     if(alarmNumber < 1 || alarmNumber > 2){
@@ -568,6 +569,7 @@ void Loom_Hypnos::clearAlarmFlags() {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// remove?
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::isAlarm1Cleared() {
     // set I2C to point to alarm 1 seconds register
@@ -585,6 +587,7 @@ bool Loom_Hypnos::isAlarm1Cleared() {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// remove?
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::isAlarm2Cleared() {
     // set I2C to point to alarm 2 minutes register
@@ -691,6 +694,7 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
         enable(enable33, enable5); // Checks if the 3.3v or 5v are disabled and re-enables them
         delay(1000);
 
+        firedAlarmsBitMask = CheckTriggeredAlarms();
 
         // Clear any pending RTC alarms
         RTC_DS.clearAlarm();
