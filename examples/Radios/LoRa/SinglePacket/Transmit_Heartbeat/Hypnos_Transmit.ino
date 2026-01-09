@@ -64,7 +64,7 @@ void loop() {
   }
 
   // set up both alarms for the heartbeat mode using the specified intervals earlier.
-  lora.ensureHeartbeatHypnosAlarmsActive();
+  lora.setHypnosAlarmsHeartbeat();
 
   // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
   hypnos.reattachRTCInterrupt();
