@@ -643,22 +643,31 @@ void Loom_LoRa::adjustHbFlagFromAlarms() {
         return;
     }
 
+    uint8_t firedAlarmBM = hypnosPtr->getFiredAlarmsBM(); 
+
     hypnosPtr->clearAlarmFlags();
 
-    uint8_t alarmNumber = hypnosPtr->getTriggeredAlarm(); 
-
     Serial.print("Triggered Alarm Number: ");
-    Serial.println(alarmNumber);
-    
-    if(alarmNumber == 0) {
-        ERROR(F("No alarms have triggered - cannot adjust heartbeat flag"));
+    Serial.println(firedAlarmBM);
+
+    if(firedAlarmBM == BM_ALARM_1 || firedAlarmBM == BM_BOTH) {
+        ERROR("Either no alarms have fired or both alarms have fired - defaulting to alarm 1 behavior");
+        setHeartbeatFlag(false);
         return;
     }
 
-    if(alarmNumber == 1) 
+    if(firedAlarmBM == BM_ALARM_1) {
         setHeartbeatFlag(false); 
-    else if (alarmNumber == 2) 
+        Serial.println("Adjusted heartbeat flag from alarm 1");
+        return;
+    }
+    else if (firedAlarmBM == BM_ALARM_2) {
         setHeartbeatFlag(true);
+        Serial.println("Adjusted heartbeat flag from alarm 2");
+        return;
+    }
+
+    return;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
