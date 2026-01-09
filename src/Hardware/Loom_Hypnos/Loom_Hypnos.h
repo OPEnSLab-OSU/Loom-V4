@@ -321,6 +321,12 @@ class Loom_Hypnos : public Module{
         /* Return initialization state of the RTC */
         bool isRTCInitialized() { return RTC_initialized; };
 
+        /** Return whether alarm 1 fired */
+        bool alarm1Fired() { return (firedAlarmsBitMask & BM_ALARM_1) != 0; };
+
+        /** Return whether alarm 2 fired */
+        bool alarm2Fired() { return (firedAlarmsBitMask & BM_ALARM_2) != 0; };
+
         /* Return a bitmask representing what alarm triggered the wakeup */
         uint8_t getFiredAlarmsBM() { return firedAlarmsBitMask; };
 
