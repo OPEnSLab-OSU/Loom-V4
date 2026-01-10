@@ -256,13 +256,6 @@ public:
     void ensureHeartbeatHypnosAlarmsActive();
 
     /**
-     * Set one or more hypnos alarms for heartbeat functionality
-     * 
-     * this also has logic to prevent overlap of the normal work and the heartbeat alarms.
-     */
-    void setHypnosAlarmsHeartbeat();
-
-    /**
      * Adjust the heartbeat flag based on which alarm triggered
      */
     void adjustHbFlagFromAlarms();
