@@ -558,95 +558,15 @@ void Loom_LoRa::ensureHeartbeatHypnosAlarmsActive() {
         WARNING(F("Hypnos pointer not set - cannot ensure heartbeat alarm is active"));
         return;
     }
-    
-    bool setAlarm1 = false;
-    bool setAlarm2 = false;
-    uint32_t alarmOneTime = 0;
-    uint32_t alarmTwoTime = 0;
-    if(hypnosPtr->isAlarm1Cleared())
-        setAlarm1 = true;
-    else
-        alarmOneTime = hypnosPtr->getAlarmDate(1).unixtime();
-    if (hypnosPtr->isAlarm2Cleared())
-        setAlarm2 = true;
-    else
-        alarmTwoTime = hypnosPtr->getAlarmDate(2).unixtime();
-    uint32_t currentTime = hypnosPtr->getCurrentTime().unixtime();
 
-    if(!setAlarm1)
-    {
-        if(alarmOneTime != 0)
-            setAlarm1 = alarmOneTime <= currentTime;
-        else
-            WARNING(F("Alarm one time is zero - never pulled time from RTC"));
-    }
-    if(!setAlarm2)
-    {
-        if(alarmTwoTime != 0)
-            setAlarm2 = alarmTwoTime <= currentTime;
-        else
-            WARNING(F("Alarm two time is zero - never pulled time from RTC"));
-    }
-
-    if(setAlarm1) {
-        // check for overlap with an already set alarm two
-        if(!setAlarm2 && currentTime + normWorkInterval_s > alarmTwoTime - 5
-            && currentTime + normWorkInterval_s < alarmTwoTime + 5) {
-                uint32_t remainingSecondsAlarmTwo = 0;
-                if(alarmTwoTime - currentTime > 0)
-                    remainingSecondsAlarmTwo = alarmTwoTime - currentTime;
-                else
-                    remainingSecondsAlarmTwo = 0;
-
-                hypnosPtr->clearAlarms();
-
-                TimeSpan timeSpanToSetWith = secondsToTimeSpan(normWorkInterval_s);
-                hypnosPtr->setInterruptDuration(timeSpanToSetWith);
-                timeSpanToSetWith = secondsToTimeSpan(heartbeatInterval_s + remainingSecondsAlarmTwo);
-                hypnosPtr->setSecondAlarmInterruptDuration(timeSpanToSetWith);
-
-                Serial.println("skipping heartbeat since normal work will overlap");
-
-                return; // set both alarms already in this branch, so return.
-        }
-        else {
-            hypnosPtr->clearAlarm1Register();
-            TimeSpan timeSpanToSetWith = secondsToTimeSpan(normWorkInterval_s);
-            hypnosPtr->setInterruptDuration(timeSpanToSetWith);
-            Serial.println("Alarm set for normal work interval");
-        }
-    }
-
-    alarmOneTime = hypnosPtr->getAlarmDate(1).unixtime(); // re-fetch alarm one time after potential reset above.
-
-    if(setAlarm2) {
-        // check for overlap with an already set alarm one
-        if(!setAlarm1 && currentTime + heartbeatInterval_s > alarmOneTime - 5
-            && currentTime + heartbeatInterval_s < alarmOneTime + 5) {
-                // do nothing and skip heartbeat.
-                Serial.println("Skipping heartbeat alarm to avoid conflict with normal work alarm");
-        }
-        else {
-            hypnosPtr->clearAlarm2Register();
-            TimeSpan timeSpanToSetWith = secondsToTimeSpan(heartbeatInterval_s);
-            hypnosPtr->setSecondAlarmInterruptDuration(timeSpanToSetWith);
-            Serial.println("Alarm set for heartbeat interval");
-        }
-    }
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LoRa::setHypnosAlarmsHeartbeat() {
-    if(hypnosPtr == nullptr) {
-        WARNING(F("Hypnos pointer not set - cannot ensure heartbeat alarm is active"));
-        return;
-    }
+    Serial.println("checking the value of the fired alarms bitmask:  @@@@@@@@@@@@@@");
+    Serial.println(hypnosPtr->getFiredAlarmsBM());
 
     // checks if the alarms fired.
     uint8_t firedAlarmsBitMask = hypnosPtr->getFiredAlarmsBM();
     bool setAlarm1 = firedAlarmsBitMask & BM_ALARM_1;
     bool setAlarm2 = firedAlarmsBitMask & BM_ALARM_2;
+    hypnosPtr->clearFiredAlarmsBM();
 
     // check if alarm registers are cleared. Any cleared registers need to be re-set with the appropriate intervals.
     if(hypnosPtr->isAlarm1Cleared())
@@ -661,7 +581,10 @@ void Loom_LoRa::setHypnosAlarmsHeartbeat() {
         alarmOneTime = hypnosPtr->getAlarmDate(1).unixtime();
     if (!setAlarm2)
         alarmTwoTime = hypnosPtr->getAlarmDate(2).unixtime();
+    uint32_t currentTime = hypnosPtr->getCurrentTime().unixtime();
 
+
+    // if both alarms need to be set, just set them both and return.
     if(setAlarm1 && setAlarm2) {
         hypnosPtr->clearAlarms();
 
@@ -674,6 +597,7 @@ void Loom_LoRa::setHypnosAlarmsHeartbeat() {
         return;
     }
     else if(setAlarm1){
+        // sets alarm one, and resets alarm two if alarm 1 would overlap with it.
         if (!setAlarm2 &&
             alarmTwoTime != 0 &&
             currentTime + normWorkInterval_s > alarmTwoTime - 5 &&
@@ -690,34 +614,35 @@ void Loom_LoRa::setHypnosAlarmsHeartbeat() {
             ts = secondsToTimeSpan(heartbeatInterval_s + remainingSecondsAlarmTwo);
             hypnosPtr->setSecondAlarmInterruptDuration(ts);
 
-            Serial.println("Skipping heartbeat since normal work will overlap");
+            ERROR("Skipping heartbeat since normal work will overlap");
             return;
         }
+        // sets normal work alarm if no overlap detected.
         else {
-            hypnosPtr->clearAlarm1Register();
             TimeSpan ts = secondsToTimeSpan(normWorkInterval_s);
             hypnosPtr->setInterruptDuration(ts);
-            Serial.println("Alarm set for normal work interval");
+            ERROR("Alarm set for normal work interval");
         }
     }
     else if(setAlarm2){
+        // skips heartbeat alarm if it would overlap with normal work alarm.
         if (!setAlarm1 &&
             alarmOneTime != 0 &&
             currentTime + heartbeatInterval_s > alarmOneTime - 5 &&
             currentTime + heartbeatInterval_s < alarmOneTime + 5) {
 
-            Serial.println("Skipping heartbeat alarm to avoid conflict with normal work alarm");
+            ERROR("Skipping heartbeat alarm to avoid conflict with normal work alarm");
             return;
         }
+        // sets heartbeat alarm if no overlap detected.
         else {
-            hypnosPtr->clearAlarm2Register();
             TimeSpan ts = secondsToTimeSpan(heartbeatInterval_s);
             hypnosPtr->setSecondAlarmInterruptDuration(ts);
             Serial.println("Alarm set for heartbeat interval");
         }
     }
     else {
-        ERROR("No alarms were set - nothing to do"));
+        ERROR("No alarms were set - nothing to do");
         return;
     }
 }
@@ -733,13 +658,20 @@ void Loom_LoRa::adjustHbFlagFromAlarms() {
     bool alarm1Fired = hypnosPtr->alarm1Fired();
     bool alarm2Fired = hypnosPtr->alarm2Fired();
 
-    hypnosPtr->clearAlarmFlags();
-
-    Serial.print("Triggered Alarm Number: ");
-    Serial.println(alarm1Fired ? "1" : (alarm2Fired ? "2" : "0"));
+    ERROR("Triggered Alarm Number: ");
+    if(alarm1Fired && alarm2Fired)
+        Serial.println("3");
+    else if(alarm2Fired)
+        Serial.println("2");
+    else if(alarm1Fired)
+        Serial.println("1");
+    else if(!alarm1Fired && !alarm2Fired)
+        Serial.println("0");
+    else
+        Serial.println("Error determining alarm number");
 
     if(alarm1Fired && alarm2Fired) {
-        ERROR("Both alarms have fired - defaulting to alarm 1 behavior");
+        Serial.println("Both alarms have fired - defaulting to alarm 1 behavior");
         setHeartbeatFlag(false);
         return;
     }

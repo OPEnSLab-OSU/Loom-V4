@@ -486,8 +486,8 @@ void Loom_Hypnos::setSecondAlarmInterruptDuration(const TimeSpan duration) {
 uint8_t Loom_Hypnos::checkTriggeredAlarms() {
     uint8_t triggeredAlarmsBitMask = 0;
 
-    ERROR(RTC_DS.alarmFired(1) ? "##############Alarm 1 has triggered!" : "Alarm 1 has not triggered.");
-    ERROR(RTC_DS.alarmFired(2) ? "##############Alarm 2 has triggered!" : "Alarm 2 has not triggered.");
+    ERROR(RTC_DS.alarmFired(1) ? "############## Alarm 1 has triggered!" : "Alarm 1 has not triggered.");
+    ERROR(RTC_DS.alarmFired(2) ? "############## Alarm 2 has triggered!" : "Alarm 2 has not triggered.");
 
     if(RTC_DS.alarmFired(1))
     {
