@@ -330,6 +330,9 @@ class Loom_Hypnos : public Module{
         /* Return a bitmask representing what alarm triggered the wakeup */
         uint8_t getFiredAlarmsBM() { return firedAlarmsBitMask; };
 
+        /* Clear the fired alarms bitmask */
+        void clearFiredAlarmsBM() { firedAlarmsBitMask = 0; };
+
     private:
 
         Manager* manInst = nullptr;                                                         // Instance of the manager
