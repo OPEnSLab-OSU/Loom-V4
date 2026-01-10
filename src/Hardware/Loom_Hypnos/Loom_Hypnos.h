@@ -375,18 +375,6 @@ class Loom_Hypnos : public Module{
         uint8_t firedAlarmsBitMask = 0;                                                     // Which alarm triggered the wakeup
 
         /**
-         * Get which alarm triggered the wakeup
-         * 
-         * This returns a bitmask representing which alarms triggered:
-         * - 0b00 (0): No alarms triggered
-         * - 0b01 (1): Alarm 1 triggered
-         * - 0b10 (2): Alarm 2 triggered
-         * - 0b11 (3): Both alarms triggered
-         * You can use the ALARM_BITMASKS enum for easier evaluation. 
-         */
-        uint8_t CheckTriggeredAlarms();
-
-        /**
          * Clear the alarm 1 register on the DS3231 RTC
          */
         void clearAlarm1Register();
@@ -405,4 +393,16 @@ class Loom_Hypnos : public Module{
          * Clear the alarm flags on the DS3231 RTC
          */
         void clearAlarmFlags();
+
+        /**
+         * Get which alarm triggered the wakeup
+         * 
+         * This returns a bitmask representing which alarms triggered:
+         * - 0b00 (0): No alarms triggered
+         * - 0b01 (1): Alarm 1 triggered
+         * - 0b10 (2): Alarm 2 triggered
+         * - 0b11 (3): Both alarms triggered
+         * You can use the ALARM_BITMASKS enum for easier evaluation. 
+         */
+        uint8_t checkTriggeredAlarms();
 };
