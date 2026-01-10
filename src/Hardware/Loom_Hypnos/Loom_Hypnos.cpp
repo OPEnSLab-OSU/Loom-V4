@@ -483,8 +483,11 @@ void Loom_Hypnos::setSecondAlarmInterruptDuration(const TimeSpan duration) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-uint8_t Loom_Hypnos::CheckTriggeredAlarms() {
+uint8_t Loom_Hypnos::checkTriggeredAlarms() {
     uint8_t triggeredAlarmsBitMask = 0;
+
+    ERROR(RTC_DS.alarmFired(1) ? "##############Alarm 1 has triggered!" : "Alarm 1 has not triggered.");
+    ERROR(RTC_DS.alarmFired(2) ? "##############Alarm 2 has triggered!" : "Alarm 2 has not triggered.");
 
     if(RTC_DS.alarmFired(1))
     {
@@ -529,7 +532,7 @@ void Loom_Hypnos::clearAlarm1Register() {
     Wire.write(0x80); // hours
     Wire.write(0x80); // day/date
     Wire.endTransmission();
-    Serial.println("Alarm 1 register reset");
+    ERROR("Alarm 1 register reset");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -541,7 +544,7 @@ void Loom_Hypnos::clearAlarm2Register() {
     Wire.write(0x80); // hours
     Wire.write(0x80); // day/date
     Wire.endTransmission();
-    Serial.println("Alarm 2 register reset");
+    ERROR("Alarm 2 register reset");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -699,7 +702,7 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
         enable(enable33, enable5); // Checks if the 3.3v or 5v are disabled and re-enables them
         delay(1000);
 
-        firedAlarmsBitMask = CheckTriggeredAlarms();
+        firedAlarmsBitMask = checkTriggeredAlarms();
 
         // Clear any pending RTC alarms
         RTC_DS.clearAlarm();
