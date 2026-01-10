@@ -487,10 +487,18 @@ uint8_t Loom_Hypnos::CheckTriggeredAlarms() {
     uint8_t triggeredAlarmsBitMask = 0;
 
     if(RTC_DS.alarmFired(1))
+    {
         triggeredAlarmsBitMask |= BM_ALARM_1;
+        clearAlarm1Register();
+    }
     
     if(RTC_DS.alarmFired(2))
+    {
         triggeredAlarmsBitMask |= BM_ALARM_2;
+        clearAlarm2Register();
+    }
+
+    clearAlarmFlags();
 
     if(triggeredAlarmsBitMask & BM_NONE)
         ERROR("No alarms have triggered!");

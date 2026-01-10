@@ -197,60 +197,6 @@ class Loom_Hypnos : public Module{
         void setInterruptDuration(const TimeSpan duration);
 
         /**
-         * Set the second alarm interrupt to be triggered at a set interval in the future
-         * @param duration The time that will elapse before the second alarm interrupt is triggered
-         * 
-         * @note DS3231 Alarm 2 only supports minute/hour/day/date resolution and ignores seconds.
-         *          As a result, when setting the second alarm with a TimeSpan that includes seconds,
-         *          the alarm will trigger at the start of the target minute rather than the exact second.
-         *          The first wakeup may therefore occur slightly earlier than intended, but subsequent
-         *          intervals remain correct because the alarm is reset relative to the current RTC time.
-         *          If precise second-level timing is required, consider using Alarm 1, which supports seconds.
-         */
-        void setSecondAlarmInterruptDuration(const TimeSpan duration);
-
-        /**
-         * Clear the alarm 1 register on the DS3231 RTC
-         */
-        void clearAlarm1Register();
-
-        /**
-         * Clear the alarm 2 register on the DS3231 RTC
-         */
-        void clearAlarm2Register();
-
-        /**
-         * Clear the alarm registers on the DS3231 RTC
-         */
-        void clearAlarmRegisters();
-
-        /**
-         * Clear the alarm flags on the DS3231 RTC
-         */
-        void clearAlarmFlags();
-
-        /**
-         * Check if Alarm 1 is cleared
-         */
-        bool isAlarm1Cleared();
-
-        /**
-         * Check if Alarm 2 is cleared
-         */
-        bool isAlarm2Cleared();
-
-        /**
-         * Fully clear both alarms on the DS3231 RTC, including their status flags and actual registers.
-         */
-        void clearAlarms();
-
-        /**
-         * Get the date (in the form of a DateTime) for when a given alarm is set to trigger
-         * @param alarmNumber The alarm number to get the date for (1 or 2)
-         */
-        DateTime getAlarmDate(const uint8_t alarmNumber);
-
-        /**
          * Drops the Feather M0 and Hypnos board into a low power sleep waiting for an interrupt to wake it up and pull it out of sleep
          * @param waitForSerial Whether or not we should wait for the user to open the serial monitor before continuing execution
          */
@@ -333,6 +279,40 @@ class Loom_Hypnos : public Module{
         /* Clear the fired alarms bitmask */
         void clearFiredAlarmsBM() { firedAlarmsBitMask = 0; };
 
+        /**
+         * Check if Alarm 1 is cleared
+         */
+        bool isAlarm1Cleared();
+
+        /**
+         * Check if Alarm 2 is cleared
+         */
+        bool isAlarm2Cleared();
+
+        /**
+         * Fully clear both alarms on the DS3231 RTC, including their status flags and actual registers.
+         */
+        void clearAlarms();
+
+        /**
+         * Get the date (in the form of a DateTime) for when a given alarm is set to trigger
+         * @param alarmNumber The alarm number to get the date for (1 or 2)
+         */
+        DateTime getAlarmDate(const uint8_t alarmNumber);
+
+        /**
+         * Set the second alarm interrupt to be triggered at a set interval in the future
+         * @param duration The time that will elapse before the second alarm interrupt is triggered
+         * 
+         * @note DS3231 Alarm 2 only supports minute/hour/day/date resolution and ignores seconds.
+         *          As a result, when setting the second alarm with a TimeSpan that includes seconds,
+         *          the alarm will trigger at the start of the target minute rather than the exact second.
+         *          The first wakeup may therefore occur slightly earlier than intended, but subsequent
+         *          intervals remain correct because the alarm is reset relative to the current RTC time.
+         *          If precise second-level timing is required, consider using Alarm 1, which supports seconds.
+         */
+        void setSecondAlarmInterruptDuration(const TimeSpan duration);
+
     private:
 
         Manager* manInst = nullptr;                                                         // Instance of the manager
@@ -405,4 +385,24 @@ class Loom_Hypnos : public Module{
          * You can use the ALARM_BITMASKS enum for easier evaluation. 
          */
         uint8_t CheckTriggeredAlarms();
+
+        /**
+         * Clear the alarm 1 register on the DS3231 RTC
+         */
+        void clearAlarm1Register();
+
+        /**
+         * Clear the alarm 2 register on the DS3231 RTC
+         */
+        void clearAlarm2Register();
+
+        /**
+         * Clear the alarm registers on the DS3231 RTC
+         */
+        void clearAlarmRegisters();
+
+        /**
+         * Clear the alarm flags on the DS3231 RTC
+         */
+        void clearAlarmFlags();
 };
