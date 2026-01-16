@@ -189,7 +189,7 @@ bool SDManager::begin(){
 
      /*
       Start the SD card with the fastest SPI speed
-      Changing to 12MHz because 24MHz has occasional stability issues on different devices. 
+      Changing to 4MHz because 24MHz has occasional stability issues on different devices. 
       SD_SCK_MHZ is from the SDFat library which takes the an integer parameter that sets the Serial clock frequency that SPI uses 
       to communicate between the SD and the MCU(m0)
       Setting it to 50 is essentially asking the m0 to set the SCK freq to the max, up to 50MHz. (for an m0 the max is 24MHz)
