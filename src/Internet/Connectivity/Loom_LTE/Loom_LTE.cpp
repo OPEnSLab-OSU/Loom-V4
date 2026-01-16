@@ -340,7 +340,7 @@ bool Loom_LTE::getNetworkTime(int* year, int* month, int* day, int* hour, int* m
     }
 
     // Create a DateTime object from GSM UTC time and then add the 
-    // timezone to the 
+    // timezone to the value to get adjusted local time.
     DateTime utcTime = DateTime(*year, *month, *day, *hour, *minute, *second);
     DateTime localTime = utcTime + TimeSpan(0, (int)timezone, 0, 0);
     *year = localTime.year();
