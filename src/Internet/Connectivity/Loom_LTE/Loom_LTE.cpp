@@ -334,6 +334,8 @@ bool Loom_LTE::getNetworkTime(int* year, int* month, int* day, int* hour, int* m
 
     // Pull the current values from the GSM
     if(!modem.getNetworkTime(year, month, day, hour, minute, second, tz)){
+        // Reset original timezone value.
+        *tz = timezone;
         return false;
     }
 
@@ -350,7 +352,6 @@ bool Loom_LTE::getNetworkTime(int* year, int* month, int* day, int* hour, int* m
 
     // Reset original timezone value.
     *tz = timezone;
-
     return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
