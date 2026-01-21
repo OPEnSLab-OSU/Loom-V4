@@ -78,6 +78,12 @@ class Loom_LTE : public NetworkComponent{
         void loadConfigFromJSON(char* json);
 
         /**
+         * @brief 
+         * 
+         */
+        void getLocationData (); 
+
+        /**
          * Turn on batch upload for the lte which means it will only initialize the module when we need to upload
          * @param batch BatchSD module
          */
@@ -144,5 +150,11 @@ class Loom_LTE : public NetworkComponent{
         Loom_BatchSD* batch_sd = nullptr;   // If we are using batch publish
 
         bool powered = false;               // Device power status
+
+        float lat;                          // GPS latitude
+
+        float lon;                          // GPS longitude
+
+
 
 };

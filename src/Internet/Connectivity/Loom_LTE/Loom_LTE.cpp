@@ -291,6 +291,26 @@ bool Loom_LTE::verifyConnection(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+void getLocationData(){
+    //sensor type, meaning GNSS reciever or cellLocate. Cell locate uses less power and is 
+    // less accurate. Can switch to 1 (GNSS reciever) for higher precision, but higher power usage
+    // also retrieves data like time. cell locate does not return altitude
+    int8_t sensor = 2;
+    float speed, alt, accuracy; 
+    int vsat, usat, year, month, day, hour, minute, second;
+
+    if(modem.getUbloxLocation(sensor, &lat, &lon, &speed, &alt, &vsat, &usat, &accuracy, &year, &month, &day, &hour, &minute, &second)){
+        snprintf("GPS coordinates recieved. Latitude is %f, Longitude is %f. ", lat, lon);
+
+}
+    else{
+        snprintf("Error recieving GPS coordinates. Please reset device to try again.");
+    }
+
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::loadConfigFromJSON(char* json){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
