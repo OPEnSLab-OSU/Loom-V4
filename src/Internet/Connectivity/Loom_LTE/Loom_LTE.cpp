@@ -102,6 +102,9 @@ void Loom_LTE::initialize(){
         snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
         LOG(output);
 
+        // get latitude and longitude of device
+        getLocationData();
+
         //verifyConnection();
         LOG(F("Module successfully initialized!"));
     }
@@ -180,6 +183,8 @@ void Loom_LTE::package(){
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
         json["RSSI"] = modem.getSignalQuality();
+        json["Latitude"] = lat;
+        json["Longitude"] = lon;
     }
     FUNCTION_END;
 }
