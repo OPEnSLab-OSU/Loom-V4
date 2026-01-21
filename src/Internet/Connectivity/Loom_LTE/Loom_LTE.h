@@ -78,10 +78,13 @@ class Loom_LTE : public NetworkComponent{
         void loadConfigFromJSON(char* json);
 
         /**
-         * @brief 
-         * 
+         * @brief uses TinyGSM AT commands to retrieve GPS coordinates. 
+         *  Stores Latitude and Longitude data in class variables lon and lat
+         * Executes during initalization, and is included in the package function
+         * @param sensor sensor type, meaning GNSS reciever or cellLocate. Cell locate (2) uses less power and is 
+         * less accurate. Can switch to GNSS reciever (1) for higher precision, but higher power usage
          */
-        void getLocationData (); 
+        void getLocationData (int8t sensor); 
 
         /**
          * Turn on batch upload for the lte which means it will only initialize the module when we need to upload

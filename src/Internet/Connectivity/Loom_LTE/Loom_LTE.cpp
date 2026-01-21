@@ -102,8 +102,8 @@ void Loom_LTE::initialize(){
         snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
         LOG(output);
 
-        // get latitude and longitude of device
-        getLocationData();
+        // get latitude and longitude of device, use cellLocate rather than GNSS reciever
+        getLocationData(2);
 
         //verifyConnection();
         LOG(F("Module successfully initialized!"));
@@ -296,11 +296,9 @@ bool Loom_LTE::verifyConnection(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void getLocationData(){
-    //sensor type, meaning GNSS reciever or cellLocate. Cell locate uses less power and is 
-    // less accurate. Can switch to 1 (GNSS reciever) for higher precision, but higher power usage
-    // also retrieves data like time. cell locate does not return altitude
-    int8_t sensor = 2;
+
+void getLocationData(int8_t sensor){
+
     float speed, alt, accuracy; 
     int vsat, usat, year, month, day, hour, minute, second;
 
