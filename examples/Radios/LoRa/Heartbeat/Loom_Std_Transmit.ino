@@ -7,10 +7,15 @@
 
 #include <Radio/Loom_LoRa/Loom_LoRa.h>
 
+#include <Heartbeat/Heartbeat.h>
+
 Manager manager("Device", 1);
 
 // Do we want to use the instance number as the LoRa address
 Loom_LoRa lora(manager);
+
+// heartbeat instantiation
+Heartbeat loraHeartbeat(manager, ConnectionType::LoRa);
 
 void setup() {
   manager.beginSerial();
