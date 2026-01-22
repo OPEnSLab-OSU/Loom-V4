@@ -1,6 +1,6 @@
 #include "Loom_Hypnos.h"
 #include "Logger.h"
-#include "Sensors/Loom_Analog/Loom_Analog.h"
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time, bool useSD) : Module("Hypnos"), custom_time(use_custom_time), sd_chip_select(version), enableSD(useSD), timezone(zone){
@@ -644,20 +644,47 @@ bool Loom_Hypnos::logToSD() {
 
 /* Voltage Checks */
 
-bool Loom_Hypnos::checkVoltage(float vmin, int analogPin, float scale){
+bool Loom_Hypnos::checkVoltage(float vmin, int analogPin, float scale, bool mv, int num_samples){
     INSTRUMENT();
-    analogReadResolution(12);                                                                               /* ADC bit resolution (2^12 == 4096 == 4095 raw counts) */
-    float voltage = 0.0f;
-    if(analogPin == A7){
-        voltage = Loom_Analog::getBatteryVoltage();
-    } else {
-        int raw = analogRead(analogPin);
-        voltage = (raw * VREF / 4095.0f) * scale;
+    
+    analogReadResolution(12);  
+    
+    float voltage_sum = 0.0f;
+    
+    // Multiple samples for the average voltage
+    for (int i =  0; i < num_samples; i++){
+      float voltage = 0.0f;
+      
+      if(analogPin == A7){
+          voltage = Loom_Analog::getBatteryVoltage();
+      } else { /* If you're not using a feather or if you want to read a different ADC channel pin */
+        float pin_reading = analogRead(analogPin);
+        pin_reading *= scale;
+        pin_reading *= VREF;        /* VREF may be different depending on the board (feather uses 3.3v)*/
+        pin_reading *= 4096;
+        voltage = pin_reading;
+      }
+
+      voltage_sum += voltage;
+      
     }
-    uint8_t newFlags = (voltage >= vmin) ? VF_ACCEPTABLE : VF_DEGRADED;                                     /* Voltage flags will be useful for determistic responses to degraded voltage. Can add up to 5 more flags. */
-    newFlags |= VF_CHECKED;
-    voltage_flags = newFlags;
-    LOGF("Voltage read: %.2f V (min %.2f) on pin %d (scale %.2f)", voltage, vmin, analogPin, scale);
-    LOGF("Voltage Flags: %u", voltage_flags);                                                               /* Degraded+Checked = 6 || Acceptable+Checked = 5 */
-    return (voltage >= vmin);                                                                               /* Returns True if voltage is greater than VMIN */
+
+    float voltage = voltage_sum / num_samples; 
+
+    if (mv) {
+      float mv_sum = voltage * 1000f;
+    }
+
+    uint8_t new_flags = VF_CHECKED; /* Will always be set after a voltage check */
+
+    if(voltage_sum < V_CRITICAL){
+      new_flags |= VF_CRITICAL;
+      LOGF("WARNING: Critical voltage (%2fV < %2f V) - device will function properly!", voltage, V_CRITICAL);
+    }
+    else if(voltage < V_DEGRADED){
+      new_flags |= VF_DEGRADED;
+      LOGF("WARNING: Degraded voltage (%2fV < %2f V) - device will function properly!", voltage, V_DEGRADED);
+    }
+                                  
+    return (voltage_sum >= vmin);                                                                               /* Returns True if voltage is greater than VMIN */
 }
