@@ -2,14 +2,12 @@
 #include "../Logger.h"
 
 
+////////////////////////////////////////////////////////////////////////////////////////////////////// THEORETICALLY WORKS
+Loom_Heartbeat::Loom_Heartbeat(const uint8_t newAddress, 
+                        const uint32_t pHeartbeatInterval,
+                        const uint32_t pNormalWorkInterval,
+                        Loom_Hypnos* hypnosInstance = nullptr) {
 
-
-
-void Loom_Heartbeat::heartbeatInit( const uint8_t newAddress, 
-                    const uint32_t pHeartbeatInterval, 
-                    const uint32_t pNormalWorkInterval,
-                    Loom_Hypnos* hypnosInstance)
-{
     if(hypnosInstance != nullptr && pHeartbeatInterval < 60) {
         WARNING(F("Heartbeat interval too low for Hypnos, setting to minimum of 60 seconds"));
         heartbeatInterval_s = 60;
@@ -38,6 +36,42 @@ void Loom_Heartbeat::heartbeatInit( const uint8_t newAddress,
         hypnosPtr->clearAlarms();
     }
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+// void Loom_Heartbeat::heartbeatInit( const uint8_t newAddress, 
+//                     const uint32_t pHeartbeatInterval, 
+//                     const uint32_t pNormalWorkInterval,
+//                     Loom_Hypnos* hypnosInstance)
+// {
+//     if(hypnosInstance != nullptr && pHeartbeatInterval < 60) {
+//         WARNING(F("Heartbeat interval too low for Hypnos, setting to minimum of 60 seconds"));
+//         heartbeatInterval_s = 60;
+//     }
+//     else if(pHeartbeatInterval < 5) {
+//         WARNING(F("Heartbeat interval too low, setting to minimum of 5 seconds"));
+//         heartbeatInterval_s = 5;
+//     }
+//     else 
+//         heartbeatInterval_s = pHeartbeatInterval;
+
+//     if(pNormalWorkInterval < 5) {
+//         WARNING(F("Normal work interval too low, setting to minimum of 5 seconds"));
+//         normWorkInterval_s = 5;
+//     }
+//     else 
+//         normWorkInterval_s = pNormalWorkInterval;
+
+//     heartbeatDestAddress = newAddress;
+
+//     heartbeatTimer_s = heartbeatInterval_s;
+//     normWorkTimer_s = normWorkInterval_s;
+//     hypnosPtr = hypnosInstance;
+
+//     if(hypnosPtr != nullptr) {
+//         hypnosPtr->clearAlarms();
+//     }
+// }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 TimeSpan Loom_Heartbeat::secondsToTimeSpan(const uint32_t totalSeconds) {

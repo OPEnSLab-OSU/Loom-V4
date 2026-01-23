@@ -15,7 +15,10 @@ Manager manager("Device", 1);
 Loom_LoRa lora(manager);
 
 // heartbeat instantiation
-Heartbeat loraHeartbeat(manager, ConnectionType::LoRa);
+uint8_t destAddr = 0;
+uint32_t hbInterval_s = 15;
+uint32_t normalInterval_s = 35;
+Loom_Heartbeat loraHeartbeat(manager, ConnectionType::LoRa, destAddr, hbInterval_s, normalInterval_s);
 
 void setup() {
   manager.beginSerial();
