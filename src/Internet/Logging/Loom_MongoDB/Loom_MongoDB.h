@@ -72,6 +72,8 @@ class Loom_MongoDB : public MQTTComponent{
          * @param jsonString JSON formatted string containing the login credentials, this is freed at the end
          */
         void loadConfigFromJSON(char* json) override;
+
+        bool sendBatch(const char* payload, int currentPacket, int totalPackets); 
     
     private:
         Manager* manInst;                       // Instance of the manager   

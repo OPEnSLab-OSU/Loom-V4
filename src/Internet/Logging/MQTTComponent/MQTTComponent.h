@@ -15,6 +15,7 @@
 */
 class MQTTComponent : public Module{
     protected:
+        MqttClient mqttClient;                      // Instance of the MQTT client
 
         bool connectToBroker();                                                                         // Connect to the configured broker
         void disconnectFromBroker() { mqttClient.stop(); };                                             // Disconnect from the MQTT broker
@@ -115,7 +116,6 @@ class MQTTComponent : public Module{
         void setMaxRetries(int retries) { maxRetries = retries; };
 
     private:
-        MqttClient mqttClient;                      // Instance of the MQTT client
         NetworkComponent& internetClient;
 
         int keep_alive = 60000;                     // How long the broker should keep the connection open, defaults to a minute
