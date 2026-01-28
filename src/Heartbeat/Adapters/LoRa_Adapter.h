@@ -14,5 +14,5 @@ class LoRa_Adapter : public Adapter {
         }
 
     private:
-        Loom_LoRa& loraModule;
+        Loom_LoRa* loraModule = nullptr;
 };

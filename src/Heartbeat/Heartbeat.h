@@ -12,8 +12,15 @@ class Loom_Heartbeat : public Module {
          * 
          *         // PERSONAL_NOTE: Might not need manager reference, but haven't fully commited to taking it out yet.
          * 
-         * @param man Manager instance
-         * @param connectionMethod LoRa, Freewave, LTE, or Wifi module
+         * @param newAddress Destination address for heartbeats
+         * @param heartbeatInterval Interval between heartbeats (scalar)
+         * @param normalWorkInterval Interval between normal work cycles (scalar)
+         * @param managerInstance Manager instance
+         * @param adapterInstance Pointer to the communication adapter being used.
+         * @param hypnosInstance Pointer to the Hypnos instance being used.
+         * 
+         * @note heartbeatInterval and normalWorkInterval must be seconds.
+         *         // PERSONAL_NOTE: Might not need manager reference, but haven't fully commited to taking it out yet.
          */
         Loom_Heartbeat(const uint8_t newAddress, 
                         const uint32_t pHeartbeatInterval, 
@@ -21,22 +28,6 @@ class Loom_Heartbeat : public Module {
                         Manager* managerInstance, 
                         Adapter* adapterInstance,
                         Loom_Hypnos* hypnosInstance = nullptr);
-        // PERSONAL_NOTE: Might not need manager reference, but haven't fully commited to taking it out yet.
-
-        /**
-         * Initialize heartbeat variables with specified parameters
-         * 
-         * @param newAddress Destination address for heartbeats
-         * @param heartbeatInterval Interval between heartbeats (scalar)
-         * @param normalWorkInterval Interval between normal work cycles (scalar)
-         * @param hypnosInstance Pointer to the Hypnos instance being used.
-         * 
-         * @note heartbeatInterval and normalWorkInterval must be seconds.
-         */
-        void heartbeatInit( const uint8_t newAddress, 
-                            const uint32_t pHeartbeatInterval,
-                            const uint32_t pNormalWorkInterval,
-                            Loom_Hypnos* hypnosInstance = nullptr);
 
         /**
          * Convert seconds to a TimeSpan object
@@ -103,6 +94,6 @@ class Loom_Heartbeat : public Module {
         bool heartbeatFlag = false;
 
         Loom_Hypnos* hypnosPtr = nullptr;
-        Manager& managerPtr = nullptr;
+        Manager* managerPtr = nullptr;
         Adapter* adapPtr = nullptr;
-}
+};
