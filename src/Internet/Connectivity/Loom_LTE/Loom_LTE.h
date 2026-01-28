@@ -84,7 +84,7 @@ class Loom_LTE : public NetworkComponent{
          * @param sensor sensor type, meaning GNSS reciever or cellLocate. Cell locate (2) uses less power and is 
          * less accurate. Can switch to GNSS reciever (1) for higher precision, but higher power usage
          */
-        void getLocationData (int8t sensor); 
+        void getLocationData (int8_t sensor); 
 
         /**
          * Turn on batch upload for the lte which means it will only initialize the module when we need to upload
@@ -154,9 +154,9 @@ class Loom_LTE : public NetworkComponent{
 
         bool powered = false;               // Device power status
 
-        float lat;                          // GPS latitude
+        float lat = 0;                          // GPS latitude
 
-        float lon;                          // GPS longitude
+        float lon = 0;                          // GPS longitude
 
 
 

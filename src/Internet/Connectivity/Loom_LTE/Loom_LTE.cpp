@@ -101,9 +101,9 @@ void Loom_LTE::initialize(){
         ipToString(modem.localIP(), ip);
         snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
         LOG(output);
-
-        // get latitude and longitude of device, use cellLocate rather than GNSS reciever
-        getLocationData(2);
+        
+        LOG(F("Attempting to get Location Data"));
+        getLocationData(1);
 
         //verifyConnection();
         LOG(F("Module successfully initialized!"));
@@ -297,18 +297,12 @@ bool Loom_LTE::verifyConnection(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void getLocationData(int8_t sensor){
+void Loom_LTE::getLocationData(int8_t sensor){
+    char output[OUTPUT_SIZE];
+    LOG(F("Module successfully initialized!"));
+    const char* location = modem.getGsmLocation().c_str();
+    snprintf(output, OUTPUT_SIZE, "test: %s", location);
 
-    float speed, alt, accuracy; 
-    int vsat, usat, year, month, day, hour, minute, second;
-
-    if(modem.getUbloxLocation(sensor, &lat, &lon, &speed, &alt, &vsat, &usat, &accuracy, &year, &month, &day, &hour, &minute, &second)){
-        snprintf("GPS coordinates recieved. Latitude is %f, Longitude is %f. ", lat, lon);
-
-}
-    else{
-        snprintf("Error recieving GPS coordinates. Please reset device to try again.");
-    }
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
