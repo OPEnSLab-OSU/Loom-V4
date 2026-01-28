@@ -9,13 +9,6 @@
 #include "../Internet/Connectivity/Loom_Wifi"
 #include "../Radio/Loom_Freewave/Loom_Freewave.h"
 
-enum class ConnectionType {
-    LoRa, 
-    Freewave,
-    LTE,
-    Wifi
-}
-
 class Loom_Heartbeat : public Module {
     public:
         /**
@@ -78,9 +71,14 @@ class Loom_Heartbeat : public Module {
         bool getHeartbeatFlag() const { return heartbeatFlag; };
 
         /**
+         * Flash the onboard LED at PIN 13 to indicate a heartbeat has been sent
+         */
+        void flashLight();
+
+        /**
          * Send a heartbeat packet with basic device info
          */
-        bool sendHeartbeat();
+        bool adapterSend();
 
         /**
          * Ensure that the normal work alarm (1) and heartbeat alarm (2) are both set
@@ -93,8 +91,6 @@ class Loom_Heartbeat : public Module {
         void adjustHbFlagFromAlarms();
     
     private:
-
-        Manager& managerPtr;
     
         uint32_t heartbeatTimer_s = 0;
         uint32_t heartbeatInterval_s = 0;
@@ -104,5 +100,8 @@ class Loom_Heartbeat : public Module {
         uint8_t heartbeatDestAddress = 0;
 
         bool heartbeatFlag = false;
-        Loom_Hypnos* hypnosPtr = nullptr; // Pointer to the hypnos instance
+
+        Loom_Hypnos* hypnosPtr = nullptr;
+        Manager& managerPtr = nullptr;
+        Adapter* adapPtr = nullptr;
 }
