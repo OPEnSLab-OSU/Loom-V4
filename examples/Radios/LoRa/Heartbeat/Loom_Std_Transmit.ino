@@ -18,25 +18,19 @@ Loom_LoRa lora(manager);
 uint8_t destAddr = 0;
 uint32_t hbInterval_s = 15;
 uint32_t normalInterval_s = 35;
-Loom_Heartbeat loraHeartbeat(manager, ConnectionType::LoRa, destAddr, hbInterval_s, normalInterval_s);
+Loom_Heartbeat heartbeat(destAddr, hbInterval_s, normalInterval_s, &manager);
 
 void setup() {
   manager.beginSerial();
   manager.initialize();
-
-    // initialize heartbeat operations
-  uint8_t destAddr = 0;
-  uint32_t hbInterval_s = 15;
-  uint32_t normalInterval_s = 35;
-  lora.heartbeatInit(destAddr, hbInterval_s, normalInterval_s);
 }
 
 void loop() {
     // logic to execute this loop
-  if(lora.getHeartbeatFlag())
+  if(heartbeat.getHeartbeatFlag())
   {
     Serial.println("Within Heartbeat Branch");
-    lora.sendHeartbeat();
+    heartbeat.adapterSend();
   }
   else {
     // do work
@@ -45,7 +39,7 @@ void loop() {
     lora.send(0);
   }
 
-  int milliseconds = lora.calculateNextEvent().totalseconds() * 1000;
+  int milliseconds = heartbeat.calculateNextEvent().totalseconds() * 1000;
   Serial.print("Pause for: ");
   Serial.print(String(milliseconds));
   Serial.println("");
