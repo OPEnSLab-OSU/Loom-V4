@@ -2,12 +2,8 @@
 
 #include "../Loom_Manager.h"
 #include "../Module.h"
-#include "../Loom_Hypnos/Loom_Hypnos.h"
-
-#include "../Radio/Loom_LoRa.h"
-#include "../Internet/Connectivity/Loom_LTE.h"
-#include "../Internet/Connectivity/Loom_Wifi"
-#include "../Radio/Loom_Freewave/Loom_Freewave.h"
+#include "../Hardware/Loom_Hypnos/Loom_Hypnos.h"
+#include "Adapter.h"
 
 class Loom_Heartbeat : public Module {
     public:
@@ -19,7 +15,12 @@ class Loom_Heartbeat : public Module {
          * @param man Manager instance
          * @param connectionMethod LoRa, Freewave, LTE, or Wifi module
          */
-        Loom_Heartbeat(Manager& man, ConnectionType connectionMethod);
+        Loom_Heartbeat(const uint8_t newAddress, 
+                        const uint32_t pHeartbeatInterval, 
+                        const uint32_t pNormalWorkInterval, 
+                        Manager* managerInstance, 
+                        Adapter* adapterInstance,
+                        Loom_Hypnos* hypnosInstance = nullptr);
         // PERSONAL_NOTE: Might not need manager reference, but haven't fully commited to taking it out yet.
 
         /**

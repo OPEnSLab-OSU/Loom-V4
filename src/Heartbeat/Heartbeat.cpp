@@ -7,6 +7,7 @@ Loom_Heartbeat::Loom_Heartbeat(const uint8_t newAddress,
                         const uint32_t pHeartbeatInterval, 
                         const uint32_t pNormalWorkInterval, 
                         Manager* managerInstance, 
+                        Adapter* adapterInstance,
                         Loom_Hypnos* hypnosInstance = nullptr) {
 
     if(hypnosInstance != nullptr && pHeartbeatInterval < 60) {
@@ -31,8 +32,9 @@ Loom_Heartbeat::Loom_Heartbeat(const uint8_t newAddress,
 
     heartbeatTimer_s = heartbeatInterval_s;
     normWorkTimer_s = normWorkInterval_s;
-    hypnosPtr = hypnosInstance;
     managerPtr = managerInstance;
+    adapPtr = adapterInstance;
+    hypnosPtr = hypnosInstance;
     if(hypnosPtr != nullptr) {
         hypnosPtr->clearAlarms();
     }
@@ -91,7 +93,7 @@ TimeSpan Loom_Heartbeat::calculateNextEvent() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Heartbeat::flashLight() {
 
-    
+
     return;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
