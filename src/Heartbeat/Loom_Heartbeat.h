@@ -1,11 +1,11 @@
 #pragma once
 
 #include "../Loom_Manager.h"
-#include "../Module.h"
 #include "../Hardware/Loom_Hypnos/Loom_Hypnos.h"
+#include "../Sensors/Loom_Analog/Loom_Analog.h"
 #include "Adapter.h"
 
-class Loom_Heartbeat : public Module {
+class Loom_Heartbeat {
     public:
         /**
          * @brief Construct a new Loom_Heartbeat object

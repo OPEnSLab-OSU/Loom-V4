@@ -1,4 +1,4 @@
-#include "Heartbeat.h"
+#include "Loom_Heartbeat.h"
 #include "../Logger.h"
 
 
@@ -8,7 +8,7 @@ Loom_Heartbeat::Loom_Heartbeat(const uint8_t newAddress,
                         const uint32_t pNormalWorkInterval, 
                         Manager* managerInstance, 
                         Adapter* adapterInstance,
-                        Loom_Hypnos* hypnosInstance = nullptr) {
+                        Loom_Hypnos* hypnosInstance) {
 
     if(hypnosInstance != nullptr && pHeartbeatInterval < 60) {
         WARNING(F("Heartbeat interval too low for Hypnos, setting to minimum of 60 seconds"));
