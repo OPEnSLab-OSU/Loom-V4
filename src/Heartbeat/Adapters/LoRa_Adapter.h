@@ -5,12 +5,12 @@
 
 class LoRa_Adapter : public Adapter {
     public:
-        LoRa_Adapter(Loom_LoRa& passedLoraModule) {
+        LoRa_Adapter(Loom_LoRa* passedLoraModule) {
             this->loraModule = passedLoraModule;
         }
 
         virtual bool sendHeartbeat(const uint8_t address, const JsonObject& payload) override {
-            return loraModule.send(address, payload);
+            return loraModule->send(address, payload);
         }
 
     private:
