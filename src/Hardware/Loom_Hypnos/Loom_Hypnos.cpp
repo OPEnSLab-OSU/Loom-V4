@@ -461,10 +461,10 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
     DateTime t = getLocalTime(RTC_DS.now());
     char tbuf[21];
     dateTime_toString(t, tbuf);
-    LOGF("Current Time (Local): %s", tbuf);
+    LOGF("Current Time (Local): %s", tbuf, true);
     t = getLocalTime(alarmTime);
     dateTime_toString(t, tbuf);
-    LOGF("Next interrupt alarm set for: %s", tbuf);
+    LOGF("Next interrupt alarm set for: %s", tbuf, true);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
