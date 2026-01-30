@@ -9,19 +9,15 @@
 
 #include <Heartbeat/Loom_Heartbeat.h>
 
-#include <Heartbeat/Adapters/LoRa_Adapter.h>
-
 Manager manager("Device", 1);
 
 // Do we want to use the instance number as the LoRa address
 Loom_LoRa lora(manager);
-LoRa_Adapter loraAdapter(&lora);
 
 // heartbeat instantiation
-uint8_t destAddr = 0;
 uint32_t hbInterval_s = 15;
 uint32_t normalInterval_s = 35;
-Loom_Heartbeat heartbeat(destAddr, hbInterval_s, normalInterval_s, &manager, &loraAdapter);
+Loom_Heartbeat heartbeat(hbInterval_s, normalInterval_s, &manager);
 
 void setup() {
   manager.beginSerial();
@@ -33,7 +29,8 @@ void loop() {
   if(heartbeat.getHeartbeatFlag())
   {
     Serial.println("Within Heartbeat Branch");
-    heartbeat.adapterSend();
+    JsonObject payload = heartbeat.createJSONPayload();
+    lora.send(0, payload);
   }
   else {
     // do work
