@@ -105,7 +105,7 @@ bool Loom_Heartbeat::adapterSend() {
     const uint16_t JSON_HEARTBEAT_BUFFER_SIZE = 200;
 
     StaticJsonDocument<JSON_HEARTBEAT_BUFFER_SIZE> heartbeatDoc;
-    heartbeatDoc["type"] = "LoRa_heartbeat";
+    heartbeatDoc["type"] = "heartbeat";
     heartbeatDoc.createNestedArray("contents");
 
     JsonObject objNestedId = heartbeatDoc.createNestedObject("id");
