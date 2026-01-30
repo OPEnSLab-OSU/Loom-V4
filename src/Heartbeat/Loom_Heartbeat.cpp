@@ -3,11 +3,9 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////// THEORETICALLY WORKS
-Loom_Heartbeat::Loom_Heartbeat(const uint8_t newAddress, 
-                        const uint32_t pHeartbeatInterval, 
+Loom_Heartbeat::Loom_Heartbeat(const uint32_t pHeartbeatInterval, 
                         const uint32_t pNormalWorkInterval, 
                         Manager* managerInstance, 
-                        Adapter* adapterInstance,
                         Loom_Hypnos* hypnosInstance) {
 
     if(hypnosInstance != nullptr && pHeartbeatInterval < 60) {
@@ -28,12 +26,9 @@ Loom_Heartbeat::Loom_Heartbeat(const uint8_t newAddress,
     else 
         normWorkInterval_s = pNormalWorkInterval;
 
-    heartbeatDestAddress = newAddress;
-
     heartbeatTimer_s = heartbeatInterval_s;
     normWorkTimer_s = normWorkInterval_s;
     managerPtr = managerInstance;
-    adapPtr = adapterInstance;
     hypnosPtr = hypnosInstance;
     if(hypnosPtr != nullptr) {
         hypnosPtr->clearAlarms();
@@ -99,7 +94,7 @@ void Loom_Heartbeat::flashLight() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_Heartbeat::adapterSend() {
+JsonObject Loom_Heartbeat::createJSONPayload() {
 
     // this is 200 because it is safely within the P2P and LoRaWAN limits for maximum size.
     const uint16_t JSON_HEARTBEAT_BUFFER_SIZE = 200;
@@ -127,7 +122,7 @@ bool Loom_Heartbeat::adapterSend() {
         objNestedTimestamp["time_local"] = localTimeStr;
     }
 
-    return adapPtr->sendHeartbeat(heartbeatDestAddress, heartbeatDoc.as<JsonObject>());
+    return heartbeatDoc.as<JsonObject>();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

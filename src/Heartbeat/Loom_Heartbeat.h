@@ -3,7 +3,8 @@
 #include "../Loom_Manager.h"
 #include "../Hardware/Loom_Hypnos/Loom_Hypnos.h"
 #include "../Sensors/Loom_Analog/Loom_Analog.h"
-#include "Adapter.h"
+
+#include <ArduinoJson.h>
 
 class Loom_Heartbeat {
     public:
@@ -12,21 +13,17 @@ class Loom_Heartbeat {
          * 
          *         // PERSONAL_NOTE: Might not need manager reference, but haven't fully commited to taking it out yet.
          * 
-         * @param newAddress Destination address for heartbeats
          * @param heartbeatInterval Interval between heartbeats (scalar)
          * @param normalWorkInterval Interval between normal work cycles (scalar)
          * @param managerInstance Manager instance
-         * @param adapterInstance Pointer to the communication adapter being used.
          * @param hypnosInstance Pointer to the Hypnos instance being used.
          * 
          * @note heartbeatInterval and normalWorkInterval must be seconds.
          *         // PERSONAL_NOTE: Might not need manager reference, but haven't fully commited to taking it out yet.
          */
-        Loom_Heartbeat(const uint8_t newAddress, 
-                        const uint32_t pHeartbeatInterval, 
+        Loom_Heartbeat(const uint32_t pHeartbeatInterval, 
                         const uint32_t pNormalWorkInterval, 
                         Manager* managerInstance, 
-                        Adapter* adapterInstance,
                         Loom_Hypnos* hypnosInstance = nullptr);
 
         /**
@@ -68,9 +65,9 @@ class Loom_Heartbeat {
         void flashLight();
 
         /**
-         * Send a heartbeat packet with basic device info
+         * Create the heartbeat payload as a JsonObject
          */
-        bool adapterSend();
+        JsonObject createJSONPayload();
 
         /**
          * Ensure that the normal work alarm (1) and heartbeat alarm (2) are both set
@@ -89,11 +86,8 @@ class Loom_Heartbeat {
         uint32_t normWorkTimer_s = 0;
         uint32_t normWorkInterval_s = 0;
 
-        uint8_t heartbeatDestAddress = 0;
-
         bool heartbeatFlag = false;
 
         Loom_Hypnos* hypnosPtr = nullptr;
         Manager* managerPtr = nullptr;
-        Adapter* adapPtr = nullptr;
 };
