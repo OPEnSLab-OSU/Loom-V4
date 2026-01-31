@@ -1,5 +1,6 @@
 #include "Loom_Ethernet.h"
 #include "Logger.h"
+#include <RTClib.h>
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Ethernet::Loom_Ethernet(Manager& man, uint8_t mac[6], IPAddress ip) : NetworkComponent("Ethernet"), manInst(&man){

@@ -1,5 +1,6 @@
 #include "Loom_LTE.h"
 #include "Logger.h"
+#include <RTClib.h>
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_LTE::Loom_LTE(Manager& man, const char* apn, const char* user, const char* pass, const int pin, LTE_VERSION version) : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem){
