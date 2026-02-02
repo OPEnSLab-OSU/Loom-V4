@@ -118,19 +118,14 @@ bool MQTTComponent::getCurrentRetained(const char* topic, char message[MAX_JSON_
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     LOG(topic);
-
     if(mqttClient.connected()){
         /* Clear the incoming buffer */
         memset(message, '\0', MAX_JSON_SIZE);
 
         // Subscribe to the given topic we want to read from
-        // Note: checking return '!= 1' is safer for some libraries than '!sub'
-        if(mqttClient.subscribe(topic, 2) != 1){
+        if(!mqttClient.subscribe(topic, 2)){
             snprintf(output, OUTPUT_SIZE, "Failed to subscribe to topic: %s.", topic);
             ERROR(output);
-            // Even if subscribe fails, we might still want to try parsing, 
-            // but usually we should return false here. 
-            // Depending on your library version, you might keep going.
         }
         else{
             LOG("Successfully subscribed to topic!");
@@ -138,18 +133,9 @@ bool MQTTComponent::getCurrentRetained(const char* topic, char message[MAX_JSON_
 
         /* Attempt to parse a message on the current topic */
         int messageSize = mqttClient.parseMessage();
-        
         if(messageSize){
-            /* FIX: Read the actual payload bytes, not the topic string */
-            int bytesRead = 0;
-            
-            while (mqttClient.available() && bytesRead < MAX_JSON_SIZE - 1) {
-                message[bytesRead] = (char)mqttClient.read();
-                bytesRead++;
-            }
-            message[bytesRead] = '\0'; // Ensure the string is null-terminated
-
-            LOG("Retrieved config payload successfully."); // Helpful debug log
+            /* Copy the received message into the message string */
+            strncpy(message, mqttClient.messageTopic().c_str(), MAX_JSON_SIZE);
 
             // Unsubscribe from the topic 
             mqttClient.unsubscribe(topic);
@@ -158,10 +144,11 @@ bool MQTTComponent::getCurrentRetained(const char* topic, char message[MAX_JSON_
             return true;
         }
         else{
-            WARNING("Message of size 0 received or no retained message found.");
+            WARNING("Message of size 0 received.");
             mqttClient.unsubscribe(topic);
             FUNCTION_END;
             return false;
+            
         }
     }else{
         ERROR("Not connected to MQTT broker.");
