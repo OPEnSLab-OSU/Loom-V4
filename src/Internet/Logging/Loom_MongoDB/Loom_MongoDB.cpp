@@ -73,168 +73,141 @@ bool Loom_MongoDB::publish(){
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_MongoDB::publishMetadata(char* metadata){
+    FUNCTION_START;
+    
+    if(moduleInitialized){
+
+        char jsonString[MAX_JSON_SIZE];
+        TIMER_DISABLE;
+        
+        if(strlen(projectServer) > 0)
+            // Formulate a topic to publish on with the format "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
+            snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s/%s%i"), projectServer, database_name, manInst->get_device_name(), manInst->get_instance_num());
+        else
+            // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
+            snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
+
+        /* Attempt to connect to the broker if it fails we should just return */
+        if(!connectToBroker()){
+            FUNCTION_END;
+            return false;
+        }
+        
+        LOG(F("Attempting to publish metadata!")); 
+        /* Attempt to publish the data to the given topic */
+        if(!publishMessage(topic, metadata)){
+            FUNCTION_END;
+            return false;
+        }
+    }
+    else{
+        WARNING(F("Module not initialized! If using credentials from SD make sure they are loaded first."));
+        FUNCTION_END;
+        return false;
+    }
+    FUNCTION_END;
+    TIMER_ENABLE;
+    return true;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
 
-    // 1. Battery Check
     if(Loom_Analog::getBatteryVoltage() < 3.4){
         WARNING(F("Module not initialized! Battery doesn't have enough power."));
         FUNCTION_END;
         return false;    
     }
     
-    // 2. Define Buffers (Static to prevent Stack Overflow)
-    // chunkBuffer: Holds the big group of packets to send (e.g., "[{...},{...},{...}]")
-    static char chunkBuffer[MAX_JSON_SIZE]; 
-    // packetBuffer: Holds the single line we are currently reading
-    static char packetBuffer[512]; 
-
-    int chunkCount = 0;       // How many packets are currently in the chunk
-    int packetIndex = 0;      // Current position in the packetBuffer
-    int packetNumber = 0;     // Total progress tracking
+    char line[MAX_JSON_SIZE];
+    int packetNumber = 0, index = 0;
     char c;
-
     if(moduleInitialized){
         TIMER_DISABLE;
         if(batchSD.shouldPublish()){
 
-            // Setup Topic
             if(strlen(projectServer) > 0)
+                // Formulate a topic to publish on with the format "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
                 snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
             else
+                // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
                 snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
             
-            if(!connectToBroker()) return false;
+            /* Attempt to connect to the broker */
+            if(!connectToBroker())
+                return false;
             
+            /* Get the file containing our batch of data */
             File fileOutput = batchSD.getBatch();
+
             bool allDataSuccess = true;
             
-            // Initialize the Chunk Buffer with starting bracket
-            strcpy(chunkBuffer, "["); 
-            
-            // ========================= READ LOOP =========================
+            /* Utilize a stream so it doesn't matter how much data we have as its read in one by one */
             while(fileOutput.available()){
                 c = fileOutput.read();
 
-                // Check for line endings
-                if(c == '\r' || c == '\n'){
-                    if(packetIndex == 0) continue; // Skip empty lines
-                    
-                    packetBuffer[packetIndex] = '\0'; // Terminate current packet
+                // \r Marks the end of a line, at this point we want to publish that whole packet
+                if(c == '\r'){
 
-                    // --- CHECK: Will adding this packet overflow the Chunk Buffer? ---
-                    // Current Chunk + Comma + New Packet + Closing Bracket + Null Term
-                    if(strlen(chunkBuffer) + strlen(packetBuffer) + 3 >= MAX_JSON_SIZE) {
-                        // BUFFER FULL! Send what we have immediately.
-                        strcat(chunkBuffer, "]"); // Close the array
-                        
-                        // Send the current full chunk
-                        if(!sendBatch(chunkBuffer, packetNumber, batchSD.getBatchSize())) {
-                            allDataSuccess = false;
-                        }
+                    // Track the packet number we are currently publishing 
+                    snprintf_P(output, OUTPUT_SIZE, PSTR("Publishing Packet %i of %i"), packetNumber+1, batchSD.getBatchSize());
+                    LOG(output);
 
-                        // Reset Chunk Buffer for the new packet
-                        strcpy(chunkBuffer, "[");
-                        chunkCount = 0;
+                    // Replace the \r with a null character
+                    line[index] = '\0';
+
+                    if(!publishMessage(topic, line)){
+                        snprintf(output, OUTPUT_SIZE, PSTR("Failed to publish packet #%i"), packetNumber+1);
+                        WARNING(output);
+                        allDataSuccess = false;
                     }
 
-                    // --- ADD PACKET TO CHUNK ---
-                    if(chunkCount > 0) {
-                        strcat(chunkBuffer, ","); // Add comma if not first item
-                    }
-                    strcat(chunkBuffer, packetBuffer);
-                    chunkCount++;
+                    delay(500);
+                    index = 0;
                     packetNumber++;
-
-                    // --- CHECK: Have we reached the group limit (5)? ---
-                    if(chunkCount >= 5) {
-                        strcat(chunkBuffer, "]"); // Close the array
-                        
-                        // Send the chunk
-                        if(!sendBatch(chunkBuffer, packetNumber, batchSD.getBatchSize())) {
-                            allDataSuccess = false;
-                        }
-
-                        // Reset Chunk Buffer
-                        strcpy(chunkBuffer, "[");
-                        chunkCount = 0;
-                        
-                        // Moderate delay to let the modem breathe (Traffic Cop)
-                        delay(250); 
-                    }
-                    
-                    // Reset Packet Buffer for next line
-                    packetIndex = 0;
-                } 
-                else {
-                    // Safety: Read into packetBuffer
-                    if(packetIndex < 512 - 1) {
-                        packetBuffer[packetIndex] = c;
-                        packetIndex++;
-                    }
                 }
-            } 
-            // ======================= END READ LOOP =======================
 
-            fileOutput.close();
-
-            // --- FLUSH: Send any remaining packets in the buffer ---
-            if(chunkCount > 0) {
-                strcat(chunkBuffer, "]"); // Close the array
-                if(!sendBatch(chunkBuffer, packetNumber, batchSD.getBatchSize())) {
-                    allDataSuccess = false;
-                }
+                // If not just add the packet to the line array
+                else{
+                    line[index] = c;
+                    index++;
+                }  
+                
             }
+            fileOutput.close();
             
-            if(allDataSuccess) LOG(F("Batch upload complete!")); 
-            else {
-                WARNING(F("Some batches failed to send."));
+            // Check if we actually sent all the data successfully 
+            if(allDataSuccess)
+                LOG(F("Data has been successfully sent!")); 
+            else{
+                WARNING(F("1 or more packets failed to send!"));
+                FUNCTION_END;
                 return false;
             }
+            
+        }
+        else{
+            snprintf_P(output, OUTPUT_SIZE, PSTR("Batch not ready to publish: %i/%i"), batchSD.getCurrentBatch(), batchSD.getBatchSize());
+            LOG(output);
+            FUNCTION_END;
+            return false;
         }
     }
-    return true;
-}
-
-// -----------------------------------------------------------------------------------
-// HELPER FUNCTION: Handles the Retry Logic & Sending
-// Paste this ABOVE the publish() function or inside the class as a private method
-// -----------------------------------------------------------------------------------
-bool Loom_MongoDB::sendBatch(char* payload, int progress, int total) {
-    char output[OUTPUT_SIZE];
-    bool sent = false;
-
-    // Try 3 times
-    for(int i=0; i<3; i++) {
-        Watchdog.reset(); // Keep device alive
-
-        // Reconnect if needed
-        if(!mqttClient.connected()) {
-            connectToBroker();
-            delay(500);
-        }
-
-        snprintf_P(output, OUTPUT_SIZE, PSTR("Sending Batch (Progress: %i/%i)... Try %i"), progress, total, i+1);
-        LOG(output);
-
-        // Send with QoS 0 (Fastest) or 1 (Reliable). 
-        // Using QoS 0 here because we have retry logic.
-        if(publishMessage(topic, payload, false, 0)) {
-            sent = true;
-            break;
-        } else {
-            delay(1000); // Wait before retry
-        }
-    }
-
-    if(!sent) {
-        ERROR(F("Failed to send batch after 3 attempts."));
+    else{
+        WARNING(F("Module not initialized! If using credentials from SD make sure they are loaded first."));
+        FUNCTION_END;
         return false;
     }
+    FUNCTION_END;
+    TIMER_ENABLE;
     return true;
 }
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MongoDB::loadConfigFromJSON(char* json){
@@ -244,7 +217,7 @@ void Loom_MongoDB::loadConfigFromJSON(char* json){
 
     // Doc to store the JSON data from the SD card in
     StaticJsonDocument<300> doc;
-    DeserializationError deserialError = deserializeJson(doc, json);
+    DeserializationError deserialError = deserializeJson(doc, (const char *)json);
 
     // Check if an error occurred and if so print it
     if(deserialError != DeserializationError::Ok){
