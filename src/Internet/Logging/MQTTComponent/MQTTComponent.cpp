@@ -77,32 +77,89 @@ bool MQTTComponent::publishMessage(const char* topic, const char* message, bool 
 
     // Make sure the module is initialized
     if(moduleInitialized && internetClient.moduleInitialized){
-        if(mqttClient.connected()){
-            // Tell the broker we are still here
-            mqttClient.poll();
-
-            // Start a message write the data and close the message, publish all messages with retain
-            if(mqttClient.beginMessage(topic, retain, qos) != 1){
-                ERROR(F("Failed to begin message!"));
-            }
-
-            // Print the message to the topic
-            mqttClient.println(message);
-
-            // Check to see if we are actually closing messages properly
-            if(mqttClient.endMessage() != 1){
-                ERROR(F("Failed to close message!"));
-                FUNCTION_END;
-                return false;
-            }
-            else{
-                LOG(F("Data has been successfully sent!"));
-                FUNCTION_END;
-                return true;
-            }   
+        
+        // Ensure we are connected before starting
+        if(!mqttClient.connected()){
+             if(!connectToBroker()){
+                 ERROR("MQTT Client unable to connect to broker.");
+                 FUNCTION_END;
+                 return false;
+             }
         }
-        else{
-            ERROR("MQTT Client not connected to broker ");
+
+        // Tell the broker we are still here
+        mqttClient.poll();
+
+        // --------------------------------------------------------
+        // ATTEMPT 1: Normal Publish
+        // --------------------------------------------------------
+        
+        // Start the message
+        if(mqttClient.beginMessage(topic, retain, qos) != 1){
+            ERROR(F("Failed to begin message!"));
+            // If we can't begin, we likely can't end, but we let flow continue or fail here.
+        }
+
+        mqttClient.println(message);
+
+        // Check if the message closed properly
+        if(mqttClient.endMessage() == 1){
+            LOG(F("Data has been successfully sent!"));
+            FUNCTION_END;
+            return true;
+        } 
+        
+        // --------------------------------------------------------
+        // RECOVERY LOGIC: Handle Failed Close Message
+        // --------------------------------------------------------
+        else {
+            ERROR(F("Failed to close message! Attempting recovery..."));
+            
+            int retryCount = 0;
+            const int maxRecoveries = 3;
+
+            while(retryCount < maxRecoveries){
+                retryCount++;
+                
+                // Small delay to let network settle before retry
+                delay(1000); 
+
+                // Log the attempt
+                char retryLog[50];
+                snprintf(retryLog, 50, "Recovery Attempt %d/%d...", retryCount, maxRecoveries);
+                LOG(retryLog);
+
+                // 1. Try to reconnect
+                // Note: connectToBroker() has its own internal loop, but we call it once here
+                // to ensure the socket is refreshed.
+                if(connectToBroker()){
+                    
+                    // 2. Re-attempt the publish sequence
+                    mqttClient.poll();
+                    
+                    if(mqttClient.beginMessage(topic, retain, qos) == 1){
+                        mqttClient.println(message);
+                        
+                        // 3. Check if it worked this time
+                        if(mqttClient.endMessage() == 1){
+                            LOG(F("Recovery successful! Data sent."));
+                            FUNCTION_END;
+                            return true;
+                        } else {
+                            WARNING(F("Recovery send failed. Retrying..."));
+                        }
+                    } else {
+                        WARNING(F("Recovery beginMessage failed."));
+                    }
+                } else {
+                     WARNING(F("Recovery reconnection failed."));
+                }
+            }
+
+            // If we exit the loop, all 3 retries failed
+            ERROR(F("All recovery attempts failed. Ending transmission."));
+            FUNCTION_END;
+            return false;
         }
     }
     else{

@@ -5,7 +5,7 @@
 #include "Module.h"
 #include "../../Connectivity/NetworkComponent.h"
 
-#define MAX_JSON_SIZE 2000                // The maximum length of an MQTT message
+#define MAX_JSON_SIZE 1024                // The maximum length of an MQTT message
 #define MAX_TOPIC_LENGTH 512                // The maximum length of a topic string
 
 /**
