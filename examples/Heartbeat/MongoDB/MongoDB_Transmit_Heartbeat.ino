@@ -12,8 +12,8 @@
 
 Manager manager("Device", 1);
 
-Loom_LTE lte(manager, NETWORK_NAME, NETWORK_USER, NETWORK_PASS);
-Loom_MongoDB mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS, PROJECT);
+Loom_LTE lte(manager);
+Loom_MongoDB mqtt(manager, lte);
 
 // heartbeat instantiation
 uint32_t hbInterval_s = 15;
