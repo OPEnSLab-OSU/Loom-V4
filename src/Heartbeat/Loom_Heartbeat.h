@@ -66,8 +66,10 @@ class Loom_Heartbeat {
 
         /**
          * Create the heartbeat payload as a JsonObject
+         * 
+         * @param heartbeatDoc JsonDocument to populate with heartbeat data
          */
-        JsonObject createJSONPayload();
+        void createJSONPayload(JsonDocument& heartbeatDoc);
 
         /**
          * Ensure that the normal work alarm (1) and heartbeat alarm (2) are both set

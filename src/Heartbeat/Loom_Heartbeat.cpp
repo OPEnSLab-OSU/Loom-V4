@@ -94,12 +94,9 @@ void Loom_Heartbeat::flashLight() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-JsonObject Loom_Heartbeat::createJSONPayload() {
+void Loom_Heartbeat::createJSONPayload(JsonDocument& heartbeatDoc) {
+    heartbeatDoc.clear();
 
-    // this is 200 because it is safely within the P2P and LoRaWAN limits for maximum size.
-    const uint16_t JSON_HEARTBEAT_BUFFER_SIZE = 200;
-
-    StaticJsonDocument<JSON_HEARTBEAT_BUFFER_SIZE> heartbeatDoc;
     heartbeatDoc["type"] = "heartbeat";
     heartbeatDoc.createNestedArray("contents");
 
@@ -121,8 +118,6 @@ JsonObject Loom_Heartbeat::createJSONPayload() {
         objNestedTimestamp["time_utc"] = utcTimeStr;
         objNestedTimestamp["time_local"] = localTimeStr;
     }
-
-    return heartbeatDoc.as<JsonObject>();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
