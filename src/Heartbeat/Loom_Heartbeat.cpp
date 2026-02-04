@@ -13,7 +13,7 @@ Loom_Heartbeat::Loom_Heartbeat(const uint32_t pHeartbeatInterval,
 
     heartbeatTimer_s = heartbeatInterval_s;
     normWorkTimer_s = normWorkInterval_s;
-    
+
     managerPtr = managerInstance;
     hypnosPtr = hypnosInstance;
 }
@@ -89,7 +89,24 @@ TimeSpan Loom_Heartbeat::calculateNextEvent() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Heartbeat::flashLight() {
+    pinMode(13, OUTPUT);
 
+    digitalWrite(13, LOW);
+    delay(1000);
+
+    digitalWrite(13, HIGH);
+    delay(1500); // 3 units (dash)
+
+    digitalWrite(13, LOW);
+    delay(500); 
+
+    digitalWrite(13, HIGH);
+    delay(500); // 1 unit (dot)
+
+    digitalWrite(13, LOW);
+    delay(1500);
+
+    digitalWrite(13, HIGH);
 
     return;
 }

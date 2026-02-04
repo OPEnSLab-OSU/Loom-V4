@@ -31,6 +31,8 @@ void loop() {
   if(heartbeat.getHeartbeatFlag())
   {
     Serial.println("Within Heartbeat Branch");
+
+    heartbeat.flashLight();
     
     // this is 200 because it is safely within the P2P and LoRaWAN limits for maximum size.
     const uint16_t JSON_HEARTBEAT_BUFFER_SIZE = 200;
