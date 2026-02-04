@@ -21,7 +21,7 @@ Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, false, false);
 Loom_LoRa lora(manager);
 
 // heartbeat instantiation
-uint32_t hbInterval_s = 15;
+uint32_t hbInterval_s = 60;
 uint32_t normalInterval_s = 35;
 Loom_Heartbeat heartbeat(hbInterval_s, normalInterval_s, &manager, &hypnos);
 
@@ -38,6 +38,9 @@ void setup() {
 
   manager.beginSerial();
   manager.initialize();
+
+  heartbeat.sanitizeIntervals();
+  hypnos.clearAlarms();
 }
 
 void loop() {

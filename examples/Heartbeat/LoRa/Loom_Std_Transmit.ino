@@ -22,6 +22,8 @@ Loom_Heartbeat heartbeat(hbInterval_s, normalInterval_s, &manager);
 void setup() {
   manager.beginSerial();
   manager.initialize();
+
+  heartbeat.sanitizeIntervals();
 }
 
 void loop() {

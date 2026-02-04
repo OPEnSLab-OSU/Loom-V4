@@ -8,30 +8,32 @@ Loom_Heartbeat::Loom_Heartbeat(const uint32_t pHeartbeatInterval,
                         Manager* managerInstance, 
                         Loom_Hypnos* hypnosInstance) {
 
-    if(hypnosInstance != nullptr && pHeartbeatInterval < 60) {
-        WARNING(F("Heartbeat interval too low for Hypnos, setting to minimum of 60 seconds"));
-        heartbeatInterval_s = 60;
-    }
-    else if(pHeartbeatInterval < 5) {
-        WARNING(F("Heartbeat interval too low, setting to minimum of 5 seconds"));
-        heartbeatInterval_s = 5;
-    }
-    else 
-        heartbeatInterval_s = pHeartbeatInterval;
-
-    if(pNormalWorkInterval < 5) {
-        WARNING(F("Normal work interval too low, setting to minimum of 5 seconds"));
-        normWorkInterval_s = 5;
-    }
-    else 
-        normWorkInterval_s = pNormalWorkInterval;
+    heartbeatInterval_s = pHeartbeatInterval;
+    normWorkInterval_s = pNormalWorkInterval;
 
     heartbeatTimer_s = heartbeatInterval_s;
     normWorkTimer_s = normWorkInterval_s;
+    
     managerPtr = managerInstance;
     hypnosPtr = hypnosInstance;
-    if(hypnosPtr != nullptr) {
-        hypnosPtr->clearAlarms();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Heartbeat::sanitizeIntervals() {
+
+    if(hypnosPtr != nullptr && heartbeatInterval_s < 60) {
+        WARNING(F("Heartbeat interval too low for Hypnos, setting to minimum of 60 seconds"));
+        heartbeatInterval_s = 60;
+    }
+    else if(heartbeatInterval_s < 5) {
+        WARNING(F("Heartbeat interval too low, setting to minimum of 5 seconds"));
+        heartbeatInterval_s = 5;
+    }
+
+    if(normWorkInterval_s < 5) {
+        WARNING(F("Normal work interval too low, setting to minimum of 5 seconds"));
+        normWorkInterval_s = 5;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

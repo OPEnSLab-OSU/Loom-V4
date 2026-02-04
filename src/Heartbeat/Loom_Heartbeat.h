@@ -27,6 +27,11 @@ class Loom_Heartbeat {
                         Loom_Hypnos* hypnosInstance = nullptr);
 
         /**
+         * Sanitize the heartbeat and normal work intervals to ensure they are above minimums
+         */
+        void sanitizeIntervals();
+
+        /**
          * Convert seconds to a TimeSpan object
          * 
          * @param secondsToConvert The number of seconds to convert
