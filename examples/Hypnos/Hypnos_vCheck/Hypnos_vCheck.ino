@@ -9,9 +9,9 @@
  #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 
 
- Manager man("Device", 1);
+Manager man("Device", 1);
 
-Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, false, false);
+Loom_Hypnos hypnos(man, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, false, false);
 
 void setup(){
 ENABLE_SD_LOGGING;
