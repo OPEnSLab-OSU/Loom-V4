@@ -22,6 +22,8 @@ Loom_Heartbeat heartbeat(hbInterval_s, normalInterval_s, &manager);
 void setup() {
   manager.beginSerial();
   manager.initialize();
+
+  heartbeat.sanitizeIntervals();
 }
 
 void loop() {
@@ -29,8 +31,14 @@ void loop() {
   if(heartbeat.getHeartbeatFlag())
   {
     Serial.println("Within Heartbeat Branch");
-    JsonObject payload = heartbeat.createJSONPayload();
-    lora.send(0, payload);
+
+    heartbeat.flashLight();
+    
+    // this is 200 because it is safely within the P2P and LoRaWAN limits for maximum size.
+    const uint16_t JSON_HEARTBEAT_BUFFER_SIZE = 200;
+    StaticJsonDocument<JSON_HEARTBEAT_BUFFER_SIZE> basePayload;
+    heartbeat.createJSONPayload(basePayload);
+    lora.send(0, basePayload.as<JsonObject>());
   }
   else {
     // do work

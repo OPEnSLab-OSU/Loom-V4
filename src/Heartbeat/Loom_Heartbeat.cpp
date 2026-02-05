@@ -8,30 +8,32 @@ Loom_Heartbeat::Loom_Heartbeat(const uint32_t pHeartbeatInterval,
                         Manager* managerInstance, 
                         Loom_Hypnos* hypnosInstance) {
 
-    if(hypnosInstance != nullptr && pHeartbeatInterval < 60) {
-        WARNING(F("Heartbeat interval too low for Hypnos, setting to minimum of 60 seconds"));
-        heartbeatInterval_s = 60;
-    }
-    else if(pHeartbeatInterval < 5) {
-        WARNING(F("Heartbeat interval too low, setting to minimum of 5 seconds"));
-        heartbeatInterval_s = 5;
-    }
-    else 
-        heartbeatInterval_s = pHeartbeatInterval;
-
-    if(pNormalWorkInterval < 5) {
-        WARNING(F("Normal work interval too low, setting to minimum of 5 seconds"));
-        normWorkInterval_s = 5;
-    }
-    else 
-        normWorkInterval_s = pNormalWorkInterval;
+    heartbeatInterval_s = pHeartbeatInterval;
+    normWorkInterval_s = pNormalWorkInterval;
 
     heartbeatTimer_s = heartbeatInterval_s;
     normWorkTimer_s = normWorkInterval_s;
+
     managerPtr = managerInstance;
     hypnosPtr = hypnosInstance;
-    if(hypnosPtr != nullptr) {
-        hypnosPtr->clearAlarms();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Heartbeat::sanitizeIntervals() {
+
+    if(hypnosPtr != nullptr && heartbeatInterval_s < 60) {
+        WARNING(F("Heartbeat interval too low for Hypnos, setting to minimum of 60 seconds"));
+        heartbeatInterval_s = 60;
+    }
+    else if(heartbeatInterval_s < 5) {
+        WARNING(F("Heartbeat interval too low, setting to minimum of 5 seconds"));
+        heartbeatInterval_s = 5;
+    }
+
+    if(normWorkInterval_s < 5) {
+        WARNING(F("Normal work interval too low, setting to minimum of 5 seconds"));
+        normWorkInterval_s = 5;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -87,19 +89,33 @@ TimeSpan Loom_Heartbeat::calculateNextEvent() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Heartbeat::flashLight() {
+    pinMode(13, OUTPUT);
 
+    digitalWrite(13, LOW);
+    delay(1000);
+
+    digitalWrite(13, HIGH);
+    delay(1500); // 3 units (dash)
+
+    digitalWrite(13, LOW);
+    delay(500); 
+
+    digitalWrite(13, HIGH);
+    delay(500); // 1 unit (dot)
+
+    digitalWrite(13, LOW);
+    delay(1500);
+
+    digitalWrite(13, HIGH);
 
     return;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-JsonObject Loom_Heartbeat::createJSONPayload() {
+void Loom_Heartbeat::createJSONPayload(JsonDocument& heartbeatDoc) {
+    heartbeatDoc.clear();
 
-    // this is 200 because it is safely within the P2P and LoRaWAN limits for maximum size.
-    const uint16_t JSON_HEARTBEAT_BUFFER_SIZE = 200;
-
-    StaticJsonDocument<JSON_HEARTBEAT_BUFFER_SIZE> heartbeatDoc;
     heartbeatDoc["type"] = "heartbeat";
     heartbeatDoc.createNestedArray("contents");
 
@@ -121,8 +137,6 @@ JsonObject Loom_Heartbeat::createJSONPayload() {
         objNestedTimestamp["time_utc"] = utcTimeStr;
         objNestedTimestamp["time_local"] = localTimeStr;
     }
-
-    return heartbeatDoc.as<JsonObject>();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

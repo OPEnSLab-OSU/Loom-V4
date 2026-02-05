@@ -27,6 +27,11 @@ class Loom_Heartbeat {
                         Loom_Hypnos* hypnosInstance = nullptr);
 
         /**
+         * Sanitize the heartbeat and normal work intervals to ensure they are above minimums
+         */
+        void sanitizeIntervals();
+
+        /**
          * Convert seconds to a TimeSpan object
          * 
          * @param secondsToConvert The number of seconds to convert
@@ -66,8 +71,10 @@ class Loom_Heartbeat {
 
         /**
          * Create the heartbeat payload as a JsonObject
+         * 
+         * @param heartbeatDoc JsonDocument to populate with heartbeat data
          */
-        JsonObject createJSONPayload();
+        void createJSONPayload(JsonDocument& heartbeatDoc);
 
         /**
          * Ensure that the normal work alarm (1) and heartbeat alarm (2) are both set
