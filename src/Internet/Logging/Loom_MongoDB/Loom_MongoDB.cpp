@@ -151,17 +151,24 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
             while(fileOutput.available()){
                 c = fileOutput.read();
 
+                /* Attempt to reconnect if connection has been stopped during publishMessage 
+                 * The previous packet that was lost due a stopped connected will not be retransmitted.
+                 */
+                if(!mqttClient.connected()) {
+                  connectToBroker();
+                }
+
                 // \r Marks the end of a line, at this point we want to publish that whole packet
                 if(c == '\r'){
 
                     // Track the packet number we are currently publishing 
-                    snprintf_P(output, OUTPUT_SIZE, PSTR("Publishing Packet %i of %i"), packetNumber+1, batchSD.getBatchSize());
+                    snprintf_P(output, OUTPUT_SIZE, PSTR("Publishing Packet %i of %i with len=%d"), packetNumber+1, batchSD.getBatchSize(), index);
                     LOG(output);
 
                     // Replace the \r with a null character
                     line[index] = '\0';
 
-                    if(!publishMessage(topic, line)){
+                    if(!publishMessage(topic, line)){ // This will fail if the line is greater than 256 because MQTT is buffering the packets not streaming. MQTT buffer is only 256 in arduinoMQTTClient
                         snprintf(output, OUTPUT_SIZE, PSTR("Failed to publish packet #%i"), packetNumber+1);
                         WARNING(output);
                         allDataSuccess = false;
@@ -174,7 +181,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
 
                 // If not just add the packet to the line array
                 else{
-                    line[index] = c;
+                    line[index] = c; // This line overflows if the batches line is longer than max_json_size (2000 bytes) can be unsafe
                     index++;
                 }  
                 

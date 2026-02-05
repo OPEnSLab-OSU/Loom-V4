@@ -38,6 +38,11 @@ void Loom_MMA8451::initialize() {
     }
 
     // If we actually set an interrupt pin we want to enable the functionality
+    // INT PIN cannot be negative 1 WARNS that this will always be true.
+    /*
+      Loom_MMA8451.cpp:41:21: warning: comparison is always true due to limited range of data type [-Wtype-limits]
+        if(interruptPin != -1){
+    */
     if(interruptPin != -1){
         pinMode(interruptPin, INPUT_PULLUP);
 
