@@ -23,6 +23,8 @@ Loom_Heartbeat heartbeat(hbInterval_s, normalInterval_s, &manager);
 void setup() {
   manager.beginSerial();
   manager.initialize();
+  //will need to pull mqtt creds from sd card
+  mqtt.loadConfigFromJSON("name.csv");
 }
 
 void loop() {
