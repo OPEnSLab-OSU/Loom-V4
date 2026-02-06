@@ -166,7 +166,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
                 if (!isConnected()) {
                     connectToBroker();
                 }
-
+            
                 // \r Marks the end of a line, at this point we want to publish that whole packet
                 if (c == '\r') {
 
@@ -179,9 +179,8 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
                     line[index] = '\0';
 
                     if (!publishMessage(
-                            topic, line)) { // This will fail if the line is greater than 256
-                                            // because MQTT is buffering the packets not streaming.
-                                            // MQTT buffer is only 256 in arduinoMQTTClient
+                            topic, line)) { // This fails if the line is greater than 2000 bytes
+                                            // Or if the line is malformed
                         snprintf(output, OUTPUT_SIZE, PSTR("Failed to publish packet #%i"),
                                  packetNumber + 1);
                         WARNING(output);
