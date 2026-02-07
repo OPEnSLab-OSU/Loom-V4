@@ -135,10 +135,13 @@ public:
         truncateFileName(fileName, log.file);
 
         if (hypnosInst != nullptr && hypnosInst->isRTCInitialized()) {
+            DateTime t = hypnosInst->getCurrentTime();
+            char tbuf[21];
+            hypnosInst->dateTime_toString(t, tbuf);
             snprintf_P(
                 logMessage, OUTPUT_SIZE, 
                 PSTR("[%s] [%s] [%s:%s:%u] %s"), 
-                hypnosInst->getCurrentTime().text(), 
+                tbuf, 
                 log.level, fileName, log.func, log.lineNum, msg
             );
         } else {
