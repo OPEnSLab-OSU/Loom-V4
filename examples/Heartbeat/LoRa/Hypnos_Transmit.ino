@@ -53,11 +53,17 @@ void loop() {
 
     heartbeat.flashLight();
 
-    // this is 200 because it is safely within the P2P and LoRaWAN limits for maximum size.
-    const uint16_t JSON_HEARTBEAT_BUFFER_SIZE = 200;
-    StaticJsonDocument<JSON_HEARTBEAT_BUFFER_SIZE> basePayload;
-    heartbeat.createJSONPayload(basePayload);
-    lora.send(0, basePayload.as<JsonObject>());
+    const uint16_t JSON_HEARTBEAT_BUFFER_SIZE = 300;
+    StaticJsonDocument<JSON_HEARTBEAT_BUFFER_SIZE> payload;
+    heartbeat.createJSONPayload(payload);
+
+    // append any additional information you wish to send over heartbeat
+    payload["exampleField"] = "example";
+    JsonObject nestedJson = payload.createNestedObject("NestedName");
+    nestedJson["nestExample1"] = "nest1";
+    nestedJson["nestExample2"] = "nest2";
+
+    lora.send(0, payload.as<JsonObject>());
   }
   else {
     // do work
