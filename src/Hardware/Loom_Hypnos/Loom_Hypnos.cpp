@@ -704,7 +704,7 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
 
         firedAlarmsBitMask = checkTriggeredAlarms();
 
-        // Clear any pending RTC alarms
+        // Clear any pending RTC alarms' status registers
         RTC_DS.clearAlarm();
 
         // Re-init the modules that need it
