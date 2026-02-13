@@ -707,10 +707,10 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
         delay(1000);
         Watchdog.reset();
 
+        firedAlarmsBitMask = checkTriggeredAlarms();
+
         LOG(F("Device has awoken from sleep!"));
         Watchdog.reset();
-        
-        firedAlarmsBitMask = checkTriggeredAlarms();
 
         // Clear any pending RTC alarms' status registers
         RTC_DS.clearAlarm();
