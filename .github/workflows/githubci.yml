@@ -1,0 +1,62 @@
+name: Clang-Format Auto-Fix
+
+on:
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+jobs:
+  clang_format:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout ci-loom scripts
+        uses: actions/checkout@v4
+        with:
+          repository: OPEnSLab-OSU/ci-loom
+          ref: main
+          path: ci-loom
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format python3
+
+      - name: "Format (PR: changed files only)"
+        if: ${{ github.event_name == 'pull_request' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.sha }}"
+
+          mapfile -t files < <(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA" \
+            | grep -E '\.(c|cc|cpp|cxx|c\+\+|h|hh|hpp|hxx|h\+\+|C|H)$' || true)
+
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No C/C++ files changed."
+            exit 0
+          fi
+
+          python3 ci-loom/run-clang-format.py "${files[@]}" -i
+
+      - name: "Check format (act: whole repo)"
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          # Always succeeds on local test
+          python3 ci-loom/run-clang-format.py -r . -e "ci-loom/*" -e "bin/*" || true
+
+      - name: Commit fixes
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "Auto-format with clang-format" && git push

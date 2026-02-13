@@ -1,8 +1,8 @@
 .vscode
 .DS_Store
-.clang-format
-.clangd
 .justfile
+.ci
+.secrets
 
 # Credentials/secrets
 **/arduino_secrets.h
