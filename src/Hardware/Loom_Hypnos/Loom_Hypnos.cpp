@@ -483,26 +483,25 @@ void Loom_Hypnos::setSecondAlarmInterruptDuration(const TimeSpan duration) {
 uint8_t Loom_Hypnos::checkTriggeredAlarms() {
     uint8_t triggeredAlarmsBitMask = 0;
 
-    ERROR(RTC_DS.alarmFired(1) ? "############## Alarm 1 has triggered!" : "Alarm 1 has not triggered.");
-    ERROR(RTC_DS.alarmFired(2) ? "############## Alarm 2 has triggered!" : "Alarm 2 has not triggered.");
-
     if(RTC_DS.alarmFired(1))
     {
+        LOG("Alarm 1 has woken the device up from sleep!");
         triggeredAlarmsBitMask |= BM_ALARM_1;
         clearAlarm1Register();
     }
     
     if(RTC_DS.alarmFired(2))
     {
+        LOG("Alarm 2 has woken the device up from sleep!");
         triggeredAlarmsBitMask |= BM_ALARM_2;
         clearAlarm2Register();
     }
 
     clearAlarmFlags();
 
-    if(triggeredAlarmsBitMask & BM_NONE)
+    if(triggeredAlarmsBitMask == BM_NONE)
         ERROR("No alarms have triggered!");
-    else if(triggeredAlarmsBitMask & BM_BOTH)
+    else if(triggeredAlarmsBitMask == BM_BOTH)
         ERROR("Both alarms have triggered!");
 
     return triggeredAlarmsBitMask;
@@ -529,7 +528,7 @@ void Loom_Hypnos::clearAlarm1Register() {
     Wire.write(0x80); // hours
     Wire.write(0x80); // day/date
     Wire.endTransmission();
-    ERROR("Alarm 1 register reset");
+    LOG("Alarm 1 register reset");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -541,7 +540,7 @@ void Loom_Hypnos::clearAlarm2Register() {
     Wire.write(0x80); // hours
     Wire.write(0x80); // day/date
     Wire.endTransmission();
-    ERROR("Alarm 2 register reset");
+    LOG("Alarm 2 register reset");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

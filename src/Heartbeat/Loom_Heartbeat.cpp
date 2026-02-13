@@ -147,9 +147,6 @@ void Loom_Heartbeat::ensureHeartbeatHypnosAlarmsActive() {
         return;
     }
 
-    Serial.println("checking the value of the fired alarms bitmask:  @@@@@@@@@@@@@@");
-    Serial.println(hypnosPtr->getFiredAlarmsBM());
-
     // checks if the alarms fired.
     uint8_t firedAlarmsBitMask = hypnosPtr->getFiredAlarmsBM();
     bool setAlarm1 = firedAlarmsBitMask & BM_ALARM_1;
@@ -181,7 +178,7 @@ void Loom_Heartbeat::ensureHeartbeatHypnosAlarmsActive() {
 
         timeToSetWith = secondsToTimeSpan(heartbeatInterval_s);
         hypnosPtr->setSecondAlarmInterruptDuration(timeToSetWith);
-        Serial.println("Both alarms reset");
+        LOG("Both alarms reset");
         return;
     }
     else if(setAlarm1){
@@ -202,14 +199,14 @@ void Loom_Heartbeat::ensureHeartbeatHypnosAlarmsActive() {
             ts = secondsToTimeSpan(heartbeatInterval_s + remainingSecondsAlarmTwo);
             hypnosPtr->setSecondAlarmInterruptDuration(ts);
 
-            ERROR("Skipping heartbeat since normal work will overlap");
+            LOG("Skipping heartbeat since normal work will overlap");
             return;
         }
         // sets normal work alarm if no overlap detected.
         else {
             TimeSpan ts = secondsToTimeSpan(normWorkInterval_s);
             hypnosPtr->setInterruptDuration(ts);
-            ERROR("Alarm set for normal work interval");
+            LOG("Alarm set for normal work interval");
         }
     }
     else if(setAlarm2){
@@ -219,14 +216,14 @@ void Loom_Heartbeat::ensureHeartbeatHypnosAlarmsActive() {
             currentTime + heartbeatInterval_s > alarmOneTime - 5 &&
             currentTime + heartbeatInterval_s < alarmOneTime + 5) {
 
-            ERROR("Skipping heartbeat alarm to avoid conflict with normal work alarm");
+            LOG("Skipping heartbeat alarm to avoid conflict with normal work alarm");
             return;
         }
         // sets heartbeat alarm if no overlap detected.
         else {
             TimeSpan ts = secondsToTimeSpan(heartbeatInterval_s);
             hypnosPtr->setSecondAlarmInterruptDuration(ts);
-            Serial.println("Alarm set for heartbeat interval");
+            LOG("Alarm set for heartbeat interval");
         }
     }
     else {
@@ -246,32 +243,20 @@ void Loom_Heartbeat::adjustHbFlagFromAlarms() {
     bool alarm1Fired = hypnosPtr->alarm1Fired();
     bool alarm2Fired = hypnosPtr->alarm2Fired();
 
-    ERROR("Triggered Alarm Number: ");
-    if(alarm1Fired && alarm2Fired)
-        Serial.println("3");
-    else if(alarm2Fired)
-        Serial.println("2");
-    else if(alarm1Fired)
-        Serial.println("1");
-    else if(!alarm1Fired && !alarm2Fired)
-        Serial.println("0");
-    else
-        Serial.println("Error determining alarm number");
-
     if(alarm1Fired && alarm2Fired) {
-        Serial.println("Both alarms have fired - defaulting to alarm 1 behavior");
+        LOG("Both alarms have fired - defaulting to alarm 1 behavior");
         setHeartbeatFlag(false);
         return;
     }
 
     if(alarm1Fired) {
         setHeartbeatFlag(false); 
-        Serial.println("Adjusted heartbeat flag from alarm 1");
+        LOG("Adjusted heartbeat flag from alarm 1 triggering");
         return;
     }
     else if (alarm2Fired) {
         setHeartbeatFlag(true);
-        Serial.println("Adjusted heartbeat flag from alarm 2");
+        LOG("Adjusted heartbeat flag from alarm 2 triggering");
         return;
     }
 

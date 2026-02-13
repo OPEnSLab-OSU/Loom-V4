@@ -452,10 +452,6 @@ bool Loom_LoRa::send(const uint8_t destinationAddress,
         return false;
     }
 
-    Serial.println(F("JSON About to be Sent:"));
-    serializeJsonPretty(json, Serial);
-    Serial.println();
-
     if (measureMsgPack(json) > MAX_MESSAGE_LENGTH) {
         return sendFragmentedPacket(json, destinationAddress);
     } else {
