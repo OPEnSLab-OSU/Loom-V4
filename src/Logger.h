@@ -92,6 +92,7 @@ class Logger {
         if (sdInst != nullptr && enableSDLogging && sdInst->hasSDInitialized()) {
             snprintf_P(filePath, 100, PSTR("/debug/output_%i.log"), sdInst->getCurrentFileNumber());
             sdInst->writeLineToFile(filePath, message);
+        }
     }
 
   public:

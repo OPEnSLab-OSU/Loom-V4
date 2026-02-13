@@ -189,23 +189,25 @@ bool SDManager::begin() {
 
     printModuleName("Initializing SD Card...");
 
-     /*
-      Start the SD card with the fastest SPI speed
-      Changing to 4MHz because 24MHz has occasional stability issues on different devices. 
-      SD_SCK_MHZ is from the SDFat library which takes the an integer parameter that sets the Serial clock frequency that SPI uses 
-      to communicate between the SD and the MCU(m0)
-      Setting it to 50 is essentially asking the m0 to set the SCK freq to the max, up to 50MHz. (for an m0 the max is 24MHz)
+    /*
+     Start the SD card with the fastest SPI speed
+     Changing to 4MHz because 24MHz has occasional stability issues on different devices.
+     SD_SCK_MHZ is from the SDFat library which takes the an integer parameter that sets the Serial
+     clock frequency that SPI uses to communicate between the SD and the MCU(m0) Setting it to 50 is
+     essentially asking the m0 to set the SCK freq to the max, up to 50MHz. (for an m0 the max is
+     24MHz)
 
-      Other possible settings can be multiples of 48MHz(m0 CPU Freq) such as,
-      24MHz
-      16MHz
-      12MHz
-      8MHz
-      6MHz
-      4MHz
-    */
-    if(!sd.begin(chip_select, SD_SCK_MHZ(4))){
-        printModuleName("Failed to Initialize SD Card! SD Card functionality will be disabled, is there an SD card inserted into the device?");
+     Other possible settings can be multiples of 48MHz(m0 CPU Freq) such as,
+     24MHz
+     16MHz
+     12MHz
+     8MHz
+     6MHz
+     4MHz
+   */
+    if (!sd.begin(chip_select, SD_SCK_MHZ(4))) {
+        printModuleName("Failed to Initialize SD Card! SD Card functionality will be disabled, is "
+                        "there an SD card inserted into the device?");
         return false;
     } else {
         // Make a debug folder if it doesn't already exist
