@@ -647,6 +647,7 @@ bool Loom_Hypnos::logToSD() {
 /* Voltage Checks */
 
 bool Loom_Hypnos::checkVoltage(float vmin, int analogPin, float scale, bool mv, int num_samples) {
+bool Loom_Hypnos::checkVoltage(float vmin, int analogPin, float scale, bool mv, int num_samples) {
     INSTRUMENT();
     analogReadResolution(12);
 
@@ -685,7 +686,11 @@ bool Loom_Hypnos::checkVoltage(float vmin, int analogPin, float scale, bool mv, 
     uint8_t new_flags = VF_CHECKED; // Will always be set after a voltage check
 
     if (voltage < V_CRITICAL) {
+    if (voltage < V_CRITICAL) {
         new_flags |= VF_CRITICAL;
+        LOGF("WARNING: Critical voltage (%.2fV < %.2fV) - device will NOT function properly!",
+             voltage, V_CRITICAL);
+    } else if (voltage < V_DEGRADED) {
         LOGF("WARNING: Critical voltage (%.2fV < %.2fV) - device will NOT function properly!",
              voltage, V_CRITICAL);
     } else if (voltage < V_DEGRADED) {
