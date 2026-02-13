@@ -202,7 +202,17 @@ private:
     bool receiveFromLoRa(uint8_t *buf, uint8_t buf_size, uint timeout, 
                          uint8_t *fromAddress);
 
-    // receives a single fragment from some device
+    /**
+     * receives a single fragment from some device
+     * 
+     * @note: For the tempDoc variable, although the maximum LoRa payload is 251 raw bytes, deserializing MsgPack 
+     * into ArduinoJson requires significantly more RAM than the raw packet size. ArduinoJson builds an
+     * in-memory DOM representation that stores object nodes, key strings (copied from the buffer), 
+     * values, and structural metadata. In practice, this can require ~3–6× the raw MsgPack size, 
+     * especially for header packets with nested objects and timestamps. 
+     * 1500 bytes was chosen to safely accommodate worst-case header packets and avoid 
+     * deserialization failures due to insufficient JsonDocument capacity.
+     */
     FragReceiveStatus receiveFrag(uint timeout, bool shouldProxy, 
                                   uint8_t *fromAddress);
 
