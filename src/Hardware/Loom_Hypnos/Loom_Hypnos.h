@@ -255,7 +255,7 @@ class Loom_Hypnos : public Module {
     /**
      * @brief A minimum required voltage check for a complete cycle. Minimum voltage varies by
      * device and should be determined by the user. This method is more flexible than the analog
-     * class and can be used with different boards as long as you know the ADC pin.
+     * class and allows us to create control methods in the hypnos class based on the voltage.
      *
      * @param voltage_min Minimum required voltage for your device (default = 0.0)
      * @param analogPin Any pin connected to the ADC input channel. (default = A7)
@@ -313,11 +313,12 @@ class Loom_Hypnos : public Module {
 
     static constexpr float VREF = 3.3f; // Reference voltage based on the feather m0 3.3v rail
 
-    /* Voltage check status voltages (subject to change but should be acceptable for most devices)*/
+    /* Voltage check status voltages (subject to change but should be acceptable for all devices)*/
     static constexpr float V_CRITICAL = 3.0f; // Below this, device may not function
-    static constexpr float V_DEGRADED = 3.3f; // Minimum for device operation
-    static constexpr float V_LTE_MIN = 3.7f;  // Minimum for LTE transmission
-    static constexpr float V_OPTIMAL = 3.9f;
+    static constexpr float V_DEGRADED = 3.2f; // Minimum for device operation
+    static constexpr float V_ACCEPTABLE = 3.35f;
+    static constexpr float V_LTE_MIN = 3.45f; // Minimum for LTE transmission
+    static constexpr float V_OPTIMAL = 3.7f;
 
     uint8_t voltage_flags = 0; // Flag mask defaults to 0x00
 
