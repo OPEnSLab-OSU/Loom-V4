@@ -2,35 +2,34 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_NOVASDS011::Loom_NOVASDS011(Manager& man, HardwareSerial* serial) : Module("NOVASDS011"), manInst(&man), serial(serial) {
+Loom_NOVASDS011::Loom_NOVASDS011(Manager &man, HardwareSerial *serial)
+    : Module("NOVASDS011"), manInst(&man), serial(serial) {
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_NOVASDS011::initialize(){
-    nova.begin(serial);
-}
+void Loom_NOVASDS011::initialize() { nova.begin(serial); }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_NOVASDS011::measure(){
+void Loom_NOVASDS011::measure() {
     float temp25, temp10;
     int err = nova.read(&temp25, &temp10);
 
     // If there was no error we want to update the readings
-    if(!err){
+    if (!err) {
         pm25 = temp25;
         pm10 = temp10;
-    }else{
+    } else {
         ERROR("Failed to read from sensor");
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_NOVASDS011::package(){
-    JsonObject json = manInst-> get_data_object(getModuleName());
+void Loom_NOVASDS011::package() {
+    JsonObject json = manInst->get_data_object(getModuleName());
     json["PM_2.5_μg/m3"] = pm25;
     json["PM_10_μg/m3"] = pm10;
 }

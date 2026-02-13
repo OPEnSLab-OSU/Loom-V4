@@ -5,34 +5,27 @@ uint8_t Loom_MMA8451::interruptPin;
 InterruptCallbackFunction Loom_MMA8451::isr;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_MMA8451::Loom_MMA8451(
-                        Manager& man,
-                        int addr,
-                        bool useMux,
-                        mma8451_range_t range,
-                        int intPin,
-                        uint8_t sensitivity
-                    ) : I2CDevice("MMA8451"), manInst(&man), address(addr), range(range), sensitivity(sensitivity){
-                        module_address = addr;
-                        interruptPin = intPin;
-                        
-                        // Register the module with the manager
-                        if(!useMux)
-                            manInst->registerModule(this);
-                        
-                    }
+Loom_MMA8451::Loom_MMA8451(Manager &man, int addr, bool useMux, mma8451_range_t range, int intPin,
+                           uint8_t sensitivity)
+    : I2CDevice("MMA8451"), manInst(&man), address(addr), range(range), sensitivity(sensitivity) {
+    module_address = addr;
+    interruptPin = intPin;
+
+    // Register the module with the manager
+    if (!useMux)
+        manInst->registerModule(this);
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MMA8451::initialize() {
 
     // If we have less than 2 bytes of data from the sensor
-    if(!mma.begin(address)){
+    if (!mma.begin(address)) {
         ERROR(F("Failed to initialize MMA8451! Check connections and try again..."));
         moduleInitialized = false;
         return;
-    }
-    else{
+    } else {
         LOG(F("Successfully initialized MMA8451!"));
         mma.setRange(range);
     }
@@ -40,10 +33,10 @@ void Loom_MMA8451::initialize() {
     // If we actually set an interrupt pin we want to enable the functionality
     // INT PIN cannot be negative 1 WARNS that this will always be true.
     /*
-      Loom_MMA8451.cpp:41:21: warning: comparison is always true due to limited range of data type [-Wtype-limits]
-        if(interruptPin != -1){
+      Loom_MMA8451.cpp:41:21: warning: comparison is always true due to limited range of data type
+      [-Wtype-limits] if(interruptPin != -1){
     */
-    if(interruptPin != -1){
+    if (interruptPin != -1) {
         pinMode(interruptPin, INPUT_PULLUP);
 
         mma.writeRegister8(MMA8451_REG_CTRL_REG3, CTRL_REG3);
@@ -60,23 +53,22 @@ void Loom_MMA8451::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MMA8451::measure() {
-    if(moduleInitialized){
+    if (moduleInitialized) {
         // Get the current connection status
         bool connectionStatus = checkDeviceConnection();
 
         // If we are connected and we need to reinit
-        if(connectionStatus && needsReinit){
+        if (connectionStatus && needsReinit) {
             initialize();
             needsReinit = false;
         }
 
         // If we are not connected
-        else if(!connectionStatus){
+        else if (!connectionStatus) {
             ERROR(F("No acknowledge received from the device"));
             return;
         }
-        
-        
+
         // Update the sensor
         mma.read();
 
@@ -98,25 +90,41 @@ void Loom_MMA8451::measure() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MMA8451::package() {
     char orientationString[25];
-    if(moduleInitialized){
+    if (moduleInitialized) {
         JsonObject json = manInst->get_data_object(getModuleName());
         json["X_Acc_g"] = accel[2];
         json["Y_Acc_g"] = accel[0];
         json["Z_Acc_g"] = accel[1];
-        
+
         switch (orientation) {
-            case MMA8451_PL_PUF: strncpy(orientationString, "Portrait_Up_Front\0", 25);       break;
-            case MMA8451_PL_PUB: strncpy(orientationString, "Portrait_Up_Back\0" , 25);		break;
-            case MMA8451_PL_PDF: strncpy(orientationString, "Portrait_Down_Front\0",25);	    break;
-            case MMA8451_PL_PDB: strncpy(orientationString, "Portrait_Down_Back\0",25);		break;
-            case MMA8451_PL_LRF: strncpy(orientationString, "Landscape_Right_Front\0",25);	break;
-            case MMA8451_PL_LRB: strncpy(orientationString, "Landscape_Right_Back\0",25);	    break;
-            case MMA8451_PL_LLF: strncpy(orientationString, "Landscape_Left_Front\0",25);	    break;
-            case MMA8451_PL_LLB: strncpy(orientationString, "Landscape_Left_Back\0",25);	    break;
+        case MMA8451_PL_PUF:
+            strncpy(orientationString, "Portrait_Up_Front\0", 25);
+            break;
+        case MMA8451_PL_PUB:
+            strncpy(orientationString, "Portrait_Up_Back\0", 25);
+            break;
+        case MMA8451_PL_PDF:
+            strncpy(orientationString, "Portrait_Down_Front\0", 25);
+            break;
+        case MMA8451_PL_PDB:
+            strncpy(orientationString, "Portrait_Down_Back\0", 25);
+            break;
+        case MMA8451_PL_LRF:
+            strncpy(orientationString, "Landscape_Right_Front\0", 25);
+            break;
+        case MMA8451_PL_LRB:
+            strncpy(orientationString, "Landscape_Right_Back\0", 25);
+            break;
+        case MMA8451_PL_LLF:
+            strncpy(orientationString, "Landscape_Left_Front\0", 25);
+            break;
+        case MMA8451_PL_LLB:
+            strncpy(orientationString, "Landscape_Left_Back\0", 25);
+            break;
         }
-        
+
         // Package the orientation string
-        
+
         json["Orientation"] = orientationString;
     }
 }
@@ -124,14 +132,14 @@ void Loom_MMA8451::package() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MMA8451::power_up() {
-    if(moduleInitialized){
+    if (moduleInitialized) {
         mma.setRange(range);
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_MMA8451::IMU_ISR(){
+void Loom_MMA8451::IMU_ISR() {
     // Detach and reattach and call the user defined function
     detachInterrupt(digitalPinToInterrupt(interruptPin));
     isr();

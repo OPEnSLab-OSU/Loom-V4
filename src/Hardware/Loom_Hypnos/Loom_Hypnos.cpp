@@ -667,7 +667,7 @@ bool Loom_Hypnos::logToSD() {
 
 /* Voltage Checks */
 
-bool Loom_Hypnos::checkVoltage(float vmin, int analogPin, float scale, bool mv, int num_samples){
+bool Loom_Hypnos::checkVoltage(float vmin, int analogPin, float scale, bool mv, int num_samples) {
     INSTRUMENT();
 
     analogReadResolution(12);
@@ -675,17 +675,17 @@ bool Loom_Hypnos::checkVoltage(float vmin, int analogPin, float scale, bool mv, 
     float voltage_sum = 0.0f;
 
     // Multiple samples for the average voltage
-    for (int i = 0; i < num_samples; i++){
+    for (int i = 0; i < num_samples; i++) {
         float voltage = 0.0f;
 
-        if(analogPin == A7){
+        if (analogPin == A7) {
             voltage = Loom_Analog::getBatteryVoltage();
-        } else { 
+        } else {
             // If you're not using a feather or if you want to read a different ADC channel pin
             float pin_reading = analogRead(analogPin);
             pin_reading *= scale;
-            pin_reading *= VREF;  // VREF may be different depending on the board (feather uses 3.3v)
-            pin_reading /= 4096;  // FIXED: Changed *= to /=
+            pin_reading *= VREF; // VREF may be different depending on the board (feather uses 3.3v)
+            pin_reading /= 4096; // FIXED: Changed *= to /=
             voltage = pin_reading;
         }
 
@@ -701,13 +701,14 @@ bool Loom_Hypnos::checkVoltage(float vmin, int analogPin, float scale, bool mv, 
 
     uint8_t new_flags = VF_CHECKED; // Will always be set after a voltage check
 
-    if(voltage < V_CRITICAL){
+    if (voltage < V_CRITICAL) {
         new_flags |= VF_CRITICAL;
-        LOGF("WARNING: Critical voltage (%.2fV < %.2fV) - device will NOT function properly!", voltage, V_CRITICAL);
-    }
-    else if(voltage < V_DEGRADED){
+        LOGF("WARNING: Critical voltage (%.2fV < %.2fV) - device will NOT function properly!",
+             voltage, V_CRITICAL);
+    } else if (voltage < V_DEGRADED) {
         new_flags |= VF_DEGRADED;
-        LOGF("WARNING: Degraded voltage (%.2fV < %.2fV) - device may not function properly!", voltage, V_DEGRADED);
+        LOGF("WARNING: Degraded voltage (%.2fV < %.2fV) - device may not function properly!",
+             voltage, V_DEGRADED);
     }
 
     return (voltage >= vmin); // Returns True if voltage is greater than VMIN

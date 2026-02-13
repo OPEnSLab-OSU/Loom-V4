@@ -5,10 +5,12 @@
 FlashStorage(WiFiConfig, WifiInfo);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_WIFI::Loom_WIFI(Manager& man, CommunicationMode mode, const char* name, const char* password, int connectionRetries) : NetworkComponent("WiFi"), manInst(&man), mode(mode), connectionRetries(connectionRetries){
-    if(mode == CommunicationMode::AP && strlen(name) <= 0){
+Loom_WIFI::Loom_WIFI(Manager &man, CommunicationMode mode, const char *name, const char *password,
+                     int connectionRetries)
+    : NetworkComponent("WiFi"), manInst(&man), mode(mode), connectionRetries(connectionRetries) {
+    if (mode == CommunicationMode::AP && strlen(name) <= 0) {
         snprintf(wifi_name, 100, "%s%i", manInst->get_device_name(), manInst->get_instance_num());
-    }else{
+    } else {
         strncpy(wifi_name, name, 100);
     }
 
@@ -18,7 +20,7 @@ Loom_WIFI::Loom_WIFI(Manager& man, CommunicationMode mode, const char* name, con
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_WIFI::Loom_WIFI(Manager& man) : NetworkComponent("WiFi"), manInst(&man), connectionRetries(5) {
+Loom_WIFI::Loom_WIFI(Manager &man) : NetworkComponent("WiFi"), manInst(&man), connectionRetries(5) {
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -33,11 +35,10 @@ void Loom_WIFI::initialize() {
 
     LOG(F("Initializing WiFi module..."));
 
-    if(WiFi.status() == WL_NO_SHIELD){
+    if (WiFi.status() == WL_NO_SHIELD) {
         ERROR(F("WINC1500 not present, WiFi functionality will be disabled"));
         moduleInitialized = false;
-    }
-    else{
+    } else {
 
         // Enable low power mode to conserve power
         WiFi.maxLowPowerMode();
@@ -49,17 +50,15 @@ void Loom_WIFI::initialize() {
         // Give a bit more time to initialize the module
         delay(1000);
 
-
         // Only try to verify if we have connected to a network
-        if(mode != CommunicationMode::AP && !usingMax){
+        if (mode != CommunicationMode::AP && !usingMax) {
             // Verify the wifi connection after we have connected
             LOG(F("Verifying Connection to the Internet..."));
             verifyConnection();
         }
 
-        if(moduleInitialized){
+        if (moduleInitialized) {
             LOG(F("Successfully Initalized Wifi!"));
-
 
             // Print the device IP
             ipToString(getIPAddress(), ip);
@@ -69,9 +68,9 @@ void Loom_WIFI::initialize() {
             ipToString(getSubnetMask(), ip);
             snprintf(output, OUTPUT_SIZE, "Device Subnet Address: %s", ip);
             LOG(output);
-        }else{
+        } else {
             ERROR(F("Failed to initialize Wifi!"));
-        }      
+        }
     }
     firstInit = false;
     FUNCTION_END;
@@ -79,14 +78,14 @@ void Loom_WIFI::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_WIFI::package(){
+void Loom_WIFI::package() {
     FUNCTION_START;
-    if(moduleInitialized){
-        if(powerUp){
+    if (moduleInitialized) {
+        if (powerUp) {
             JsonObject json = manInst->get_data_object(getModuleName());
             json[F("SSID")] = WiFi.SSID();
             json[F("RSSI")] = WiFi.RSSI();
-        }else{
+        } else {
             JsonObject json = manInst->get_data_object(getModuleName());
             json[F("SSID")] = wifi_name;
             json[F("RSSI")] = 0;
@@ -98,34 +97,34 @@ void Loom_WIFI::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::power_up() {
-    // If batchSD is defined and our current batch is not equal to one less than the needed for publishing dont power up
-    if(batchSD != nullptr && !firstInit){
-        if(batchSD->getCurrentBatch() != batchSD->getBatchSize()-1){ 
+    // If batchSD is defined and our current batch is not equal to one less than the needed for
+    // publishing dont power up
+    if (batchSD != nullptr && !firstInit) {
+        if (batchSD->getCurrentBatch() != batchSD->getBatchSize() - 1) {
             WARNING(F("Not ready to publish, WIFI will not be powered up"));
             powerUp = false;
-            return; 
-        }else{
+            return;
+        } else {
             powerUp = true;
         }
     }
 
-    if(moduleInitialized && powerUp){
-        
+    if (moduleInitialized && powerUp) {
 
         // Check if we are going through our power up and are using max
-        if(usingMax){
+        if (usingMax) {
             // If so we want to read the flash memory to see if we have set data yet
             WifiInfo info = WiFiConfig.read();
 
             // Read the data in if we have set it before
-            if(info.is_valid != false){
+            if (info.is_valid != false) {
                 strncpy(wifi_name, info.name, 100);
                 strncpy(wifi_password, info.password, 100);
             }
         }
 
-        // Initialize the access point mode or connect to a router 
-        if(mode == CommunicationMode::CLIENT)
+        // Initialize the access point mode or connect to a router
+        if (mode == CommunicationMode::CLIENT)
             connect_to_network();
         else
             start_ap();
@@ -134,7 +133,7 @@ void Loom_WIFI::power_up() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_WIFI::connect_to_network(){
+void Loom_WIFI::connect_to_network() {
     FUNCTION_START;
     int retry_count = 0;
     char output[OUTPUT_SIZE];
@@ -144,24 +143,27 @@ void Loom_WIFI::connect_to_network(){
     TIMER_DISABLE;
 
     // If we are logging into a network with a password
-    if(strlen(wifi_password) > 0){
+    if (strlen(wifi_password) > 0) {
 
         LOG(F("We are authenticating with a password..."));
         // While we are trying to connect to the wifi network
-        while(WiFi.begin(wifi_name, wifi_password) != WL_CONNECTED){
+        while (WiFi.begin(wifi_name, wifi_password) != WL_CONNECTED) {
             LOG(F("Attempting to connect to AP..."));
             delay(5000);
             retry_count++;
 
-            // If after 10 attempts we still can't connect to the network we need to stop and break so we don't hang the device
-            if(retry_count >= connectionRetries){
-                ERROR(F("Failed to connect to the access point after allotted tries! Is the network in range and are your credentials correct?"));
-                
+            // If after 10 attempts we still can't connect to the network we need to stop and break
+            // so we don't hang the device
+            if (retry_count >= connectionRetries) {
+                ERROR(F("Failed to connect to the access point after allotted tries! Is the "
+                        "network in range and are your credentials correct?"));
+
                 // Switch over to AP mode if using max
-                if(usingMax){
+                if (usingMax) {
                     LOG(F("Starting access point as backup!"));
                     mode = CommunicationMode::AP;
-                    snprintf(wifi_name, 100, "%s%i", manInst->get_device_name(), manInst->get_instance_num());
+                    snprintf(wifi_name, 100, "%s%i", manInst->get_device_name(),
+                             manInst->get_instance_num());
                     start_ap();
                 }
 
@@ -170,24 +172,27 @@ void Loom_WIFI::connect_to_network(){
                 return;
             }
         }
-    }
-    else{
+    } else {
         // While we are trying to connect to the wifi network
-        while(WiFi.begin(wifi_name) != WL_CONNECTED){
-            snprintf(output, OUTPUT_SIZE, "Attempting to connect to AP (Attempt %i)...", retry_count+1);
+        while (WiFi.begin(wifi_name) != WL_CONNECTED) {
+            snprintf(output, OUTPUT_SIZE, "Attempting to connect to AP (Attempt %i)...",
+                     retry_count + 1);
             LOG(output);
             delay(5000);
             retry_count++;
 
-            // If after 10 attempts we still can't connect to the network we need to stop and break so we don't hang the device
-            if(retry_count >= connectionRetries){
-                ERROR(F("Failed to connect to the access point after allotted tries! Is the network in range and are your credentials correct?"));
+            // If after 10 attempts we still can't connect to the network we need to stop and break
+            // so we don't hang the device
+            if (retry_count >= connectionRetries) {
+                ERROR(F("Failed to connect to the access point after allotted tries! Is the "
+                        "network in range and are your credentials correct?"));
 
                 // Switch over to AP mode if using max
-                if(usingMax){
+                if (usingMax) {
                     LOG(F("Starting access point as backup!"));
                     mode = CommunicationMode::AP;
-                    snprintf(wifi_name, 100, "%s%i", manInst->get_device_name(), manInst->get_instance_num());
+                    snprintf(wifi_name, 100, "%s%i", manInst->get_device_name(),
+                             manInst->get_instance_num());
                     start_ap();
                 }
                 TIMER_ENABLE;
@@ -203,7 +208,7 @@ void Loom_WIFI::connect_to_network(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_WIFI::start_ap(){
+void Loom_WIFI::start_ap() {
     FUNCTION_START;
     TIMER_DISABLE;
     char output[OUTPUT_SIZE];
@@ -213,7 +218,7 @@ void Loom_WIFI::start_ap(){
     auto status = WiFi.beginAP(wifi_name);
 
     // If the AP is not listening print an error
-    if(status != WL_AP_LISTENING){
+    if (status != WL_AP_LISTENING) {
         ERROR(F("Access point creation failed!"));
         FUNCTION_END;
         return;
@@ -221,7 +226,8 @@ void Loom_WIFI::start_ap(){
 
     // Wait 10 seconds for the AP to start up
     LOG(F("Waiting for a device to connect to the access point..."));
-    while(WiFi.status() != WL_AP_CONNECTED);
+    while (WiFi.status() != WL_AP_CONNECTED)
+        ;
     LOG(F("Device connected to AP!"));
     TIMER_ENABLE;
     FUNCTION_END;
@@ -229,8 +235,8 @@ void Loom_WIFI::start_ap(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_WIFI::power_down(){
-    if(powerUp){
+void Loom_WIFI::power_down() {
+    if (powerUp) {
         // Disconnect and end the Wifi when we power down the device
         WiFi.disconnect();
         WiFi.end();
@@ -243,8 +249,8 @@ void Loom_WIFI::power_down(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_WIFI::isConnected() { 
-    if(mode == CommunicationMode::CLIENT)
+bool Loom_WIFI::isConnected() {
+    if (mode == CommunicationMode::CLIENT)
         return WiFi.status() == WL_CONNECTED;
     else
         return WiFi.status() == WL_AP_CONNECTED;
@@ -252,37 +258,35 @@ bool Loom_WIFI::isConnected() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_WIFI::verifyConnection(){
+bool Loom_WIFI::verifyConnection() {
     FUNCTION_START;
     char output[OUTPUT_SIZE];
-    if(moduleInitialized && powerUp){
+    if (moduleInitialized && powerUp) {
         int pingLatency = WiFi.ping("www.google.com");
-        if(pingLatency >= 0){
-            snprintf(output, OUTPUT_SIZE, "Successfully Pinged Google! Response Time: %ims", pingLatency);
+        if (pingLatency >= 0) {
+            snprintf(output, OUTPUT_SIZE, "Successfully Pinged Google! Response Time: %ims",
+                     pingLatency);
             LOG(output);
             FUNCTION_END;
             return true;
-        }
-        else{
+        } else {
             LOG(F("Ping Failed! Error Code: "));
 
             // Parse the error code into a human readable format
-            switch (pingLatency)
-            {
-                case -1:
-                    LOG(F("Ping Failed! Error Code: Destination_Unreachable"));
-                    break;
-                case -2:
-                    LOG(F("Ping Failed! Error Code: Ping_TimeOut"));
-                    break;
-                case -3:
-                    LOG(F("Ping Failed! Error Code: Unknown_Host"));
-                    break;
+            switch (pingLatency) {
+            case -1:
+                LOG(F("Ping Failed! Error Code: Destination_Unreachable"));
+                break;
+            case -2:
+                LOG(F("Ping Failed! Error Code: Ping_TimeOut"));
+                break;
+            case -3:
+                LOG(F("Ping Failed! Error Code: Unknown_Host"));
+                break;
 
-                default:
-                    LOG(F("Ping Failed! Error Code: General_Error"));
-                    break;
-                
+            default:
+                LOG(F("Ping Failed! Error Code: General_Error"));
+                break;
             }
             FUNCTION_END;
             return false;
@@ -293,24 +297,25 @@ bool Loom_WIFI::verifyConnection(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_WIFI::loadConfigFromJSON(char* json){
+void Loom_WIFI::loadConfigFromJSON(char *json) {
     FUNCTION_START;
 
     // Doc to store the JSON data from the SD card in
     StaticJsonDocument<300> doc;
     char output[OUTPUT_SIZE];
-    DeserializationError deserialError = deserializeJson(doc, (const char*)json);
+    DeserializationError deserialError = deserializeJson(doc, (const char *)json);
 
     // Check if an error occurred and if so print it
-    if(deserialError != DeserializationError::Ok){
-        snprintf(output, OUTPUT_SIZE, "There was an error reading the WIFI credentials from SD: %s", deserialError.c_str());
+    if (deserialError != DeserializationError::Ok) {
+        snprintf(output, OUTPUT_SIZE, "There was an error reading the WIFI credentials from SD: %s",
+                 deserialError.c_str());
         ERROR(output);
     }
 
     // Only update the wifi creds if the data was not NULL
-    if(!doc["SSID"].isNull()){
-        strncpy(wifi_name, doc["SSID"].as<const char*>(), 100);
-        strncpy(wifi_password, doc["password"].as<const char*>(), 100);
+    if (!doc["SSID"].isNull()) {
+        strncpy(wifi_name, doc["SSID"].as<const char *>(), 100);
+        strncpy(wifi_password, doc["password"].as<const char *>(), 100);
     }
 
     free(json);
@@ -319,7 +324,7 @@ void Loom_WIFI::loadConfigFromJSON(char* json){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_WIFI::storeNewWiFiCreds(const char* name, const char* password){
+void Loom_WIFI::storeNewWiFiCreds(const char *name, const char *password) {
     FUNCTION_START;
     // Write the new info to the flash memory
     LOG(F("Writing new WiFi credentials to flash..."));
@@ -341,28 +346,28 @@ void Loom_WIFI::storeNewWiFiCreds(const char* name, const char* password){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-IPAddress Loom_WIFI::getIPAddress(){
+IPAddress Loom_WIFI::getIPAddress() {
     IPAddress ip = WiFi.localIP();
     return ip;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-IPAddress Loom_WIFI::getSubnetMask(){
+IPAddress Loom_WIFI::getSubnetMask() {
     IPAddress subnet = WiFi.subnetMask();
     return subnet;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-IPAddress Loom_WIFI::getGateway(){
+IPAddress Loom_WIFI::getGateway() {
     IPAddress gateway = WiFi.gatewayIP();
     return gateway;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-IPAddress Loom_WIFI::getBroadcast(){
+IPAddress Loom_WIFI::getBroadcast() {
     IPAddress broadcast = WiFi.gatewayIP();
 
     // Set the last one to 255 for the netmask
@@ -373,9 +378,10 @@ IPAddress Loom_WIFI::getBroadcast(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_WIFI::getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) {
+bool Loom_WIFI::getNetworkTime(int *year, int *month, int *day, int *hour, int *minute, int *second,
+                               float *tz) {
     unsigned long unixtime = WiFi.getTime();
-    if(unixtime != 0){
+    if (unixtime != 0) {
         DateTime time = DateTime(unixtime);
         *year = time.year();
         *month = time.month();
@@ -384,7 +390,7 @@ bool Loom_WIFI::getNetworkTime(int* year, int* month, int* day, int* hour, int* 
         *minute = time.minute();
         *second = time.second();
         return true;
-    }else{
+    } else {
         return false;
     }
 }

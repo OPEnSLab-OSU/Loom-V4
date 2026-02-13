@@ -57,7 +57,7 @@ class MQTTComponent : public Module {
      * @return True if connected, else false.
      */
     bool isConnected() { return mqttClient.connected(); }
-    
+
     /**
      * Length of time the broker should keep the connection open for default
      * @param time Length of time in MILLISECONDS the connection will be kept open
