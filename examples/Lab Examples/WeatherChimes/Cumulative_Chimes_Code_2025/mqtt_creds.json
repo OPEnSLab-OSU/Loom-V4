@@ -1,0 +1,8 @@
+{
+    "broker": "cas-mosquitto.biossys.oregonstate.edu",
+    "port": 1883,
+    "username": "User",
+    "password": "password",
+    "database": "ChimesDatabase",
+    "project": ""
+}

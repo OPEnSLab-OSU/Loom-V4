@@ -14,7 +14,7 @@ Loom_LoRa::Loom_LoRa(
     const uint8_t sendMaxRetries,
     const uint8_t receiveMaxRetries,
     const uint16_t retryTimeout
-) : Module("LoRa"),
+) :     Module("LoRa"),
         manager(&manager), 
         radioDriver{RFM95_CS, RFM95_INT},
         deviceAddress(address),
@@ -193,7 +193,10 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
 
     LOGF("Received packet from %i", *fromAddress);
 
-    StaticJsonDocument<300> tempDoc;
+    // Must be much larger than 251 byte bc deserializing MsgPack into an ArduinoJson doc is far less efficient
+    // than building it manually, as it builds a full in-memory DOM which can require ~3–6× the raw packet size.
+    const size_t SAFE_JSON_SIZE = 1500;
+    StaticJsonDocument<SAFE_JSON_SIZE> tempDoc;
 
     // cast buf to const to avoid mutation
     auto err = deserializeMsgPack(tempDoc, (const char *)buf, sizeof(buf));
@@ -457,6 +460,7 @@ bool Loom_LoRa::send(const uint8_t destinationAddress,
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
     bool status = false;
 
@@ -523,4 +527,3 @@ bool Loom_LoRa::receiveBatch(uint timeout, int* numberOfPackets, uint8_t *fromAd
     *numberOfPackets = expectedOutstandingPackets;
     return status;
 }
-

@@ -70,7 +70,13 @@ enum TIME_ZONE{
     AWST = 8,
     ACST = 10, // Half an hour off so its -9.5
     AEST = 10
+};
 
+enum ALARM_BITMASKS{
+    BM_NONE = 0b00,
+    BM_ALARM_1 = 0b01,
+    BM_ALARM_2 = 0b10,
+    BM_BOTH = 0b11
 };
 
 /**
@@ -202,6 +208,13 @@ class Loom_Hypnos : public Module{
         DateTime getCurrentTime();
 
         /**
+         * Convert a given UTC time to local time
+         * 
+         * @param time The UTC time to convert to local time
+         */
+        DateTime getLocalTime(DateTime time); 
+
+        /**
          * Convert the current time to a ISO 8601 compatible time string
          *
          * @param time The current time as a DateTime object
@@ -254,6 +267,52 @@ class Loom_Hypnos : public Module{
         /* Return initialization state of the RTC */
         bool isRTCInitialized() { return RTC_initialized; };
 
+        /** Return whether alarm 1 fired */
+        bool alarm1Fired() { return (firedAlarmsBitMask & BM_ALARM_1) != 0; };
+
+        /** Return whether alarm 2 fired */
+        bool alarm2Fired() { return (firedAlarmsBitMask & BM_ALARM_2) != 0; };
+
+        /* Return a bitmask representing what alarm triggered the wakeup */
+        uint8_t getFiredAlarmsBM() { return firedAlarmsBitMask; };
+
+        /* Clear the fired alarms bitmask */
+        void clearFiredAlarmsBM() { firedAlarmsBitMask = 0; };
+
+        /**
+         * Check if Alarm 1 is cleared
+         */
+        bool isAlarm1Cleared();
+
+        /**
+         * Check if Alarm 2 is cleared
+         */
+        bool isAlarm2Cleared();
+
+        /**
+         * Fully clear both alarms on the DS3231 RTC, including their status flags and actual registers.
+         */
+        void clearAlarms();
+
+        /**
+         * Get the date (in the form of a DateTime) for when a given alarm is set to trigger
+         * @param alarmNumber The alarm number to get the date for (1 or 2)
+         */
+        DateTime getAlarmDate(const uint8_t alarmNumber);
+
+        /**
+         * Set the second alarm interrupt to be triggered at a set interval in the future
+         * @param duration The time that will elapse before the second alarm interrupt is triggered
+         * 
+         * @note DS3231 Alarm 2 only supports minute/hour/day/date resolution and ignores seconds.
+         *          As a result, when setting the second alarm with a TimeSpan that includes seconds,
+         *          the alarm will trigger at the start of the target minute rather than the exact second.
+         *          The first wakeup may therefore occur slightly earlier than intended, but subsequent
+         *          intervals remain correct because the alarm is reset relative to the current RTC time.
+         *          If precise second-level timing is required, consider using Alarm 1, which supports seconds.
+         */
+        void setSecondAlarmInterruptDuration(const TimeSpan duration);
+
     private:
 
         Manager* manInst = nullptr;                                                         // Instance of the manager
@@ -304,7 +363,6 @@ class Loom_Hypnos : public Module{
         void createTimezoneMap();                                                           // Map Timezone Strings to Timezone enum
         std::map<const char*, TIME_ZONE, cmp_str> timezoneMap;                              // String to Timezone enum, use custom compare to ensure that strings are compared correctly
 
-        DateTime getLocalTime(DateTime time);                                               // Convert a given UTC time to local time
         TIME_ZONE timezone;                                                                 // Timezone the RTC was set to
 
         DateTime time;                                                                      // UTC time
@@ -316,6 +374,37 @@ class Loom_Hypnos : public Module{
         void pre_sleep();                            // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
         void post_sleep(bool waitForSerial);         // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
 
+        uint8_t firedAlarmsBitMask = 0;                                                     // Which alarm triggered the wakeup
 
+        /**
+         * Clear the alarm 1 register on the DS3231 RTC
+         */
+        void clearAlarm1Register();
 
+        /**
+         * Clear the alarm 2 register on the DS3231 RTC
+         */
+        void clearAlarm2Register();
+
+        /**
+         * Clear the alarm registers on the DS3231 RTC
+         */
+        void clearAlarmRegisters();
+
+        /**
+         * Clear the alarm flags on the DS3231 RTC
+         */
+        void clearAlarmFlags();
+
+        /**
+         * Get which alarm triggered the wakeup
+         * 
+         * This returns a bitmask representing which alarms triggered:
+         * - 0b00 (0): No alarms triggered
+         * - 0b01 (1): Alarm 1 triggered
+         * - 0b10 (2): Alarm 2 triggered
+         * - 0b11 (3): Both alarms triggered
+         * You can use the ALARM_BITMASKS enum for easier evaluation. 
+         */
+        uint8_t checkTriggeredAlarms();
 };
