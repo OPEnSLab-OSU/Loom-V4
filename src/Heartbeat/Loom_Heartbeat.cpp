@@ -206,7 +206,7 @@ void Loom_Heartbeat::ensureHeartbeatHypnosAlarmsActive() {
         else {
             TimeSpan ts = secondsToTimeSpan(normWorkInterval_s);
             hypnosPtr->setInterruptDuration(ts);
-            LOG("Alarm set for normal work interval");
+            LOG("Alarm 1 set for normal work interval");
         }
     }
     else if(setAlarm2){
@@ -223,7 +223,7 @@ void Loom_Heartbeat::ensureHeartbeatHypnosAlarmsActive() {
         else {
             TimeSpan ts = secondsToTimeSpan(heartbeatInterval_s);
             hypnosPtr->setSecondAlarmInterruptDuration(ts);
-            LOG("Alarm set for heartbeat interval");
+            LOG("Alarm 2 set for heartbeat interval");
         }
     }
     else {
@@ -251,12 +251,12 @@ void Loom_Heartbeat::adjustHbFlagFromAlarms() {
 
     if(alarm1Fired) {
         setHeartbeatFlag(false); 
-        LOG("Adjusted heartbeat flag from alarm 1 triggering");
+        LOG("Adjusted heartbeat flag to false from alarm 1 triggering");
         return;
     }
     else if (alarm2Fired) {
         setHeartbeatFlag(true);
-        LOG("Adjusted heartbeat flag from alarm 2 triggering");
+        LOG("Adjusted heartbeat flag to true from alarm 2 triggering");
         return;
     }
 
