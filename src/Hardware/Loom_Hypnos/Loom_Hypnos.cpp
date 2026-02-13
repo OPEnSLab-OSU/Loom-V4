@@ -643,4 +643,66 @@ bool Loom_Hypnos::logToSD() {
     sdMan->log(getCurrentTime());
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/* Voltage Checks */
+
+bool Loom_Hypnos::checkVoltage(float vmin, int analogPin, float scale, bool mv, int num_samples) {
+    INSTRUMENT();
+    analogReadResolution(12);
+
+    float voltage_sum = 0.0f;
+
+    // Multiple samples for the average voltage
+    for (int i = 0; i < num_samples; i++) {
+        float voltage = 0.0f;
+
+        if (analogPin == A7) {
+            voltage = Loom_Analog::getBatteryVoltage();
+        } else {
+            // If you're not using a feather or if you want to read a different ADC channel pin
+            float pin_reading = analogRead(analogPin);
+            pin_reading *= scale;
+            pin_reading *= VREF; // VREF may be different depending on the board (feather uses 3.3v)
+            pin_reading /= 4096;
+            voltage = pin_reading;
+        }
+
+        voltage_sum += voltage;
+    }
+
+    float voltage = voltage_sum / num_samples;
+    LOGF("Average Voltage: %.2fV", voltage);
+
+    if (voltage <= vmin) {
+        LOGF("Voltage lower than vmin!");
+    }
+
+    // Convert to millivolts if requested
+    if (mv) {
+        voltage = voltage * 1000.0f;
+    }
+
+    uint8_t new_flags = VF_CHECKED; // Will always be set after a voltage check
+
+    if (voltage < V_CRITICAL) {
+        new_flags |= VF_CRITICAL;
+        LOGF("WARNING: Critical voltage (%.2fV < %.2fV) - device will NOT function properly!",
+             voltage, V_CRITICAL);
+    } else if (voltage < V_DEGRADED) {
+        new_flags |= VF_DEGRADED;
+        LOGF("WARNING: Degraded voltage (%.2fV < %.2fV) - device may not function properly!",
+             voltage, V_DEGRADED);
+    } else if (voltage >= V_ACCEPTABLE && voltage <= V_LTE_MIN) {
+        new_flags |= VF_ACCEPTABLE;
+        LOGF("WARNING: Voltage acceptable for normal operation but may experience issues "
+             "transmitting.");
+    } else if (voltage >= V_LTE_MIN && voltage <= V_OPTIMAL) {
+        new_flags |= VF_LTE_READY;
+        LOGF("Voltage acceptable for LTE transmission but remains suboptimal.");
+    } else {
+        new_flags |= VF_OPTIMAL;
+        LOGF("Voltage is optimal");
+    }
+
+    return (voltage >= vmin); // Returns True if voltage is greater than VMIN
+}

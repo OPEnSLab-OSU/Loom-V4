@@ -2,9 +2,10 @@
 .DS_Store
 .justfile
 .ci
-.secrets
+.clang-format-results.txt
 
 # Credentials/secrets
 **/arduino_secrets.h
 **/wifi_creds.json
 **/mqtt_creds.json
+.secrets

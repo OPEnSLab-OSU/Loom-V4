@@ -258,6 +258,23 @@ class Loom_Hypnos : public Module{
 
         Manager* manInst = nullptr;                                                         // Instance of the manager
         NetworkComponent* networkComponent = nullptr;                                       // Reference to a NetworkComponent
+    /**
+     * @brief A minimum required voltage check for a complete cycle. Minimum voltage varies by
+     * device and should be determined by the user. This method is more flexible than the analog
+     * class and allows us to create control methods in the hypnos class based on the voltage.
+     *
+     * @param voltage_min Minimum required voltage for your device (default = 0.0)
+     * @param analogPin Any pin connected to the ADC input channel. (default = A7)
+     * @param scale Resistance divisor for +VIN --> VOUT (default = 2.0 for A7)
+     * @param mv Whether you want millivolts returned with volts. (default = false)
+     * @param num_samples Number of samples if you want to get an average. (default = 1)
+     */
+    bool checkVoltage(float vmin = 0.0, int analogPin = A7, float scale = 2.0f, bool mv = false,
+                      int num_samples = 1);
+
+  private:
+    Manager *manInst = nullptr;                   // Instance of the manager
+    NetworkComponent *networkComponent = nullptr; // Reference to a NetworkComponent
 
         /* Power rail setup */
         // Power rail configuration for when the device is awake
@@ -288,10 +305,29 @@ class Loom_Hypnos : public Module{
 
         /* Real-Time Clock Settings */
 
-        RTC_DS3231 RTC_DS;                                                                  // Real time clock reference
-        bool RTC_initialized = false;                                                       // Did the RTC initialize correctly?
+    RTC_DS3231 RTC_DS;            // Real time clock reference
+    bool RTC_initialized = false; // Did the RTC initialize correctly?
 
-        bool custom_time = false;                                                           // Set the RTC to a user specified time
+    bool custom_time = false; // Set the RTC to a user specified time
+
+    /* Voltage check bitmaps 0-7 LSB-first */
+    static constexpr uint8_t VF_CHECKED = (1u << 0);    // 00000001 | 0x01
+    static constexpr uint8_t VF_CRITICAL = (1u << 1);   // 00000010 | 0x02
+    static constexpr uint8_t VF_DEGRADED = (1u << 2);   // 00000100 | 0x04
+    static constexpr uint8_t VF_ACCEPTABLE = (1u << 3); // 00001000 | 0x08
+    static constexpr uint8_t VF_LTE_READY = (1u << 4);  // 00010000 | 0x10
+    static constexpr uint8_t VF_OPTIMAL = (1u << 5);    // 00100000 | 0x20
+
+    static constexpr float VREF = 3.3f; // Reference voltage based on the feather m0 3.3v rail
+
+    /* Voltage check status voltages (subject to change but should be acceptable for all devices)*/
+    static constexpr float V_CRITICAL = 3.0f; // Below this, device may not function
+    static constexpr float V_DEGRADED = 3.2f; // Minimum for device operation
+    static constexpr float V_ACCEPTABLE = 3.35f;
+    static constexpr float V_LTE_MIN = 3.45f; // Minimum for LTE transmission
+    static constexpr float V_OPTIMAL = 3.7f;
+
+    uint8_t voltage_flags = 0; // Flag mask defaults to 0x00
 
         // Map the given pin to an interrupt call back
         // 0th - ISR

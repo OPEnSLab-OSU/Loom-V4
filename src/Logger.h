@@ -177,16 +177,15 @@ public:
         const char *name = strrchr(src, '\\');
 
         if (name == nullptr) {
-          name = strrchr(src, '/');
+            name = strrchr(src, '/');
         }
-        
+
         // If we found a separator, skip it. Otherwise, use the full string.
         if (name != nullptr) {
-            name += 1; 
+            name += 1;
         } else {
             name = src;
         }
-
 
         memcpy(dst, name, strlen(name));
     }
