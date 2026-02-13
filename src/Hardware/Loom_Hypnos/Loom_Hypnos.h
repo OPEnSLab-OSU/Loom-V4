@@ -368,6 +368,8 @@ class Loom_Hypnos : public Module{
         DateTime time;                                                                      // UTC time
         DateTime localTime;                                                                 // Local time
 
+        DateTime alarmTime;                                                                 // Time the alarm has been set for
+
         /* Sleep functionality */
         void pre_sleep();                            // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
         void post_sleep(bool waitForSerial);         // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
