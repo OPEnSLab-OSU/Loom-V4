@@ -10,8 +10,8 @@
 #include "Module.h"
 
 #include "Hardware/Loom_Hypnos/SDManager.h"
-#include "Sensors/Loom_Analog/Loom_Analog.h"
 #include "Loom_Manager.h"
+#include "Sensors/Loom_Analog/Loom_Analog.h"
 
 // Used to pass along the user defined interrupt callback
 using InterruptCallbackFunction = void (*)();
