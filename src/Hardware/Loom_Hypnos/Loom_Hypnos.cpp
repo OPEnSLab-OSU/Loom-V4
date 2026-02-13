@@ -528,7 +528,7 @@ void Loom_Hypnos::clearAlarm1Register() {
     Wire.write(0x80); // hours
     Wire.write(0x80); // day/date
     Wire.endTransmission();
-    LOG("Alarm 1 register reset");
+    LOG("Alarm 1 date register reset");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -540,7 +540,7 @@ void Loom_Hypnos::clearAlarm2Register() {
     Wire.write(0x80); // hours
     Wire.write(0x80); // day/date
     Wire.endTransmission();
-    LOG("Alarm 2 register reset");
+    LOG("Alarm 2 date register reset");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -633,7 +633,7 @@ void Loom_Hypnos::sleep(bool waitForSerial){
         uint32_t alarmedTimeTwo = RTC_DS.getAlarm(2).unixtime();
         uint32_t currentTime = RTC_DS.now().unixtime();
         hasAlarmTriggered = alarmedTimeOne <= currentTime
-                         && alarmedTimeTwo <= currentTime;
+                         || alarmedTimeTwo <= currentTime;
         
         // 50ms delay allows this last message to be sent before the bus disconnects
         LOG("Entering Standby Sleep...");
