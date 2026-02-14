@@ -5,16 +5,19 @@ on:
     branches: [main, dev]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   clang_format:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout (PR head)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.head_ref }}
 
       - name: Checkout ci-loom scripts
         uses: actions/checkout@v4
@@ -35,7 +38,7 @@ jobs:
           set -euo pipefail
 
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
-          HEAD_SHA="${{ github.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
 
           mapfile -t files < <(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA" \
             | grep -E '\.(c|cc|cpp|cxx|c\+\+|h|hh|hpp|hxx|h\+\+|C|H)$' || true)
@@ -54,9 +57,15 @@ jobs:
           python3 ci-loom/run-clang-format.py -r . -e "ci-loom/*" -e "bin/*" || true
 
       - name: Commit fixes
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --staged --quiet || git commit -m "Auto-format with clang-format" && git push
+          git add -A -- ':!ci-loom'
+          if git diff --staged --quiet; then
+            echo "No formatting changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Auto-format with clang-format"
+          git push origin HEAD:${{ github.head_ref }}
