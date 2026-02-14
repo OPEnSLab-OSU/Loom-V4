@@ -4,76 +4,71 @@
 
 #include <ArduinoJson.h>
 
-enum ACTUATOR_TYPE{
-    SERVO,
-    STEPPER,
-    RELAY,
-    NEOPIXEL
-};
+enum ACTUATOR_TYPE { SERVO, STEPPER, RELAY, NEOPIXEL };
 
 /**
  * All actuators eg. Servos, Steppers, etc. use this to allow for max control
- * 
+ *
  * @author Will Richards
- */ 
-class Actuator : public Module{
-    protected:
-        /* Module methods that are inherited by actuator */
-        void measure() override {};
-        
-        void power_up() override {};
-        void power_down() override {}; 
-        void package() override {};
+ */
+class Actuator : public Module {
+  protected:
+    /* Module methods that are inherited by actuator */
+    void measure() override {};
 
-    public:
-        Actuator(ACTUATOR_TYPE actType, int instance) : Module("Actuator") { 
-            type = actType;
-            instance_num = instance;
-            snprintf(moduleName, 100, "%s%i", typeToString(), instance_num);
-        };
+    void power_up() override {};
+    void power_down() override {};
+    void package() override {};
 
-        // Initializer
-        virtual void initialize() = 0;
-        virtual void package(JsonObject json) = 0;
-    
-        /**
-         * Called when a packet is received that needs to move the actuator
-         * @param json The parameters that can change 
-         */ 
-        virtual void control(JsonArray json) = 0;
+  public:
+    Actuator(ACTUATOR_TYPE actType, int instance) : Module("Actuator") {
+        type = actType;
+        instance_num = instance;
+        snprintf(moduleName, 100, "%s%i", typeToString(), instance_num);
+    };
 
-        void printModuleName(const char* message) override { 
-            char output[50];
-            snprintf(output, 50, "[%s] %s", moduleName, message);
-            Serial.print(output); 
-        };
+    // Initializer
+    virtual void initialize() = 0;
+    virtual void package(JsonObject json) = 0;
 
-        const char* getModuleName() override { return moduleName; };
+    /**
+     * Called when a packet is received that needs to move the actuator
+     * @param json The parameters that can change
+     */
+    virtual void control(JsonArray json) = 0;
 
-        /**
-         * Convert the type of actuator to a String
-         */ 
-        const char* typeToString(){
-            switch(type){
-                case SERVO:
-                    return "Servo";
-                case STEPPER:
-                    return "Stepper";
-                case RELAY:
-                    return "Relay";
-                case  NEOPIXEL:
-                    return "Neopixel";
-            }
-        };
+    void printModuleName(const char *message) override {
+        char output[50];
+        snprintf(output, 50, "[%s] %s", moduleName, message);
+        Serial.print(output);
+    };
 
-        /**
-         * Get the instance number of the actuator
-         */ 
-        int get_instance_num() { return instance_num; };
+    const char *getModuleName() override { return moduleName; };
 
-    private:
-        int instance_num;                   // Instance number of the Actuator
-        ACTUATOR_TYPE type;                 // Type of actuator
+    /**
+     * Convert the type of actuator to a String
+     */
+    const char *typeToString() {
+        switch (type) {
+        case SERVO:
+            return "Servo";
+        case STEPPER:
+            return "Stepper";
+        case RELAY:
+            return "Relay";
+        case NEOPIXEL:
+            return "Neopixel";
+        }
+    };
 
-        char moduleName[100];
+    /**
+     * Get the instance number of the actuator
+     */
+    int get_instance_num() { return instance_num; };
+
+  private:
+    int instance_num;   // Instance number of the Actuator
+    ACTUATOR_TYPE type; // Type of actuator
+
+    char moduleName[100];
 };

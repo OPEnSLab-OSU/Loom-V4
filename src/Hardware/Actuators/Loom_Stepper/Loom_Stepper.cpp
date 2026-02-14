@@ -2,28 +2,28 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Stepper::Loom_Stepper(Manager& man, int instance_num) : Actuator(ACTUATOR_TYPE::STEPPER, instance_num), manInst(&man), instance(instance_num) {
+Loom_Stepper::Loom_Stepper(Manager &man, int instance_num)
+    : Actuator(ACTUATOR_TYPE::STEPPER, instance_num), manInst(&man), instance(instance_num) {
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Stepper::Loom_Stepper(int instance_num) : Actuator(ACTUATOR_TYPE::STEPPER, instance_num), instance(instance_num) {}
+Loom_Stepper::Loom_Stepper(int instance_num)
+    : Actuator(ACTUATOR_TYPE::STEPPER, instance_num), instance(instance_num) {}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Stepper::~Loom_Stepper(){
-    delete AFMS;
-}
+Loom_Stepper::~Loom_Stepper() { delete AFMS; }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Stepper::initialize(){
+void Loom_Stepper::initialize() {
     FUNCTION_START;
 
     // Get references to each motor
     AFMS = new Adafruit_MotorShield();
-    motor = AFMS->getStepper(200, instance+1);
+    motor = AFMS->getStepper(200, instance + 1);
 
     // Start the motor controller
     AFMS->begin();
@@ -47,7 +47,7 @@ void Loom_Stepper::package(JsonObject json) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Stepper::control(JsonArray json){
+void Loom_Stepper::control(JsonArray json) {
     FUNCTION_START;
     moveSteps(json[1].as<uint16_t>(), json[2].as<uint8_t>(), json[3].as<bool>());
     FUNCTION_END;
@@ -55,26 +55,27 @@ void Loom_Stepper::control(JsonArray json){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Stepper::moveSteps(const uint16_t steps, const uint8_t speed, const bool clockwise){
+void Loom_Stepper::moveSteps(const uint16_t steps, const uint8_t speed, const bool clockwise) {
     char output[OUTPUT_SIZE];
     FUNCTION_START;
     rpm = speed;
     this->clockwise = clockwise;
 
-    motor->setSpeed(speed); 
+    motor->setSpeed(speed);
     motor->step(steps, (clockwise) ? BACKWARD : FORWARD, SINGLE);
 
     // Wait for move to finish
     yield();
 
     // Tracks the current state of the motor
-    if(clockwise)
-        currentSteps =  currentSteps - steps;
+    if (clockwise)
+        currentSteps = currentSteps - steps;
     else
-        currentSteps =  currentSteps + steps;
+        currentSteps = currentSteps + steps;
 
-    snprintf_P(output, OUTPUT_SIZE, PSTR("Stepper set to move %u steps at speed %u going %s"), steps, speed, (clockwise) ? "counterclockwise" : "clockwise");
-    LOG(output); 
+    snprintf_P(output, OUTPUT_SIZE, PSTR("Stepper set to move %u steps at speed %u going %s"),
+               steps, speed, (clockwise) ? "counterclockwise" : "clockwise");
+    LOG(output);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -3,27 +3,20 @@
 #include <Arduino.h>
 #include <Loom_Manager.h>
 
-enum class magnetStatus
-{
-    red,
-    green,
-    yellow,
-    error
-};
+enum class magnetStatus { red, green, yellow, error };
 
-class AS5311
-{
-public:
+class AS5311 {
+  public:
     AS5311(uint8_t cs_pin, uint8_t clk_pin, uint8_t do_pin);
     magnetStatus getMagnetStatus();
     uint16_t getFilteredPosition();
     uint16_t getFieldStrength();
     uint32_t getRawData();
-    
+
     void measure(Manager &);
     float measureDisplacement(int);
 
-private:
+  private:
     const uint8_t CS_PIN;
     const uint8_t CLK_PIN;
     const uint8_t DO_PIN;
@@ -31,7 +24,8 @@ private:
     static const int DATA_TIMING_US;
     static const int AVERAGE_MEASUREMENTS;
 
-    int initialPosition = -1; //negative number indicates that initial position has not been measured
+    int initialPosition =
+        -1; // negative number indicates that initial position has not been measured
     int lastPosition = 0;
     int overflows = 0;
 

@@ -1,26 +1,25 @@
 #include "Loom_EZORGB.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_EZORGB::Loom_EZORGB(Manager& man, byte address, bool useMux) : EZOSensor("EZO-RGB"), manInst(&man){
+Loom_EZORGB::Loom_EZORGB(Manager &man, byte address, bool useMux)
+    : EZOSensor("EZO-RGB"), manInst(&man) {
     module_address = address;
 
-    if(!useMux)
+    if (!useMux)
         manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZORGB::initialize(){
-    Wire.begin();
-}
+void Loom_EZORGB::initialize() { Wire.begin(); }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZORGB::measure(){
-    if(moduleInitialized){
+void Loom_EZORGB::measure() {
+    if (moduleInitialized) {
 
         // Attempt to read data from the sensor
-        if(!readSensor(400)){
+        if (!readSensor(400)) {
             ERROR(F("Failed to read sensor!"));
             return;
         }
@@ -32,8 +31,8 @@ void Loom_EZORGB::measure(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZORGB::package(){
-    if(moduleInitialized){
+void Loom_EZORGB::package() {
+    if (moduleInitialized) {
         JsonObject json = manInst->get_data_object(getModuleName());
 
         // these are rgb intensity values (0-255). These are unitless.
@@ -46,8 +45,8 @@ void Loom_EZORGB::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_EZORGB::power_down() {
-    if(moduleInitialized){
-        if(!sendTransmission("sleep")){
+    if (moduleInitialized) {
+        if (!sendTransmission("sleep")) {
             ERROR(F("Failed to send 'sleep' command to device"));
         }
     }
@@ -55,12 +54,12 @@ void Loom_EZORGB::power_down() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZORGB::parseData(const char* sensorData){
+void Loom_EZORGB::parseData(const char *sensorData) {
     // Parse out the comma separated strings
-    char* splitPointer;
+    char *splitPointer;
     char response[33];
     strncpy(response, sensorData, 33);
-    
+
     splitPointer = strtok(response, ",");
     rgb[0] = atoi(splitPointer);
 
