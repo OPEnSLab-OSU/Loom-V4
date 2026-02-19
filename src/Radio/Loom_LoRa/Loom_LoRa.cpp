@@ -191,14 +191,14 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
         return FragReceiveStatus::Error;
     }
 
-    LOGF("Received packet from %i", *fromAddress);
+    LOGF("Received packet fragment from %i", *fromAddress);
 
     StaticJsonDocument<300> tempDoc;
 
     // cast buf to const to avoid mutation
     auto err = deserializeMsgPack(tempDoc, (const char *)buf, sizeof(buf));
     if (err != DeserializationError::Ok) {
-        ERRORF("Error occurred parsing MsgPack: %s", err.c_str());
+        ERRORF("Error occurred parsing MsgPack (raw bytes received): %s", err.c_str());
         return FragReceiveStatus::Error;
     }
 
@@ -206,7 +206,7 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
     if (tempDoc.containsKey("batch_size")) {
         isReady = handleBatchHeader(tempDoc);
 
-    } else if (tempDoc.containsKey("numPackets")) {
+    // NOTE: numPackets is referring to the number of fragments, not actual packets.
         isReady = handleFragHeader(tempDoc, *fromAddress);
 
     } else if (frags.find(*fromAddress) != frags.end()) {
