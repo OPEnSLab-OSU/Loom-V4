@@ -2,29 +2,25 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_TSL2591::Loom_TSL2591(
-                            Manager& man,
-                            int address,
-                            bool useMux,   
-                            tsl2591Gain_t light_gain, 
-                            tsl2591IntegrationTime_t integration_time
-                    ) : I2CDevice("TSL2591"), manInst(&man), tsl(address), gain(light_gain), intTime(integration_time) {
-                        module_address = address;
+Loom_TSL2591::Loom_TSL2591(Manager &man, int address, bool useMux, tsl2591Gain_t light_gain,
+                           tsl2591IntegrationTime_t integration_time)
+    : I2CDevice("TSL2591"), manInst(&man), tsl(address), gain(light_gain),
+      intTime(integration_time) {
+    module_address = address;
 
-                        // Register the module with the manager
-                        if(!useMux)
-                            manInst->registerModule(this);
-                    }
+    // Register the module with the manager
+    if (!useMux)
+        manInst->registerModule(this);
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::initialize() {
     FUNCTION_START;
-    if(!tsl.begin()){
+    if (!tsl.begin()) {
         ERROR(F("Failed to initialize TSL2591! Check connections and try again..."));
         moduleInitialized = false;
-    }
-    else{
+    } else {
 
         // Set the gain and integration time of the sensor
         tsl.setGain(gain);
@@ -39,37 +35,37 @@ void Loom_TSL2591::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::measure() {
     FUNCTION_START;
-    if(moduleInitialized){
+    if (moduleInitialized) {
         // Get the current connection status
         bool connectionStatus = checkDeviceConnection();
 
         // If we are connected and we need to reinit
-        if(connectionStatus && needsReinit){
+        if (connectionStatus && needsReinit) {
             initialize();
             needsReinit = false;
         }
 
         // If we are not connected
-        else if(!connectionStatus){
+        else if (!connectionStatus) {
             ERROR(F("No acknowledge received from the device"));
             FUNCTION_END;
             return;
         }
-   
+
         // Pull the data from the sensor
         uint16_t visible = tsl.getLuminosity(TSL2591_VISIBLE);
 
         // Make sure the value is actually valid
-        if(visible > 65533)
+        if (visible > 65533)
             lightLevels[0] = 0;
         else
             lightLevels[0] = visible;
-        
+
         lightLevels[1] = tsl.getLuminosity(TSL2591_INFRARED);
         lightLevels[2] = tsl.getLuminosity(TSL2591_FULLSPECTRUM);
 
         // If it is the first packet measure again to get accurate readings
-        if(manInst->get_packet_number() == 1){
+        if (manInst->get_packet_number() == 1) {
             // Pull the data from the sensor
             lightLevels[0] = tsl.getLuminosity(TSL2591_VISIBLE);
             lightLevels[1] = tsl.getLuminosity(TSL2591_INFRARED);
@@ -83,9 +79,9 @@ void Loom_TSL2591::measure() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::package() {
     FUNCTION_START;
-    if(moduleInitialized){
+    if (moduleInitialized) {
         JsonObject json = manInst->get_data_object(getModuleName());
-        //unitless, higher values indicate more light of that type.
+        // unitless, higher values indicate more light of that type.
         json["Visible_counts"] = lightLevels[0];
         json["Infrared_counts"] = lightLevels[1];
         json["Full_Spectrum_counts"] = lightLevels[2];
@@ -97,7 +93,7 @@ void Loom_TSL2591::package() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::power_up() {
     FUNCTION_START;
-    if(moduleInitialized){
+    if (moduleInitialized) {
         // Set the gain and integration time of the sensor
         tsl.setGain(gain);
         tsl.setTiming(intTime);

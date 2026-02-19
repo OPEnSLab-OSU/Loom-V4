@@ -1,0 +1,76 @@
+name: Clang-Format Auto-Fix
+
+on:
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  clang_format:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (PR head)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+
+      - name: Checkout ci-loom scripts
+        uses: actions/checkout@v4
+        with:
+          repository: OPEnSLab-OSU/ci-loom
+          ref: main
+          path: ci-loom
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format python3
+
+      - name: "Format (PR: changed files only)"
+        if: ${{ github.event_name == 'pull_request' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          mapfile -t files < <(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA" \
+            | grep -E '\.(c|cc|cpp|cxx|c\+\+|h|hh|hpp|hxx|h\+\+|C|H)$' || true)
+
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No C/C++ files changed."
+            exit 0
+          fi
+
+          rc=0
+          python3 ci-loom/run-clang-format.py "${files[@]}" -i || rc=$?
+
+          if [ "$rc" -gt 1 ]; then
+            exit "$rc"
+          fi
+          
+      - name: "Check format (act: whole repo)"
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          # Always succeeds on local test
+          python3 ci-loom/run-clang-format.py -r . -e "ci-loom/*" -e "bin/*" || true
+
+      - name: Commit fixes
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A -- ':!ci-loom'
+          if git diff --staged --quiet; then
+            echo "No formatting changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Auto-format with clang-format"
+          git push origin HEAD:${{ github.head_ref }}

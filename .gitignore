@@ -1,10 +1,11 @@
 .vscode
 .DS_Store
-.clang-format
-.clangd
 .justfile
+.ci
+clang-format-results.txt
 
 # Credentials/secrets
 **/arduino_secrets.h
 **/wifi_creds.json
 **/mqtt_creds.json
+.secrets

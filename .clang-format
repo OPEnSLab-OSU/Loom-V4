@@ -1,0 +1,18 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+PointerAlignment: Right
+ReferenceAlignment: Pointer
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: All
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignConsecutiveMacros: false
+IndentAccessModifiers: false
+AccessModifierOffset: -2
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+PenaltyExcessCharacter: 1000000
+RequiresClausePosition: OwnLine
