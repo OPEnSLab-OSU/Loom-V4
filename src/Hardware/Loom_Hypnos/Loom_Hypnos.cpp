@@ -290,7 +290,7 @@ DateTime Loom_Hypnos::getLocalTime(DateTime time){
         return time + TimeSpan(0, (timezone), 0, 0);
     }
 }
-/////////////////////////////////////// ///////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::isDaylightSavings(){
@@ -455,6 +455,167 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::setSecondAlarmInterruptDuration(const TimeSpan duration) {
+    FUNCTION_START;
+    char output[OUTPUT_SIZE];
+
+    // The time in the future that the second alarm will be set for
+    Ds3231_ALARM_TYPES_t alarmType = ALM2_MATCH_DATE;
+    DateTime future(RTC_DS.now() + duration);
+    // 2nd alarm doesn't take seconds.
+    RTC_DS.setAlarm(alarmType, future.minute(), future.hour(), future.day()); 
+
+    // Adjust future for logging to match actual trigger time (seconds set to 0)
+    DateTime futureLogged(future.year(), future.month(), future.day(), future.hour(), future.minute(), 0);
+
+    // Print the time that the next interrupt is set to trigger
+    snprintf(output, OUTPUT_SIZE, PSTR("Current Time (Local): %s"), getLocalTime(RTC_DS.now()).text());
+    LOG(output);
+
+    snprintf(output, OUTPUT_SIZE, PSTR("2nd Interrupt Alarm Set For: %s"), getLocalTime(futureLogged).text());
+    LOG(output);
+    FUNCTION_END;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+uint8_t Loom_Hypnos::checkTriggeredAlarms() {
+    uint8_t triggeredAlarmsBitMask = 0;
+
+    if(RTC_DS.alarmFired(1))
+    {
+        LOG("Alarm 1 has woken the device up from sleep!");
+        triggeredAlarmsBitMask |= BM_ALARM_1;
+        clearAlarm1Register();
+    }
+    
+    if(RTC_DS.alarmFired(2))
+    {
+        LOG("Alarm 2 has woken the device up from sleep!");
+        triggeredAlarmsBitMask |= BM_ALARM_2;
+        clearAlarm2Register();
+    }
+
+    clearAlarmFlags();
+
+    if(triggeredAlarmsBitMask == BM_NONE)
+        ERROR("No alarms have triggered!");
+    else if(triggeredAlarmsBitMask == BM_BOTH)
+        ERROR("Both alarms have triggered!");
+
+    return triggeredAlarmsBitMask;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+DateTime Loom_Hypnos::getAlarmDate(const uint8_t alarmNumber) {
+    if(alarmNumber < 1 || alarmNumber > 2){
+        ERROR("Attempted to get alarm date for invalid alarm number, valid numbers are 1 and 2");
+        return DateTime();
+    }
+
+    return RTC_DS.getAlarm(alarmNumber);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::clearAlarm1Register() {
+    Wire.beginTransmission(DS3231_ADDRESS);
+    Wire.write(ALM1_SECONDS);
+    Wire.write(0x80); // seconds
+    Wire.write(0x80); // minutes
+    Wire.write(0x80); // hours
+    Wire.write(0x80); // day/date
+    Wire.endTransmission();
+    LOG("Alarm 1 date register reset");
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::clearAlarm2Register() {
+    Wire.beginTransmission(DS3231_ADDRESS);
+    Wire.write(ALM2_MINUTES);
+    Wire.write(0x80); // minutes
+    Wire.write(0x80); // hours
+    Wire.write(0x80); // day/date
+    Wire.endTransmission();
+    LOG("Alarm 2 date register reset");
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::clearAlarmRegisters() {
+    // Clear Alarm 1 Registers
+    clearAlarm1Register();
+
+    // Clear Alarm 2 Registers
+    clearAlarm2Register();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::clearAlarmFlags() {
+    // Clear Alarm Flags (A1F, A2F)
+    Wire.beginTransmission(DS3231_ADDRESS);
+    Wire.write(DS3231_STATUSREG);
+    Wire.endTransmission();
+
+    Wire.requestFrom(DS3231_ADDRESS, (uint8_t)1);
+    uint8_t status = Wire.read();
+
+    // Clear both alarm flags
+    status &= ~0b00000001;   // clear A1F
+    status &= ~0b00000010;   // clear A2F
+
+    Wire.beginTransmission(DS3231_ADDRESS);
+    Wire.write(DS3231_STATUSREG);
+    Wire.write(status);
+    Wire.endTransmission();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::isAlarm1Cleared() {
+    // set I2C to point to alarm 1 seconds register
+    Wire.beginTransmission(DS3231_ADDRESS);
+    Wire.write(ALM1_SECONDS);
+    Wire.endTransmission();
+
+    // check if any alarm 1 registers are cleared
+    Wire.requestFrom(DS3231_ADDRESS, (uint8_t)4);
+    for (int i = 0; i < 4; i++) {
+        if (Wire.read() != 0x80)
+            return false;
+    }
+    return true;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::isAlarm2Cleared() {
+    // set I2C to point to alarm 2 minutes register
+    Wire.beginTransmission(DS3231_ADDRESS);
+    Wire.write(ALM2_MINUTES);
+    Wire.endTransmission();
+
+    // check if any alarm 1 registers are cleared
+    Wire.requestFrom(DS3231_ADDRESS, (uint8_t)4);
+    for (int i = 0; i < 3; i++) {
+        if (Wire.read() != 0x80)
+            return false;
+    }
+    return true;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::clearAlarms() {
+    clearAlarmRegisters();
+    clearAlarmFlags();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /* Sleep Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -468,9 +629,11 @@ void Loom_Hypnos::sleep(bool waitForSerial){
         manInst->power_down();
 
         // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
-        uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
+        uint32_t alarmedTimeOne = RTC_DS.getAlarm(1).unixtime();
+        uint32_t alarmedTimeTwo = RTC_DS.getAlarm(2).unixtime();
         uint32_t currentTime = RTC_DS.now().unixtime();
-        hasAlarmTriggered = alarmedTime <= currentTime;
+        hasAlarmTriggered = alarmedTimeOne <= currentTime
+                         || alarmedTimeTwo <= currentTime;
         
         // 50ms delay allows this last message to be sent before the bus disconnects
         LOG("Entering Standby Sleep...");
@@ -528,6 +691,7 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
     
     if(shouldPowerUp){
         USBDevice.attach();
+
         Watchdog.reset();
         Serial.begin(115200);
         Watchdog.reset();
@@ -546,7 +710,9 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
         LOG(F("Device has awoken from sleep!"));
         Watchdog.reset();
 
-        // Clear any pending RTC alarms
+        firedAlarmsBitMask = checkTriggeredAlarms();
+
+        // Clear any pending RTC alarms' status registers
         RTC_DS.clearAlarm();
         Watchdog.reset();
 
