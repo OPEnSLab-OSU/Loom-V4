@@ -48,8 +48,13 @@ jobs:
             exit 0
           fi
 
-          python3 ci-loom/run-clang-format.py "${files[@]}" -i
+          rc=0
+          python3 ci-loom/run-clang-format.py "${files[@]}" -i || rc=$?
 
+          if [ "$rc" -gt 1 ]; then
+            exit "$rc"
+          fi
+          
       - name: "Check format (act: whole repo)"
         if: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
