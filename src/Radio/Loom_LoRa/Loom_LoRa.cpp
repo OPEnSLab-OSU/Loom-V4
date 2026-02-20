@@ -159,6 +159,7 @@ bool Loom_LoRa::receiveFromLoRa(uint8_t *buf, uint8_t buf_size,
 
     LOG(F("Waiting for message..."));
 
+    // radioManager methods modify buf, buf_size, and fromAddress
     if (timeout) {
         status = radioManager->recvfromAckTimeout(buf, &buf_size, timeout, 
                                                   fromAddress);
@@ -196,7 +197,7 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
     StaticJsonDocument<300> tempDoc;
 
     // cast buf to const to avoid mutation
-    auto err = deserializeMsgPack(tempDoc, (const char *)buf, sizeof(buf));
+    auto err = deserializeMsgPack(tempDoc, (const char *)buf, sizeof(buf)); 
     if (err != DeserializationError::Ok) {
         ERRORF("Error occurred parsing MsgPack (raw bytes received): %s", err.c_str());
         return FragReceiveStatus::Error;
@@ -205,22 +206,29 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
     bool isReady = false;
     if (tempDoc.containsKey("batch_size")) {
         isReady = handleBatchHeader(tempDoc);
+        LOGF("Batch header fragment handled");
 
     // NOTE: numPackets is referring to the number of fragments, not actual packets.
+    } else if (tempDoc.containsKey("numPackets")) {
         isReady = handleFragHeader(tempDoc, *fromAddress);
+        LOGF("fragment header fragment handled");
 
     } else if (frags.find(*fromAddress) != frags.end()) {
         isReady = handleFragBody(tempDoc, *fromAddress);
+        LOGF("fragment body fragment handled");
     
     } else if (tempDoc.containsKey("module")) {
         isReady = handleLostFrag(tempDoc, *fromAddress);
+        LOGF("lost fragment handled");
 
     } else {
         isReady = handleSingleFrag(tempDoc);
+        LOGF("single fragment handled");
     }
 
     if (isReady) {
         if (shouldProxy) {
+            // Set this current device's name and instance number to match the sender of the received packets
             const char *name = manager->getDocument()["id"]["name"];
             manager->set_device_name(name);
 
@@ -242,7 +250,7 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::handleBatchHeader(JsonDocument &tempDoc) {
     int batch_size = tempDoc["batch_size"];
-    LOGF("Received batch header, expecting %i packets", batch_size);
+    LOGF("Received batch header, expecting %i completed packets", batch_size);
     expectedOutstandingPackets += batch_size;
     return false;
 }
@@ -251,13 +259,15 @@ bool Loom_LoRa::handleBatchHeader(JsonDocument &tempDoc) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::handleFragHeader(JsonDocument &workingDoc, 
                                         uint8_t fromAddress) {
+    // NOTE: numPackets is referring to the number of fragments, not actual packets.
     int expectedFragCount = workingDoc["numPackets"].as<int>();
     workingDoc.remove("numPackets");
 
     int packetSpace = 300 * (expectedFragCount + 1);
 
+    // check frags map for existing entry from the same address, which would indicate corrupted fragment header
     if (frags.find(fromAddress) != frags.end()) {
-        WARNINGF("Dropping corrupted packet received from %i", fromAddress);
+        WARNINGF("Dropping corrupted fragment header received from %i", fromAddress);
 
         frags.erase(fromAddress);
     }
@@ -269,6 +279,7 @@ bool Loom_LoRa::handleFragHeader(JsonDocument &workingDoc,
             expectedFragCount, 
             DynamicJsonDocument(packetSpace) }));
 
+    // inserts the fragment header into the working json doc in the frags map
     inserted.first->second.working = workingDoc;
 
     return false;
@@ -280,6 +291,7 @@ bool Loom_LoRa::handleFragBody(JsonDocument &workingDoc,
                                       uint8_t fromAddress) {
     PartialPacket *partialPacket = &frags.find(fromAddress)->second;
 
+    // contents is a reference handle into working document
     JsonArray contents = partialPacket->working["contents"].as<JsonArray>();
     contents.add(workingDoc);
 
@@ -309,7 +321,7 @@ bool Loom_LoRa::handleSingleFrag(JsonDocument &workingDoc) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::handleLostFrag(JsonDocument &workingDoc, 
                                       uint8_t fromAddress) {
-    WARNINGF("Dropping fragmented packet body with no header received from %i",
+    WARNINGF("Dropping fragment body with no header received from %i",
              fromAddress);
 
     return false;
