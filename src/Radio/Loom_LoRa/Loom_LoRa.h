@@ -195,20 +195,18 @@ public:
     bool receiveBatch(uint timeout, int *numberOfPackets, uint8_t *fromAddress);
 
 private:
-    /** TODO
+    /**
      * @brief Receives a stream of raw bytes over LoRa using the radioManager, 
      *        ultimately storing it into a buffer.
      * 
      * - Input Arguments -
+     * @param [in] buf_size     uint The size of the buffer to store the received bytes in
      * @param [in] timeout      uint The maximum time to wait before continuing execution 
      *                          (Set to 0 for non-blocking)
-     * @param [in] shouldProxy  bool Whether the device's name and instance number should
-     *                          be set to match the received packet.
-     * @param [in] fromAddress  uint8_t* The address the packet was received from, used 
-     *                          for processing and handler functions.
      * 
      * - Output Arguments - 
      * @param [out] buf          uint8_t* The buffer to store the received bytes in
+     * @param [out] fromAddress  uint8_t* The address the packet was received from
      *
      * @return FragReceiveStatus enum indicating whether the fragment was successfully 
      *         received and processed, and if so, what type of fragment it was.
@@ -222,7 +220,7 @@ private:
 
     /** 
      * @brief Receives a single fragment from another device, returning whether the
-     * fragment was successfully received and processed.
+     *        fragment was successfully received and processed.
      *
      * This function processes a stream of raw bytes from a LoRa transmitter into a 
      * JSON document, hence called a fragment. The function then infers 
@@ -237,148 +235,103 @@ private:
      * @param [in] fromAddress  uint8_t* The address the packet was received from, used 
      *                          for processing and handler functions.
      *
-     * @return FragReceiveStatus enum indicating whether the fragment was successfully 
-     *         received and processed, and if so, what type of fragment it was.
+     * @return status indicating whether the packet was successfully received and processed
      *
-     * @note This function will have misaligned packets if a batch header arrives after 
-     *       a packet, and will have dropped fragments if a fragment body arrives without 
-     *       its header.
     */
     FragReceiveStatus receiveFrag(uint timeout, bool shouldProxy, 
                                   uint8_t *fromAddress);
 
-    /** TODO
-     * @brief Receives a single fragment from another device, returning whether the
-     * fragment was successfully received and processed.
-     *
-     * This function receives a stream of raw bytes from a LoRa transmitter, and then
-     * converts it into a JSON document, hence called a fragment. The function then infers 
-     * what type of fragment it is (batch header, fragment header, fragment body, 
-     * single-fragment packet, or lost fragment) and processes it accordingly with handler
-     * functions. 
+    /** 
+     * @brief Processes an identified batch header, which is a single fragment 
+     *        that indicates the number of packets in an incoming batch
+     * 
+     * This function adjusts the expectedOutstandingPackets variables, which is
+     * a LoRa class variable that is used to estimate how many packets are 
+     * expected to be received in an incoming batch.
      * 
      * - Input Arguments -
-     * @param [in] timeout      uint The maximum time to wait before continuing execution 
-     *                          (Set to 0 for non-blocking)
-     * @param [in] shouldProxy  bool Whether the device's name and instance number should
-     *                          be set to match the received packet.
-     * @param [in] fromAddress  uint8_t* The address the packet was received from, used 
-     *                          for processing and handler functions.
+     * @param [in] workingDoc    JsonDocument& The working document to extract
+     *                           the number of expected packets from.
      *
-     * @return FragReceiveStatus enum indicating whether the fragment was successfully 
-     *         received and processed, and if so, what type of fragment it was.
-     *
-     * @note This function will have misaligned packets if a batch header arrives after 
-     *       a packet, and will have dropped fragments if a fragment body arrives without 
-     *       its header.
+     * @return false if the end of the function was reached
     */
     bool handleBatchHeader(JsonDocument &workingDoc);
     
-    /** TODO
-     * @brief Receives a single fragment from another device, returning whether the
-     * fragment was successfully received and processed.
+    /**
+     * @brief Processes an identified fragment header, which is a single fragment 
+     *        that indicates the number of fragments needed to reform a full
+     *        packet.
      *
-     * This function receives a stream of raw bytes from a LoRa transmitter, and then
-     * converts it into a JSON document, hence called a fragment. The function then infers 
-     * what type of fragment it is (batch header, fragment header, fragment body, 
-     * single-fragment packet, or lost fragment) and processes it accordingly with handler
-     * functions. 
+     * This function extracts the expected amount of remaining fragments, then 
+     * creates the space in the LoRa class' frags map for the incoming fragments 
+     * to be stored as they are. Then inserts the fragment header into the working 
+     * json doc in the frags map,
      * 
      * - Input Arguments -
-     * @param [in] timeout      uint The maximum time to wait before continuing execution 
-     *                          (Set to 0 for non-blocking)
-     * @param [in] shouldProxy  bool Whether the device's name and instance number should
-     *                          be set to match the received packet.
-     * @param [in] fromAddress  uint8_t* The address the packet was received from, used 
+     * @param [in] workingDoc   JsonDocument& The working document to extract
+     *                          the number of expected fragments from, and to load into
+     *                          the LoRa class' frags map to be built upon by incoming 
+     *                          fragment bodies.
+     * @param [in] fromAddress  uint8_t The address the packet was received from, used 
      *                          for processing and handler functions.
      *
-     * @return FragReceiveStatus enum indicating whether the fragment was successfully 
-     *         received and processed, and if so, what type of fragment it was.
-     *
-     * @note This function will have misaligned packets if a batch header arrives after 
-     *       a packet, and will have dropped fragments if a fragment body arrives without 
-     *       its header.
+     * @return false if the end of the function was reached
     */
     bool handleFragHeader(JsonDocument &workingDoc, uint8_t fromAddress);
         
-    /** TODO
-     * @brief Receives a single fragment from another device, returning whether the
-     * fragment was successfully received and processed.
+    /**
+     * @brief Processes an identified fragment body, which is a fragment that contains part 
+     *        of an incoming packet that is being reformed from multiple fragments.
      *
-     * This function receives a stream of raw bytes from a LoRa transmitter, and then
-     * converts it into a JSON document, hence called a fragment. The function then infers 
-     * what type of fragment it is (batch header, fragment header, fragment body, 
-     * single-fragment packet, or lost fragment) and processes it accordingly with handler
-     * functions. 
+     * This function finds the corresponding fragment header in the frags map using the fromAddress, 
+     * then places the fragment's body into the working document in the frags map. If this fragment 
+     * body is the last expected fragment, then the function deep-copies the complete packet from the 
+     * frags map into the manager document, and erases the entry in the frags map to free up space.
      * 
      * - Input Arguments -
-     * @param [in] timeout      uint The maximum time to wait before continuing execution 
-     *                          (Set to 0 for non-blocking)
-     * @param [in] shouldProxy  bool Whether the device's name and instance number should
-     *                          be set to match the received packet.
-     * @param [in] fromAddress  uint8_t* The address the packet was received from, used 
+     * @param [in] workingDoc   JsonDocument& The working document to extract
+     *                          the number of expected fragments from, and to load into
+     *                          the LoRa class' frags map to be built upon by incoming 
+     *                          fragment bodies.
+     * @param [in] fromAddress  uint8_t The address the packet was received from, used 
      *                          for processing and handler functions.
      *
-     * @return FragReceiveStatus enum indicating whether the fragment was successfully 
-     *         received and processed, and if so, what type of fragment it was.
-     *
-     * @note This function will have misaligned packets if a batch header arrives after 
-     *       a packet, and will have dropped fragments if a fragment body arrives without 
-     *       its header.
+     * @return true if the fragment body was the last fragment expected to complete the packet, 
+     *         false if the end of the function was reached without completing the packet.
     */
     bool handleFragBody(JsonDocument &workingDoc, uint8_t fromAddress);
     
-    /** TODO
-     * @brief Receives a single fragment from another device, returning whether the
-     * fragment was successfully received and processed.
-     *
-     * This function receives a stream of raw bytes from a LoRa transmitter, and then
-     * converts it into a JSON document, hence called a fragment. The function then infers 
-     * what type of fragment it is (batch header, fragment header, fragment body, 
-     * single-fragment packet, or lost fragment) and processes it accordingly with handler
-     * functions. 
+    /**
+     * @brief Processes an identified single-fragment packet, which is a packet that was fully 
+     *        contained in a single fragment and did not require reforming from multiple fragments.
      * 
      * - Input Arguments -
-     * @param [in] timeout      uint The maximum time to wait before continuing execution 
-     *                          (Set to 0 for non-blocking)
-     * @param [in] shouldProxy  bool Whether the device's name and instance number should
-     *                          be set to match the received packet.
-     * @param [in] fromAddress  uint8_t* The address the packet was received from, used 
-     *                          for processing and handler functions.
+     * @param [in] workingDoc   JsonDocument& The working document to extract
+     *                          the number of expected fragments from, and to load into
+     *                          the LoRa class' frags map to be built upon by incoming 
+     *                          fragment bodies.
      *
-     * @return FragReceiveStatus enum indicating whether the fragment was successfully 
-     *         received and processed, and if so, what type of fragment it was.
-     *
-     * @note This function will have misaligned packets if a batch header arrives after 
-     *       a packet, and will have dropped fragments if a fragment body arrives without 
-     *       its header.
+     * @return true if the end of the function was reached.
     */
     bool handleSingleFrag(JsonDocument &workingDoc);
 
-    /** TODO
-     * @brief Receives a single fragment from another device, returning whether the
-     * fragment was successfully received and processed.
-     *
-     * This function receives a stream of raw bytes from a LoRa transmitter, and then
-     * converts it into a JSON document, hence called a fragment. The function then infers 
-     * what type of fragment it is (batch header, fragment header, fragment body, 
-     * single-fragment packet, or lost fragment) and processes it accordingly with handler
-     * functions. 
+    /**
+     * @brief Processes an identified lost fragment, which is a fragment body 
+     *        that was received without its corresponding header,
      * 
      * - Input Arguments -
-     * @param [in] timeout      uint The maximum time to wait before continuing execution 
-     *                          (Set to 0 for non-blocking)
-     * @param [in] shouldProxy  bool Whether the device's name and instance number should
-     *                          be set to match the received packet.
-     * @param [in] fromAddress  uint8_t* The address the packet was received from, used 
+     * @param [in] workingDoc   JsonDocument& The working document to extract
+     *                          the number of expected fragments from, and to load into
+     *                          the LoRa class' frags map to be built upon by incoming 
+     *                          fragment bodies.
+     * @param [in] fromAddress  uint8_t The address the packet was received from, used 
      *                          for processing and handler functions.
      *
-     * @return FragReceiveStatus enum indicating whether the fragment was successfully 
-     *         received and processed, and if so, what type of fragment it was.
+     * @return false if the end of the function is reached
      *
-     * @note This function will have misaligned packets if a batch header arrives after 
-     *       a packet, and will have dropped fragments if a fragment body arrives without 
-     *       its header.
+     * @note This function only logs that a fragment body was dropped if it is received 
+     * without its header, but does not attempt to recover from this error by, for example, 
+     * requesting a retransmission.
     */
     bool handleLostFrag(JsonDocument &workingDoc, uint8_t fromAddress);
 
