@@ -39,7 +39,7 @@ class Loom_Heartbeat {
         TimeSpan secondsToTimeSpan(const uint32_t secondsToConvert);
 
         /**
-         * when heartbeat has been initialized, find the time until the next wake up / upnause event 
+         * when heartbeat has been initialized, find the time until the next wake up / unpause event 
          * to either do heartbeat or normal logic.
          * 
          * @return time until next event in the same unit as heartbeatInit parameters. 
