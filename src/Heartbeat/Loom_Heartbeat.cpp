@@ -2,7 +2,7 @@
 #include "../Logger.h"
 
 
-////////////////////////////////////////////////////////////////////////////////////////////////////// THEORETICALLY WORKS
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Heartbeat::Loom_Heartbeat(const uint32_t pHeartbeatInterval, 
                         const uint32_t pNormalWorkInterval, 
                         Manager* managerInstance, 
@@ -26,14 +26,14 @@ void Loom_Heartbeat::sanitizeIntervals() {
         WARNING(F("Heartbeat interval too low for Hypnos, setting to minimum of 60 seconds"));
         heartbeatInterval_s = 60;
     }
-    else if(heartbeatInterval_s < 5) {
-        WARNING(F("Heartbeat interval too low, setting to minimum of 5 seconds"));
-        heartbeatInterval_s = 5;
+    else if(heartbeatInterval_s < 10) {
+        WARNING(F("Heartbeat interval too low, setting to minimum of 10 seconds"));
+        heartbeatInterval_s = 10; 
     }
 
-    if(normWorkInterval_s < 5) {
-        WARNING(F("Normal work interval too low, setting to minimum of 5 seconds"));
-        normWorkInterval_s = 5;
+    if(normWorkInterval_s < 10) {
+        WARNING(F("Normal work interval too low, setting to minimum of 10 seconds"));
+        normWorkInterval_s = 10;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -86,7 +86,7 @@ TimeSpan Loom_Heartbeat::calculateNextEvent() {
     }
 
     if (secondsToWait < 5)
-        secondsToWait = 5;                                      // minimum wait time of 5 seconds for safety/stability.
+        secondsToWait = 5;                                       // minimum wait time of 5 seconds for safety/stability.
     return secondsToTimeSpan(secondsToWait);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
