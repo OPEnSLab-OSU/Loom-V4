@@ -54,35 +54,39 @@ TimeSpan Loom_Heartbeat::secondsToTimeSpan(const uint32_t totalSeconds) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 TimeSpan Loom_Heartbeat::calculateNextEvent() {
-    uint32_t secondsToWait = 0;
-    if(heartbeatTimer_s > 0 && normWorkTimer_s > 0) // check if heartbeat was initialized
-    {
-        if(heartbeatTimer_s < normWorkTimer_s) {
-            secondsToWait = heartbeatTimer_s;
+    /**
+     *  logic for calculating the time to rest, and resetting the timers to the state they should be in after waking up. 
+     *  The main idea is to compare the timers and set the pause to be the smaller of the two. 
+     *  Then, we adjust the timers based on which one we set pause with, and if they are close enough we 
+     *  round them both to 5 seconds to avoid any issues with very short sleep times.
+     */
+    if(heartbeatTimer_s < normWorkTimer_s) {
+        secondsToWait = heartbeatTimer_s;                        // grab time to delay program execution for
 
-            if(normWorkTimer_s - secondsToWait > 0)
-                normWorkTimer_s = normWorkTimer_s - secondsToWait;
-            else
-                normWorkTimer_s = 5;
+        // ensure the larger timer does not get set to less than 5 seconds to avoid issues with very short sleep times.
+        if(normWorkTimer_s - secondsToWait > 0)
+            normWorkTimer_s = normWorkTimer_s - secondsToWait;   // adjust larger timer (normal work) by smaller timer amount
+        else
+            normWorkTimer_s = 5;
 
-            heartbeatTimer_s = heartbeatInterval_s;
-            heartbeatFlag = true;
-        }
-        else {
-            secondsToWait = normWorkTimer_s;
-
-            if (heartbeatTimer_s - secondsToWait > 0)
-                heartbeatTimer_s = heartbeatTimer_s - secondsToWait;
-            else
-                heartbeatTimer_s = 5;
-
-            normWorkTimer_s = normWorkInterval_s;
-            heartbeatFlag = false;
-        }
-
-        if (secondsToWait < 5)
-            secondsToWait = 5; // minimum wait time of 5 seconds for safety/stability.
+        heartbeatTimer_s = heartbeatInterval_s;                  // reset smaller timer (heartbeat) to be interval
+        heartbeatFlag = true;
     }
+    else {
+        secondsToWait = normWorkTimer_s;
+
+        // ensure the larger timer does not get set to less than 5 seconds to avoid issues with very short sleep times.
+        if (heartbeatTimer_s - secondsToWait > 0)
+            heartbeatTimer_s = heartbeatTimer_s - secondsToWait; // adjust larger timer (heartbeat) by smaller timer amount
+        else
+            heartbeatTimer_s = 5;
+
+        normWorkTimer_s = normWorkInterval_s;                    // reset smaller timer (normal work) to be interval
+        heartbeatFlag = false;
+    }
+
+    if (secondsToWait < 5)
+        secondsToWait = 5;                                      // minimum wait time of 5 seconds for safety/stability.
     return secondsToTimeSpan(secondsToWait);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
