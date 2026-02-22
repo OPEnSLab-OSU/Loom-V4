@@ -22,7 +22,7 @@
 #include "../../Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h"
 #include "../../Sensors/I2C/Loom_T6793/Loom_T6793.h"
 #include "../../Sensors/I2C/Loom_SEN55/Loom_SEN55.h"
-
+#include "../../Sensors/I2C/Loom_SEN66/Loom_SEN66.h"
 
 /**
  * Adds Hot Swappable functionality for TCA9548 multiplexer
@@ -96,7 +96,8 @@ class Loom_Multiplexer : public Module{
 			0x70, ///< MB1232
 			0x74, ///< DFMultiGasSensor
 			0x76, ///< MS5803
-			0x77  ///< MS5803
+			0x77,  ///< MS5803
+			0x6B  ///< SEN66
 		};
 
 		/**
