@@ -209,6 +209,36 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
         return FragReceiveStatus::Error;
     }
 
+    // handshake check
+    // TODO:
+    //      1) complete the code for creating the entry inside of the frags map to lock in the handshake partner
+    //      2) consolidate this handshake check code into a helper function outside of receiveFrag, called from here
+    //                  within receiveFrag.
+    if (tempDoc.containsKey("handshake") && 
+        strcmp(tempDoc["handshake"], "Request") == 0) {
+        LOGF("Received handshake initiation from %i, sending response...", fromAddress);
+
+        // build a light JSON doc to leverage sendFullPacket
+        const uint8_t HANDSHAKE_SIZE = 100; // enough for the handshake key and string value
+        StaticJsonDocument<HANDSHAKE_SIZE> handshakeDoc;
+
+        if (frags.find(fromAddress) == frags.end()) {
+            LOG("Handshake request accepted!");
+            handshakeDoc["handshake"] = "Accept";
+        } else {
+            LOG("Handshake request denied!");
+            handshakeDoc["handshake"] = "Deny";
+        }
+    
+        bool handshakeTransmitStatus = sendFullPacket(handshakeDoc.as<JsonObject>(), destinationAddress);
+        if (handshakeTransmitStatus) {
+            LOG(F("Handshake response successfully sent!"));
+        } else {
+            ERROR(F("Failed to send handshake response!"));
+            return FragReceiveStatus::Error;
+        }
+    }
+
     bool isReady = false;
     if (tempDoc.containsKey("batch_size")) {
         isReady = handleBatchHeader(tempDoc);
