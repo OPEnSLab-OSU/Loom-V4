@@ -11,17 +11,21 @@ Loom_LoRa::Loom_LoRa(
     Manager& manager,
     const uint8_t address, 
     const uint8_t powerLevel,
+    const uint8_t handshakeMaxRetries,
     const uint8_t sendMaxRetries,
     const uint8_t receiveMaxRetries,
-    const uint16_t retryTimeout
+    const uint16_t retryTimeout,
+    const uint8_t handshakeWait
 ) : Module("LoRa"),
         manager(&manager), 
         radioDriver{RFM95_CS, RFM95_INT},
         deviceAddress(address),
         powerLevel(powerLevel),
+        handshakeRetryCount(handshakeMaxRetries),
         sendRetryCount(sendMaxRetries),
         receiveRetryCount(receiveMaxRetries),
         retryTimeout(retryTimeout),
+        handshakeWaitTime(handshakeWait),
         expectedOutstandingPackets(0)
 {
     this->radioManager = new RHReliableDatagram(
@@ -40,8 +44,10 @@ Loom_LoRa::Loom_LoRa(
     manager, 
     manager.get_instance_num(), 
     powerLevel, 
+    retryCount,
     retryCount, 
     retryCount,
+    retryTimeout,
     retryTimeout
 ) {}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -448,8 +454,84 @@ bool Loom_LoRa::sendPacketHeader(JsonObject json,
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::getHandshakeResponse(uint8_t handshakePartnerAddr) {
+    if (!moduleInitialized) {
+        ERROR(F("LoRa module not initialized!"));
+        return false;
+    }
+
+    uint8_t buf[MAX_MESSAGE_LENGTH] = {}; // stack allocated array (decays into pointer when passed to function)
+
+    uint8_t fromAddress;
+    uint16_t timeout = this->retryTimeout;
+    bool recvStatus = receiveFromLoRa(buf, sizeof(buf), timeout, &fromAddress);
+    if (!recvStatus) {
+        ERROR(F("Failed to receive handshake response!"));
+        return false;
+    }
+
+    LOGF("Received packet fragment from %i", fromAddress);
+
+    StaticJsonDocument<300> tempDoc;
+
+    // cast buf to const to avoid mutation
+    auto err = deserializeMsgPack(tempDoc, (const char *)buf, sizeof(buf)); 
+    if (err != DeserializationError::Ok) {
+        ERRORF("Error occurred parsing MsgPack (raw bytes received): %s", err.c_str());
+        return false;
+    }
+
+    if (tempDoc.containsKey("handshake") && 
+        strcmp(tempDoc["handshake"], "Accept") == 0) {
+        return true;
+    } else {
+        return false;
+    }
+};
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::conductHandshake(const uint8_t destinationAddress) {
+    // build a light JSON doc to leverage sendFullPacket
+    const uint8_t HANDSHAKE_SIZE = 100; // enough for the handshake key and string value
+    StaticJsonDocument<HANDSHAKE_SIZE> handshakeDoc;
+    handshakeDoc["handshake"] = "Request";
+
+    uint8_t handshakesLeft = handshakeRetryCount;
+    while(handshakesLeft > 0) {
+        bool handshakeTransmitStatus = sendFullPacket(handshakeDoc.as<JsonObject>(), destinationAddress);
+
+        if (!handshakeTransmitStatus) {
+            ERROR(F("Failed to transmit handshake packet!"));
+            handshakesLeft--;
+            continue;
+        }
+
+        bool handshakeAccepted = getHandshakeResponse(destinationAddress);
+        if (handshakeAccepted) {
+            LOG(F("Handshake successfully established!"));
+            return true;
+        } else {
+            ERROR(F("Handshake not accepted!"));
+            handshakesLeft--;
+        }
+    }
+
+    return false; // ran out of retries
+};
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::send(const uint8_t destinationAddress) {
-    return send(destinationAddress, manager->getDocument().as<JsonObject>());
+    bool handshakeAccepted = conductHandshake(destinationAddress);
+
+    if(handshakeAccepted) {
+        LOG(F("Proceeding with send since handshake was accepted"));
+        return send(destinationAddress, manager->getDocument().as<JsonObject>());
+    } else {
+        ERROR(F("Aborting Send since handshake failed!"));
+        return false;
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -54,9 +54,11 @@ public:
         Manager& manager,
         const uint8_t address,
         const uint8_t powerLevel,
+        const uint8_t handshakeRetryCount,
         const uint8_t sendMaxRetries,
         const uint8_t receiveMaxRetries,
-        const uint16_t retryTimeout
+        const uint16_t retryTimeout,
+        const uint8_t handshakeWaitTime
     );
 
     /**
@@ -342,6 +344,8 @@ private:
     bool sendFullPacket(JsonObject json, uint8_t destinationAddress);
     bool sendFragmentedPacket(JsonObject json, uint8_t destinationAddress);
     bool sendPacketHeader(JsonObject json, uint8_t destinationAddress);
+    bool getHandshakeResponse(uint8_t handshakePartnerAddr);
+    bool conductHandshake(uint8_t destinationAddress);
 
     Manager* manager;                  // Instance of the Loom manager
     RHReliableDatagram* radioManager;  // Radio manager
@@ -356,8 +360,11 @@ private:
 
     uint8_t powerLevel;         // The power level we want to transmit at
     uint8_t sendRetryCount;     // Number of transmission retries allowed
+    uint8_t handshakeRetryCount; // Number of handshake retries allowed
+
     uint8_t receiveRetryCount;  // Number of fragment receive retries allowed
     uint16_t retryTimeout;      // Delay between retries (MS)
+    uint8_t handshakeWaitTime;   // Time to wait for a handshake response before retrying (ms)
 
     std::unordered_map<uint8_t, PartialPacket> frags; // Partial packets sorted by address
     
