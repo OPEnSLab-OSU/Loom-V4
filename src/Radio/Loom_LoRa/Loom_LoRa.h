@@ -58,7 +58,8 @@ public:
         const uint8_t sendMaxRetries,
         const uint8_t receiveMaxRetries,
         const uint16_t retryTimeout,
-        const uint8_t handshakeWaitTime
+        const uint16_t handshakeTransmitDropTime,
+        const uint16_t handshakeDecayTime
     );
 
     /**
@@ -75,7 +76,9 @@ public:
         Manager& manager,
         const uint8_t powerLevel = 23,
         const uint8_t retryCount = 3,
-        const uint16_t retryTimeout = 200
+        const uint16_t retryTimeout = 200,
+        const uint16_t handshakeTransmissionTimeAllow = 5000, // 5 seconds to try to get a handshake response (sender)
+        const uint16_t handshakeDecayTime = 20000 // 20 seconds to wait before dropping active handshake (receiver)
     );
 
     ~Loom_LoRa();
@@ -360,13 +363,23 @@ private:
 
     uint8_t powerLevel;         // The power level we want to transmit at
     uint8_t sendRetryCount;     // Number of transmission retries allowed
-    uint8_t handshakeRetryCount; // Number of handshake retries allowed
 
     uint8_t receiveRetryCount;  // Number of fragment receive retries allowed
     uint16_t retryTimeout;      // Delay between retries (MS)
-    uint8_t handshakeWaitTime;   // Time to wait for a handshake response before retrying (ms)
 
     std::unordered_map<uint8_t, PartialPacket> frags; // Partial packets sorted by address
+
+    uint8_t handshakeRetryCount; // Number of handshake retries allowed
+
+    uint16_t handshakeTransmitTimeout;     // ms to wait for a handshake message before retrying transmission (ms)
+    uint16_t handshakeDropTime;            // ms to wait before dropping an active handshake when a new handshake request is received (ms)
+
+    bool handshakeEstablished = false; // Whether we've received a fragment header for the current packet being received
+    uint8_t activePartner;
+    unsigned long lastArrivalTime; // Time the last fragment was received, used to determine if a handshake timeout has occurred
+
+
+
     
     uint expectedOutstandingPackets;   // estimated number of outstanding packets
 };

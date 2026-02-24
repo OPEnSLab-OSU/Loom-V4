@@ -15,7 +15,8 @@ Loom_LoRa::Loom_LoRa(
     const uint8_t sendMaxRetries,
     const uint8_t receiveMaxRetries,
     const uint16_t retryTimeout,
-    const uint8_t handshakeWait
+    const uint16_t handshakeTransmitDropTime,
+    const uint16_t handshakeDecayTime
 ) : Module("LoRa"),
         manager(&manager), 
         radioDriver{RFM95_CS, RFM95_INT},
@@ -25,7 +26,8 @@ Loom_LoRa::Loom_LoRa(
         sendRetryCount(sendMaxRetries),
         receiveRetryCount(receiveMaxRetries),
         retryTimeout(retryTimeout),
-        handshakeWaitTime(handshakeWait),
+        handshakeTransmitTimeout(handshakeTransmitDropTime),
+        handshakeDropTime(handshakeDecayTime),
         expectedOutstandingPackets(0)
 {
     this->radioManager = new RHReliableDatagram(
@@ -39,7 +41,9 @@ Loom_LoRa::Loom_LoRa(
     Manager& manager,
     const uint8_t powerLevel, 
     const uint8_t retryCount, 
-    const uint16_t retryTimeout
+    const uint16_t retryTimeout,
+    const uint16_t handshakeTransmissionTimeAllow,
+    const uint16_t handshakeDecayTime
 ) : Loom_LoRa(
     manager, 
     manager.get_instance_num(), 
@@ -48,7 +52,8 @@ Loom_LoRa::Loom_LoRa(
     retryCount, 
     retryCount,
     retryTimeout,
-    retryTimeout
+    handshakeTransmissionTimeAllow,
+    handshakeDecayTime
 ) {}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -184,6 +189,51 @@ bool Loom_LoRa::receiveFromLoRa(uint8_t *buf, uint8_t buf_size,
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::handleHandshake(const JsonObject& tempDoc, uint8_t fromAddress) {
+    acceptHandshake = false;
+    if (tempDoc.containsKey("handshake") && 
+        strcmp(tempDoc["handshake"], "Request") == 0) {
+        LOGF("Received handshake initiation from %i, sending response...", fromAddress);
+
+        // build a light JSON doc to leverage sendFullPacket
+        const uint8_t HANDSHAKE_SIZE = 300; // enough for the building a JSON doc from scratch w/100 bytes of raw data
+        StaticJsonDocument<HANDSHAKE_SIZE> handshakeDoc;
+
+        if (!this->handshakeEstablished) { // not in a handshake with another device
+            LOG("Handshake request accepted!");
+            handshakeDoc["handshake"] = "Accept";
+            this->activePartner = fromAddress;
+            this->handshakeEstablished = true;
+            acceptHandshake = true;
+        } else { // we're currently in a handshake with another device
+            if (millis() - this->lastArrivalTime > this->handshakeDropTime) { // if time since last message arrived is longer than timeout time
+                LOG("Handshake timeout elapsed, dropping active partner and accepting new handshake request");
+                frags.erase(activePartner);
+
+                handshakeDoc["handshake"] = "Accept";
+                this->activePartner = fromAddress;
+                this->handshakeEstablished = true;
+                acceptHandshake = true;
+            }
+            else {
+                LOG("Handshake request denied, already in handshake with another device");
+                handshakeDoc["handshake"] = "Deny";
+                acceptHandshake = false;
+            }
+        }
+    
+        bool handshakeTransmitStatus = sendFullPacket(handshakeDoc.as<JsonObject>(), fromAddress);
+        if (handshakeTransmitStatus) {
+            LOG(F("Handshake response successfully sent!"));
+        } else {
+            ERROR(F("Failed to send handshake response!"));
+        }
+    }
+    return acceptHandshake;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
                                          uint8_t* fromAddress) {
     if (!moduleInitialized) {
@@ -209,34 +259,22 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
         return FragReceiveStatus::Error;
     }
 
-    // handshake check
-    // TODO:
-    //      1) complete the code for creating the entry inside of the frags map to lock in the handshake partner
-    //      2) consolidate this handshake check code into a helper function outside of receiveFrag, called from here
-    //                  within receiveFrag.
-    if (tempDoc.containsKey("handshake") && 
-        strcmp(tempDoc["handshake"], "Request") == 0) {
-        LOGF("Received handshake initiation from %i, sending response...", fromAddress);
+    if (tempDoc.containsKey("handshake")) {
+        bool acceptHandshake = false;
+        acceptHandshake = handleHandshake(tempDoc, fromAddress); // handshake reception logic contained here
+        if(!acceptHandshake) {
+            LOG("Handshake not accepted");
+            return FragReceiveStatus::Error; // early return to quit processing fragment early.
+    }
 
-        // build a light JSON doc to leverage sendFullPacket
-        const uint8_t HANDSHAKE_SIZE = 100; // enough for the handshake key and string value
-        StaticJsonDocument<HANDSHAKE_SIZE> handshakeDoc;
+    // adjust last frag arrival time after handshake handling to avoid 
+    //      handshake override timeout logic in handshake logic
+    this->lastArrivalTime = millis(); 
 
-        if (frags.find(fromAddress) == frags.end()) {
-            LOG("Handshake request accepted!");
-            handshakeDoc["handshake"] = "Accept";
-        } else {
-            LOG("Handshake request denied!");
-            handshakeDoc["handshake"] = "Deny";
-        }
-    
-        bool handshakeTransmitStatus = sendFullPacket(handshakeDoc.as<JsonObject>(), destinationAddress);
-        if (handshakeTransmitStatus) {
-            LOG(F("Handshake response successfully sent!"));
-        } else {
-            ERROR(F("Failed to send handshake response!"));
-            return FragReceiveStatus::Error;
-        }
+    // don't process any fragments that aren't from handshake relationship
+    if(!this->handshakeEstablished || *fromAddress != this->activePartner) {
+        LOGF("Currently in handshake with %i, dropping packet from %i", activePartner, *fromAddress);
+        return FragReceiveStatus::Error;
     }
 
     bool isReady = false;
@@ -249,7 +287,7 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
         isReady = handleFragHeader(tempDoc, *fromAddress);
         LOGF("fragment header fragment handled");
 
-    } else if (frags.find(*fromAddress) != frags.end()) {
+    } else if (this->fragHeaderReceived && frags.find(*fromAddress) != frags.end()) {
         isReady = handleFragBody(tempDoc, *fromAddress);
         LOGF("fragment body fragment handled");
     
@@ -301,14 +339,15 @@ bool Loom_LoRa::handleFragHeader(JsonDocument &workingDoc,
 
     int packetSpace = 300 * (expectedFragCount + 1);
 
-    // check frags map for existing entry from the same address, which would indicate corrupted fragment header
+    // check frags map for existing entry from the same address. Assumes new header is more valid.
     if (frags.find(fromAddress) != frags.end()) {
-        WARNINGF("Dropping corrupted fragment header received from %i", fromAddress);
+        WARNINGF("Dropping old packet data received from %i", fromAddress);
 
-        frags.erase(fromAddress);
+        frags.erase(fromAddress);   // New frag header => delete existing partial packet in frags
     }
 
-    // this should never fail
+    // This will always just append the new fragment header into the array regardless of any other circumstances
+    //      this should never fail
     auto inserted = frags.emplace(std::make_pair(
         fromAddress,
         PartialPacket { 
@@ -338,6 +377,9 @@ bool Loom_LoRa::handleFragBody(JsonDocument &workingDoc,
         manager->getDocument().set(partialPacket->working);
         frags.erase(fromAddress);
 
+        this->handshakeEstablished = false; 
+        this->activePartner = 0; 
+
         return true;
     }
 
@@ -349,6 +391,8 @@ bool Loom_LoRa::handleFragBody(JsonDocument &workingDoc,
 bool Loom_LoRa::handleSingleFrag(JsonDocument &workingDoc) {
     // overwrite the manager document by deep-copying the finalized packet
     manager->getDocument().set(workingDoc);
+    this->handshakeEstablished = false;
+    this->activePartner = 0;
     
     return true;
 }
@@ -492,31 +536,42 @@ bool Loom_LoRa::getHandshakeResponse(uint8_t handshakePartnerAddr) {
 
     uint8_t buf[MAX_MESSAGE_LENGTH] = {}; // stack allocated array (decays into pointer when passed to function)
 
+    uint16_t recTimeout = 200; // ms to wait for actual LoRa response for handshake
+    const uint32_t deadline = millis() + this->handshakeTransmitTimeout;
+
     uint8_t fromAddress;
-    uint16_t timeout = this->retryTimeout;
-    bool recvStatus = receiveFromLoRa(buf, sizeof(buf), timeout, &fromAddress);
-    if (!recvStatus) {
-        ERROR(F("Failed to receive handshake response!"));
-        return false;
+    while(millis() < deadline) {
+        bool recvStatus = receiveFromLoRa(buf, sizeof(buf), recTimeout, &fromAddress);
+
+        if(!recvStatus) {
+            LOG(F("No handshake response received, retrying..."));
+            continue;
+        }
+
+        if(fromAddress != handshakePartnerAddr) {
+            LOGF("Received packet from %i while waiting for handshake response from %i, ignoring...", fromAddress, handshakePartnerAddr);
+            continue;
+        }
+
+        LOGF("Received packet fragment from %i", fromAddress);
+
+        StaticJsonDocument<300> tempDoc;
+
+        // cast buf to const to avoid mutation
+        auto err = deserializeMsgPack(tempDoc, (const char *)buf, sizeof(buf)); 
+        if (err != DeserializationError::Ok) {
+            ERRORF("Error occurred parsing MsgPack (raw bytes received): %s", err.c_str());
+            return false;
+        }
+
+        if (tempDoc.containsKey("handshake") && 
+            strcmp(tempDoc["handshake"], "Accept") == 0) {
+            return true;
+        } else {
+            return false;
+        }
     }
-
-    LOGF("Received packet fragment from %i", fromAddress);
-
-    StaticJsonDocument<300> tempDoc;
-
-    // cast buf to const to avoid mutation
-    auto err = deserializeMsgPack(tempDoc, (const char *)buf, sizeof(buf)); 
-    if (err != DeserializationError::Ok) {
-        ERRORF("Error occurred parsing MsgPack (raw bytes received): %s", err.c_str());
-        return false;
-    }
-
-    if (tempDoc.containsKey("handshake") && 
-        strcmp(tempDoc["handshake"], "Accept") == 0) {
-        return true;
-    } else {
-        return false;
-    }
+    return false; // timeout elapsed without receiving valid handshake response
 };
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -529,6 +584,7 @@ bool Loom_LoRa::conductHandshake(const uint8_t destinationAddress) {
 
     uint8_t handshakesLeft = handshakeRetryCount;
     while(handshakesLeft > 0) {
+        // send handshake request
         bool handshakeTransmitStatus = sendFullPacket(handshakeDoc.as<JsonObject>(), destinationAddress);
 
         if (!handshakeTransmitStatus) {
@@ -537,6 +593,7 @@ bool Loom_LoRa::conductHandshake(const uint8_t destinationAddress) {
             continue;
         }
 
+        // check handshake response
         bool handshakeAccepted = getHandshakeResponse(destinationAddress);
         if (handshakeAccepted) {
             LOG(F("Handshake successfully established!"));
