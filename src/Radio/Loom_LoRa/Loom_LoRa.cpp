@@ -190,7 +190,7 @@ bool Loom_LoRa::receiveFromLoRa(uint8_t *buf, uint8_t buf_size,
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::handleHandshakeRequest(const JsonObject& tempDoc, uint8_t fromAddress) {
-    acceptHandshake = false;
+    bool acceptHandshake = false;
     if (tempDoc.containsKey("handshake") && 
         strcmp(tempDoc["handshake"], "Request") == 0) {
         LOGF("Received handshake initiation from %i, sending response...", fromAddress);
@@ -261,10 +261,11 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
 
     if (tempDoc.containsKey("handshake")) {
         bool acceptHandshake = false;
-        acceptHandshake = handleHandshakeRequest(tempDoc, fromAddress); // handshake reception logic contained here
+        acceptHandshake = handleHandshakeRequest(tempDoc.as<JsonObject>(), *fromAddress); // handshake reception logic contained here
         if(!acceptHandshake) {
             LOG("Handshake not accepted");
             return FragReceiveStatus::Error; // early return to quit processing fragment early.
+        }
     }
 
     // adjust last frag arrival time after handshake handling to avoid 
@@ -287,7 +288,7 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
         isReady = handleFragHeader(tempDoc, *fromAddress);
         LOGF("fragment header fragment handled");
 
-    } else if (this->fragHeaderReceived && frags.find(*fromAddress) != frags.end()) {
+    } else if (this->handshakeEstablished && frags.find(*fromAddress) != frags.end()) {
         isReady = handleFragBody(tempDoc, *fromAddress);
         LOGF("fragment body fragment handled");
     
