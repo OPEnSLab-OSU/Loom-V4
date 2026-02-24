@@ -272,7 +272,7 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
     //      handshake override timeout logic in handshake logic
     this->lastArrivalTime = millis(); 
 
-    // don't process any fragments that aren't from handshake relationship
+    // Handshake WALL - process won't parse any fragments that aren't from handshake relationship
     if(!this->handshakeEstablished || *fromAddress != this->activePartner) {
         LOGF("Currently in handshake with %i, dropping packet from %i", activePartner, *fromAddress);
         return FragReceiveStatus::Error;
