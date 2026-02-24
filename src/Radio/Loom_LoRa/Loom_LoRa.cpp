@@ -189,7 +189,7 @@ bool Loom_LoRa::receiveFromLoRa(uint8_t *buf, uint8_t buf_size,
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LoRa::handleHandshake(const JsonObject& tempDoc, uint8_t fromAddress) {
+bool Loom_LoRa::handleHandshakeRequest(const JsonObject& tempDoc, uint8_t fromAddress) {
     acceptHandshake = false;
     if (tempDoc.containsKey("handshake") && 
         strcmp(tempDoc["handshake"], "Request") == 0) {
@@ -261,7 +261,7 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
 
     if (tempDoc.containsKey("handshake")) {
         bool acceptHandshake = false;
-        acceptHandshake = handleHandshake(tempDoc, fromAddress); // handshake reception logic contained here
+        acceptHandshake = handleHandshakeRequest(tempDoc, fromAddress); // handshake reception logic contained here
         if(!acceptHandshake) {
             LOG("Handshake not accepted");
             return FragReceiveStatus::Error; // early return to quit processing fragment early.

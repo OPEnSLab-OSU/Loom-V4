@@ -347,7 +347,47 @@ private:
     bool sendFullPacket(JsonObject json, uint8_t destinationAddress);
     bool sendFragmentedPacket(JsonObject json, uint8_t destinationAddress);
     bool sendPacketHeader(JsonObject json, uint8_t destinationAddress);
+
+    /**
+     * @brief Processes a JSON document that is identified as a handshake request, ensuring that the handshake can 
+     *          be accepted, and sending a handshake response if so.
+     * 
+     * - Input Arguments -
+     * @param [in] tempDoc      JsonObject& The JSON document to process
+     * @param [in] fromAddress  uint8_t The address the packet was received from
+     *
+     * @return acceptHandshake boolean indicating whether the handshake request was accepted, which is true if no other handshake
+     *          is currently active or the timer has previous handshake has timed out.
+     * 
+     * @note This function will set the handshakeEstablished and activePartner class variables if the handshake request is accepted.
+     *          It will also remove the frags entry for the active partner if the handshake decay has occured.
+     */
+    bool handleHandshakeRequest(const JsonObject& tempDoc, uint8_t fromAddress);
+
+    /**
+     * @brief Continuously receives raw byte messages over LoRa, converts them to JSON docs, then processes them to 
+     *          evaluate whether the packet is a valid handshake response until a valid handshake response is received,
+     *          or until the handshakeTransmitTimeout (class variable) time limit is reached.
+     * 
+     * - Input Arguments -
+     * @param [in] handshakePartnerAddr  uint8_t The address of the partner to receive a handshake response from
+     *
+     * @return boolean indicating whether a handshake response was received from the 
+     *          specified partner within the handshakeTransmitTimeout time limit.
+     * 
+     * @note the reception process expires after the handshakeTransmitTimeout (a class variable). 
+     */
     bool getHandshakeResponse(uint8_t handshakePartnerAddr);
+
+    /**
+     * @brief Conducts a handshake with the specified partner address, which involves sending a handshake 
+     *          request and waiting for a valid handshake response.
+     * 
+     * - Input Arguments -
+     * @param [in] destinationAddress  uint8_t The address of the partner to conduct a handshake with
+     *
+     * @return boolean indicating whether the handshake was successful
+     */
     bool conductHandshake(uint8_t destinationAddress);
 
     Manager* manager;                  // Instance of the Loom manager
