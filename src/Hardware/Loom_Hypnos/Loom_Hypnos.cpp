@@ -482,7 +482,7 @@ void Loom_Hypnos::sleep(bool waitForSerial){
         pre_sleep();                                            // Pre-sleep cleanup
         shouldPowerUp = true;
         LowPower.sleep();                                       // Go to sleep and hang
-        Watchdog.enable(WATCHDOG_TIMEOUT);
+        WD_TIMER_ENABLE;
     }
     // If it has we want to trigger a resample which requires powering the sensors back up
     else{
@@ -492,12 +492,12 @@ void Loom_Hypnos::sleep(bool waitForSerial){
             manInst->power_up();
         }
     }
-    Watchdog.reset();
+    WD_TIMER_RESET;
 
     // If the alarm hadn't triggered last time we want to wake up like normal
-    if(!hasAlarmTriggered)
+    if(!hasAlarmTriggered){
         post_sleep(waitForSerial);         // Wake up
-   
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -523,42 +523,45 @@ void Loom_Hypnos::pre_sleep(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::post_sleep(bool waitForSerial){
     // Enable the Watchdog timer when waking up
-    TIMER_ENABLE;
-    Watchdog.reset();
+    WD_TIMER_ENABLE;
+    WD_TIMER_RESET;
     
     if(shouldPowerUp){
         USBDevice.attach();
-        Watchdog.reset();
+        WD_TIMER_RESET;
         Serial.begin(115200);
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
         // Check if they are not disabled to see if they should be enabled
         bool enable5 = !is5VDisabled(DEVICE_STATE::EXITING_SLEEP);
-        Watchdog.reset();
+        WD_TIMER_RESET;
         bool enable33 = !is3VDisabled(DEVICE_STATE::EXITING_SLEEP);
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
         enable(enable33, enable5); // Checks if the 3.3v or 5v are disabled and re-enables them
-        Watchdog.reset();
+        WD_TIMER_RESET;
         delay(1000);
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
         LOG(F("Device has awoken from sleep!"));
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
         // Clear any pending RTC alarms
         RTC_DS.clearAlarm();
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
         // Re-init the modules that need it
         manInst->power_up();
 
         // We want to wait for the user to re-open the serial monitor before continuing to see readouts
         if(waitForSerial){
-            TIMER_DISABLE;
+            WD_TIMER_DISABLE;
             while(!Serial);
-            TIMER_ENABLE;
+            WD_TIMER_ENABLE;
         }        
+    }
+    else {
+        WD_TIMER_DISABLE;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

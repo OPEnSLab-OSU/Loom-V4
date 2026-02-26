@@ -37,7 +37,7 @@ bool MQTTComponent::connectToBroker() {
             // If our retry limit has been reached we dont want to try to send data cause it wont work
             if(retryAttempts >= maxRetries){
                 ERROR(F("MQTT Retry limit exceeded!"));
-                TIMER_ENABLE;
+                //TIMER_ENABLE;
                 FUNCTION_END;
                 return false;
             }

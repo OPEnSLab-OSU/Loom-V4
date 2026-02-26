@@ -7,17 +7,17 @@
 #include <Adafruit_SleepyDog.h>
 
 /* Watchdog Timer Setup */
-#define WATCHDOG_TIMEOUT 8000
+#define WATCHDOG_TIMEOUT 10000
 
-// Only allow the Timer to be used if WATCHDOG_ENABLE is set
+// To allow Watchdog functionality, WATCHDOG_ENABLE must be set during compilation
 #if defined(WATCHDOG_ENABLE)
-    #define TIMER_ENABLE Wathchdog.enable(WATCHDOG_TIMEOUT)
-    #define TIMER_DISABLE Wathchdog.disable()
-    #define TIMER_RESET Wathchdog.reset()
+    #define WD_TIMER_ENABLE Watchdog.enable(WATCHDOG_TIMEOUT)
+    #define WD_TIMER_DISABLE Watchdog.disable()
+    #define WD_TIMER_RESET Watchdog.reset()
 #else
-    #define TIMER_ENABLE 
-    #define TIMER_DISABLE
-    #define TIMER_RESET
+    #define WD_TIMER_ENABLE 
+    #define WD_TIMER_DISABLE
+    #define WD_TIMER_RESET
 #endif
 
 #define OUTPUT_SIZE 256
