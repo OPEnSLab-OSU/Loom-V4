@@ -1,11 +1,11 @@
 #pragma once
 
 // GSM Model Number
-//#define TINY_GSM_MODEM_UBLOX
+// #define TINY_GSM_MODEM_UBLOX
 #define TINY_GSM_MODEM_SARAR4
 
-#include "Loom_Manager.h"
 #include "../NetworkComponent.h"
+#include "Loom_Manager.h"
 #include <TinyGsmClient.h>
 #include <functional>
 
@@ -14,10 +14,7 @@
 // Specify what serial interface we want to use
 #define SerialAT Serial1
 
-enum LTE_VERSION{
-    SPARKFUN,
-    OPENS
-};
+enum LTE_VERSION { SPARKFUN, OPENS };
 
 /**
  * Loomified Control for a 4G LTE Board
