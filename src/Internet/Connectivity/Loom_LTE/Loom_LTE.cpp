@@ -133,7 +133,7 @@ void Loom_LTE::power_up() {
     // If not connected to a network we want to connect
     if (moduleInitialized) {
         LOG(F("Powering up GPRS Modem. This should take about 10 seconds..."));
-        TIMER_DISABLE;
+        // TIMER_DISABLE;
 
         // Power on whatever the currently used LTE board is
         powerBoardOn();
@@ -144,7 +144,7 @@ void Loom_LTE::power_up() {
         modem.restart();
         LOG(F("Powering up complete!"));
         powered = true;
-        TIMER_ENABLE;
+        // TIMER_ENABLE;
     }
     // If the module isn't initialized we want to try again
     else {
@@ -191,7 +191,7 @@ bool Loom_LTE::connect() {
     char output[OUTPUT_SIZE];
     uint8_t attemptCount = 1; // Tracks number of attempts, 5 is a fail
 
-    TIMER_DISABLE;
+    // TIMER_DISABLE;
     do {
         LOG(F("Waiting for network..."));
         if (!modem.waitForNetwork()) {
@@ -215,7 +215,7 @@ bool Loom_LTE::connect() {
             LOG(F("Successfully Connected!"));
             delay(6000);
             FUNCTION_END;
-            TIMER_ENABLE;
+            // TIMER_ENABLE;
             return true;
         } else {
             snprintf(output, OUTPUT_SIZE, "Connection failed %u / 10. Retrying...", attemptCount);
@@ -228,7 +228,7 @@ bool Loom_LTE::connect() {
         if (attemptCount > 5) {
             ERROR(F("Connection reattempts exceeded 10 tries. Connection Failed"));
             FUNCTION_END;
-            TIMER_ENABLE;
+            // TIMER_ENABLE;
             return false;
         }
     } while (!isConnected());
@@ -282,7 +282,7 @@ bool Loom_LTE::verifyConnection() {
         client.stop();
         returnStatus = true;
     }
-    TIMER_RESET;
+    // TIMER_RESET;
     FUNCTION_END;
     return true;
 }

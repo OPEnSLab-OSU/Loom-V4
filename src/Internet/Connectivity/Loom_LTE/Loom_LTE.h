@@ -98,12 +98,12 @@ class Loom_LTE : public NetworkComponent {
 
     /* Restart the modem */
     void restartModem() {
-        TIMER_RESET;
+        // TIMER_RESET;
         modem.poweroff();
         delay(3000);
         modem.restart();
         delay(1000);
-        TIMER_RESET;
+        // TIMER_RESET;
     };
 
     /**
