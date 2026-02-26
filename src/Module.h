@@ -11,13 +11,13 @@
 
 // To allow Watchdog functionality, WATCHDOG_ENABLE must be set during compilation
 #if defined(WATCHDOG_ENABLE)
-    #define WD_TIMER_ENABLE Watchdog.enable(WATCHDOG_TIMEOUT)
-    #define WD_TIMER_DISABLE Watchdog.disable()
-    #define WD_TIMER_RESET Watchdog.reset()
+#define WD_TIMER_ENABLE Watchdog.enable(WATCHDOG_TIMEOUT)
+#define WD_TIMER_DISABLE Watchdog.disable()
+#define WD_TIMER_RESET Watchdog.reset()
 #else
-    #define WD_TIMER_ENABLE 
-    #define WD_TIMER_DISABLE
-    #define WD_TIMER_RESET
+#define WD_TIMER_ENABLE
+#define WD_TIMER_DISABLE
+#define WD_TIMER_RESET
 #endif
 
 #define OUTPUT_SIZE 256

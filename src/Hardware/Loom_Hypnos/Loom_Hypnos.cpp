@@ -496,7 +496,7 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
     if (!hasAlarmTriggered) {
         pre_sleep(); // Pre-sleep cleanup
         shouldPowerUp = true;
-        LowPower.sleep();                                       // Go to sleep and hang
+        LowPower.sleep(); // Go to sleep and hang
         WD_TIMER_ENABLE;
     }
     // If it has we want to trigger a resample which requires powering the sensors back up
@@ -511,8 +511,8 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
     WD_TIMER_RESET;
 
     // If the alarm hadn't triggered last time we want to wake up like normal
-    if(!hasAlarmTriggered){
-        post_sleep(waitForSerial);         // Wake up
+    if (!hasAlarmTriggered) {
+        post_sleep(waitForSerial); // Wake up
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -543,8 +543,8 @@ void Loom_Hypnos::post_sleep(bool waitForSerial) {
     // Enable the Watchdog timer when waking up
     WD_TIMER_ENABLE;
     WD_TIMER_RESET;
-    
-    if(shouldPowerUp){
+
+    if (shouldPowerUp) {
         USBDevice.attach();
         WD_TIMER_RESET;
         Serial.begin(115200);
@@ -571,14 +571,15 @@ void Loom_Hypnos::post_sleep(bool waitForSerial) {
         // Re-init the modules that need it
         manInst->power_up();
 
-        // We want to wait for the user to re-open the serial monitor before continuing to see readouts
-        if(waitForSerial){
+        // We want to wait for the user to re-open the serial monitor before continuing to see
+        // readouts
+        if (waitForSerial) {
             WD_TIMER_DISABLE;
-            while(!Serial);
+            while (!Serial)
+                ;
             WD_TIMER_ENABLE;
-        }        
-    }
-    else {
+        }
+    } else {
         WD_TIMER_DISABLE;
     }
 }

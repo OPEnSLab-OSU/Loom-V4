@@ -81,7 +81,7 @@ void Manager::measure() {
                 snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
                 WARNING(noInitLog);
             }
-            //TIMER_RESET; 
+            // TIMER_RESET;
         }
     } else {
         ERROR(F("Unable to collect data as the manager and thus all sensors connected to it have "
@@ -123,7 +123,7 @@ void Manager::package() {
             snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
             WARNING(noInitLog);
         }
-        //TIMER_RESET;
+        // TIMER_RESET;
     }
     packetNumber++;
 
@@ -155,11 +155,11 @@ void Manager::power_up() {
     FUNCTION_START;
     WD_TIMER_ENABLE;
     char noInitLog[50];
-    for(int i = 0; i < modules.size(); i++){
+    for (int i = 0; i < modules.size(); i++) {
         WD_TIMER_RESET;
-        if(modules[i].second->moduleInitialized){
+        if (modules[i].second->moduleInitialized) {
             // If we are about to power up the LTE we should turn off the watchdog
-            if(strcmp(modules[i].second->getModuleName(), "LTE") == 0){
+            if (strcmp(modules[i].second->getModuleName(), "LTE") == 0) {
                 WD_TIMER_DISABLE;
             }
             modules[i].second->power_up();
@@ -191,7 +191,7 @@ void Manager::power_down() {
             snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
             WARNING(noInitLog);
         }
-        //TIMER_RESET;
+        // TIMER_RESET;
     }
     FUNCTION_END;
 }
@@ -238,8 +238,7 @@ void Manager::initialize() {
     hasInitialized = true;
     LOG(F("** Setup Complete ** "));
 
-
-    //TIMER_ENABLE;
+    // TIMER_ENABLE;
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -276,9 +275,10 @@ void Manager::read_serial_num() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::pause(const uint32_t ms) const {
-    //TIMER_DISABLE;
+    // TIMER_DISABLE;
     int waitTime = millis() + ms;
-    while (millis() < waitTime);
-    //TIMER_ENABLE;
+    while (millis() < waitTime)
+        ;
+    // TIMER_ENABLE;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

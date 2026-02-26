@@ -34,11 +34,13 @@ bool Loom_MongoDB::publish() {
     char jsonString[MAX_JSON_SIZE];
     if (moduleInitialized) {
 
-        //TIMER_DISABLE;
-        
-        if(strlen(projectServer) > 0)
-            // Formulate a topic to publish on with the format "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
-            snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s/%s%i"), projectServer, database_name, manInst->get_device_name(), manInst->get_instance_num());
+        // TIMER_DISABLE;
+
+        if (strlen(projectServer) > 0)
+            // Formulate a topic to publish on with the format
+            // "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
+            snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s/%s%i"), projectServer, database_name,
+                       manInst->get_device_name(), manInst->get_instance_num());
         else
             // Formulate a topic to publish on with the format
             // "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
@@ -64,7 +66,7 @@ bool Loom_MongoDB::publish() {
         return false;
     }
     FUNCTION_END;
-    //TIMER_ENABLE;
+    // TIMER_ENABLE;
     return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -76,11 +78,13 @@ bool Loom_MongoDB::publishMetadata(char *metadata) {
     if (moduleInitialized) {
 
         char jsonString[MAX_JSON_SIZE];
-        //TIMER_DISABLE;
-        
-        if(strlen(projectServer) > 0)
-            // Formulate a topic to publish on with the format "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
-            snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s/%s%i"), projectServer, database_name, manInst->get_device_name(), manInst->get_instance_num());
+        // TIMER_DISABLE;
+
+        if (strlen(projectServer) > 0)
+            // Formulate a topic to publish on with the format
+            // "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
+            snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s/%s%i"), projectServer, database_name,
+                       manInst->get_device_name(), manInst->get_instance_num());
         else
             // Formulate a topic to publish on with the format
             // "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
@@ -106,7 +110,7 @@ bool Loom_MongoDB::publishMetadata(char *metadata) {
         return false;
     }
     FUNCTION_END;
-    //TIMER_ENABLE;
+    // TIMER_ENABLE;
     return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -125,9 +129,9 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
     char line[MAX_JSON_SIZE];
     int packetNumber = 0, index = 0;
     char c;
-    if(moduleInitialized){
-        //TIMER_DISABLE;
-        if(batchSD.shouldPublish()){
+    if (moduleInitialized) {
+        // TIMER_DISABLE;
+        if (batchSD.shouldPublish()) {
 
             if (strlen(projectServer) > 0)
                 // Formulate a topic to publish on with the format
@@ -210,7 +214,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
         return false;
     }
     FUNCTION_END;
-    //TIMER_ENABLE;
+    // TIMER_ENABLE;
     return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
