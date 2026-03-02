@@ -126,9 +126,10 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
         return false;
     }
 
-    char line[MAX_JSON_SIZE];
-    int packetNumber = 0, index = 0;
-    char c;
+    char line[MAX_JSON_SIZE] = {};
+    int packetNumber = 0;
+    int index = 0;
+    bool lineOverflow = false;
     if (moduleInitialized) {
         // TIMER_DISABLE;
         if (batchSD.shouldPublish()) {
@@ -153,41 +154,90 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
             File fileOutput = batchSD.getBatch();
 
             bool allDataSuccess = true;
+            auto publishCurrentLine = [&]() {
+                packetNumber++;
+
+                if (lineOverflow) {
+                    snprintf_P(output, OUTPUT_SIZE,
+                               PSTR("Dropped oversized packet #%i (len >= %i bytes)"),
+                               packetNumber, MAX_JSON_SIZE);
+                    WARNING(output);
+                    allDataSuccess = false;
+                    lineOverflow = false;
+                    index = 0;
+                    line[0] = '\0';
+                    return;
+                }
+
+                if (index <= 0) {
+                    line[0] = '\0';
+                    return;
+                }
+
+                // Ensure null-termination before publish
+                line[index] = '\0';
+
+                snprintf_P(output, OUTPUT_SIZE, PSTR("Publishing Packet %i of %i with len=%d"),
+                           packetNumber, batchSD.getBatchSize(), index);
+                LOG(output);
+
+                if (!publishMessage(topic, line)) {
+                    snprintf_P(output, OUTPUT_SIZE, PSTR("Failed to publish packet #%i"),
+                               packetNumber);
+                    WARNING(output);
+                    allDataSuccess = false;
+                }
+
+                delay(500);
+                index = 0;
+                line[0] = '\0';
+            };
 
             /* Utilize a stream so it doesn't matter how much data we have as its read in one by one
              */
             while (fileOutput.available()) {
-                c = fileOutput.read();
+                int readValue = fileOutput.read();
+                if (readValue < 0) {
+                    WARNING(F("Failed to read from batch file."));
+                    allDataSuccess = false;
+                    break;
+                }
+                char c = (char)readValue;
 
-                // \r Marks the end of a line, at this point we want to publish that whole packet
-                if (c == '\r') {
-
-                    // Track the packet number we are currently publishing
-                    snprintf_P(output, OUTPUT_SIZE, PSTR("Publishing Packet %i of %i"),
-                               packetNumber + 1, batchSD.getBatchSize());
-                    LOG(output);
-
-                    // Replace the \r with a null character
-                    line[index] = '\0';
-
-                    if (!publishMessage(topic, line)) { // This fails if the line is greater than
-                                                        // 2000 bytes Or if the line is malformed
-                        snprintf(output, OUTPUT_SIZE, PSTR("Failed to publish packet #%i"),
-                                 packetNumber + 1);
-                        WARNING(output);
+                /* Attempt to reconnect if connection has been stopped during publishMessage
+                 * The previous packet that was lost due a stopped connected will not be
+                 * retransmitted.
+                 */
+                if (!isConnected()) {
+                    connectToBroker();
+                    if (!isConnected()) {
+                        WARNING(F("Connection lost during batch publish."));
                         allDataSuccess = false;
+                        break;
                     }
-
-                    delay(500);
-                    index = 0;
-                    packetNumber++;
                 }
 
-                // If not just add the packet to the line array
-                else {
+                // Handle both CR and LF line endings.
+                if (c == '\r' || c == '\n') {
+                    // Ignore empty lines and LF from CRLF pairs.
+                    if (index > 0 || lineOverflow) {
+                        publishCurrentLine();
+                    }
+                    continue;
+                }
+
+                // Add data while leaving room for null terminator.
+                if (index < (MAX_JSON_SIZE - 1)) {
                     line[index] = c;
                     index++;
+                } else {
+                    lineOverflow = true;
                 }
+            }
+
+            // Flush trailing data if file does not end in CR/LF.
+            if (index > 0 || lineOverflow) {
+                publishCurrentLine();
             }
             fileOutput.close();
 
