@@ -21,7 +21,7 @@
 #include <Sensors/I2C/Loom_ADS1115/Loom_ADS1115.h>
 #include <Sensors/I2C/Loom_MS5803/Loom_MS5803.h>
 #include <Sensors/Loom_Analog/Loom_Analog.h>
-#include <Sensors/I2C/Loom_VCNL/Loom_VCNL.h>
+#include <Sensors/I2C/Loom_VCNL/Loom_VCNL4010.h>
 
 //------------------------------------------------------------
 #include <Wire.h>

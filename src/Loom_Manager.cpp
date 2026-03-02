@@ -75,8 +75,6 @@ void Manager::measure() {
             if (modules[i].second->moduleInitialized)
                 modules[i].second->measure();
             else {
-
-                /* Converted warning from printModuleName to logger*/
                 memset(noInitLog, '\0', 50);
                 snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
                 WARNING(noInitLog);

@@ -6,6 +6,7 @@
 
 #include "../../Loom_Manager.h"
 #include "../../Module.h"
+#include "Hash.hpp"
 
 /**
  * Class used to manage interaction with the SD card read/writer on the Hypnos board
@@ -76,7 +77,8 @@ class SDManager : public Module {
      * Get the current batch file name
      */
     const char *getBatchFilename() {
-        snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+        const char *logBase = (strlen(overrideFileName) >0) ? overrideFileName : device_name;
+        snprintf_P(batchFileName, sizeof(batchFileName), PSTR("Batch%i_%s.txt"), getCurrentFileNumber(), logBase);
         return batchFileName;
     };
 
@@ -104,7 +106,11 @@ class SDManager : public Module {
     /**
      * Log to a different name other than one matching the device name
      */
-    void setLogName(const char *name) { strncpy(overrideFileName, name, 100); };
+    void setLogName(const char *name) {
+        if (!name)
+            name = "";
+        snprintf(overrideFileName, sizeof(overrideFileName), "%s", name);
+    };
 
     /* Get whatever number we are currently appending to the SD fileNames*/
     int getCurrentFileNumber() { return file_count; };
@@ -133,12 +139,19 @@ class SDManager : public Module {
     int file_count = 0;    // What file number are we logging to
 
     bool sdInitialized = false; // If the SD card actually initialized
-    char
-        *headers[2]; // Contains the main and sub headers that are added to the top of the CSV files
+    char *headers[2]; // Contains the main and sub headers that are 
+                      // added to the top of the CSV files
+
+    uint64_t currentSchemaHash1 = 0;
+    uint64_t currentSchemaHash2 = 0;
+    bool schemaHashInitialized = false;
+
 
     void logBatch(); // Log data in batch format
 
     void writeHeaders(); // Create the headers for the CSV file based off what info we are storing
+    void buildSchemaHashes(uint64_t &hash1, uint64_t &hash2);
+    void setCurrentLogFileNames();
     bool updateCurrentFileName(); // Update the current file name to log to based on files already
                                   // existing on the SD card
 };

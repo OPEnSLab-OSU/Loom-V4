@@ -661,8 +661,9 @@ void Loom_Hypnos::createTimezoneMap() {
 
 bool Loom_Hypnos::logToSD() {
     FUNCTION_START;
-    sdMan->log(getCurrentTime());
+    bool result = sdMan->log(getCurrentTime());
     FUNCTION_END;
+    return result;
 }
 
 /* Voltage Checks */
