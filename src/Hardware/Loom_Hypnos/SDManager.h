@@ -5,6 +5,7 @@
 #include <SdFat.h>
 
 #include "../../Loom_Manager.h"
+#include "../../MemPool.hpp"
 #include "../../Module.h"
 #include "Hash.hpp"
 
@@ -24,6 +25,10 @@ class SDManager : public Module {
     void power_down() override {};
 
   public:
+    using StreamChunkCallback =
+        bool (*)(const uint8_t *data, size_t bytesRead, size_t fileOffset, size_t chunkIndex,
+                 bool eof, void *userCtx);
+
     /**
      * SDManager Constructor
      *
@@ -52,6 +57,53 @@ class SDManager : public Module {
      * @param fileName Name of the file to read from
      */
     char *readFile(const char *fileName);
+
+    /**
+     * Read the contents of a file into a memory-pool lease.
+     *
+     * @param fileName Name of the file to read from.
+     * @return Memory pool handle. Invalid handle indicates failure.
+     */
+    MemPool::Handle readFileLease(const char *fileName);
+
+    /**
+     * Get a const char pointer from a lease handle.
+     * @param h Handle returned from readFileLease
+     */
+    const char *leaseData(MemPool::Handle h) const;
+
+    /**
+     * Get the logical size of a lease.
+     * @param h Handle returned from readFileLease
+     */
+    size_t leaseSize(MemPool::Handle h) const;
+
+    /**
+     * Release a lease returned from readFileLease.
+     * @param h Handle returned from readFileLease
+     */
+    bool releaseLease(MemPool::Handle h);
+
+    /**
+     * Stream file contents in fixed-size chunks.
+     *
+     * @param fileName Name of the file to stream
+     * @param chunkBytes Number of bytes to read per callback
+     * @param cb Callback invoked per chunk
+     * @param userCtx User context passed back to callback
+     */
+    bool streamFile(const char *fileName, size_t chunkBytes, StreamChunkCallback cb,
+                    void *userCtx = nullptr);
+
+    /**
+     * Get current memory pool stats.
+     */
+    MemPool::Stats getPoolStats() const;
+
+    /**
+     * Print current pool stats for debugging.
+     */
+    void printPoolStats();
 
     /*
      * Returns a pointer to the opened filed
@@ -117,6 +169,7 @@ class SDManager : public Module {
 
   private:
     Manager *manInst; // Reference to the manager
+    MemPool sdPool;   // Dedicated pool used for SD transient buffers
 
     File myFile;       // File object used to handle reading and writing
     File scanningFile; // Used specifically to search through the directory

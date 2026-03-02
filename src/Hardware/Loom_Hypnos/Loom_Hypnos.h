@@ -99,6 +99,7 @@ class Loom_Hypnos : public Module {
     void package() override;
 
   public:
+    using StreamChunkCallback = SDManager::StreamChunkCallback;
     volatile bool shouldPowerUp = true;
 
     /**
@@ -224,6 +225,52 @@ class Loom_Hypnos : public Module {
      * @param fileName File to read from
      */
     char *readFile(const char *fileName) { return sdMan->readFile(fileName); };
+
+    /**
+     * Read file contents from SD into a memory pool lease.
+     * @param fileName File to read from
+     */
+    MemPool::Handle readFileLease(const char *fileName) { return sdMan->readFileLease(fileName); };
+
+    /**
+     * Get lease data for a file lease handle.
+     * @param h Handle returned from readFileLease
+     */
+    const char *leaseData(MemPool::Handle h) const { return sdMan->leaseData(h); };
+
+    /**
+     * Get lease size for a file lease handle.
+     * @param h Handle returned from readFileLease
+     */
+    size_t leaseSize(MemPool::Handle h) const { return sdMan->leaseSize(h); };
+
+    /**
+     * Release a lease returned from readFileLease.
+     * @param h Handle returned from readFileLease
+     */
+    bool releaseLease(MemPool::Handle h) { return sdMan->releaseLease(h); };
+
+    /**
+     * Stream a file from SD in fixed-size chunks.
+     * @param fileName File to stream
+     * @param chunkBytes Chunk size in bytes
+     * @param cb Callback invoked per chunk
+     * @param userCtx User context passed to callback
+     */
+    bool streamFile(const char *fileName, size_t chunkBytes, StreamChunkCallback cb,
+                    void *userCtx = nullptr) {
+        return sdMan->streamFile(fileName, chunkBytes, cb, userCtx);
+    };
+
+    /**
+     * Get SD memory pool stats.
+     */
+    MemPool::Stats getPoolStats() const { return sdMan->getPoolStats(); };
+
+    /**
+     * Print SD memory pool stats.
+     */
+    void printPoolStats() { sdMan->printPoolStats(); };
 
     /**
      * Get the default SD card file name

@@ -178,8 +178,8 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
                     // Replace the \r with a null character
                     line[index] = '\0';
 
-                    if (!publishMessage(topic, line)) { // This fails if the line is greater than
-                                                        // 2000 bytes Or if the line is malformed
+                    if (!publishMessage(topic, line)) {
+
                         snprintf(output, OUTPUT_SIZE, PSTR("Failed to publish packet #%i"),
                                  packetNumber + 1);
                         WARNING(output);

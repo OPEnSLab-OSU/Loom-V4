@@ -49,6 +49,7 @@ SDManager::SDManager(Manager *man, int sd_chip_select)
     : manInst(man), Module("SD Manager"), chip_select(sd_chip_select) {
     snprintf(device_name, sizeof(device_name), "%s", manInst->get_device_name());
     memset(overrideFileName, '\0', 260);
+    sdPool.init();
 } // Disables Lora so we can use the SD card on hypnos
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -324,8 +325,9 @@ bool SDManager::log(DateTime currentTime) {
 
     // If this file has never been written to before, create headers and pin schema hashes.
     if (shouldWriteHeaders) {
-        if(!myFile.timestamp(T_CREATE, currentTime.year(), currentTime.month(), currentTime.day(),
-                         currentTime.hour(), currentTime.minute(), currentTime.second())) success = false;
+        if (!myFile.timestamp(T_CREATE, currentTime.year(), currentTime.month(), currentTime.day(),
+                              currentTime.hour(), currentTime.minute(), currentTime.second()))
+            success = false;
 
         writeHeaders();
         currentSchemaHash1 = newHash1;
@@ -351,7 +353,8 @@ bool SDManager::log(DateTime currentTime) {
         truncated = true;
 
     // Write the Instance data that isn't included in the JSON packet
-    if(!myFile.print(output)) success = false;
+    if (!myFile.print(output))
+        success = false;
     output[0] = '\0'; // Start a new string keeping the total buffer length available
 
     JsonObject document = manInst->getDocument().as<JsonObject>();
@@ -405,18 +408,19 @@ bool SDManager::log(DateTime currentTime) {
     }
 
     // Write the matching data into the CSV file
-    if(!myFile.println(output)) success = false;
+    if (!myFile.println(output))
+        success = false;
 
     // Set the last modified date
-    if(!myFile.timestamp(T_WRITE, currentTime.year(), currentTime.month(), currentTime.day(),
-                     currentTime.hour(), currentTime.minute(), currentTime.second())) success = false;
+    if (!myFile.timestamp(T_WRITE, currentTime.year(), currentTime.month(), currentTime.day(),
+                          currentTime.hour(), currentTime.minute(), currentTime.second()))
+        success = false;
 
-    if(!myFile.close()) success = false;
+    if (!myFile.close())
+        success = false;
 
-    snprintf_P(output, sizeof(output), PSTR("Logged data to %s: success=%s: trunacted=%s "), 
-                                            fileName, 
-                                            success ? "true" : "false",
-                                            truncated ? "true": "false");
+    snprintf_P(output, sizeof(output), PSTR("Logged data to %s: success=%s: trunacted=%s "),
+               fileName, success ? "true" : "false", truncated ? "true" : "false");
     LOG(output);
 
     if (batch_size > 0)
@@ -546,6 +550,218 @@ char *SDManager::readFile(const char *fileName) {
         printModuleName("Failed to read! SD card not Initialized!");
     }
     return fileContents;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+MemPool::Handle SDManager::readFileLease(const char *fileName) {
+    if (!sdInitialized) {
+        printModuleName("Failed to read! SD card not Initialized!");
+        return MemPool::Handle::invalid();
+    }
+
+    File file = sd.open(fileName, O_RDONLY);
+    if (!file) {
+        printModuleName("Failed to open file!");
+        return MemPool::Handle::invalid();
+    }
+
+    size_t byteCount = 0;
+    while (file.available()) {
+        if (file.read() < 0) {
+            file.close();
+            printModuleName("Failed to count file contents!");
+            return MemPool::Handle::invalid();
+        }
+        byteCount++;
+    }
+    file.close();
+
+    MemPool::Handle lease = sdPool.alloc(byteCount + 1);
+    if (!sdPool.valid(lease)) {
+        printModuleName("Failed to allocate memory-pool lease for file read!");
+        return MemPool::Handle::invalid();
+    }
+
+    uint8_t *buffer = sdPool.data(lease);
+    if (buffer == nullptr) {
+        sdPool.release(lease);
+        return MemPool::Handle::invalid();
+    }
+
+    file = sd.open(fileName, O_RDONLY);
+    if (!file) {
+        printModuleName("Failed to open file!");
+        sdPool.release(lease);
+        return MemPool::Handle::invalid();
+    }
+
+    size_t index = 0;
+    while (file.available() && index < byteCount) {
+        int value = file.read();
+        if (value < 0) {
+            file.close();
+            sdPool.release(lease);
+            printModuleName("Failed while reading file into lease!");
+            return MemPool::Handle::invalid();
+        }
+
+        buffer[index] = (uint8_t)value;
+        index++;
+    }
+    file.close();
+
+    if (index != byteCount) {
+        sdPool.release(lease);
+        printModuleName("Failed to read full file into lease!");
+        return MemPool::Handle::invalid();
+    }
+
+    buffer[index] = '\0';
+    return lease;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+const char *SDManager::leaseData(MemPool::Handle h) const {
+    const uint8_t *ptr = sdPool.data(h);
+    if (ptr == nullptr) {
+        return nullptr;
+    }
+    return (const char *)ptr;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+size_t SDManager::leaseSize(MemPool::Handle h) const { return sdPool.size(h); }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool SDManager::releaseLease(MemPool::Handle h) { return sdPool.release(h); }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool SDManager::streamFile(const char *fileName, size_t chunkBytes, StreamChunkCallback cb,
+                           void *userCtx) {
+    if (!sdInitialized) {
+        printModuleName("Failed to stream! SD card not Initialized!");
+        return false;
+    }
+
+    if (chunkBytes == 0 || cb == nullptr) {
+        printModuleName("Failed to stream! Invalid chunk size or callback.");
+        return false;
+    }
+
+    File file = sd.open(fileName, O_RDONLY);
+    if (!file) {
+        printModuleName("Failed to open file for streaming!");
+        return false;
+    }
+
+    size_t fileOffset = 0;
+    size_t chunkIndex = 0;
+
+    while (true) {
+        MemPool::Handle lease = sdPool.alloc(chunkBytes);
+        if (!sdPool.valid(lease)) {
+            file.close();
+            printModuleName("Failed to allocate streaming chunk from pool!");
+            return false;
+        }
+
+        uint8_t *buffer = sdPool.data(lease);
+        if (buffer == nullptr) {
+            sdPool.release(lease);
+            file.close();
+            return false;
+        }
+
+        size_t bytesRead = 0;
+        while (bytesRead < chunkBytes && file.available()) {
+            int value = file.read();
+            if (value < 0) {
+                sdPool.release(lease);
+                file.close();
+                printModuleName("Streaming read failed!");
+                return false;
+            }
+
+            buffer[bytesRead] = (uint8_t)value;
+            bytesRead++;
+        }
+
+        bool eof = !file.available();
+        if (bytesRead == 0) {
+            sdPool.release(lease);
+            if (eof) {
+                break;
+            }
+            file.close();
+            printModuleName("Streaming stalled before EOF!");
+            return false;
+        }
+
+        bool shouldContinue = cb(buffer, bytesRead, fileOffset, chunkIndex, eof, userCtx);
+        if (!sdPool.release(lease)) {
+            file.close();
+            return false;
+        }
+
+        fileOffset += bytesRead;
+        chunkIndex++;
+
+        if (!shouldContinue) {
+            file.close();
+            return false;
+        }
+
+        if (eof) {
+            break;
+        }
+    }
+
+    file.close();
+    return true;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+MemPool::Stats SDManager::getPoolStats() const {
+    MemPool::Stats stats = sdPool.stats();
+
+    int freeRam = freeMemory();
+    if (freeRam < 0) {
+        freeRam = 0;
+    }
+    stats.systemRamFreeBytes = (uint16_t)freeRam;
+    return stats;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void SDManager::printPoolStats() {
+    MemPool::Stats stats = getPoolStats();
+
+    char output[OUTPUT_SIZE];
+    snprintf(output, sizeof(output), "Pool blocks used/free/total: %u/%u/%u",
+             (unsigned int)stats.usedBlocks, (unsigned int)stats.freeBlocks,
+             (unsigned int)stats.totalBlocks);
+    printModuleName(output);
+
+    snprintf(output, sizeof(output), "Pool bytes used/free/total: %u/%u/%u",
+             (unsigned int)stats.bytesUsed, (unsigned int)stats.bytesFree,
+             (unsigned int)stats.bytesTotal);
+    printModuleName(output);
+
+    snprintf(output, sizeof(output), "Pool leases=%u highWater=%u failedAllocs=%u",
+             (unsigned int)stats.activeLeases, (unsigned int)stats.highWaterBlocks,
+             (unsigned int)stats.failedAllocs);
+    printModuleName(output);
+
+    snprintf(output, sizeof(output), "System RAM free/total: %u/%u",
+             (unsigned int)stats.systemRamFreeBytes, (unsigned int)stats.systemRamTotalBytes);
+    printModuleName(output);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
