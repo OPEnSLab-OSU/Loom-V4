@@ -28,14 +28,17 @@
 #define LOOM_SYSTEM_RAM_TOTAL_BYTES 32768
 #endif
 
+class SDManager;
+
 /**
  * @author Reid Pettibone
  * 
  * MemPool uses deterministic memory chunks known as arenas to prevent heap fragmentation due to frequent allocations.
  * It provides a single source single owner memory manager similar to stack frames. 
- * - Macros are set to 8192B (8KB) by default. 
+ * - Macros are set for 8192B (8KB) by default. 
  * - Memory is reserved for the arena at compile time and will not change. 
  * - MemPool should be used for any allocations that are not explicitly known at compile time. 
+ *   If you're unsure or need a large buffer use mempool.
  * - After arena allocation the feather is left with 9607B SRAM
  */
 
@@ -56,7 +59,7 @@ class MemPool {
         uint16_t freeBlocks;
         uint16_t usedBlocks;
         uint16_t totalBlocks;
-        uint16_t highWaterBlocks; // Peak block usage
+        uint16_t highWaterBlocks; // Peak block allocation
         uint16_t failedAllocs;
         uint16_t activeLeases;
         uint16_t bytesTotal;
@@ -103,7 +106,8 @@ class MemPool {
         size_t runStart = 0;
         size_t runLength = 0;
         bool found = false;
-
+        
+        /* Find a run with contigous blocks */
         for (size_t i = 0; i < LOOM_MEMPOOL_BLOCK_COUNT; i++) {
             if (ownerByBlock_[i] == kFreeBlockOwner) {
                 if (runLength == 0) {
@@ -205,20 +209,6 @@ class MemPool {
         return true;
     }
 
-    uint8_t *data(Handle h) {
-        if (!valid(h)) {
-            return nullptr;
-        }
-        return arena_ + ((size_t)leaseStart_[h.slot] * LOOM_MEMPOOL_BLOCK_SIZE);
-    }
-
-    const uint8_t *data(Handle h) const {
-        if (!valid(h)) {
-            return nullptr;
-        }
-        return arena_ + ((size_t)leaseStart_[h.slot] * LOOM_MEMPOOL_BLOCK_SIZE);
-    }
-
     size_t size(Handle h) const {
         if (!valid(h)) {
             return 0;
@@ -300,7 +290,7 @@ class MemPool {
         }
         return leaseGeneration_[h.slot] == h.generation;
     }
-    // Used bytes doesn't account for partial blocks rn
+    
     Stats stats() const {
         Stats s = {};
         s.freeBlocks = freeBlocks_;
@@ -318,7 +308,24 @@ class MemPool {
     }
 
   private:
+    // SDManager is the internal pool owner for SD file/stream paths and needs direct lease pointers.
+    friend class SDManager;
+
     static constexpr uint16_t kFreeBlockOwner = Handle::INVALID_SLOT;
+
+    uint8_t *data(Handle h) {
+        if (!valid(h)) {
+            return nullptr;
+        }
+        return arena_ + ((size_t)leaseStart_[h.slot] * LOOM_MEMPOOL_BLOCK_SIZE);
+    }
+
+    const uint8_t *data(Handle h) const {
+        if (!valid(h)) {
+            return nullptr;
+        }
+        return arena_ + ((size_t)leaseStart_[h.slot] * LOOM_MEMPOOL_BLOCK_SIZE);
+    }
 
     uint16_t findFreeLeaseSlot() const {
         for (uint16_t i = 0; i < LOOM_MEMPOOL_MAX_LEASES; i++) {

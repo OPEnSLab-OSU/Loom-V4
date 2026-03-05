@@ -184,8 +184,10 @@ bool SDManager::log(DateTime currentTime) {
     char output[MAX_JSON_SIZE + 1];
     output[0] = '\0';
     bool truncated = false;
+    bool time_error = false;
     bool success = true;
 
+    /* Compare current modules with existing modules */
     uint64_t newHash1 = 0;
     uint64_t newHash2 = 0;
     buildSchemaHashes(newHash1, newHash2);
@@ -327,7 +329,7 @@ bool SDManager::log(DateTime currentTime) {
     if (shouldWriteHeaders) {
         if (!myFile.timestamp(T_CREATE, currentTime.year(), currentTime.month(), currentTime.day(),
                               currentTime.hour(), currentTime.minute(), currentTime.second()))
-            success = false;
+            time_error = true;
 
         writeHeaders();
         currentSchemaHash1 = newHash1;
@@ -414,13 +416,15 @@ bool SDManager::log(DateTime currentTime) {
     // Set the last modified date
     if (!myFile.timestamp(T_WRITE, currentTime.year(), currentTime.month(), currentTime.day(),
                           currentTime.hour(), currentTime.minute(), currentTime.second()))
-        success = false;
+        time_error = true;
 
     if (!myFile.close())
         success = false;
 
-    snprintf_P(output, sizeof(output), PSTR("Logged data to %s: success=%s: trunacted=%s "),
-               fileName, success ? "true" : "false", truncated ? "true" : "false");
+    snprintf_P(output, sizeof(output), PSTR("Logged data to %s: success=%s: truncated=%s: time=%s"),
+                                            fileName, success ? "true" : "false", 
+                                            truncated ? "true" : "false", 
+                                            time_error ? "failed": "success");
     LOG(output);
 
     if (batch_size > 0)
@@ -525,6 +529,9 @@ bool SDManager::updateCurrentFileName() {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/**
+ * Outdated: To be replaced with MemPool.ex
+ */
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 char *SDManager::readFile(const char *fileName) {
     // Clear contents
