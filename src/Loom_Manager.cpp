@@ -174,6 +174,7 @@ void Manager::power_up() {
 
     // If we didn't already disable the timer from finding the LTE we should disable it now
     WD_TIMER_DISABLE;
+    LOG(F("Finished powering up modules..."));
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -193,6 +194,7 @@ void Manager::power_down() {
         }
         // TIMER_RESET;
     }
+    LOG(F("Finished powering down modules..."));
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

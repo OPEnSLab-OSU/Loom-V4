@@ -479,6 +479,7 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
 
     // Try to power down the active modules
     if (shouldPowerUp) {
+        LOG(F("Powering down modules..."));
         manInst->power_down();
 
         // After powering down the devices check if the alarmed time is less than the current time,
@@ -494,9 +495,12 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
 
     // If it hasn't we should preform our sleep as before
     if (!hasAlarmTriggered) {
+        LOG(F("Entering Pre-Sleep..."));
         pre_sleep(); // Pre-sleep cleanup
         shouldPowerUp = true;
+        LOG(F("Entering Low Power Sleep..."));
         LowPower.sleep(); // Go to sleep and hang
+        LOG(F("Exiting Low Power Sleep..."));
         WD_TIMER_ENABLE;
     }
     // If it has we want to trigger a resample which requires powering the sensors back up
@@ -505,6 +509,7 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
                 "Resampling...");
         reattachRTCInterrupt();
         if (shouldPowerUp) {
+            LOG(F("Powering up modules..."));
             manInst->power_up();
         }
     }
@@ -512,6 +517,7 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
 
     // If the alarm hadn't triggered last time we want to wake up like normal
     if (!hasAlarmTriggered) {
+        LOG(F("Entering Post-Sleep..."));
         post_sleep(waitForSerial); // Wake up
     }
 }
@@ -535,6 +541,7 @@ void Loom_Hypnos::pre_sleep() {
 
     // Disable the power rails
     disable(disable33, disable5);
+    LOG(F("Pre-Sleep completed..."));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -569,6 +576,7 @@ void Loom_Hypnos::post_sleep(bool waitForSerial) {
         WD_TIMER_RESET;
 
         // Re-init the modules that need it
+        LOG(F("Powering up modules..."));
         manInst->power_up();
 
         // We want to wait for the user to re-open the serial monitor before continuing to see
