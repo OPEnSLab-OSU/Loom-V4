@@ -60,6 +60,7 @@ TimeSpan Loom_Heartbeat::calculateNextEvent() {
      *  Then, we adjust the timers based on which one we set pause with, and if they are close enough we 
      *  round them both to 5 seconds to avoid any issues with very short sleep times.
      */
+    uint32_t secondsToWait = 0;
     if(heartbeatTimer_s < normWorkTimer_s) {
         secondsToWait = heartbeatTimer_s;                        // grab time to delay program execution for
 
