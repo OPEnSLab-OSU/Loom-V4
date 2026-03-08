@@ -264,15 +264,16 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
         }
     }
 
-    // adjust last frag arrival time after handshake handling to avoid 
-    //      handshake override timeout logic in handshake logic
-    this->lastArrivalTime = millis(); 
-
     // Handshake WALL - process won't parse any fragments that aren't from handshake relationship
     if(!this->handshakeEstablished || *fromAddress != this->activePartner) {
         LOGF("Currently in handshake with %i, dropping packet from %i", activePartner, *fromAddress);
         return FragReceiveStatus::Error;
     }
+
+    Serial.println("Made it past wall");
+
+    // adjust last frag arrival time of an acceptable packet
+    this->lastArrivalTime = millis(); 
 
     bool isReady = false;
     if (tempDoc.containsKey("batch_size")) {
@@ -409,8 +410,15 @@ bool Loom_LoRa::handleLostFrag(JsonDocument &workingDoc,
 bool Loom_LoRa::receive(uint timeout, uint8_t* fromAddress, bool shouldProxy) {
     int retryCount = receiveRetryCount;
     while (retryCount > 0) {
-        FragReceiveStatus status = receiveFrag(timeout, shouldProxy, fromAddress);
+        if(!this->handshakeEstablished) {
+            FragReceiveStatus handshakeAccepted = receiveFrag(timeout, shouldProxy, fromAddress);
+            if (handshakeAccepted == FragReceiveStatus::Error) {
+                retryCount--;
+                continue;
+            }
+        }
 
+        FragReceiveStatus status = receiveFrag(timeout, shouldProxy, fromAddress);
         switch (status) {
         case FragReceiveStatus::Complete:
             return true;
