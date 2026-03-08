@@ -219,6 +219,9 @@ bool Loom_LoRa::handleHandshakeRequest(const JsonObject& tempDoc, uint8_t fromAd
             LOG(F("Handshake response successfully sent!"));
         } else {
             ERROR(F("Failed to send handshake response!"));
+            this->handshakeEstablished = false;
+            this->activePartner = -1;
+            acceptHandshake = false;
         }
     }
     return acceptHandshake;
@@ -269,9 +272,7 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
         LOGF("Currently in handshake with %i, dropping packet from %i", activePartner, *fromAddress);
         return FragReceiveStatus::Error;
     }
-
-    Serial.println("Made it past wall");
-
+    
     // adjust last frag arrival time of an acceptable packet
     this->lastArrivalTime = millis(); 
 
@@ -375,8 +376,13 @@ bool Loom_LoRa::handleFragBody(JsonDocument &workingDoc,
         manager->getDocument().set(partialPacket->working);
         frags.erase(fromAddress);
 
-        this->handshakeEstablished = false; 
-        this->activePartner = -1; 
+        if(this->expectedOutstandingPackets == 0) {
+            LOG("Received the final expected packet fragment of the communication. All fragments received!");
+            this->handshakeEstablished = false; 
+            this->activePartner = -1; 
+        } else {
+            LOG("More packet fragments expected to arrive");
+        }
 
         return true;
     }
@@ -389,8 +395,13 @@ bool Loom_LoRa::handleFragBody(JsonDocument &workingDoc,
 bool Loom_LoRa::handleSingleFrag(JsonDocument &workingDoc) {
     // overwrite the manager document by deep-copying the finalized packet
     manager->getDocument().set(workingDoc);
-    this->handshakeEstablished = false;
-    this->activePartner = -1;
+    if(this->expectedOutstandingPackets == 0) {
+        LOG("Received full single packet. All expected fragments received!");
+        this->handshakeEstablished = false;
+        this->activePartner = -1;
+    } else {
+        LOG("Received full complete packet. Expecting more fragments of communication to arrive.");
+    }
     
     return true;
 }
@@ -635,8 +646,10 @@ bool Loom_LoRa::send(const uint8_t destinationAddress) {
         sendStatus = false;
     }
 
-    this->handshakeEstablished = false;
-    this->activePartner = -1;
+    if(this->batchPacketsToSend == 0) {
+        this->handshakeEstablished = false;
+        this->activePartner = -1;
+    }
 
     return sendStatus;
 }
@@ -684,6 +697,7 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
     File fileOutput = batchSD->getBatch();
     int batchSize = batchSD->getBatchSize();
 
+    this->batchPacketsToSend = batchSize;
     for (int i = 0; i < batchSize && fileOutput.available(); i++) {
         uint8_t packetBuf[2000];
         // read line from file into packetBuf
@@ -704,12 +718,14 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
         deserializeJson(manager->getDocument(), (const char *)packetBuf,
                         sizeof(packetBuf));
 
-        status = send(destinationAddress);
+        status = send(destinationAddress);        
         if (status) {
             LOGF("Successfully transmitted packet (%i/%i)", i+1, batchSize);
         } else {
             ERRORF("Failed to transmit packet (%i/%i)", i+1, batchSize);
         }
+
+        this->batchPacketsToSend--;
 
         delay(500);
 

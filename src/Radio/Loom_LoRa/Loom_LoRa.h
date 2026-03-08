@@ -412,5 +412,8 @@ private:
     unsigned long lastArrivalTime; // Time the last fragment was received, used to determine if a handshake timeout has occurred
     
     uint expectedOutstandingPackets;   // estimated number of outstanding packets
+    uint8_t batchPacketsToSend = 0;         // number of packets we still need to send in a batch message
+    
+    bool batchTransmissionInProgress = false; // whether we're currently in the process of transmitting a batch
 };
 
