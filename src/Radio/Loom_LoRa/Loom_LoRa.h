@@ -408,11 +408,8 @@ private:
     uint8_t handshakeRetryCount; // Number of handshake retries allowed
 
     bool handshakeEstablished = false; // Whether we've received a fragment header for the current packet being received
-    uint8_t activePartner;
+    int8_t activePartner = -1;
     unsigned long lastArrivalTime; // Time the last fragment was received, used to determine if a handshake timeout has occurred
-
-
-
     
     uint expectedOutstandingPackets;   // estimated number of outstanding packets
 };

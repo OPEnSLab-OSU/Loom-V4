@@ -198,7 +198,7 @@ bool Loom_LoRa::handleHandshakeRequest(const JsonObject& tempDoc, uint8_t fromAd
             this->handshakeEstablished = true;
             acceptHandshake = true;
         } else { // we're currently in a handshake with another device
-            if (millis() - this->lastArrivalTime > 10000) { // if time since last message arrived is longer than 10 seconds
+            if (millis() - this->lastArrivalTime > 10000) { // drop if longer than 10 seconds passed
                 LOG("Handshake timeout elapsed, dropping active partner and accepting new handshake request");
                 frags.erase(activePartner);
 
@@ -371,7 +371,7 @@ bool Loom_LoRa::handleFragBody(JsonDocument &workingDoc,
         frags.erase(fromAddress);
 
         this->handshakeEstablished = false; 
-        this->activePartner = 0; 
+        this->activePartner = -1; 
 
         return true;
     }
@@ -385,7 +385,7 @@ bool Loom_LoRa::handleSingleFrag(JsonDocument &workingDoc) {
     // overwrite the manager document by deep-copying the finalized packet
     manager->getDocument().set(workingDoc);
     this->handshakeEstablished = false;
-    this->activePartner = 0;
+    this->activePartner = -1;
     
     return true;
 }
@@ -603,15 +603,26 @@ bool Loom_LoRa::conductHandshake(const uint8_t destinationAddress) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::send(const uint8_t destinationAddress) {
-    bool handshakeAccepted = conductHandshake(destinationAddress);
+    if(millis() - this->lastArrivalTime > 10000) { // if time since last message arrived is longer than 10 seconds
+        LOG("Handshake timeout elapsed, dropping active partner");
+        this->handshakeEstablished = false;
+        this->activePartner = -1;
+    }
 
-    if(handshakeAccepted) {
-        LOG(F("Proceeding with send since handshake was accepted"));
+    if(!this->handshakeEstablished) {
+        this->handshakeEstablished = conductHandshake(destinationAddress);
+        this->activePartner = destinationAddress;
+    }
+
+    if(this->handshakeEstablished) {
+        LOG(F("Proceeding with full message sending since handshake was accepted"));
         return send(destinationAddress, manager->getDocument().as<JsonObject>());
     } else {
         ERROR(F("Aborting Send since handshake failed!"));
         return false;
     }
+
+    return false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -622,6 +633,8 @@ bool Loom_LoRa::send(const uint8_t destinationAddress,
         ERROR(F("Module not initialized!"));
         return false;
     }
+
+    this->lastArrivalTime = millis(); 
 
     if (measureMsgPack(json) > MAX_MESSAGE_LENGTH) {
         return sendFragmentedPacket(json, destinationAddress);
