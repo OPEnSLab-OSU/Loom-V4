@@ -253,9 +253,13 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
 
     if (tempDoc.containsKey("handshake")) {
         bool acceptHandshake = false;
-        acceptHandshake = handleHandshakeRequest(tempDoc.as<JsonObject>(), *fromAddress); // handshake reception logic contained here
+        acceptHandshake = handleHandshakeRequest(tempDoc.as<JsonObject>(), *fromAddress); 
+        if(acceptHandshake) {
+            LOG("Handshake established.");
+            return FragReceiveStatus::Complete;
+        }
         if(!acceptHandshake) {
-            LOG("Handshake not accepted");
+            LOG("Handshake not accepted.");
             return FragReceiveStatus::Error; // early return to quit processing fragment early.
         }
     }
@@ -614,15 +618,19 @@ bool Loom_LoRa::send(const uint8_t destinationAddress) {
         this->activePartner = destinationAddress;
     }
 
+    bool sendStatus = false;
     if(this->handshakeEstablished) {
         LOG(F("Proceeding with full message sending since handshake was accepted"));
-        return send(destinationAddress, manager->getDocument().as<JsonObject>());
+        sendStatus = send(destinationAddress, manager->getDocument().as<JsonObject>());
     } else {
-        ERROR(F("Aborting Send since handshake failed!"));
-        return false;
+        ERROR(F("Aborting Send since no completed handshake!"));
+        sendStatus = false;
     }
 
-    return false;
+    this->handshakeEstablished = false;
+    this->activePartner = -1;
+
+    return sendStatus;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -636,11 +644,14 @@ bool Loom_LoRa::send(const uint8_t destinationAddress,
 
     this->lastArrivalTime = millis(); 
 
+    bool transmissionStatus = false;
     if (measureMsgPack(json) > MAX_MESSAGE_LENGTH) {
-        return sendFragmentedPacket(json, destinationAddress);
+        transmissionStatus = sendFragmentedPacket(json, destinationAddress);
     } else {
-        return sendFullPacket(json, destinationAddress);
+        transmissionStatus = sendFullPacket(json, destinationAddress);
     }
+
+    return transmissionStatus;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
