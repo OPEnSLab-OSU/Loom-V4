@@ -14,9 +14,7 @@ Loom_LoRa::Loom_LoRa(
     const uint8_t handshakeMaxRetries,
     const uint8_t sendMaxRetries,
     const uint8_t receiveMaxRetries,
-    const uint16_t retryTimeout,
-    const uint16_t handshakeTransmitDropTime,
-    const uint16_t handshakeDecayTime
+    const uint16_t retryTimeout
 ) : Module("LoRa"),
         manager(&manager), 
         radioDriver{RFM95_CS, RFM95_INT},
@@ -26,8 +24,6 @@ Loom_LoRa::Loom_LoRa(
         sendRetryCount(sendMaxRetries),
         receiveRetryCount(receiveMaxRetries),
         retryTimeout(retryTimeout),
-        handshakeTransmitTimeout(handshakeTransmitDropTime),
-        handshakeDropTime(handshakeDecayTime),
         expectedOutstandingPackets(0)
 {
     this->radioManager = new RHReliableDatagram(
@@ -41,9 +37,7 @@ Loom_LoRa::Loom_LoRa(
     Manager& manager,
     const uint8_t powerLevel, 
     const uint8_t retryCount, 
-    const uint16_t retryTimeout,
-    const uint16_t handshakeTransmissionTimeAllow,
-    const uint16_t handshakeDecayTime
+    const uint16_t retryTimeout
 ) : Loom_LoRa(
     manager, 
     manager.get_instance_num(), 
@@ -51,9 +45,7 @@ Loom_LoRa::Loom_LoRa(
     retryCount,
     retryCount, 
     retryCount,
-    retryTimeout,
-    handshakeTransmissionTimeAllow,
-    handshakeDecayTime
+    retryTimeout
 ) {}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -206,7 +198,7 @@ bool Loom_LoRa::handleHandshakeRequest(const JsonObject& tempDoc, uint8_t fromAd
             this->handshakeEstablished = true;
             acceptHandshake = true;
         } else { // we're currently in a handshake with another device
-            if (millis() - this->lastArrivalTime > this->handshakeDropTime) { // if time since last message arrived is longer than timeout time
+            if (millis() - this->lastArrivalTime > 10000) { // if time since last message arrived is longer than 10 seconds
                 LOG("Handshake timeout elapsed, dropping active partner and accepting new handshake request");
                 frags.erase(activePartner);
 
@@ -537,8 +529,8 @@ bool Loom_LoRa::getHandshakeResponse(uint8_t handshakePartnerAddr) {
 
     uint8_t buf[MAX_MESSAGE_LENGTH] = {}; // stack allocated array (decays into pointer when passed to function)
 
-    uint16_t recTimeout = 200; // ms to wait for actual LoRa response for handshake
-    const uint32_t deadline = millis() + this->handshakeTransmitTimeout;
+    uint16_t recTimeout = 2000; // ms to wait for actual LoRa response for handshake
+    const uint32_t deadline = millis() + 6000; // ms until we give up on waiting for handshake response
 
     uint8_t fromAddress;
     while(millis() < deadline) {
