@@ -88,10 +88,12 @@ class Loom_Heartbeat {
     
     private:
     
-        uint32_t heartbeatTimer_s = 0;
-        uint32_t heartbeatInterval_s = 0;
-        uint32_t normWorkTimer_s = 0;
-        uint32_t normWorkInterval_s = 0;
+        uint32_t heartbeatTimer_s = 0; // internally tracked timer to keep track of remaining time until next heartbeat
+        uint32_t heartbeatInterval_s = 0; // user defined interval between heartbeats (doesn't get adjusted)
+        
+        // normal work refers to any code that should execute when awake outside of a heartbeat
+        uint32_t normWorkTimer_s = 0; // 
+        uint32_t normWorkInterval_s = 0; // 
 
         bool heartbeatFlag = false;
 
