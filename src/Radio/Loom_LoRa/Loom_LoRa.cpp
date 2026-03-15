@@ -598,7 +598,7 @@ bool Loom_LoRa::conductHandshake(const uint8_t destinationAddress) {
     StaticJsonDocument<HANDSHAKE_SIZE> handshakeDoc;
     handshakeDoc["handshake"] = "Request";
 
-    uint8_t handshakesLeft = handshakeRetryCount;
+    uint8_t handshakesLeft = this->handshakeRetryCount;
     while(handshakesLeft > 0) {
         // send handshake request
         bool handshakeTransmitStatus = sendFullPacket(handshakeDoc.as<JsonObject>(), destinationAddress);
