@@ -218,12 +218,19 @@ bool Loom_LoRa::handleHandshakeRequest(const JsonObject& tempDoc, uint8_t fromAd
         if (handshakeTransmitStatus) {
             LOG(F("Handshake response successfully sent!"));
         } else {
-            ERROR(F("Failed to send handshake response!"));
-            this->handshakeEstablished = false;
-            this->activePartner = -1;
+            ERROR(F("Failed to send handshake response! Handshake connection dropped."));
+
+            // if we wanted to accept but couldn't respond, rollback the handshake connection.
+            if(acceptHandshake == true) 
+            {
+                this->handshakeEstablished = false;
+                this->activePartner = -1;
+            }
+
             acceptHandshake = false;
         }
     }
+    
     return acceptHandshake;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -421,6 +428,9 @@ bool Loom_LoRa::handleLostFrag(JsonDocument &workingDoc,
 bool Loom_LoRa::receive(uint timeout, uint8_t* fromAddress, bool shouldProxy) {
     int retryCount = receiveRetryCount;
     while (retryCount > 0) {
+
+        // initial catch of handshake request, necessary to prevent the manager from displaying an additional
+        //      log of it's internal document to the console upon only receiving a handshake request.
         if(!this->handshakeEstablished) {
             FragReceiveStatus handshakeAccepted = receiveFrag(timeout, shouldProxy, fromAddress);
             if (handshakeAccepted == FragReceiveStatus::Error) {
