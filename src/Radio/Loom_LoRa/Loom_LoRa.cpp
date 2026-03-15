@@ -11,8 +11,6 @@ Loom_LoRa::Loom_LoRa(
     Manager& manager,
     const uint8_t address, 
     const uint8_t powerLevel,
-    const uint8_t handshakeMaxRetries,
-    const uint8_t sendMaxRetries,
     const uint8_t receiveMaxRetries,
     const uint16_t retryTimeout
 ) : Module("LoRa"),
@@ -20,8 +18,6 @@ Loom_LoRa::Loom_LoRa(
         radioDriver{RFM95_CS, RFM95_INT},
         deviceAddress(address),
         powerLevel(powerLevel),
-        handshakeRetryCount(handshakeMaxRetries),
-        sendRetryCount(sendMaxRetries),
         receiveRetryCount(receiveMaxRetries),
         retryTimeout(retryTimeout),
         expectedOutstandingPackets(0)
@@ -42,8 +38,6 @@ Loom_LoRa::Loom_LoRa(
     manager, 
     manager.get_instance_num(), 
     powerLevel, 
-    retryCount,
-    retryCount, 
     retryCount,
     retryTimeout
 ) {}
@@ -608,7 +602,8 @@ bool Loom_LoRa::conductHandshake(const uint8_t destinationAddress) {
     StaticJsonDocument<HANDSHAKE_SIZE> handshakeDoc;
     handshakeDoc["handshake"] = "Request";
 
-    uint8_t handshakesLeft = this->handshakeRetryCount;
+    const uint8_t handshakeRetryCount = 3; // amount of times to retry the handshake connection
+    uint8_t handshakesLeft = handshakeRetryCount;
     while(handshakesLeft > 0) {
         // send handshake request
         bool handshakeTransmitStatus = sendFullPacket(handshakeDoc.as<JsonObject>(), destinationAddress);

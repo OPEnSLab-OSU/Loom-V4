@@ -46,7 +46,6 @@ public:
      * @param manager Reference to the manager
      * @param address This device's LoRa address
      * @param powerLevel Transmission power level, low to high
-     * @param sendMaxRetries The number of transmission attempts to make before failing
      * @param receiveMaxRetries The number of reception attempts to make before failing
      * @param retryTimeout Length of time between retransmissions (ms)
      */ 
@@ -54,8 +53,6 @@ public:
         Manager& manager,
         const uint8_t address,
         const uint8_t powerLevel,
-        const uint8_t handshakeRetryCount,
-        const uint8_t sendMaxRetries,
         const uint8_t receiveMaxRetries,
         const uint16_t retryTimeout
     );
