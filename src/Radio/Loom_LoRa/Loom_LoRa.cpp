@@ -212,11 +212,11 @@ bool Loom_LoRa::handleHandshakeRequest(const JsonObject& tempDoc, uint8_t fromAd
         if (handshakeTransmitStatus) {
             LOG(F("Handshake response successfully sent!"));
         } else {
-            ERROR(F("Failed to send handshake response! Handshake connection dropped."));
-
-            // if we wanted to accept but couldn't respond, rollback the handshake connection.
+            ERROR(F("Failed to send handshake response!"));
+            // if we wanted to accept but couldn't respond, rollback the handshake connection status on receiver.
             if(acceptHandshake == true) 
             {
+                LOG("Handshake connection dropped.")
                 this->handshakeEstablished = false;
                 this->activePartner = -1;
             }
