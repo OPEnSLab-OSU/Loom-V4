@@ -652,7 +652,7 @@ bool Loom_LoRa::send(const uint8_t destinationAddress) {
     }
 
     if(this->batchPacketsToSend == 0) {
-        LOG("Completed message sending process. Dropping any active Handshake.")
+        LOG("Completed message sending process. Dropping any active Handshake.");
         this->handshakeEstablished = false;
         this->activePartner = -1;
     }
