@@ -438,6 +438,8 @@ void Loom_Hypnos::set_custom_time() {
     while (computer_sec == "") {
         computer_sec = Serial.readStringUntil('\n');
     }
+    LOGF("Setting time to: %d/%d/%d %d:%d:%d", computer_year.toInt(), computer_month.toInt(),
+         computer_day.toInt(), computer_hour.toInt(), computer_min.toInt(), computer_sec.toInt());
 
     // Set the RTC to the custom time
     RTC_DS.adjust(DateTime(computer_year.toInt(), computer_month.toInt(), computer_day.toInt(),

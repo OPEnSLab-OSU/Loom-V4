@@ -49,7 +49,7 @@ SDManager::SDManager(Manager *man, int sd_chip_select)
     : manInst(man), Module("SD Manager"), chip_select(sd_chip_select) {
     snprintf(device_name, sizeof(device_name), "%s", manInst->get_device_name());
     memset(overrideFileName, '\0', 260);
-    sdPool.init();
+    manInst->getPool().init();
 } // Disables Lora so we can use the SD card on hypnos
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -422,9 +422,8 @@ bool SDManager::log(DateTime currentTime) {
         success = false;
 
     snprintf_P(output, sizeof(output), PSTR("Logged data to %s: success=%s: truncated=%s: time=%s"),
-                                            fileName, success ? "true" : "false", 
-                                            truncated ? "true" : "false", 
-                                            time_error ? "failed": "success");
+               fileName, success ? "true" : "false", truncated ? "true" : "false",
+               time_error ? "failed" : "success");
     LOG(output);
 
     if (batch_size > 0)
@@ -442,7 +441,7 @@ bool SDManager::begin() {
     printModuleName("Initializing SD Card...");
 
     // Start the SD card with the fastest SPI speed
-    if (!sd.begin(chip_select, SD_SCK_MHZ(50))) {
+    if (!sd.begin(chip_select, SD_SCK_MHZ(4))) {
         printModuleName("Failed to Initialize SD Card! SD Card functionality will be disabled, is "
                         "there an SD card inserted into the device?");
         return false;
@@ -584,22 +583,22 @@ MemPool::Handle SDManager::readFileLease(const char *fileName) {
     }
     file.close();
 
-    MemPool::Handle lease = sdPool.alloc(byteCount + 1);
-    if (!sdPool.valid(lease)) {
+    MemPool::Handle lease = manInst->getPool().alloc(byteCount + 1);
+    if (!manInst->getPool().valid(lease)) {
         printModuleName("Failed to allocate memory-pool lease for file read!");
         return MemPool::Handle::invalid();
     }
 
-    uint8_t *buffer = sdPool.data(lease);
+    uint8_t *buffer = manInst->getPool().data(lease);
     if (buffer == nullptr) {
-        sdPool.release(lease);
+        manInst->getPool().release(lease);
         return MemPool::Handle::invalid();
     }
 
     file = sd.open(fileName, O_RDONLY);
     if (!file) {
         printModuleName("Failed to open file!");
-        sdPool.release(lease);
+        manInst->getPool().release(lease);
         return MemPool::Handle::invalid();
     }
 
@@ -608,7 +607,7 @@ MemPool::Handle SDManager::readFileLease(const char *fileName) {
         int value = file.read();
         if (value < 0) {
             file.close();
-            sdPool.release(lease);
+            manInst->getPool().release(lease);
             printModuleName("Failed while reading file into lease!");
             return MemPool::Handle::invalid();
         }
@@ -619,7 +618,7 @@ MemPool::Handle SDManager::readFileLease(const char *fileName) {
     file.close();
 
     if (index != byteCount) {
-        sdPool.release(lease);
+        manInst->getPool().release(lease);
         printModuleName("Failed to read full file into lease!");
         return MemPool::Handle::invalid();
     }
@@ -631,7 +630,7 @@ MemPool::Handle SDManager::readFileLease(const char *fileName) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 const char *SDManager::leaseData(MemPool::Handle h) const {
-    const uint8_t *ptr = sdPool.data(h);
+    const uint8_t *ptr = manInst->getPool().data(h);
     if (ptr == nullptr) {
         return nullptr;
     }
@@ -640,11 +639,11 @@ const char *SDManager::leaseData(MemPool::Handle h) const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-size_t SDManager::leaseSize(MemPool::Handle h) const { return sdPool.size(h); }
+size_t SDManager::leaseSize(MemPool::Handle h) const { return manInst->getPool().size(h); }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool SDManager::releaseLease(MemPool::Handle h) { return sdPool.release(h); }
+bool SDManager::releaseLease(MemPool::Handle h) { return manInst->getPool().release(h); }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -670,16 +669,16 @@ bool SDManager::streamFile(const char *fileName, size_t chunkBytes, StreamChunkC
     size_t chunkIndex = 0;
 
     while (true) {
-        MemPool::Handle lease = sdPool.alloc(chunkBytes);
-        if (!sdPool.valid(lease)) {
+        MemPool::Handle lease = manInst->getPool().alloc(chunkBytes);
+        if (!manInst->getPool().valid(lease)) {
             file.close();
             printModuleName("Failed to allocate streaming chunk from pool!");
             return false;
         }
 
-        uint8_t *buffer = sdPool.data(lease);
+        uint8_t *buffer = manInst->getPool().data(lease);
         if (buffer == nullptr) {
-            sdPool.release(lease);
+            manInst->getPool().release(lease);
             file.close();
             return false;
         }
@@ -688,7 +687,7 @@ bool SDManager::streamFile(const char *fileName, size_t chunkBytes, StreamChunkC
         while (bytesRead < chunkBytes && file.available()) {
             int value = file.read();
             if (value < 0) {
-                sdPool.release(lease);
+                manInst->getPool().release(lease);
                 file.close();
                 printModuleName("Streaming read failed!");
                 return false;
@@ -700,7 +699,7 @@ bool SDManager::streamFile(const char *fileName, size_t chunkBytes, StreamChunkC
 
         bool eof = !file.available();
         if (bytesRead == 0) {
-            sdPool.release(lease);
+            manInst->getPool().release(lease);
             if (eof) {
                 break;
             }
@@ -710,7 +709,7 @@ bool SDManager::streamFile(const char *fileName, size_t chunkBytes, StreamChunkC
         }
 
         bool shouldContinue = cb(buffer, bytesRead, fileOffset, chunkIndex, eof, userCtx);
-        if (!sdPool.release(lease)) {
+        if (!manInst->getPool().release(lease)) {
             file.close();
             return false;
         }
@@ -735,7 +734,7 @@ bool SDManager::streamFile(const char *fileName, size_t chunkBytes, StreamChunkC
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 MemPool::Stats SDManager::getPoolStats() const {
-    MemPool::Stats stats = sdPool.stats();
+    MemPool::Stats stats = manInst->getPool().stats();
 
     int freeRam = freeMemory();
     if (freeRam < 0) {

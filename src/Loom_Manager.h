@@ -4,10 +4,19 @@
 #include <unordered_map>
 #include <vector>
 
+#include "MemPool.hpp"
 #include "Module.h"
 
 #define WAIT_TIME_MS 20000 // Time to wait for the serial interface to start
 #define BAUD_RATE 115200   // Serial interface baud rate
+
+/**
+ * Makes Mempool payment optional.
+ * Most sketches will use mempool but for the few that don't we dont want to reserve 8KB SRAM.
+ */
+#ifndef LOOM_MANAGER_ENABLE_MEMPOOL
+#define LOOM_MANAGER_ENABLE_MEMPOOL 1
+#endif
 
 /**
  * Unifies all the various sensors to allow for collection in unison
@@ -31,11 +40,16 @@ class Manager {
      */
     void registerModule(Module *module);
 
+    // Trying to get rid of this (replaced with mempool)
     /**
      * Get a reference to the JSON document that sensor data is stored in
      * @return reference to the main JSON document
      */
     DynamicJsonDocument &getDocument(); // Returns a reference to the main JSON document storing
+
+#if LOOM_MANAGER_ENABLE_MEMPOOL
+    MemPool &getPool() { return pool_; }
+#endif
 
     /**
      * Add a random piece of data to the overall JSON package in the given module name with a name
@@ -163,6 +177,11 @@ class Manager {
     /* Module Data */
     DynamicJsonDocument doc; // JSON document that will store all sensor information
     JsonArray contentsArray; // Stores the contents of the modules
+
+#if LOOM_MANAGER_ENABLE_MEMPOOL
+    MemPool pool_;
+#endif
+
     std::vector<std::pair<const char *, Module *>>
         modules; // List of modules that have been added to the stack
 

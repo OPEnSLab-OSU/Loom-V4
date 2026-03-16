@@ -25,9 +25,8 @@ class SDManager : public Module {
     void power_down() override {};
 
   public:
-    using StreamChunkCallback =
-        bool (*)(const uint8_t *data, size_t bytesRead, size_t fileOffset, size_t chunkIndex,
-                 bool eof, void *userCtx);
+    using StreamChunkCallback = bool (*)(const uint8_t *data, size_t bytesRead, size_t fileOffset,
+                                         size_t chunkIndex, bool eof, void *userCtx);
 
     /**
      * SDManager Constructor
@@ -129,8 +128,9 @@ class SDManager : public Module {
      * Get the current batch file name
      */
     const char *getBatchFilename() {
-        const char *logBase = (strlen(overrideFileName) >0) ? overrideFileName : device_name;
-        snprintf_P(batchFileName, sizeof(batchFileName), PSTR("Batch%i_%s.txt"), getCurrentFileNumber(), logBase);
+        const char *logBase = (strlen(overrideFileName) > 0) ? overrideFileName : device_name;
+        snprintf_P(batchFileName, sizeof(batchFileName), PSTR("Batch%i_%s.txt"),
+                   getCurrentFileNumber(), logBase);
         return batchFileName;
     };
 
@@ -169,7 +169,6 @@ class SDManager : public Module {
 
   private:
     Manager *manInst; // Reference to the manager
-    MemPool sdPool;   // Dedicated pool used for SD transient buffers
 
     File myFile;       // File object used to handle reading and writing
     File scanningFile; // Used specifically to search through the directory
@@ -192,13 +191,12 @@ class SDManager : public Module {
     int file_count = 0;    // What file number are we logging to
 
     bool sdInitialized = false; // If the SD card actually initialized
-    char *headers[2]; // Contains the main and sub headers that are 
-                      // added to the top of the CSV files
+    char *headers[2];           // Contains the main and sub headers that are
+                                // added to the top of the CSV files
 
     uint64_t currentSchemaHash1 = 0;
     uint64_t currentSchemaHash2 = 0;
     bool schemaHashInitialized = false;
-
 
     void logBatch(); // Log data in batch format
 

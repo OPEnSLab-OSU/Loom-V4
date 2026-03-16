@@ -1,3 +1,11 @@
+/**
+ * MemPool Config Read Usage Demo
+ * MemPool is enabled by default and will reserve an 8KB arena at build time
+ * 
+ * If you want to disable mempool...
+ * #define LOOM_MANAGER_ENABLE_MEMPOOL 0
+ */
+
 #include <Loom_Manager.h>
 #include <Logger.h>
 
