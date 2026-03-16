@@ -159,8 +159,8 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
 
                 if (lineOverflow) {
                     snprintf_P(output, OUTPUT_SIZE,
-                               PSTR("Dropped oversized packet #%i (len >= %i bytes)"),
-                               packetNumber, MAX_JSON_SIZE);
+                               PSTR("Dropped oversized packet #%i (len >= %i bytes)"), packetNumber,
+                               MAX_JSON_SIZE);
                     WARNING(output);
                     allDataSuccess = false;
                     lineOverflow = false;
