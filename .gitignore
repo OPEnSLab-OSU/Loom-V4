@@ -1,2 +1,7 @@
 .vscode
 .DS_Store
+
+# Credentials/secrets
+**/arduino_secrets.h
+**/wifi_creds.json
+**/mqtt_creds.json
