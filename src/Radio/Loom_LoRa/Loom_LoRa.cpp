@@ -22,7 +22,8 @@ Loom_LoRa::Loom_LoRa(
         sendRetryCount(sendMaxRetries),
         receiveRetryCount(receiveMaxRetries),
         retryTimeout(retryTimeout),
-        expectedOutstandingPackets(0)
+        expectedOutstandingPackets(0),
+        hubGroup(0)
 {
     this->radioManager = new RHReliableDatagram(
         radioDriver, this->deviceAddress);
@@ -148,6 +149,12 @@ void Loom_LoRa::setAddress(const uint8_t newAddress) {
     radioManager->setThisAddress(newAddress);
     radioDriver.sleep();
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LoRa::setHubGroup(const uint8_t group) {
+    hubGroup = group & 0x0F;  // Ensure it's in range 0-15
+    LOGF("Hub group set to: %i", hubGroup);
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -192,6 +199,13 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
     }
 
     LOGF("Received packet from %i", *fromAddress);
+
+    // Always enforce hub group cap - reject packets from wrong group
+    if ((*fromAddress >> 4) != hubGroup) {
+        ERRORF("Address %i not in hub group %i, rejecting packet", 
+               *fromAddress, hubGroup);
+        return FragReceiveStatus::Error;
+    }
 
     StaticJsonDocument<300> tempDoc;
 
@@ -523,4 +537,3 @@ bool Loom_LoRa::receiveBatch(uint timeout, int* numberOfPackets, uint8_t *fromAd
     *numberOfPackets = expectedOutstandingPackets;
     return status;
 }
-

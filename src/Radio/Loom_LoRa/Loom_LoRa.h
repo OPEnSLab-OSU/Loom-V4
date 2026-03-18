@@ -121,6 +121,21 @@ public:
     int16_t getSignalStrength() const { return signalStrength; };
 
     /**
+     * Set the hub group this device belongs to (0-15).
+     * The hub will only accept messages from devices in its assigned group.
+     * Address space is divided into 16 groups of 16 devices each:
+     * Group 0: addresses 0-15, Group 1: addresses 16-31, etc.
+     *
+     * @param group Hub group number (0-15)
+     */
+    void setHubGroup(const uint8_t group);
+
+    /**
+     * Get the hub group this device belongs to
+     */
+    uint8_t getHubGroup() const { return hubGroup; };
+
+    /**
      * Receive a JSON packet from another radio, blocking until the wait time 
      * expires or a packet is received. Note that this method may block for an
      * arbitrary time to receive a fragmented packet.
@@ -210,6 +225,9 @@ private:
     bool handleSingleFrag(JsonDocument &workingDoc);
     bool handleLostFrag(JsonDocument &workingDoc, uint8_t fromAddress);
 
+    // validates whether an address is in the allowed hub group
+    bool isAddressInGroup(const uint8_t address) const;
+
     // transmits a json document to over lora
     bool transmitToLoRa(JsonObject json, uint8_t destinationAddress);
 
@@ -237,5 +255,7 @@ private:
     std::unordered_map<uint8_t, PartialPacket> frags; // Partial packets sorted by address
     
     uint expectedOutstandingPackets;   // estimated number of outstanding packets
+
+    uint8_t hubGroup;           // Hub group assignment (0-15)
 };
 
