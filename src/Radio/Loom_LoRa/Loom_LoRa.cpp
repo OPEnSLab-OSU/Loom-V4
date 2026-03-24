@@ -24,7 +24,8 @@ Loom_LoRa::Loom_LoRa(
         sendRetryCount(sendMaxRetries),
         receiveRetryCount(receiveMaxRetries),
         retryTimeout(retryTimeout),
-        expectedOutstandingPackets(0)
+        expectedOutstandingPackets(0),
+        lastArrivalTime(0)
 {
     this->radioManager = new RHReliableDatagram(
         radioDriver, this->deviceAddress);
@@ -196,6 +197,7 @@ bool Loom_LoRa::handleHandshakeRequest(const JsonObject& tempDoc, uint8_t fromAd
             handshakeDoc["handshake"] = "Accept";
             this->activePartner = fromAddress;
             this->handshakeEstablished = true;
+            this->expectedOutstandingPackets = 0;
             acceptHandshake = true;
         } else { // we're currently in a handshake with another device
             if (millis() - this->lastArrivalTime > 10000) { // drop if longer than 10 seconds passed
@@ -205,6 +207,7 @@ bool Loom_LoRa::handleHandshakeRequest(const JsonObject& tempDoc, uint8_t fromAd
                 handshakeDoc["handshake"] = "Accept";
                 this->activePartner = fromAddress;
                 this->handshakeEstablished = true;
+                this->expectedOutstandingPackets = 0;
                 acceptHandshake = true;
             }
             else {
@@ -219,8 +222,10 @@ bool Loom_LoRa::handleHandshakeRequest(const JsonObject& tempDoc, uint8_t fromAd
             LOG(F("Handshake response successfully sent!"));
         } else {
             ERROR(F("Failed to send handshake response!"));
-            this->handshakeEstablished = false;
-            this->activePartner = -1;
+            if (acceptHandshake) {
+                this->handshakeEstablished = false;
+                this->activePartner = -1;
+            }
             acceptHandshake = false;
         }
     }
@@ -646,6 +651,12 @@ bool Loom_LoRa::send(const uint8_t destinationAddress) {
         sendStatus = false;
     }
 
+    // Decrement batch counter BEFORE checking if all packets sent
+    // This ensures the final packet properly triggers handshake drop
+    if(this->batchPacketsToSend > 0) {
+        this->batchPacketsToSend--;
+    }
+
     if(this->batchPacketsToSend == 0) {
         this->handshakeEstablished = false;
         this->activePartner = -1;
@@ -725,14 +736,13 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
             ERRORF("Failed to transmit packet (%i/%i)", i+1, batchSize);
         }
 
-        this->batchPacketsToSend--;
-
         delay(500);
 
         Serial.println();
     }
 
     fileOutput.close();
+    return status;
 }
 
 bool Loom_LoRa::receiveBatch(uint timeout, int* numberOfPackets) {
