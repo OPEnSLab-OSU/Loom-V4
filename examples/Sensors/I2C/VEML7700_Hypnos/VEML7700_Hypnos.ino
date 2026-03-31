@@ -58,6 +58,4 @@
     // Put MCU to sleep until RTC alarm fires and wakes device up
     hypnos.sleep();
 
-    //manager.initialize();
-
 }
