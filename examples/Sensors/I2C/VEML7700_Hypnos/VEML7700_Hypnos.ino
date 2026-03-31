@@ -49,8 +49,8 @@
     // Log data to hypnos SD
     hypnos.logToSD();
 
-    // Set RTC alarm
-    hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 10));
+    // Set RTC alarm to 1 min
+    hypnos.setInterruptDuration(TimeSpan(0, 0, 1, 0));
 
     // Reattatch to interrupt after set alarm so no repeated triggers
     hypnos.reattachRTCInterrupt();
