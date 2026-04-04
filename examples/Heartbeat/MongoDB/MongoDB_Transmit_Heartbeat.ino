@@ -1,7 +1,9 @@
 /**
- * This is an example use case for LoRa communication
+ * This is an example use case for MongoDB transmissions
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
+ * 
+ * To-do: Finish development and testing of the MongoDB interaction with this example.
  */
 #include <Loom_Manager.h>
 
