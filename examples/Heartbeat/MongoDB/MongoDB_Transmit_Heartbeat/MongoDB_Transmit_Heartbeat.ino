@@ -47,6 +47,8 @@ void setup() {
 
   manager.initialize();
 
+  heartbeat.sanitizeIntervals();
+
   // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);
 
