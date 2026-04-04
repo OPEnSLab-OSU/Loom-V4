@@ -1,5 +1,5 @@
 /**
- * This is an example use case for LoRa communication
+ * This is an example use case for LoRa communication when using the Hypnos attachment
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
