@@ -184,7 +184,7 @@ void Loom_Heartbeat::ensureHeartbeatHypnosAlarmsActive() {
 
         timeToSetWith = secondsToTimeSpan(heartbeatInterval_s);
         hypnosPtr->setSecondAlarmInterruptDuration(timeToSetWith);
-        LOG("Both alarms reset");
+        LOG("Both alarms set");
         return;
     }
     else if(setAlarm1){
