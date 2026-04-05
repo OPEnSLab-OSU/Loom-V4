@@ -653,7 +653,9 @@ void Loom_Hypnos::sleep(bool waitForSerial){
     }
     // If it has we want to trigger a resample which requires powering the sensors back up
     else{
-        WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");
+        WARNING("Alarm triggered during sample. Specified sample duration was too short. Resampling...");
+        uint8_t firedAlarmsBitMask = checkTriggeredAlarms(); 
+        LOGF("Fired Alarms Bitmask: %u. Cleared alarms registers after checking them.", firedAlarmsBitMask);
         reattachRTCInterrupt();
         if(shouldPowerUp){
             manInst->power_up();
