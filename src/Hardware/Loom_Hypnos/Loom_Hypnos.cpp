@@ -470,10 +470,14 @@ void Loom_Hypnos::setSecondAlarmInterruptDuration(const TimeSpan duration) {
     DateTime futureLogged(future.year(), future.month(), future.day(), future.hour(), future.minute(), 0);
 
     // Print the time that the next interrupt is set to trigger
-    snprintf(output, OUTPUT_SIZE, PSTR("Current Time (Local): %s"), dateTime_toString(getLocalTime(RTC_DS.now()).text()));
+    char timeBuffer[21];
+    dateTime_toString(RTC_DS.now(), timeBuffer);
+    snprintf(output, OUTPUT_SIZE, PSTR("Current Time (Local): %s"), timeBuffer);
     LOG(output);
 
-    snprintf(output, OUTPUT_SIZE, PSTR("2nd Interrupt Alarm Set For: %s"), dateTime_toString(getLocalTime(futureLogged).text()));
+    char futureBuffer[21];
+    dateTime_toString(futureLogged, futureBuffer);
+    snprintf(output, OUTPUT_SIZE, PSTR("2nd Interrupt Alarm Set For: %s"), futureBuffer);
     LOG(output);
     FUNCTION_END;
 }
