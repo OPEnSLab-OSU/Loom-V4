@@ -26,14 +26,14 @@ void Loom_Heartbeat::sanitizeIntervals() {
         WARNING(F("Heartbeat interval too low for Hypnos, setting to minimum of 60 seconds"));
         heartbeatInterval_s = 60;
     }
-    else if(heartbeatInterval_s < 10) {
-        WARNING(F("Heartbeat interval too low, setting to minimum of 10 seconds"));
-        heartbeatInterval_s = 10; 
+    else if(heartbeatInterval_s < 15) {
+        WARNING(F("Heartbeat interval too low, setting to minimum of 15 seconds"));
+        heartbeatInterval_s = 15; 
     }
 
-    if(normWorkInterval_s < 10) {
-        WARNING(F("Normal work interval too low, setting to minimum of 10 seconds"));
-        normWorkInterval_s = 10;
+    if(normWorkInterval_s < 15) {
+        WARNING(F("Normal work interval too low, setting to minimum of 15 seconds"));
+        normWorkInterval_s = 15;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -65,11 +65,11 @@ TimeSpan Loom_Heartbeat::calculateNextEvent() {
     if(heartbeatTimer_s < normWorkTimer_s) {
         secondsToWait = heartbeatTimer_s;                        // grab time to delay program execution for
 
-        // ensure the larger timer does not get set to less than 5 seconds to avoid issues with very short sleep times.
-        if(normWorkTimer_s - secondsToWait > 0)
+        // ensure the larger timer does not get set to less than 10 seconds to avoid issues with very short sleep times.
+        if(normWorkTimer_s - secondsToWait > 10)
             normWorkTimer_s = normWorkTimer_s - secondsToWait;   // adjust larger timer (normal work) by smaller timer amount
         else
-            normWorkTimer_s = 5;
+            normWorkTimer_s = 10;
 
         heartbeatTimer_s = heartbeatInterval_s;                  // reset smaller timer (heartbeat) to be interval
         heartbeatFlag = true;
@@ -77,18 +77,18 @@ TimeSpan Loom_Heartbeat::calculateNextEvent() {
     else {
         secondsToWait = normWorkTimer_s;
 
-        // ensure the larger timer does not get set to less than 5 seconds to avoid issues with very short sleep times.
-        if (heartbeatTimer_s - secondsToWait > 0)
+        // ensure the larger timer does not get set to less than 10 seconds to avoid issues with very short sleep times.
+        if (heartbeatTimer_s - secondsToWait > 10)
             heartbeatTimer_s = heartbeatTimer_s - secondsToWait; // adjust larger timer (heartbeat) by smaller timer amount
         else
-            heartbeatTimer_s = 5;
+            heartbeatTimer_s = 10;
 
         normWorkTimer_s = normWorkInterval_s;                    // reset smaller timer (normal work) to be interval
         heartbeatFlag = false;
     }
 
-    if (secondsToWait < 5)
-        secondsToWait = 5;                                       // minimum wait time of 5 seconds for safety/stability.
+    if (secondsToWait < 10)
+        secondsToWait = 10;                                       // minimum wait time of 10 seconds for safety/stability.
     return secondsToTimeSpan(secondsToWait);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -191,8 +191,8 @@ void Loom_Heartbeat::ensureHeartbeatHypnosAlarmsActive() {
         // sets alarm one, and resets alarm two if alarm 1 would overlap with it.
         if (!setAlarm2 &&
             alarmTwoTime != 0 &&
-            currentTime + normWorkInterval_s > alarmTwoTime - 5 &&
-            currentTime + normWorkInterval_s < alarmTwoTime + 5) {
+            currentTime + normWorkInterval_s > alarmTwoTime - 10 &&
+            currentTime + normWorkInterval_s < alarmTwoTime + 10) {
 
             uint32_t remainingSecondsAlarmTwo =
                 (alarmTwoTime > currentTime) ? (alarmTwoTime - currentTime) : 0;
@@ -219,8 +219,8 @@ void Loom_Heartbeat::ensureHeartbeatHypnosAlarmsActive() {
         // skips heartbeat alarm if it would overlap with normal work alarm.
         if (!setAlarm1 &&
             alarmOneTime != 0 &&
-            currentTime + heartbeatInterval_s > alarmOneTime - 5 &&
-            currentTime + heartbeatInterval_s < alarmOneTime + 5) {
+            currentTime + heartbeatInterval_s > alarmOneTime - 10 &&
+            currentTime + heartbeatInterval_s < alarmOneTime + 10) {
 
             LOG("Skipping heartbeat alarm to avoid conflict with normal work alarm");
             return;
