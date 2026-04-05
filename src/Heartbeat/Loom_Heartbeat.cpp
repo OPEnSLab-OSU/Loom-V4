@@ -267,5 +267,6 @@ void Loom_Heartbeat::adjustHbFlagFromAlarms() {
     }
 
     ERROR("No alarms have fired - cannot adjust heartbeat flag");
+    setHeartbeatFlag(false); // safe fallback: default to normal work
     return;
 }
