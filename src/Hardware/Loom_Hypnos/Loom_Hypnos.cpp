@@ -567,7 +567,7 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
         // Clear any pending RTC alarms
         RTC_DS.clearAlarm(1);
         RTC_DS.clearAlarm(2);
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
         // Re-init the modules that need it
         manInst->power_up();
