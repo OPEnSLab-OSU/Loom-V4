@@ -1,5 +1,6 @@
 #include "Loom_Wifi.h"
 #include "Logger.h"
+#include <RTClib.h>
 
 // Reserve a section of memory called WiFi config
 FlashStorage(WiFiConfig, WifiInfo);

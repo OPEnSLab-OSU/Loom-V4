@@ -1,6 +1,7 @@
 #pragma once
 
 #include <OPEnS_RTC.h>
+#include <RTClib.h>
 #include <SPI.h>
 #include <SdFat.h>
 
