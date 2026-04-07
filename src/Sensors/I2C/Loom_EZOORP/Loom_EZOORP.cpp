@@ -1,26 +1,25 @@
 #include "Loom_EZOORP.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_EZOORP::Loom_EZOORP(Manager& man, byte address, bool useMux) : EZOSensor("EZO-ORP"), manInst(&man){
+Loom_EZOORP::Loom_EZOORP(Manager &man, byte address, bool useMux)
+    : EZOSensor("EZO-ORP"), manInst(&man) {
     module_address = address;
 
-    if(!useMux)
+    if (!useMux)
         manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZOORP::initialize(){
-    Wire.begin();
-}
+void Loom_EZOORP::initialize() { Wire.begin(); }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZOORP::measure(){
-    if(moduleInitialized){
+void Loom_EZOORP::measure() {
+    if (moduleInitialized) {
 
         // Attempt to read data from the sensor
-        if(!readSensor(1000)){
+        if (!readSensor(1000)) {
             ERROR(F("Failed to read sensor!"));
             return;
         }
@@ -32,8 +31,8 @@ void Loom_EZOORP::measure(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZOORP::package(){
-    if(moduleInitialized){
+void Loom_EZOORP::package() {
+    if (moduleInitialized) {
         JsonObject json = manInst->get_data_object(getModuleName());
         json["ORP_mV"] = orp;
     }
@@ -42,8 +41,8 @@ void Loom_EZOORP::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_EZOORP::power_down() {
-    if(moduleInitialized){
-        if(!sendTransmission("sleep")){
+    if (moduleInitialized) {
+        if (!sendTransmission("sleep")) {
             ERROR(F("Failed to send 'sleep' command to device"));
         }
     }
