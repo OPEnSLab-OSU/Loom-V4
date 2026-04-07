@@ -127,6 +127,27 @@ public:
     uint8_t getHubGroup() const { return deviceAddress >> 4; };
 
     /**
+     * Get this device's time slot number (0-15) based on device ID (lower 4 bits).
+     */
+    uint8_t getTimeSlot() const { return deviceAddress & 0x0F; };
+
+    /**
+     * Check if it is currently this device's transmit time slot (100ms windows).
+     * Auto-synchronizes on first call. Just call this before sending.
+     */
+    bool isTransmitSlot();
+
+    /**
+     * Send a packet automatically during this device's TDMA time slot.
+     * Sleeps until slot arrives, sends, then sleeps until next cycle.
+     * Blocks for entire cycle (~1.5 seconds).
+     * Hub address is derived from device address (upper 4 bits, e.g., 0x2N -> 0x20).
+     * 
+     * @return true if sent successfully
+     */
+    bool sendScheduled();
+
+    /**
      * Receive a JSON packet from another radio, blocking until the wait time 
      * expires or a packet is received. Note that this method may block for an
      * arbitrary time to receive a fragmented packet.
@@ -246,5 +267,7 @@ private:
     std::unordered_map<uint8_t, PartialPacket> frags; // Partial packets sorted by address
     
     uint expectedOutstandingPackets;   // estimated number of outstanding packets
+
+    mutable uint32_t cycleStartTime = 0;  // Auto-initialized on first isTransmitSlot() call
 };
 

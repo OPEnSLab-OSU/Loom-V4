@@ -177,6 +177,72 @@ bool Loom_LoRa::receiveFromLoRa(uint8_t *buf, uint8_t buf_size,
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::isTransmitSlot() {
+    static const uint16_t SLOT_DURATION = 100;  // ms per device
+    static const uint32_t CYCLE_DURATION = SLOT_DURATION * 16;  // total hub group cycle duration
+    
+    // Auto-initialize on first call
+    if (cycleStartTime == 0) {
+        cycleStartTime = millis();
+    }
+    
+    uint32_t now = millis();
+    uint32_t timeInCycle = (now - cycleStartTime) % CYCLE_DURATION;
+    uint32_t slotStart = getTimeSlot() * SLOT_DURATION;
+    uint32_t slotEnd = slotStart + SLOT_DURATION;
+    
+    return (timeInCycle >= slotStart && timeInCycle < slotEnd);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::sendScheduled() {
+    static const uint16_t SLOT_DURATION = 100;
+    static const uint32_t CYCLE_DURATION = SLOT_DURATION * 16;
+    
+    // Auto-initialize on first call
+    if (cycleStartTime == 0) {
+        cycleStartTime = millis();
+    }
+    
+    // Derive hub address from device address (upper 4 bits)
+    uint8_t hubAddress = deviceAddress & 0xF0;
+    
+    // Calculate time to next transmit slot
+    uint32_t now = millis();
+    uint32_t timeInCycle = (now - cycleStartTime) % CYCLE_DURATION;
+    uint32_t slotStart = getTimeSlot() * SLOT_DURATION;
+    uint32_t slotEnd = slotStart + SLOT_DURATION;
+    
+    // Sleep until slot arrives
+    uint32_t timeToSlot;
+    if (timeInCycle < slotStart) {
+        timeToSlot = slotStart - timeInCycle;
+    } else {
+        timeToSlot = CYCLE_DURATION - timeInCycle + slotStart;
+    }
+    
+    if (timeToSlot > 0) {
+        delay(timeToSlot);
+    }
+    
+    // Send during slot
+    bool success = send(hubAddress);
+    
+    // Sleep for rest of cycle
+    uint32_t afterSend = millis();
+    uint32_t timeInCycleAfter = (afterSend - cycleStartTime) % CYCLE_DURATION;
+    uint32_t timeToNextSlot = CYCLE_DURATION - timeInCycleAfter;
+    
+    if (timeToNextSlot > 0 && timeToNextSlot < CYCLE_DURATION - 10) {
+        delay(timeToNextSlot);
+    }
+    
+    return success;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
                                          uint8_t* fromAddress) {
     if (!moduleInitialized) {
