@@ -34,13 +34,13 @@ class SDManager;
  * @author Reid Pettibone
  *
  * MemPool uses deterministic memory chunks known as arenas to prevent heap fragmentation due to
- * frequent allocations. It provides a single source single owner memory manager similar to stack
- * frames.
+ * frequent allocations. It provides a single source single owner memory manager that encourages lease 
+ * lifecycles similar to stack frames.
  * - Macros are set for 8192B (8KB) by default.
  * - Memory is reserved for the arena at compile time and will not change.
  * - MemPool should be used for any allocations that are not explicitly known at compile time.
  *   If you're unsure or need a large buffer use mempool.
- * - After arena allocation the feather is left with 9607B SRAM
+ * - After arena allocation the feather is left with 9607B SRAM (bare feather/hypnos)
  */
 
 class MemPool {
@@ -267,7 +267,11 @@ class MemPool {
         memcpy(dst, src + offset, len);
         return true;
     }
-
+    
+    /**
+     * Attempts to clear a handle by sett allocated space to 0
+     * 
+     */
     bool clear(Handle h, uint8_t value = 0) {
         if (!valid(h)) {
             return false;
@@ -275,14 +279,16 @@ class MemPool {
 
         const size_t byteCount = (size_t)leaseBlocks_[h.slot] * LOOM_MEMPOOL_BLOCK_SIZE;
         uint8_t *ptr = data(h);
-        if (ptr == nullptr) {
-            return false;
-        }
 
         memset(ptr, value, byteCount);
         return true;
     }
 
+    /**
+     * Returns true if passed handle is still active (currently allocated and matches lease)
+     * Inactive handles set to default 0xFFFF
+     * Handles generation must be active and match mempools internal generation
+     */
     bool valid(Handle h) const {
         if (h.slot >= LOOM_MEMPOOL_MAX_LEASES || h.generation == 0) {
             return false;
@@ -292,6 +298,7 @@ class MemPool {
         }
         return leaseGeneration_[h.slot] == h.generation;
     }
+  
 
     Stats stats() const {
         Stats s = {};
