@@ -271,9 +271,9 @@ void Loom_Hypnos::initializeRTC() {
         }
     }
 
-	// Clear any pending alarms
-	RTC_DS.clearAlarm(1);
-	RTC_DS.clearAlarm(2);
+    // Clear any pending alarms
+    RTC_DS.clearAlarm(1);
+    RTC_DS.clearAlarm(2);
 
     RTC_DS.writeSqwPinMode(DS3231_OFF);
 
@@ -455,7 +455,7 @@ void Loom_Hypnos::set_custom_time() {
     char tbuf[21];
     dateTime_toString(t, tbuf);
     snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", tbuf);
-	LOG(output);
+    LOG(output);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -494,11 +494,13 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
     if (shouldPowerUp) {
         manInst->power_down();
 
-        // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
-        // Adafruit getAlarm1() returns alarm day/hour/min/sec with placeholder year/month; build comparable time from current date
+        // After powering down the devices check if the alarmed time is less than the current time,
+        // this means that the alarm may have already triggered Adafruit getAlarm1() returns alarm
+        // day/hour/min/sec with placeholder year/month; build comparable time from current date
         DateTime now = RTC_DS.now();
         DateTime alarmReg = RTC_DS.getAlarm1();
-        DateTime alarmDateTime(now.year(), now.month(), alarmReg.day(), alarmReg.hour(), alarmReg.minute(), alarmReg.second());
+        DateTime alarmDateTime(now.year(), now.month(), alarmReg.day(), alarmReg.hour(),
+                               alarmReg.minute(), alarmReg.second());
         uint32_t alarmedTime = alarmDateTime.unixtime();
         uint32_t currentTime = now.unixtime();
         hasAlarmTriggered = alarmedTime <= currentTime;

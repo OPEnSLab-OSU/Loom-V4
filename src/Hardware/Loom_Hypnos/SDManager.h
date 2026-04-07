@@ -1,9 +1,9 @@
 #pragma once
 
 #include <OPEnS_RTC.h>
+#include <RTClib.h>
 #include <SPI.h>
 #include <SdFat.h>
-#include <RTClib.h>
 
 #include "../../Loom_Manager.h"
 #include "../../Module.h"

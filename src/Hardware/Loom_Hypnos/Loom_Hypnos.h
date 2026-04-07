@@ -1,9 +1,8 @@
 #pragma once
 
-
-#include <RTClib.h>
 #include <ArduinoLowPower.h>
 #include <OPEnS_RTC.h>
+#include <RTClib.h>
 #include <map>
 #include <tuple>
 
