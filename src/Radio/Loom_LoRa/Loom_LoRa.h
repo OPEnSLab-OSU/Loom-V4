@@ -44,7 +44,7 @@ public:
      * Construct a new LoRa driver.
      *
      * @param manager Reference to the manager
-     * @param address This device's LoRa address
+     * @param address This device's LoRa address.
      * @param powerLevel Transmission power level, low to high
      * @param sendMaxRetries The number of transmission attempts to make before failing
      * @param receiveMaxRetries The number of reception attempts to make before failing
@@ -60,11 +60,10 @@ public:
     );
 
     /**
-     * Construct a new LoRa driver, using the manager instance number as the
-     * address.
+     * Construct a new LoRa driver, using the manager instance number as the address.
+     * Hub group is derived from the address (upper 4 bits).
      *
      * @param manager Reference to the manager
-     * @param address This device's LoRa address
      * @param powerLevel Transmission power level, low to high
      * @param retryCount Number of attempts to make before failing
      * @param retryTimeout Length of time between retransmissions (ms)
@@ -121,19 +120,11 @@ public:
     int16_t getSignalStrength() const { return signalStrength; };
 
     /**
-     * Set the hub group this device belongs to (0-15).
-     * The hub will only accept messages from devices in its assigned group.
-     * Address space is divided into 16 groups of 16 devices each:
-     * Group 0: addresses 0-15, Group 1: addresses 16-31, etc.
-     *
-     * @param group Hub group number (0-15)
+     * Get the hub group this device belongs to.
+     * Hub group is derived from the upper 4 bits of the device's address.
+     * Only packets from devices with the same hub group are accepted.
      */
-    void setHubGroup(const uint8_t group);
-
-    /**
-     * Get the hub group this device belongs to
-     */
-    uint8_t getHubGroup() const { return hubGroup; };
+    uint8_t getHubGroup() const { return deviceAddress >> 4; };
 
     /**
      * Receive a JSON packet from another radio, blocking until the wait time 
@@ -255,7 +246,5 @@ private:
     std::unordered_map<uint8_t, PartialPacket> frags; // Partial packets sorted by address
     
     uint expectedOutstandingPackets;   // estimated number of outstanding packets
-
-    uint8_t hubGroup;           // Hub group assignment (0-15)
 };
 
