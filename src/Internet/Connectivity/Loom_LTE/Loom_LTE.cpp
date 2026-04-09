@@ -183,8 +183,8 @@ void Loom_LTE::package(){
     if(moduleInitialized){
         JsonObject json = manInst->get_data_object(getModuleName());
         json["RSSI"] = modem.getSignalQuality();
-        json["Latitude"] = lat;
-        json["Longitude"] = lon;
+        json["Coordinates"]["Latitude"] = lat;
+        json["Coordinates"]["Longitude"] = lon;
     }
     FUNCTION_END;
 }
@@ -297,12 +297,24 @@ bool Loom_LTE::verifyConnection(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Loom_LTE::getLocationData(int8_t sensor){
+void Loom_LTE::getCoordinates(GPS_TYPE modem){
     char output[OUTPUT_SIZE];
-    LOG(F("Module successfully initialized!"));
-    const char* location = modem.getGsmLocation().c_str();
-    snprintf(output, OUTPUT_SIZE, "test: %s", location);
+    LOG(F("Retrieivng coordinates, please wait."));
+    if(modem == SARAR5){
+        if (modem.getGPS(&lat, &lon)) {
 
+            snprintf(output, OUTPUT_SIZE, "LATITUDE: %f", lat);
+            snprintf(output, OUTPUT_SIZE, "LONGITUDE: %f", lon);
+
+        } else {
+            LOG(F("Failed to retrieve location"));
+        }
+    }else{
+        if (modem.getGsmLocation(&lat, &lon)) {
+            Serial.println(lat);
+            Serial.println(lon);
+    }
+    }
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

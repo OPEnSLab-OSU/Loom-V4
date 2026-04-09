@@ -19,6 +19,14 @@ enum LTE_VERSION{
     OPENS
 };
 
+// SARAR5 has GNSS reciever, passing its value "1" to TinyGSM getGPS function uses GPS , while 
+// passing SARAR4 (2), will use cellLocate as it does not have GNSS reciever. 
+enum GPS_TYPE{
+    SARAR5 = 1,
+    SARAR4 = 2
+    
+};
+
 /**
  * Loomified Control for a 4G LTE Board
  *
@@ -81,10 +89,12 @@ class Loom_LTE : public NetworkComponent{
          * @brief uses TinyGSM AT commands to retrieve GPS coordinates. 
          *  Stores Latitude and Longitude data in class variables lon and lat
          * Executes during initalization, and is included in the package function
-         * @param sensor sensor type, meaning GNSS reciever or cellLocate. Cell locate (2) uses less power and is 
-         * less accurate. Can switch to GNSS reciever (1) for higher precision, but higher power usage
+         * @param modem sensor type, meaning GNSS reciever or cellLocate. Cell locate (SARAR4) uses less power and is 
+         * less accurate. Technically compatible with SARAR4 but needs to be ironed out. 
+         *  Can switch to GNSS reciever (SARAR5) for higher precision, but higher power usage. Only compatible with SARA-R510M8S and
+         * the newer SARA-R520M10. 
          */
-        void getLocationData (int8_t sensor); 
+        void getCoordinates (GPS_TYPE modem); 
 
         /**
          * Turn on batch upload for the lte which means it will only initialize the module when we need to upload
