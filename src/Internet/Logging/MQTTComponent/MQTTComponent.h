@@ -22,8 +22,8 @@ class MQTTComponent : public Module {
     /**
      * Publish an MQTT message to a given topic and broker
      *
-     * @param topic The MQTT topic we want to publish our message to
-     * @param message The message we want to publish to the given topic
+     * @param topic The MQTT topic we want to publish our message to (size=MAX_TOPIC_SIZE)
+     * @param message The message we want to publish to the given topic (size=MAX_JSON_SIZE)
      * @param retain Whether or not we want to the message to be retained on the specified topic
      * (default = false)
      * @param qos What quality-of-service we want to upload the message with (default = 2)

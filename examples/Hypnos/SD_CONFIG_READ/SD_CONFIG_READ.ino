@@ -44,35 +44,7 @@ void setup() {
     hypnos.enable();
     manager.initialize();
 
-    StaticJsonDocument<OUTPUT_SIZE> configDoc;
-    MemPool::Handle lease = hypnos.readFileLease("config.json");
-    const char *configContents = hypnos.leaseData(lease);
-
-    if (configContents == nullptr) {
-        ERROR(F("Failed to read config.json from SD with lease API."));
-        return;
-    }
-
-    DeserializationError error = deserializeJson(configDoc, configContents);
-    if (error != DeserializationError::Ok) {
-        char output[OUTPUT_SIZE];
-        snprintf(output, sizeof(output), "Failed to parse config.json: %s", error.c_str());
-        ERROR(output);
-    } else {
-        LOG(F("config.json parsed successfully via lease API."));
-        if (!configDoc["timezone"].isNull()) {
-            char output[OUTPUT_SIZE];
-            snprintf(output, sizeof(output), "timezone=%s",
-                     configDoc["timezone"].as<const char *>());
-            LOG(output);
-        }
-    }
-
-    if (hypnos.releaseLease(lease)) {
-      LOG(F("Released config lease"));
-    } else {
-        WARNING(F("Failed to release config lease."));
-    }
+    hypnos.getConfigFromSD("config.json");
     hypnos.printPoolStats();
 
     StreamSummary summary = {0, 0};

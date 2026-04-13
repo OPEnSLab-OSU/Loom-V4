@@ -25,6 +25,9 @@ class SDManager : public Module {
     void power_down() override {};
 
   public:
+    /**
+     * Holds the current file and chunk positions for streaming using the mempool chunks.
+     */
     using StreamChunkCallback = bool (*)(const uint8_t *data, size_t bytesRead, size_t fileOffset,
                                          size_t chunkIndex, bool eof, void *userCtx);
 
@@ -199,9 +202,10 @@ class SDManager : public Module {
     bool schemaHashInitialized = false;
 
     void logBatch(); // Log data in batch format
-
+    
     void writeHeaders(); // Create the headers for the CSV file based off what info we are storing
-    void buildSchemaHashes(uint64_t &hash1, uint64_t &hash2);
+    // Hashes used a low-memory way to compare current and incoming file headers
+    void buildSchemaHashes(uint64_t &hash1, uint64_t &hash2); 
     void setCurrentLogFileNames();
     bool updateCurrentFileName(); // Update the current file name to log to based on files already
                                   // existing on the SD card

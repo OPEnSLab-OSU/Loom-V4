@@ -31,7 +31,6 @@
 class SDManager;
 
 /**
- * @author Reid Pettibone
  *
  * MemPool uses deterministic memory chunks known as arenas to prevent heap fragmentation due to
  * frequent allocations. It provides a single source single owner memory manager that encourages lease 
@@ -243,10 +242,18 @@ class MemPool {
         return true;
     }
 
+    /**
+     * Copies len bytes from the lease starting at offset into dst.
+     * Returns false if the handle is invalid or the read is out of bounds.
+     * @param Handle the lease handle of the caller
+     * 
+     * @returns bool 
+     */
     bool read(Handle h, size_t offset, void *dst, size_t len) const {
-        if (!valid(h)) {
-            return false;
-        }
+      const uint8_t *src = data(h);
+      if (src == nullptr) {
+        return false;
+      }
         if (len == 0) {
             return true;
         }
@@ -259,28 +266,27 @@ class MemPool {
             return false;
         }
 
-        const uint8_t *src = data(h);
-        if (src == nullptr) {
-            return false;
-        }
-
         memcpy(dst, src + offset, len);
         return true;
     }
     
     /**
-     * Attempts to clear a handle by sett allocated space to 0
+     * Clears the entire memory chunk for a valid handle.
+     * By default, memory is zeroed. Size is determined from the
+     * lease block count and block size.
+     * @param Handle the lease handle of the caller
+     * @param value the value used to reset the chunk
      * 
+     * @returns bool 
      */
     bool clear(Handle h, uint8_t value = 0) {
-        if (!valid(h)) {
-            return false;
+        uint8_t *dst = data(h);
+        if(dst == nullptr) {
+          return false;
         }
-
         const size_t byteCount = (size_t)leaseBlocks_[h.slot] * LOOM_MEMPOOL_BLOCK_SIZE;
-        uint8_t *ptr = data(h);
-
-        memset(ptr, value, byteCount);
+        
+        memset(dst, value, byteCount);
         return true;
     }
 
@@ -288,6 +294,9 @@ class MemPool {
      * Returns true if passed handle is still active (currently allocated and matches lease)
      * Inactive handles set to default 0xFFFF
      * Handles generation must be active and match mempools internal generation
+     * @param Handle the lease handle of the caller
+     * 
+     * @returns bool 
      */
     bool valid(Handle h) const {
         if (h.slot >= LOOM_MEMPOOL_MAX_LEASES || h.generation == 0) {
@@ -297,6 +306,23 @@ class MemPool {
             return false;
         }
         return leaseGeneration_[h.slot] == h.generation;
+    }
+
+    /**
+     **********DANGEROUS METHODS***************
+     * Reintepret cast is used safely here because we are only
+     * converting bytes (uint8 -> char). This cast cannot be done
+     * to datatypes larger than that safely. 
+     * 
+     * Currently testing for MongoDB::publish()
+     * Using to return char bytes
+     */
+    char *chars(Handle h) {
+      return reinterpret_cast<char*>(data(h));
+    }
+    
+    const char *chars(Handle h) const {
+      return reinterpret_cast<const char*>(data(h));
     }
   
 
@@ -317,12 +343,19 @@ class MemPool {
     }
 
   private:
-    // Manager is the internal pool owner for SD file/stream paths and needs direct lease
-    // pointers.
+    // Manager is the internal pool owner 
+    // SD file/stream paths and needs direct lease pointers.
     friend class SDManager;
-
+    
+    // Assigns freeblocks to invalid (unallocated) slots
     static constexpr uint16_t kFreeBlockOwner = Handle::INVALID_SLOT;
 
+    /**
+     * read-write data pointer 
+     * @param Handle the lease handle of the caller
+     * 
+     * @returns pointer to the start of the lease
+     * */
     uint8_t *data(Handle h) {
         if (!valid(h)) {
             return nullptr;
@@ -330,6 +363,12 @@ class MemPool {
         return arena_ + ((size_t)leaseStart_[h.slot] * LOOM_MEMPOOL_BLOCK_SIZE);
     }
 
+    /**
+     * read-only data pointer 
+     * @param Handle the lease handle of the caller
+     * 
+     * @returns const pointer to the start of the lease
+     * */
     const uint8_t *data(Handle h) const {
         if (!valid(h)) {
             return nullptr;
@@ -337,6 +376,7 @@ class MemPool {
         return arena_ + ((size_t)leaseStart_[h.slot] * LOOM_MEMPOOL_BLOCK_SIZE);
     }
 
+    /* Internal helper for locating free lease locations */
     uint16_t findFreeLeaseSlot() const {
         for (uint16_t i = 0; i < LOOM_MEMPOOL_MAX_LEASES; i++) {
             if (!leaseActive_[i]) {
@@ -346,6 +386,11 @@ class MemPool {
         return Handle::INVALID_SLOT;
     }
 
+    /**
+     * Increments the failedAllocs counter
+     * 
+     * @returns invalid handle -> 0xFFFF (65535)
+     * */
     Handle failAllocation() {
         failedAllocs_++;
         return Handle::invalid();

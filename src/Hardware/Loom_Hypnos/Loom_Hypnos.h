@@ -7,8 +7,8 @@
 
 #include "Arduino.h"
 #include "Internet/Connectivity/NetworkComponent.h"
-#include "Module.h"
 #include "Sensors/Loom_Analog/Loom_Analog.h"
+#include "Module.h"
 
 #include "Hardware/Loom_Hypnos/SDManager.h"
 #include "Loom_Manager.h"
@@ -300,9 +300,10 @@ class Loom_Hypnos : public Module {
     bool isRTCInitialized() { return RTC_initialized; };
 
     /**
+     * 
      * @brief A minimum required voltage check for a complete cycle. Minimum voltage varies by
      * device and should be determined by the user. This method is more flexible than the analog
-     * class and allows us to create control methods in the hypnos class based on the voltage.
+     * class and allows us to create control methods for the hypnos class based on the voltage.
      *
      * @param voltage_min Minimum required voltage for your device (default = 0.0)
      * @param analogPin Any pin connected to the ADC input channel. (default = A7)
@@ -310,7 +311,7 @@ class Loom_Hypnos : public Module {
      * @param mv Whether you want millivolts returned with volts. (default = false)
      * @param num_samples Number of samples if you want to get an average. (default = 1)
      */
-    bool checkVoltage(float vmin = 0.0, int analogPin = A7, float scale = 2.0f, bool mv = false,
+    bool checkVoltageAverage(float vmin = 0.0, int analogPin = A7, float scale = 2.0f, bool mv = false,
                       int num_samples = 1);
 
   private:
@@ -350,7 +351,11 @@ class Loom_Hypnos : public Module {
 
     bool custom_time = false; // Set the RTC to a user specified time
 
-    /* Voltage check bitmaps 0-7 LSB-first */
+    /** 
+     *  Voltage Check Definitions
+     * 
+     * Voltage check bitmaps 0-7 LSB-first 
+     * */
     static constexpr uint8_t VF_CHECKED = (1u << 0);    // 00000001 | 0x01
     static constexpr uint8_t VF_CRITICAL = (1u << 1);   // 00000010 | 0x02
     static constexpr uint8_t VF_DEGRADED = (1u << 2);   // 00000100 | 0x04
@@ -365,7 +370,7 @@ class Loom_Hypnos : public Module {
     static constexpr float V_DEGRADED = 3.2f; // Minimum for device operation
     static constexpr float V_ACCEPTABLE = 3.35f;
     static constexpr float V_LTE_MIN = 3.45f; // Minimum for LTE transmission
-    static constexpr float V_OPTIMAL = 3.7f;
+    static constexpr float V_OPTIMAL = 3.55f;
 
     uint8_t voltage_flags = 0; // Flag mask defaults to 0x00
 

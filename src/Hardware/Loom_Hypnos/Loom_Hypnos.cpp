@@ -588,12 +588,13 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char *fileName) {
     StaticJsonDocument<OUTPUT_SIZE> doc;
     char output[OUTPUT_SIZE];
     MemPool::Handle fileLease = sdMan->readFileLease(fileName);
-    const char *fileRead = sdMan->leaseData(fileLease);
+    const char *fileRead = sdMan->leaseData(fileLease); 
     if (fileRead == nullptr) {
         ERROR(F("There was an error reading the config from SD: could not acquire lease data, "
                 "defaulting sampling interval to 20 minutes."));
         return TimeSpan(0, 0, 20, 0);
-    }
+    } else {
+      LOGF("Successfully read file into lease space");}
 
     // avoid zero-copy behavior
     DeserializationError deserialError = deserializeJson(doc, (const char *)fileRead);
@@ -680,7 +681,7 @@ bool Loom_Hypnos::logToSD() {
 
 /* Voltage Checks */
 
-bool Loom_Hypnos::checkVoltage(float vmin, int analogPin, float scale, bool mv, int num_samples) {
+bool Loom_Hypnos::checkVoltageAverage(float vmin, int analogPin, float scale, bool mv, int num_samples) {
     INSTRUMENT();
     analogReadResolution(12);
 
@@ -697,7 +698,7 @@ bool Loom_Hypnos::checkVoltage(float vmin, int analogPin, float scale, bool mv, 
             float pin_reading = analogRead(analogPin);
             pin_reading *= scale;
             pin_reading *= VREF; // VREF may be different depending on the board (feather uses 3.3v)
-            pin_reading /= 4096;
+            pin_reading /= 4096; // 12 bit resolution
             voltage = pin_reading;
         }
 
@@ -724,7 +725,7 @@ bool Loom_Hypnos::checkVoltage(float vmin, int analogPin, float scale, bool mv, 
              voltage, V_CRITICAL);
     } else if (voltage < V_DEGRADED) {
         new_flags |= VF_DEGRADED;
-        LOGF("WARNING: Degraded voltage (%.2fV < %.2fV) - device may not function properly!",
+        LOGF("WARNING: Degraded voltage (%.2fV < %.2fV) - device may NOT function properly!",
              voltage, V_DEGRADED);
     } else if (voltage >= V_ACCEPTABLE && voltage <= V_LTE_MIN) {
         new_flags |= VF_ACCEPTABLE;
