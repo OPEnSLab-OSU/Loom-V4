@@ -161,7 +161,7 @@ bool Loom_LoRa::receiveFromLoRa(uint8_t *buf, uint8_t buf_size,
 
     memset(buf, 0, buf_size);
 
-    LOG(F("Waiting for message..."));
+    // LOG(F("Waiting for message..."));
 
     // radioManager methods modify buf, buf_size, and fromAddress
     if (timeout) {
@@ -266,6 +266,11 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
     if (err != DeserializationError::Ok) {
         return FragReceiveStatus::Error;
     }
+
+    // Print the received packet
+    String packetStr;
+    serializeJson(tempDoc, packetStr);
+    LOGF("PACKET DATA from Node %i: %s", *fromAddress, packetStr.c_str());
 
     if (tempDoc.containsKey("handshake")) {
         bool acceptHandshake = false;
