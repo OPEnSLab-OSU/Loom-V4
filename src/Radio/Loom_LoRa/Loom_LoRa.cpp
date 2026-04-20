@@ -199,8 +199,7 @@ bool Loom_LoRa::handleHandshakeRequest(const JsonObject& tempDoc, uint8_t fromAd
             this->handshakeEstablished = true;
             this->expectedOutstandingPackets = 0;
             acceptHandshake = true;
-
-            LOGF("ACCEPT REQUEST I");
+            LOGF("HS: Node %i ACCEPTED", fromAddress);
         } else {
             // CASE 2: Currently in handshake with another device
             unsigned long timeSinceLastPacket = millis() - this->lastArrivalTime;
@@ -214,13 +213,13 @@ bool Loom_LoRa::handleHandshakeRequest(const JsonObject& tempDoc, uint8_t fromAd
                 this->handshakeEstablished = true;
                 this->expectedOutstandingPackets = 0;
                 acceptHandshake = true;
-                LOGF("ACCEPT REQUEST II");
+                LOGF("HS: Node %i ACCEPTED (timeout recovery from %i)", fromAddress, this->activePartner);
             }
             else {
                 // CASE 2b: Still in active handshake (<10s) - DENY request
                 handshakeDoc["handshake"] = "Deny";
                 acceptHandshake = false;
-                LOGF("DENY REQUEST");
+                LOGF("HS: Node %i DENIED (busy with %i)", fromAddress, this->activePartner);
             }
         }
     
@@ -257,6 +256,8 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
     if (!recvStatus) {
         return FragReceiveStatus::Error;
     }
+    
+    LOGF("PACKET: Received from Node %i", *fromAddress);
 
     StaticJsonDocument<300> tempDoc;
 
@@ -640,8 +641,10 @@ bool Loom_LoRa::conductHandshake(const uint8_t destinationAddress) {
         bool handshakeAccepted = getHandshakeResponse(destinationAddress);
         
         if (handshakeAccepted) {
+            LOGF("HS: Node %i accepted our handshake", destinationAddress);
             return true; // SUCCESS - caller must update activePartner
         } else {
+            LOGF("HS: Node %i denied handshake (attempt %i/%i)", destinationAddress, attemptNumber, handshakeRetryCount);
             handshakesLeft--;
             attemptNumber++;
         }
@@ -734,6 +737,7 @@ bool Loom_LoRa::send(const uint8_t destinationAddress,
     this->lastArrivalTime = millis(); 
 
     bool transmissionStatus = false;
+    LOGF("PACKET: Node %i sending to Node %i", this->deviceAddress, destinationAddress);
     if (measureMsgPack(json) > MAX_MESSAGE_LENGTH) {
         transmissionStatus = sendFragmentedPacket(json, destinationAddress);
     } else {
