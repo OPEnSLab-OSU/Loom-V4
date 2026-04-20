@@ -267,11 +267,6 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
         return FragReceiveStatus::Error;
     }
 
-    // Print the received packet
-    String packetStr;
-    serializeJson(tempDoc, packetStr);
-    LOGF("PACKET DATA from Node %i: %s", *fromAddress, packetStr.c_str());
-
     if (tempDoc.containsKey("handshake")) {
         bool acceptHandshake = false;
         acceptHandshake = handleHandshakeRequest(tempDoc.as<JsonObject>(), *fromAddress); 
