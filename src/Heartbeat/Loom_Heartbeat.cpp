@@ -160,9 +160,9 @@ void Loom_Heartbeat::ensureHeartbeatHypnosAlarmsActive() {
     hypnosPtr->clearFiredAlarmsBM();
 
     // check if alarm registers are cleared. Any cleared registers need to be re-set with the appropriate intervals.
-    if(hypnosPtr->isAlarm1Cleared())
+    if(hypnosPtr->alarm1Fired())
         setAlarm1 = true;
-    if (hypnosPtr->isAlarm2Cleared())
+    if (hypnosPtr->alarm2Fired())
         setAlarm2 = true;
 
     uint32_t alarmOneTime = 0;

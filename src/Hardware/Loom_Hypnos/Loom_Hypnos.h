@@ -16,6 +16,13 @@
 // Used to pass along the user defined interrupt callback
 using InterruptCallbackFunction = void (*)();
 
+// DS3231 Register Addresses
+#define DS3231_ADDRESS 0x68
+#define DS3231_ALARM1 0x07
+#define DS3231_ALARM2 0x0B
+#define DS3231_CONTROL 0x0E
+#define DS3231_STATUSREG 0x0F
+
 /**
  * Enum to represent all power rail configurations
  */
@@ -203,14 +210,6 @@ class Loom_Hypnos : public Module {
     DateTime getCurrentTime();
 
     /**
-     * Convert the current time to a ISO 8601 compatible time string
-     *
-     * @param time The current time as a DateTime object
-     * @param array The buffer to write the string to (size 21)
-     */
-    void dateTime_toString(DateTime time, char array[21], bool isLocal = false);
-
-    /**
      * Convert a given UTC time to local time
      * 
      * @param time The UTC time to convert to local time
@@ -297,17 +296,7 @@ class Loom_Hypnos : public Module {
     void clearFiredAlarmsBM() { firedAlarmsBitMask = 0; };
 
     /**
-     * Check if Alarm 1 is cleared
-     */
-    bool isAlarm1Cleared();
-
-    /**
-     * Check if Alarm 2 is cleared
-     */
-    bool isAlarm2Cleared();
-
-    /**
-     * Fully clear both alarms on the DS3231 RTC, including their status flags and actual registers.
+     * Clear both alarm flags on the DS3231 RTC.
      */
     void clearAlarms();
 
@@ -401,9 +390,6 @@ private:
         timezoneMap; // String to Timezone enum, use custom compare to ensure that strings are
                      // compared correctly
 
-    DateTime getLocalTime(DateTime time); // Convert a given UTC time to local time
-    TIME_ZONE timezone;                   // Timezone the RTC was set to
-
     uint8_t firedAlarmsBitMask = 0;                                                     // Which alarm triggered the wakeup
 
     /**
@@ -442,6 +428,7 @@ private:
     DateTime localTime; // Local time
 
     DateTime alarmTime; // Time the alarm has been set for
+    DateTime alarmTime2; // Time the second alarm has been set for
 
     /* Sleep functionality */
     void pre_sleep(); // Called just before the hypnos enters sleep, this disconnects the power
