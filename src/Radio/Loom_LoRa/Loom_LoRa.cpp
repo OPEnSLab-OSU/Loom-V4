@@ -200,7 +200,7 @@ bool Loom_LoRa::handleHandshakeRequest(const JsonObject& tempDoc, uint8_t fromAd
             this->expectedOutstandingPackets = 0;
             acceptHandshake = true;
 
-            LOGF("ACCEPT REQUEST I")
+            LOGF("ACCEPT REQUEST I");
         } else {
             // CASE 2: Currently in handshake with another device
             unsigned long timeSinceLastPacket = millis() - this->lastArrivalTime;
@@ -214,13 +214,13 @@ bool Loom_LoRa::handleHandshakeRequest(const JsonObject& tempDoc, uint8_t fromAd
                 this->handshakeEstablished = true;
                 this->expectedOutstandingPackets = 0;
                 acceptHandshake = true;
-                LOGF("ACCEPT REQUEST II")
+                LOGF("ACCEPT REQUEST II");
             }
             else {
                 // CASE 2b: Still in active handshake (<10s) - DENY request
                 handshakeDoc["handshake"] = "Deny";
                 acceptHandshake = false;
-                LOGF("DENY REQUEST")
+                LOGF("DENY REQUEST");
             }
         }
     
@@ -595,7 +595,7 @@ bool Loom_LoRa::getHandshakeResponse(uint8_t handshakePartnerAddr) {
         // Check response content
         if (tempDoc.containsKey("handshake")) {
             if (strcmp(tempDoc["handshake"], "Accept") == 0) {
-=                return true; // ACCEPTED
+                return true; // ACCEPTED
             } else if (strcmp(tempDoc["handshake"], "Deny") == 0) {
                 return false; // DENIED
             } else {
