@@ -12,6 +12,12 @@
 
 #include <Sensors/I2C/Loom_VCNL4020/Loom_VCNL4020.h>
 
+Manager manager("VCNL_Example", 1);
+
+Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
+
+Loom_VCNL4020 vcnl(manager);
+
  void isrTrigger(){
     hypnos.wakeup();
  }
