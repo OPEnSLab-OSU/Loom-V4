@@ -209,6 +209,9 @@ private:
     bool handleFragBody(JsonDocument &workingDoc, uint8_t fromAddress);
     bool handleSingleFrag(JsonDocument &workingDoc);
     bool handleLostFrag(JsonDocument &workingDoc, uint8_t fromAddress);
+    uint8_t handleHandshakeReceive(JsonDocument &tempDoc, uint8_t* fromAddress);
+
+    bool handshakeReceive(const uint8_t destinationAddress);
 
     // transmits a json document to over lora
     bool transmitToLoRa(JsonObject json, uint8_t destinationAddress);
@@ -217,6 +220,8 @@ private:
     bool sendFullPacket(JsonObject json, uint8_t destinationAddress);
     bool sendFragmentedPacket(JsonObject json, uint8_t destinationAddress);
     bool sendPacketHeader(JsonObject json, uint8_t destinationAddress);
+    bool sendHandshakeRequest(const uint8_t destinationAddress);
+    bool sendHandshakeResponse(const uint8_t destinationAddress);
 
     Manager* manager;                  // Instance of the Loom manager
     RHReliableDatagram* radioManager;  // Radio manager
@@ -233,6 +238,8 @@ private:
     uint8_t sendRetryCount;     // Number of transmission retries allowed
     uint8_t receiveRetryCount;  // Number of fragment receive retries allowed
     uint16_t retryTimeout;      // Delay between retries (MS)
+
+    bool handshakeEstablished = false;
 
     std::unordered_map<uint8_t, PartialPacket> frags; // Partial packets sorted by address
     

@@ -202,6 +202,35 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
         return FragReceiveStatus::Error;
     }
 
+    if (tempDoc.containsKey("handshake")) {
+        if(this->handshakeEstablished) {
+            LOGF("[HANDHSAKE] Hub already in handshake");
+            return FragReceiveStatus::Incomplete;
+        }
+        // accepthandshake has 3 states
+        // 2 corresponds to the node getting the accept packet
+        // 1 corresponds to the hub getting the request packet
+        // 0 corresponds to an error in the hub sending back a packet
+        uint8_t acceptHandshake = 0;
+        acceptHandshake = handleHandshakeReceive(tempDoc, fromAddress); 
+        if(acceptHandshake == 2) {
+            return FragReceiveStatus::Complete;
+        }
+        else if(acceptHandshake == 1) {
+            return FragReceiveStatus::Incomplete;
+        }
+        else {
+            return FragReceiveStatus::Error;
+        }
+    }
+
+    // if a device reaches a point where its receiving a none handshake packet
+    // that means that a handshake was succesfully established and once
+    // receive is done we can end the handshake
+    // this boolean is here as it will have handshake be unestablished
+    // after all receives are done
+    this->handshakeEstablished = false;
+
     bool isReady = false;
     if (tempDoc.containsKey("batch_size")) {
         isReady = handleBatchHeader(tempDoc);
@@ -236,6 +265,24 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
     } else {
         return FragReceiveStatus::Incomplete;
     }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+uint8_t Loom_LoRa::handleHandshakeReceive(JsonDocument &tempDoc, uint8_t* fromAddress) {
+    if(tempDoc.containsKey("handshake") && 
+        strcmp(tempDoc["handshake"], "Accept") == 0) {
+            return 2;
+        }
+    else if(tempDoc.containsKey("handshake") && 
+        strcmp(tempDoc["handshake"], "Request") == 0) {
+            this->handshakeEstablished = true;
+            LOGF("[HANDSHAKE] Hub sending handshake response");
+            if(sendHandshakeResponse(*fromAddress)) {
+                return 1;
+            }
+        }
+    return 0;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -435,9 +482,81 @@ bool Loom_LoRa::sendPacketHeader(JsonObject json,
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+bool Loom_LoRa::handshakeReceive(const uint8_t destinationAddress) {
+    LOGF("[HANDSHAKE] Attempting to receive from hub");
+    uint8_t hubAddress = destinationAddress;
+    if(receive(5000, &hubAddress, true)) {
+        LOGF("[HANDSHAKE] Accepted");
+        return true;
+    }
+    LOGF("[HANDSHAKE] Rejected");
+    return false;
+}
+
+// HANDHSAKE TO DO
+// Create fallback where hub exits handshakeEstablished after a long time of no receives
+// Test error modes
+// Create code comments
+// Reorganize functions
+// Name things properly
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::send(const uint8_t destinationAddress) {
-    return send(destinationAddress, manager->getDocument().as<JsonObject>());
+    uint8_t handshakeRetries = 2;
+    while(handshakeRetries > 0) {
+        bool handshakeTransmitSuccess = false;
+        bool handshakeAccepted = false;
+        handshakeTransmitSuccess = sendHandshakeRequest(destinationAddress);
+        if(handshakeTransmitSuccess) {
+            LOGF("[HANDSHAKE] Handshake request sent succesfully");
+            handshakeAccepted = handshakeReceive(destinationAddress);
+        }
+
+        if(handshakeAccepted) {
+            return send(destinationAddress, manager->getDocument().as<JsonObject>());
+        }
+
+        else {
+            const uint32_t currentTime = millis();
+            while((currentTime + 10000) > millis()) {
+
+            }
+            handshakeRetries--;
+        }
+    }
+    LOGF("Send failed");
+    return false;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::sendHandshakeRequest(const uint8_t destinationAddress) {
+    const uint8_t HANDSHAKE_SIZE = 100; // enough for the handshake key and string value
+    StaticJsonDocument<HANDSHAKE_SIZE> handshakeDoc;
+    handshakeDoc["handshake"] = "Request";
+
+    bool handshakeTransmitStatus = sendFullPacket(handshakeDoc.as<JsonObject>(), destinationAddress);
+    if(!handshakeTransmitStatus) {
+        LOGF("[HANDSHAKE] Transmit handshake request failed");
+        return false;
+    }
+    return true;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::sendHandshakeResponse(const uint8_t destinationAddress) {
+    const uint8_t HANDSHAKE_SIZE = 100; // enough for the handshake key and string value
+    StaticJsonDocument<HANDSHAKE_SIZE> handshakeDoc;
+    handshakeDoc["handshake"] = "Accept";
+
+    bool handshakeTransmitStatus = sendFullPacket(handshakeDoc.as<JsonObject>(), destinationAddress);
+    if(!handshakeTransmitStatus) {
+        LOGF("[HANDSHAKE] Transmit handshake request failed");
+        return false;
+    }
+    LOGF("[HANDSHAKE] Hub succesfully transmitted handshake");
+    return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -454,6 +573,8 @@ bool Loom_LoRa::send(const uint8_t destinationAddress,
     } else {
         return sendFullPacket(json, destinationAddress);
     }
+
+    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
