@@ -59,6 +59,15 @@ class MQTTComponent : public Module {
     void setKeepAlive(int time) { keep_alive = time; };
 
     /**
+     * Set the maximum time to wait for MQTT connection establishment (in milliseconds)
+     * Use longer timeouts for LTE connections (default 30s, recommend 60s+ for poor quality LTE signals)
+     * @param timeout Timeout in milliseconds
+     */
+    void setConnectionTimeout(unsigned long timeout) { 
+        mqttClient.setConnectionTimeout(timeout); 
+    };
+
+    /**
      * Set the client ID for the specific MQTT connection
      *
      * @param id The new ID to set
@@ -125,5 +134,5 @@ class MQTTComponent : public Module {
 
     int keep_alive =
         60000;          // How long the broker should keep the connection open, defaults to a minute
-    int maxRetries = 4; // How many times we want to retry the connection
+    int maxRetries = 8; // How many times we want to retry the connection (increased for LTE)
 };

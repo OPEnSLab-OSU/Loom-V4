@@ -37,13 +37,15 @@ bool MQTTComponent::connectToBroker() {
             // work
             if (retryAttempts >= maxRetries) {
                 ERROR(F("MQTT Retry limit exceeded!"));
+                snprintf_P(output, OUTPUT_SIZE, PSTR("Last error: %s"), getMQTTError());
+                ERROR(output);
                 // TIMER_ENABLE;
                 FUNCTION_END;
                 return false;
             }
 
-            snprintf_P(output, OUTPUT_SIZE, PSTR("Attempting to connect to broker: %s:%i"), address,
-                       port);
+            snprintf_P(output, OUTPUT_SIZE, PSTR("Attempting to connect to broker: %s:%i (attempt %d/%d)"), 
+                       address, port, retryAttempts + 1, maxRetries);
             LOG(output);
 
             // Attempt to Connect to the MQTT client
@@ -51,7 +53,8 @@ bool MQTTComponent::connectToBroker() {
                 snprintf_P(output, OUTPUT_SIZE, PSTR("Failed to connect to broker: %s"),
                            getMQTTError());
                 ERROR(output);
-                delay(5000);
+                LOG(F("Waiting 10 seconds before retry..."));
+                delay(10000);
             }
 
             retryAttempts++;

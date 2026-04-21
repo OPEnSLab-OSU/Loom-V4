@@ -214,7 +214,8 @@ bool Loom_LTE::connect() {
         LOG(output);
         if (modem.gprsConnect(APN, gprsUser, gprsPass)) {
             LOG(F("Successfully Connected!"));
-            delay(6000);
+            LOG(F("Waiting for modem to stabilize (15 seconds)..."));
+            delay(15000);  // Extended delay for LTE modem stabilization
             FUNCTION_END;
             // TIMER_ENABLE;
             return true;
