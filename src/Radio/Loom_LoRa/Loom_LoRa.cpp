@@ -167,8 +167,9 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy, uint8_t
 
     LOGF("Received packet from %i", *fromAddress);
 
-    // Must be much larger than 251 byte bc deserializing MsgPack into an ArduinoJson doc is far less efficient
-    // than building it manually, as it builds a full in-memory DOM which can require ~3–6× the raw packet size.
+    // Must be much larger than 251 byte bc deserializing MsgPack into an ArduinoJson doc is far
+    // less efficient than building it manually, as it builds a full in-memory DOM which can require
+    // ~3–6× the raw packet size.
     const size_t SAFE_JSON_SIZE = 1500;
     StaticJsonDocument<SAFE_JSON_SIZE> tempDoc;
 

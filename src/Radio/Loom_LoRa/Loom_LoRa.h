@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../../Hardware/Loom_Hypnos/Loom_Hypnos.h"
+#include "../../Sensors/Loom_Analog/Loom_Analog.h"
 #include "ArduinoJson.hpp"
 #include "ArduinoJson/Object/JsonObject.hpp"
 #include "Hardware/Loom_BatchSD/Loom_BatchSD.h"
@@ -8,15 +10,11 @@
 #include <Module.h>
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
+#include <RTClib.h> // for DateTime
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <unordered_map>
-#include <Module.h>
-#include <RH_RF95.h>
-#include "../../Sensors/Loom_Analog/Loom_Analog.h"
-#include "../../Hardware/Loom_Hypnos/Loom_Hypnos.h"
-#include <RTClib.h> // for DateTime
 
 #define MAX_MESSAGE_LENGTH RH_RF95_MAX_MESSAGE_LEN
 
@@ -196,13 +194,13 @@ class Loom_LoRa : public Module {
 
     /**
      * receives a single fragment from some device
-     * 
-     * @note: For the tempDoc variable, although the maximum LoRa payload is 251 raw bytes, deserializing MsgPack 
-     * into ArduinoJson requires significantly more RAM than the raw packet size. ArduinoJson builds an
-     * in-memory DOM representation that stores object nodes, key strings (copied from the buffer), 
-     * values, and structural metadata. In practice, this can require ~3–6× the raw MsgPack size, 
-     * especially for header packets with nested objects and timestamps. 
-     * 1500 bytes was chosen to safely accommodate worst-case header packets and avoid 
+     *
+     * @note: For the tempDoc variable, although the maximum LoRa payload is 251 raw bytes,
+     * deserializing MsgPack into ArduinoJson requires significantly more RAM than the raw packet
+     * size. ArduinoJson builds an in-memory DOM representation that stores object nodes, key
+     * strings (copied from the buffer), values, and structural metadata. In practice, this can
+     * require ~3–6× the raw MsgPack size, especially for header packets with nested objects and
+     * timestamps. 1500 bytes was chosen to safely accommodate worst-case header packets and avoid
      * deserialization failures due to insufficient JsonDocument capacity.
      */
     FragReceiveStatus receiveFrag(uint timeout, bool shouldProxy, uint8_t *fromAddress);

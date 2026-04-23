@@ -509,23 +509,21 @@ void Loom_Hypnos::clearAlarms() {
 uint8_t Loom_Hypnos::checkTriggeredAlarms() {
     uint8_t triggeredAlarmsBitMask = 0;
 
-    if(RTC_DS.alarmFired(1))
-    {
+    if (RTC_DS.alarmFired(1)) {
         LOG("Alarm 1 has woken the device up from sleep!");
         triggeredAlarmsBitMask |= BM_ALARM_1;
         RTC_DS.clearAlarm(1); // Clear the alarm 1 flag in the RTC
     }
-    
-    if(RTC_DS.alarmFired(2))
-    {
+
+    if (RTC_DS.alarmFired(2)) {
         LOG("Alarm 2 has woken the device up from sleep!");
         triggeredAlarmsBitMask |= BM_ALARM_2;
         RTC_DS.clearAlarm(2); // Clear the alarm 2 flag in the RTC
     }
 
-    if(triggeredAlarmsBitMask == BM_NONE)
+    if (triggeredAlarmsBitMask == BM_NONE)
         ERROR("No alarms have triggered!");
-    else if(triggeredAlarmsBitMask == BM_BOTH)
+    else if (triggeredAlarmsBitMask == BM_BOTH)
         ERROR("Both alarms have triggered!");
 
     return triggeredAlarmsBitMask;
@@ -534,12 +532,12 @@ uint8_t Loom_Hypnos::checkTriggeredAlarms() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 DateTime Loom_Hypnos::getAlarmDate(const uint8_t alarmNumber) {
-    if(alarmNumber < 1 || alarmNumber > 2){
+    if (alarmNumber < 1 || alarmNumber > 2) {
         ERROR("Attempted to get alarm date for invalid alarm number, valid numbers are 1 and 2");
         return DateTime();
     }
 
-    if(alarmNumber == 1)
+    if (alarmNumber == 1)
         return RTC_DS.getAlarm1();
     else
         return RTC_DS.getAlarm2();
@@ -593,10 +591,12 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
         WD_TIMER_ENABLE;
     }
     // If it has we want to trigger a resample which requires powering the sensors back up
-    else{
-        WARNING("Alarm triggered during sample. Specified sample duration was too short. Resampling...");
-        uint8_t firedAlarmsBitMask = checkTriggeredAlarms(); 
-        LOGF("Fired Alarms Bitmask: %u. Cleared alarms registers after checking them.", firedAlarmsBitMask);
+    else {
+        WARNING("Alarm triggered during sample. Specified sample duration was too short. "
+                "Resampling...");
+        uint8_t firedAlarmsBitMask = checkTriggeredAlarms();
+        LOGF("Fired Alarms Bitmask: %u. Cleared alarms registers after checking them.",
+             firedAlarmsBitMask);
         reattachRTCInterrupt();
         if (shouldPowerUp) {
             manInst->power_up();

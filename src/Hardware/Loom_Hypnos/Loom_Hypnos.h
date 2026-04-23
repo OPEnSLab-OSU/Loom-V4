@@ -72,12 +72,7 @@ enum TIME_ZONE {
     AEST = 10
 };
 
-enum ALARM_BITMASKS{
-    BM_NONE = 0b00,
-    BM_ALARM_1 = 0b01,
-    BM_ALARM_2 = 0b10,
-    BM_BOTH = 0b11
-};
+enum ALARM_BITMASKS { BM_NONE = 0b00, BM_ALARM_1 = 0b01, BM_ALARM_2 = 0b10, BM_BOTH = 0b11 };
 
 /**
  * Type of interrupt to register
@@ -211,17 +206,17 @@ class Loom_Hypnos : public Module {
 
     /**
      * Convert a given UTC time to local time
-     * 
+     *
      * @param time The UTC time to convert to local time
      */
-    DateTime getLocalTime(DateTime time); 
+    DateTime getLocalTime(DateTime time);
 
     /**
      * Convert the current time to a ISO 8601 compatible time string
      *
      * @param time The current time as a DateTime object
      * @param array The buffer to write the string to (size 21)
-    */
+     */
     void dateTime_toString(DateTime time, char array[21], bool isLocal = false);
 
     /**
@@ -309,17 +304,18 @@ class Loom_Hypnos : public Module {
     /**
      * Set the second alarm interrupt to be triggered at a set interval in the future
      * @param duration The time that will elapse before the second alarm interrupt is triggered
-     * 
+     *
      * @note DS3231 Alarm 2 only supports minute/hour/day/date resolution and ignores seconds.
      *          As a result, when setting the second alarm with a TimeSpan that includes seconds,
-     *          the alarm will trigger at the start of the target minute rather than the exact second.
-     *          The first wakeup may therefore occur slightly earlier than intended, but subsequent
-     *          intervals remain correct because the alarm is reset relative to the current RTC time.
-     *          If precise second-level timing is required, consider using Alarm 1, which supports seconds.
+     *          the alarm will trigger at the start of the target minute rather than the exact
+     * second. The first wakeup may therefore occur slightly earlier than intended, but subsequent
+     *          intervals remain correct because the alarm is reset relative to the current RTC
+     * time. If precise second-level timing is required, consider using Alarm 1, which supports
+     * seconds.
      */
     void setSecondAlarmInterruptDuration(const TimeSpan duration);
 
-private:
+  private:
     Manager *manInst = nullptr;                   // Instance of the manager
     NetworkComponent *networkComponent = nullptr; // Reference to a NetworkComponent
 
@@ -376,7 +372,7 @@ private:
     uint8_t voltage_flags = 0; // Flag mask defaults to 0x00
 
     TIME_ZONE timezone; // Timezone the RTC was set to
-    
+
     // Map the given pin to an interrupt call back
     // 0th - ISR
     // 1st - Interrupt Trigger
@@ -390,24 +386,24 @@ private:
         timezoneMap; // String to Timezone enum, use custom compare to ensure that strings are
                      // compared correctly
 
-    uint8_t firedAlarmsBitMask = 0;                                                     // Which alarm triggered the wakeup
+    uint8_t firedAlarmsBitMask = 0; // Which alarm triggered the wakeup
 
     /**
      * Get which alarm triggered the wakeup
-     * 
+     *
      * This returns a bitmask representing which alarms triggered:
      * - 0b00 (0): No alarms triggered
      * - 0b01 (1): Alarm 1 triggered
      * - 0b10 (2): Alarm 2 triggered
      * - 0b11 (3): Both alarms triggered
-     * You can use the ALARM_BITMASKS enum for easier evaluation. 
+     * You can use the ALARM_BITMASKS enum for easier evaluation.
      */
     uint8_t checkTriggeredAlarms();
-    
+
     DateTime time;      // UTC time
     DateTime localTime; // Local time
 
-    DateTime alarmTime; // Time the alarm has been set for
+    DateTime alarmTime;  // Time the alarm has been set for
     DateTime alarmTime2; // Time the second alarm has been set for
 
     /* Sleep functionality */
