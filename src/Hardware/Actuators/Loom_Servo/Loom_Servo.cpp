@@ -2,53 +2,56 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Servo::Loom_Servo(int instance_num) : Actuator(ACTUATOR_TYPE::SERVO, instance_num), instance(instance_num) {}
+Loom_Servo::Loom_Servo(int instance_num)
+    : Actuator(ACTUATOR_TYPE::SERVO, instance_num), instance(instance_num) {}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Servo::Loom_Servo(Manager& man, int instance_num) : Actuator(ACTUATOR_TYPE::SERVO, instance_num), instance(instance_num), manInst(&man) {
-    manInst->registerModule(this);
+Loom_Servo::Loom_Servo(Manager &man, int instance_num)
+    : Actuator(ACTUATOR_TYPE::SERVO, instance_num), instance(instance_num),
+      manInst(&man) {
+  manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Servo::initialize(){
-    FUNCTION_START;
+void Loom_Servo::initialize() {
+  FUNCTION_START;
 
-    /* Initialize the servo driver*/
-    servo.begin();
-    servo.setPWMFreq(60);
+  /* Initialize the servo driver*/
+  servo.begin();
+  servo.setPWMFreq(60);
 
-    LOG(F("Servo initialized!"));
-    FUNCTION_END;
+  LOG(F("Servo initialized!"));
+  FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Servo::package(JsonObject json) {
-    FUNCTION_START;
-    json["Degrees"] = degrees;
-    FUNCTION_END;
+  FUNCTION_START;
+  json["Degrees"] = degrees;
+  FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Servo::control(JsonArray json){
-    FUNCTION_START;
-    setDegrees(json[1].as<int>());
-    FUNCTION_END;
+void Loom_Servo::control(JsonArray json) {
+  FUNCTION_START;
+  setDegrees(json[1].as<int>());
+  FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Servo::setDegrees(const int degrees){
-    FUNCTION_START;
-    char output[OUTPUT_SIZE];
-    this->degrees = degrees;
-    servo.setPWM(instance, 0, map(degrees, 0, 180, SERVO_MIN, SERVO_MAX));
+void Loom_Servo::setDegrees(const int degrees) {
+  FUNCTION_START;
+  char output[OUTPUT_SIZE];
+  this->degrees = degrees;
+  servo.setPWM(instance, 0, map(degrees, 0, 180, SERVO_MIN, SERVO_MAX));
 
-    snprintf(output, OUTPUT_SIZE, "Servo set to: %i", degrees);
-    LOG(output);
-    FUNCTION_END;
+  snprintf(output, OUTPUT_SIZE, "Servo set to: %i", degrees);
+  LOG(output);
+  FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

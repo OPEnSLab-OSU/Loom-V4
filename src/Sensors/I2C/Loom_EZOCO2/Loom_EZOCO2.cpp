@@ -1,49 +1,49 @@
 #include "Loom_EZOCO2.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_EZOCO2::Loom_EZOCO2(Manager& man, byte address, bool useMux) : EZOSensor("EZO-CO2"), manInst(&man){
-    module_address = address;
+Loom_EZOCO2::Loom_EZOCO2(Manager &man, byte address, bool useMux)
+    : EZOSensor("EZO-CO2"), manInst(&man) {
+  module_address = address;
 
-    if(!useMux)
-        manInst->registerModule(this);
+  if (!useMux)
+    manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZOCO2::initialize(){
-    Wire.begin();
-    moduleInitialized = calibrate();
+void Loom_EZOCO2::initialize() {
+  Wire.begin();
+  moduleInitialized = calibrate();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZOCO2::measure(){
-    if(moduleInitialized){
-        if(!readSensor(1000)){
-            ERROR(F("Failed to read sensor!"));
-            return;
-        }
-        co2 = atof(getSensorData());
+void Loom_EZOCO2::measure() {
+  if (moduleInitialized) {
+    if (!readSensor(1000)) {
+      ERROR(F("Failed to read sensor!"));
+      return;
     }
+    co2 = atof(getSensorData());
+  }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZOCO2::package(){
-    if(moduleInitialized){
-        JsonObject json = manInst->get_data_object(getModuleName());
-        json["CO2_ppm"] = co2;
-    }
+void Loom_EZOCO2::package() {
+  if (moduleInitialized) {
+    JsonObject json = manInst->get_data_object(getModuleName());
+    json["CO2_ppm"] = co2;
+  }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_EZOCO2::power_down() {
-    if(moduleInitialized){
-        if(!sendTransmission("sleep")){
-            ERROR(F("Failed to send 'sleep' command to device"));
-        }
+  if (moduleInitialized) {
+    if (!sendTransmission("sleep")) {
+      ERROR(F("Failed to send 'sleep' command to device"));
     }
+  }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

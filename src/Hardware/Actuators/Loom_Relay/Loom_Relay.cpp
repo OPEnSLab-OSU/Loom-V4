@@ -2,43 +2,46 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Relay::Loom_Relay(const byte controlPin) : Actuator(ACTUATOR_TYPE::RELAY, 0), pin(controlPin) {
-    snprintf(moduleName, 100, "%s%u", typeToString(), pin);
-    pinMode(controlPin, OUTPUT);
+Loom_Relay::Loom_Relay(const byte controlPin)
+    : Actuator(ACTUATOR_TYPE::RELAY, 0), pin(controlPin) {
+  snprintf(moduleName, 100, "%s%u", typeToString(), pin);
+  pinMode(controlPin, OUTPUT);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Relay::Loom_Relay(Manager& man, const byte controlPin) : Actuator(ACTUATOR_TYPE::RELAY, 0), pin(controlPin), manInst(&man) {
-    pinMode(controlPin, OUTPUT);
-    manInst->registerModule(this);
+Loom_Relay::Loom_Relay(Manager &man, const byte controlPin)
+    : Actuator(ACTUATOR_TYPE::RELAY, 0), pin(controlPin), manInst(&man) {
+  pinMode(controlPin, OUTPUT);
+  manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Relay::control(JsonArray json){
-    FUNCTION_START;
-    // Update the state
-    setState(json[0].as<bool>());
-    FUNCTION_END;
+void Loom_Relay::control(JsonArray json) {
+  FUNCTION_START;
+  // Update the state
+  setState(json[0].as<bool>());
+  FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Relay::package(JsonObject json) {
-    FUNCTION_START;
-    json["State"] = state ? "HIGH" : "LOW";
-    FUNCTION_END;
+  FUNCTION_START;
+  json["State"] = state ? "HIGH" : "LOW";
+  FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Relay::setState(bool state){
-    FUNCTION_START;
-    char output[OUTPUT_SIZE];
-    digitalWrite(pin, state ? HIGH : LOW);
-    snprintf(output, OUTPUT_SIZE, "Relay pin is set to: %s", (state ? "HIGH" : "LOW"));
-    LOG(output);
-    FUNCTION_END;
+void Loom_Relay::setState(bool state) {
+  FUNCTION_START;
+  char output[OUTPUT_SIZE];
+  digitalWrite(pin, state ? HIGH : LOW);
+  snprintf(output, OUTPUT_SIZE, "Relay pin is set to: %s",
+           (state ? "HIGH" : "LOW"));
+  LOG(output);
+  FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,25 +1,26 @@
 #include "Loom_Digital.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Digital::measure(){
-    
-    // Clear collected data
-    pinToData.clear();
+void Loom_Digital::measure() {
 
-    // Read the data from the given analog pin
-    for(int i = 0; i < digitalPins.size(); i++){
-        pinToData.insert(std::pair<int, int>(digitalPins[i], digitalRead(digitalPins[i])));
-    }
+  // Clear collected data
+  pinToData.clear();
+
+  // Read the data from the given analog pin
+  for (int i = 0; i < digitalPins.size(); i++) {
+    pinToData.insert(
+        std::pair<int, int>(digitalPins[i], digitalRead(digitalPins[i])));
+  }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Digital::package(){
-    char name[5];
-    JsonObject json = manInst->get_data_object(getModuleName());
-    for ( const auto &myPair : pinToData ) {
-        snprintf_P(name, 5, PSTR("%i"), myPair.first);
-       json[name] = pinToData[myPair.first];
-    }
+void Loom_Digital::package() {
+  char name[5];
+  JsonObject json = manInst->get_data_object(getModuleName());
+  for (const auto &myPair : pinToData) {
+    snprintf_P(name, 5, PSTR("%i"), myPair.first);
+    json[name] = pinToData[myPair.first];
+  }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
