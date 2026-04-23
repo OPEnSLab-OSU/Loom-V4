@@ -3,10 +3,10 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_EZOPH::Loom_EZOPH(Manager &man, byte address, bool useMux)
     : EZOSensor("EZO-PH"), manInst(&man) {
-    module_address = address;
+  module_address = address;
 
-    if (!useMux)
-        manInst->registerModule(this);
+  if (!useMux)
+    manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -16,35 +16,35 @@ void Loom_EZOPH::initialize() { Wire.begin(); }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_EZOPH::measure() {
-    if (moduleInitialized) {
+  if (moduleInitialized) {
 
-        // Attempt to read data from the sensor
-        if (!readSensor(1000)) {
-            ERROR(F("Failed to read sensor!"));
-            return;
-        }
-
-        // Parse the constructed string
-        ph = atof(getSensorData());
+    // Attempt to read data from the sensor
+    if (!readSensor(1000)) {
+      ERROR(F("Failed to read sensor!"));
+      return;
     }
+
+    // Parse the constructed string
+    ph = atof(getSensorData());
+  }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_EZOPH::package() {
-    if (moduleInitialized) {
-        JsonObject json = manInst->get_data_object(getModuleName());
-        json["PH"] = ph; // PH is unitless
-    }
+  if (moduleInitialized) {
+    JsonObject json = manInst->get_data_object(getModuleName());
+    json["PH"] = ph; // PH is unitless
+  }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_EZOPH::power_down() {
-    if (moduleInitialized) {
-        if (!sendTransmission("sleep")) {
-            ERROR(F("Failed to send 'sleep' command to device"));
-        }
+  if (moduleInitialized) {
+    if (!sendTransmission("sleep")) {
+      ERROR(F("Failed to send 'sleep' command to device"));
     }
+  }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
