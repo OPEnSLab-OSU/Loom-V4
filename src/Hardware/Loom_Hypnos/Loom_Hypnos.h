@@ -393,26 +393,6 @@ private:
     uint8_t firedAlarmsBitMask = 0;                                                     // Which alarm triggered the wakeup
 
     /**
-     * Clear the alarm 1 register on the DS3231 RTC
-     */
-    void clearAlarm1Register();
-
-    /**
-     * Clear the alarm 2 register on the DS3231 RTC
-     */
-    void clearAlarm2Register();
-
-    /**
-     * Clear the alarm registers on the DS3231 RTC
-     */
-    void clearAlarmRegisters();
-
-    /**
-     * Clear the alarm flags on the DS3231 RTC
-     */
-    void clearAlarmFlags();
-
-    /**
      * Get which alarm triggered the wakeup
      * 
      * This returns a bitmask representing which alarms triggered:
