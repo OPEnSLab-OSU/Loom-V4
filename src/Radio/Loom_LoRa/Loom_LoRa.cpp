@@ -202,15 +202,20 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
         return FragReceiveStatus::Error;
     }
 
+    // Always check for handshake packets first
     if (tempDoc.containsKey("handshake")) {
+        // If the hub is already in handshake and it receives some other
+        // handshake packet, just skip the handshake packet by returning
+        // incomplete
         if(this->handshakeEstablished) {
             LOGF("[HANDHSAKE] Hub already in handshake");
             return FragReceiveStatus::Incomplete;
         }
-        // accepthandshake has 3 states
-        // 2 corresponds to the node getting the accept packet
-        // 1 corresponds to the hub getting the request packet
-        // 0 corresponds to an error in the hub sending back a packet
+        // Packet gets passed into handleHandshakeReceive function
+        // acceptHandshake has 3 states
+        // 2 -> node getting the accept packet
+        // 1 -> hub getting the request packet and sending back a response
+        // 0 -> error in the hub sending back a packet
         uint8_t acceptHandshake = 0;
         acceptHandshake = handleHandshakeReceive(tempDoc, fromAddress); 
         if(acceptHandshake == 2) {
@@ -224,11 +229,14 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
         }
     }
 
-    // if a device reaches a point where its receiving a none handshake packet
-    // that means that a handshake was succesfully established and once
-    // receive is done we can end the handshake
-    // this boolean is here as it will have handshake be unestablished
-    // after all receives are done
+    // If a device reaches a point where its receiving a packet that is NOT a
+    // handshake packet:
+    // - That means that a handshake was succesfully established 
+    // - So, once normal receive is done we can end the handshake
+    
+    // Setting handshakeEstablished to false is placed here so that even
+    // if some sort of error occurs in normal packet transmission
+    // handshake will be reset
     this->handshakeEstablished = false;
 
     bool isReady = false;
@@ -482,33 +490,18 @@ bool Loom_LoRa::sendPacketHeader(JsonObject json,
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Loom_LoRa::handshakeReceive(const uint8_t destinationAddress) {
-    LOGF("[HANDSHAKE] Attempting to receive from hub");
-    uint8_t hubAddress = destinationAddress;
-    if(receive(5000, &hubAddress, true)) {
-        LOGF("[HANDSHAKE] Accepted");
-        return true;
-    }
-    LOGF("[HANDSHAKE] Rejected");
-    return false;
-}
-
-// HANDHSAKE TO DO
-// Create fallback where hub exits handshakeEstablished after a long time of no receives
-// Test error modes
-// Create code comments
-// Reorganize functions
-// Name things properly
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::send(const uint8_t destinationAddress) {
+    // Before devices send normal packets, a handshake packet will be sent
     uint8_t handshakeRetries = 2;
     while(handshakeRetries > 0) {
         bool handshakeTransmitSuccess = false;
         bool handshakeAccepted = false;
+        // Send handshake request to hub
         handshakeTransmitSuccess = sendHandshakeRequest(destinationAddress);
         if(handshakeTransmitSuccess) {
             LOGF("[HANDSHAKE] Handshake request sent succesfully");
+            // Wait for accept response from hub
             handshakeAccepted = handshakeReceive(destinationAddress);
         }
 
@@ -517,46 +510,17 @@ bool Loom_LoRa::send(const uint8_t destinationAddress) {
         }
 
         else {
+            handshakeRetries--;
+            LOGF("[HANDSHAKE] Pausing to retry, %lu attempts remaining", handshakeRetries);
             const uint32_t currentTime = millis();
             while((currentTime + 10000) > millis()) {
 
             }
-            handshakeRetries--;
         }
     }
+    // Once out of retries, fail
     LOGF("Send failed");
     return false;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LoRa::sendHandshakeRequest(const uint8_t destinationAddress) {
-    const uint8_t HANDSHAKE_SIZE = 100; // enough for the handshake key and string value
-    StaticJsonDocument<HANDSHAKE_SIZE> handshakeDoc;
-    handshakeDoc["handshake"] = "Request";
-
-    bool handshakeTransmitStatus = sendFullPacket(handshakeDoc.as<JsonObject>(), destinationAddress);
-    if(!handshakeTransmitStatus) {
-        LOGF("[HANDSHAKE] Transmit handshake request failed");
-        return false;
-    }
-    return true;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LoRa::sendHandshakeResponse(const uint8_t destinationAddress) {
-    const uint8_t HANDSHAKE_SIZE = 100; // enough for the handshake key and string value
-    StaticJsonDocument<HANDSHAKE_SIZE> handshakeDoc;
-    handshakeDoc["handshake"] = "Accept";
-
-    bool handshakeTransmitStatus = sendFullPacket(handshakeDoc.as<JsonObject>(), destinationAddress);
-    if(!handshakeTransmitStatus) {
-        LOGF("[HANDSHAKE] Transmit handshake request failed");
-        return false;
-    }
-    LOGF("[HANDSHAKE] Hub succesfully transmitted handshake");
-    return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -576,6 +540,62 @@ bool Loom_LoRa::send(const uint8_t destinationAddress,
 
     
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+// HANDSHAKE TO DO
+// PROGRAMMING SIDE:
+// Create fallback where hub exits handshakeEstablished after a long time of no receives
+// Simplify code comments
+// Fix handshake logic in receive function
+// Go over proper practices with Loom team
+
+// HARDWARE/TESTING SIDE:
+// Test more robust error modes
+// Possibly implement sleep in .ino file instead of waiting in send function
+
+bool Loom_LoRa::sendHandshakeRequest(const uint8_t destinationAddress) {
+    const uint8_t HANDSHAKE_SIZE = 100; // enough for the handshake key and string value
+    StaticJsonDocument<HANDSHAKE_SIZE> handshakeDoc;
+    // Special handshake packet with "Request" value
+    handshakeDoc["handshake"] = "Request";
+
+    // Send special handshake packet and check if it went through
+    bool handshakeTransmitStatus = sendFullPacket(handshakeDoc.as<JsonObject>(), destinationAddress);
+    if(!handshakeTransmitStatus) {
+        LOGF("[HANDSHAKE] Sending handshake request failed, hub busy");
+        return false;
+    }
+    return true;
+}
+
+bool Loom_LoRa::sendHandshakeResponse(const uint8_t destinationAddress) {
+    const uint8_t HANDSHAKE_SIZE = 100; // enough for the handshake key and string value
+    StaticJsonDocument<HANDSHAKE_SIZE> handshakeDoc;
+    // Special handshake packet with "Accept" value
+    handshakeDoc["handshake"] = "Accept";
+
+    bool handshakeTransmitStatus = sendFullPacket(handshakeDoc.as<JsonObject>(), destinationAddress);
+    if(!handshakeTransmitStatus) {
+        LOGF("[HANDSHAKE] Sending handshake acceptance failed");
+        return false;
+    }
+    LOGF("[HANDSHAKE] Hub succesfully sent handshake acceptance");
+    return true;
+}
+
+bool Loom_LoRa::handshakeReceive(const uint8_t destinationAddress) {
+    // Function for node waiting to receive acceptance packet from hub
+    LOGF("[HANDSHAKE] Attempting to receive acceptance from hub");
+    uint8_t hubAddress = destinationAddress;
+    if(receive(5000, &hubAddress, true)) {
+        LOGF("[HANDSHAKE] Handshake accepted");
+        return true;
+    }
+    LOGF("[HANDSHAKE] Handshake rejected");
+    return false;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
