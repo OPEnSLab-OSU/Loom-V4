@@ -195,11 +195,15 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy, uint8_t
 
     if (isReady) {
         if (shouldProxy) {
-            const char *name = manager->getDocument()["id"]["name"];
-            manager->set_device_name(name);
-
-            int instNum = manager->getDocument()["id"]["instance"];
-            manager->set_instance_num(instNum);
+            // If tempdoc has an ID (not a fragment body) we can set a proxy
+            JsonObjectConst proxyDoc = tempDoc["id"].as<JsonObjectConst>();
+            if (proxyDoc.isNull()) {
+                proxyDoc = manager->getDocument()["id"].as<JsonObjectConst>();
+            }
+            if (!proxyDoc.isNull()) {
+                manager->set_device_name(proxyDoc["name"].as<const char *>());
+                manager->set_instance_num(proxyDoc["instance"].as<int>());
+            }
         }
 
         if (expectedOutstandingPackets > 0) {
