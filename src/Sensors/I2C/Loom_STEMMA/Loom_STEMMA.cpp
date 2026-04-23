@@ -4,67 +4,67 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_STEMMA::Loom_STEMMA(Manager &man, int addr, bool useMux)
     : I2CDevice("STEMMA"), manInst(&man), address(addr) {
-  module_address = addr;
+    module_address = addr;
 
-  // Register the module with the manager
-  if (!useMux)
-    manInst->registerModule(this);
+    // Register the module with the manager
+    if (!useMux)
+        manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::initialize() {
-  FUNCTION_START;
-  char output[OUTPUT_SIZE];
-  if (!stemma.begin(address)) {
-    LOG(F("Failed to initialize STEMMA! Check connections and try again..."));
-    moduleInitialized = false;
-  } else {
-    snprintf(output, OUTPUT_SIZE, "Successfully initialized STEMMA Version: %u",
-             stemma.getVersion());
-    LOG(output);
-  }
-  FUNCTION_END;
+    FUNCTION_START;
+    char output[OUTPUT_SIZE];
+    if (!stemma.begin(address)) {
+        LOG(F("Failed to initialize STEMMA! Check connections and try again..."));
+        moduleInitialized = false;
+    } else {
+        snprintf(output, OUTPUT_SIZE, "Successfully initialized STEMMA Version: %u",
+                 stemma.getVersion());
+        LOG(output);
+    }
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::measure() {
-  FUNCTION_START;
-  if (moduleInitialized) {
-    // Get the current connection status
-    bool connectionStatus = checkDeviceConnection();
+    FUNCTION_START;
+    if (moduleInitialized) {
+        // Get the current connection status
+        bool connectionStatus = checkDeviceConnection();
 
-    // If we are connected and we need to reinit
-    if (connectionStatus && needsReinit) {
-      initialize();
-      needsReinit = false;
+        // If we are connected and we need to reinit
+        if (connectionStatus && needsReinit) {
+            initialize();
+            needsReinit = false;
+        }
+
+        // If we are not connected
+        else if (!connectionStatus) {
+            LOG(F("No acknowledge received from the device"));
+            return;
+        }
+
+        // Pull the data from the sensor
+        temperature = stemma.getTemp();
+        cap = stemma.touchRead(0);
     }
-
-    // If we are not connected
-    else if (!connectionStatus) {
-      LOG(F("No acknowledge received from the device"));
-      return;
-    }
-
-    // Pull the data from the sensor
-    temperature = stemma.getTemp();
-    cap = stemma.touchRead(0);
-  }
-  FUNCTION_END;
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::package() {
-  FUNCTION_START;
-  if (moduleInitialized) {
-    JsonObject json = manInst->get_data_object(getModuleName());
-    // no units for capacitive, lower values means dry, higher values mean very
-    // wet.
-    json["Temperature_C"] = temperature;
-    json["Capacitive_counts"] = cap;
-  }
-  FUNCTION_END;
+    FUNCTION_START;
+    if (moduleInitialized) {
+        JsonObject json = manInst->get_data_object(getModuleName());
+        // no units for capacitive, lower values means dry, higher values mean very
+        // wet.
+        json["Temperature_C"] = temperature;
+        json["Capacitive_counts"] = cap;
+    }
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

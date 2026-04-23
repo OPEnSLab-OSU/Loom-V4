@@ -17,48 +17,45 @@ enum COUNTER_TYPE { I2C, MANUAL };
  * @author Will Richards
  */
 class Loom_TippingBucket : public Module {
-protected:
-  void power_up() override {};
-  void power_down() override {};
+  protected:
+    void power_up() override {};
+    void power_down() override {};
 
-  void initialize() override;
-  void package() override;
-  void measure() override;
+    void initialize() override;
+    void package() override;
+    void measure() override;
 
-public:
-  /* Constructor for an I2C based tipping bucket*/
-  Loom_TippingBucket(Manager &man, COUNTER_TYPE type,
-                     float inchesPerTip = 0.01);
+  public:
+    /* Constructor for an I2C based tipping bucket*/
+    Loom_TippingBucket(Manager &man, COUNTER_TYPE type, float inchesPerTip = 0.01);
 
-  /* Set an instance of the Hypnos inside the tipping bucket class so we can
-   * read RTC data*/
-  void setHypnosInstance(Loom_Hypnos &hypnos) { this->hypnosInst = &hypnos; };
+    /* Set an instance of the Hypnos inside the tipping bucket class so we can
+     * read RTC data*/
+    void setHypnosInstance(Loom_Hypnos &hypnos) { this->hypnosInst = &hypnos; };
 
-  /* Increase the tip count variable by one */
-  void incrementCount() { tipCount++; };
+    /* Increase the tip count variable by one */
+    void incrementCount() { tipCount++; };
 
-  /* Get the rainfall that accumulated over the last hour (calculated based on
-   * the Hypnos RTC)*/
-  float getHourlyRainfall() { return tipsToInches(hourlyTips); };
+    /* Get the rainfall that accumulated over the last hour (calculated based on
+     * the Hypnos RTC)*/
+    float getHourlyRainfall() { return tipsToInches(hourlyTips); };
 
-  /* Get the total rainfall over the runtime of the device */
-  float getTotalRainfall() { return tipsToInches(tipCount); };
+    /* Get the total rainfall over the runtime of the device */
+    float getTotalRainfall() { return tipsToInches(tipCount); };
 
-private:
-  Manager *manInst = nullptr; // Instance of the manager
-  unsigned long tipCount = 0; // The number of tips accumulated by the counter
+  private:
+    Manager *manInst = nullptr; // Instance of the manager
+    unsigned long tipCount = 0; // The number of tips accumulated by the counter
 
-  /* Hourly Tips Tracker*/
-  Loom_Hypnos *hypnosInst = nullptr; // Instance of the hypnos for using RTC
-  unsigned long hourlyTips = 0;      // Number of tips recorded in the last hour
-  const float inchesPerTip;          //
-  std::deque<uint32_t>
-      times; // Track the UNIX times of each log to be able to determine when we
-             // want to shift our double ended queue
-  std::deque<unsigned long>
-      tips; // Track the number of total tips per each sample
-  unsigned long lastTipCount = 0;
+    /* Hourly Tips Tracker*/
+    Loom_Hypnos *hypnosInst = nullptr; // Instance of the hypnos for using RTC
+    unsigned long hourlyTips = 0;      // Number of tips recorded in the last hour
+    const float inchesPerTip;          //
+    std::deque<uint32_t> times; // Track the UNIX times of each log to be able to determine when we
+                                // want to shift our double ended queue
+    std::deque<unsigned long> tips; // Track the number of total tips per each sample
+    unsigned long lastTipCount = 0;
 
-  float tipsToInches(unsigned long tips); // Convert the number of tips of a
-                                          // bucket to inches of rainfall
+    float tipsToInches(unsigned long tips); // Convert the number of tips of a
+                                            // bucket to inches of rainfall
 };

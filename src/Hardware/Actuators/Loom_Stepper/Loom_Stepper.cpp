@@ -3,9 +3,8 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Stepper::Loom_Stepper(Manager &man, int instance_num)
-    : Actuator(ACTUATOR_TYPE::STEPPER, instance_num), manInst(&man),
-      instance(instance_num) {
-  manInst->registerModule(this);
+    : Actuator(ACTUATOR_TYPE::STEPPER, instance_num), manInst(&man), instance(instance_num) {
+    manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -20,65 +19,63 @@ Loom_Stepper::~Loom_Stepper() { delete AFMS; }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Stepper::initialize() {
-  FUNCTION_START;
+    FUNCTION_START;
 
-  // Get references to each motor
-  AFMS = new Adafruit_MotorShield();
-  motor = AFMS->getStepper(200, instance + 1);
+    // Get references to each motor
+    AFMS = new Adafruit_MotorShield();
+    motor = AFMS->getStepper(200, instance + 1);
 
-  // Start the motor controller
-  AFMS->begin();
+    // Start the motor controller
+    AFMS->begin();
 
-  // Wait for init move
-  yield();
+    // Wait for init move
+    yield();
 
-  LOG(F("Stepper Initialized!"));
-  FUNCTION_END;
+    LOG(F("Stepper Initialized!"));
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Stepper::package(JsonObject json) {
-  FUNCTION_START;
-  json["Position"] = currentSteps;
-  json["RPM"] = rpm;
-  json["Direction"] = (clockwise ? "Counterclockwise" : "Clockwise");
-  FUNCTION_END;
+    FUNCTION_START;
+    json["Position"] = currentSteps;
+    json["RPM"] = rpm;
+    json["Direction"] = (clockwise ? "Counterclockwise" : "Clockwise");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Stepper::control(JsonArray json) {
-  FUNCTION_START;
-  moveSteps(json[1].as<uint16_t>(), json[2].as<uint8_t>(), json[3].as<bool>());
-  FUNCTION_END;
+    FUNCTION_START;
+    moveSteps(json[1].as<uint16_t>(), json[2].as<uint8_t>(), json[3].as<bool>());
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Stepper::moveSteps(const uint16_t steps, const uint8_t speed,
-                             const bool clockwise) {
-  char output[OUTPUT_SIZE];
-  FUNCTION_START;
-  rpm = speed;
-  this->clockwise = clockwise;
+void Loom_Stepper::moveSteps(const uint16_t steps, const uint8_t speed, const bool clockwise) {
+    char output[OUTPUT_SIZE];
+    FUNCTION_START;
+    rpm = speed;
+    this->clockwise = clockwise;
 
-  motor->setSpeed(speed);
-  motor->step(steps, (clockwise) ? BACKWARD : FORWARD, SINGLE);
+    motor->setSpeed(speed);
+    motor->step(steps, (clockwise) ? BACKWARD : FORWARD, SINGLE);
 
-  // Wait for move to finish
-  yield();
+    // Wait for move to finish
+    yield();
 
-  // Tracks the current state of the motor
-  if (clockwise)
-    currentSteps = currentSteps - steps;
-  else
-    currentSteps = currentSteps + steps;
+    // Tracks the current state of the motor
+    if (clockwise)
+        currentSteps = currentSteps - steps;
+    else
+        currentSteps = currentSteps + steps;
 
-  snprintf_P(output, OUTPUT_SIZE,
-             PSTR("Stepper set to move %u steps at speed %u going %s"), steps,
-             speed, (clockwise) ? "counterclockwise" : "clockwise");
-  LOG(output);
-  FUNCTION_END;
+    snprintf_P(output, OUTPUT_SIZE, PSTR("Stepper set to move %u steps at speed %u going %s"),
+               steps, speed, (clockwise) ? "counterclockwise" : "clockwise");
+    LOG(output);
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
