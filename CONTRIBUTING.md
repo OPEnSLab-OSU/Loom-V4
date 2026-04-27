@@ -182,7 +182,17 @@ Examples:
 ---
 
 ## Releasing a New Board Profile
-- TODO
+- Merge current `dev` branch into `main`
+- Ensure local branch is set to `dev`
+- Rename the `4.X` folder to `loom4`
+- Update and add new libraries
+- Compress the renamed `loom4` folder
+- Get size of compressed folder with `ls -al`
+- Create checksum with `sha256sum.exe < loom4.zip`
+- Create version release on Github and upload the compressed `loom4.zip`
+- After pusing the release, create a new entry in `package_loom4_index.json` and update the `version`, `url`, `checksum`, and `size` fields.
+- Wait an hour for the Arduino IDE to update and redownload to ensure the new libraries are included
+- Refer to this [walkthrough](https://media.oregonstate.edu/media/t/1_6lpxb7mp) for more details
 
 ## Code Standards
 - Refer to the [C Style Guide](https://github.com/OPEnSLab-OSU/Loom-V4/wiki/C-Style-Guide#style-guide-for-embedded-programming) found in the Wiki
