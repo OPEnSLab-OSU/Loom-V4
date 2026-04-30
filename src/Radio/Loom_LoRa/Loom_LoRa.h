@@ -26,7 +26,14 @@
 enum class FragReceiveStatus {
     Incomplete,  // no packet has been completed
     Complete,    // packet has been loaded into the global document
+    HandshakeAccepted, // node received a handshake acceptance packet
     Error        // could not receive fragment
+};
+
+enum class HandshakeReceiveStatus {
+    Accepted,         // node received hub acceptance
+    AwaitingPayload,  // hub accepted request and is waiting for data
+    Failed            // invalid handshake or response transmit failed
 };
 
 struct PartialPacket {
@@ -209,7 +216,11 @@ private:
     bool handleFragBody(JsonDocument &workingDoc, uint8_t fromAddress);
     bool handleSingleFrag(JsonDocument &workingDoc);
     bool handleLostFrag(JsonDocument &workingDoc, uint8_t fromAddress);
-    uint8_t handleHandshakeReceive(JsonDocument &tempDoc, uint8_t* fromAddress);
+
+    HandshakeReceiveStatus handleHandshakeReceive(JsonDocument &tempDoc, uint8_t* fromAddress);
+    void beginHandshake(uint8_t peerAddress);
+    void clearHandshake();
+    bool clearExpiredHandshake();
 
     bool handshakeReceive(const uint8_t destinationAddress);
 
@@ -240,6 +251,9 @@ private:
     uint16_t retryTimeout;      // Delay between retries (MS)
 
     bool handshakeEstablished = false;
+    uint8_t handshakePeerAddress = 0;
+    uint32_t handshakeEstablishedAt = 0;
+    static constexpr uint32_t HANDSHAKE_TIMEOUT_MS = 15000;
 
     std::unordered_map<uint8_t, PartialPacket> frags; // Partial packets sorted by address
     
