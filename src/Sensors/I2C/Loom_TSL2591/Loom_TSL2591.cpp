@@ -30,6 +30,9 @@ void Loom_TSL2591::initialize() {
         tsl.setGain(gain);
         tsl.setTiming(intTime);
 
+        //needs to be added to all sensors
+        moduleInitialized = true;
+
         LOG(F("Successfully initialized TSL2591!"));
     }
     FUNCTION_END;
