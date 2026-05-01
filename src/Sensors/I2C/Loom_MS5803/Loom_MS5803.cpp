@@ -19,6 +19,9 @@ void Loom_MS5803::initialize(){
         moduleInitialized = false;
     }
     else{
+        //needs to be added to all sensors
+        moduleInitialized = true;
+        
         LOG(F("Successfully Initialized ms5803! Address: "));
         Serial.println(module_address, DEC);
 
