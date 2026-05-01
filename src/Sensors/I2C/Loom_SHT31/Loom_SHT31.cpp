@@ -23,6 +23,9 @@ void Loom_SHT31::initialize() {
         moduleInitialized = false;
     }
     else{
+        //needs to be added to all sensors
+        moduleInitialized = true;
+      
         LOG(F("Successfully initialized SHT31!"));
     }
     FUNCTION_END;
