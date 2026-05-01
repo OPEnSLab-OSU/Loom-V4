@@ -67,6 +67,14 @@ void Manager::measure() {
     if(hasInitialized){
        LOG(F("** Measuring **"));
        for(int i = 0; i < modules.size(); i++){
+			// Try to reinitialize failed modules for the first 10 packets
+            if (!modules[i].second->moduleInitialized && packetNumber <= 10) {
+                // Ensure I2C is restarted before a hot-plug retry.
+                Wire.begin();
+                modules[i].second->initialize();
+            }
+            //
+
             if(modules[i].second->moduleInitialized)
                 modules[i].second->measure();
             else{
