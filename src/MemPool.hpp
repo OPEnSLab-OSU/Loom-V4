@@ -2,46 +2,47 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
-#ifndef LOOM_MEMPOOL_BLOCK_SIZE
-#define LOOM_MEMPOOL_BLOCK_SIZE 128
+#ifndef MEMPOOL_BLOCK_SIZE
+#define MEMPOOL_BLOCK_SIZE 64
 #endif
 
-#ifndef LOOM_MEMPOOL_BLOCK_COUNT
-#define LOOM_MEMPOOL_BLOCK_COUNT 64
+#ifndef MEMPOOL_BLOCK_COUNT
+#define MEMPOOL_BLOCK_COUNT 128
 #endif
 
-#ifndef LOOM_MEMPOOL_MAX_LEASES
-#define LOOM_MEMPOOL_MAX_LEASES 32
+#ifndef MEMPOOL_MAX_LEASES
+#define MEMPOOL_MAX_LEASES 64
 #endif
 
-#ifndef LOOM_MEMPOOL_ZERO_ON_ALLOC
-#define LOOM_MEMPOOL_ZERO_ON_ALLOC 1
+#ifndef MEMPOOL_ZERO_ON_ALLOC
+#define MEMPOOL_ZERO_ON_ALLOC 1
 #endif
 
-#ifndef LOOM_MEMPOOL_ZERO_ON_FREE
-#define LOOM_MEMPOOL_ZERO_ON_FREE 1
+#ifndef MEMPOOL_ZERO_ON_FREE
+#define MEMPOOL_ZERO_ON_FREE 1
 #endif
 
-#ifndef LOOM_SYSTEM_RAM_TOTAL_BYTES
-#define LOOM_SYSTEM_RAM_TOTAL_BYTES 32768
+#ifndef SYSTEM_RAM_TOTAL_BYTES
+#define SYSTEM_RAM_TOTAL_BYTES 32768
+#endif
+
+#ifndef MEMPOOL_TAG_MAX_LEN
+#define MEMPOOL_TAG_MAX_LEN 16
+#endif
+
+#ifndef MEMPOOL_DUMP_LINE_BYTES
+#define MEMPOOL_DUMP_LINE_BYTES 96
 #endif
 
 class SDManager;
 
 /**
- *
- * MemPool uses deterministic memory chunks known as arenas to prevent heap fragmentation due to
- * frequent allocations. It provides a single source single owner memory manager that encourages lease 
- * lifecycles similar to stack frames.
- * - Macros are set for 8192B (8KB) by default.
- * - Memory is reserved for the arena at compile time and will not change.
- * - MemPool should be used for any allocations that are not explicitly known at compile time.
- *   If you're unsure or need a large buffer use mempool.
- * - After arena allocation the feather is left with 9607B SRAM (bare feather/hypnos)
+ * MemPool uses deterministic fixed-size blocks to avoid heap fragmentation.
+ * Default config reserves 8KB (64 blocks * 128 bytes) at compile time.
  */
-
 class MemPool {
   public:
     struct Handle {
@@ -55,6 +56,17 @@ class MemPool {
         }
     };
 
+    enum AllocFailureReason : uint8_t {
+        ALLOC_FAIL_NONE = 0,
+        ALLOC_FAIL_TOO_LARGE = 1,
+        ALLOC_FAIL_NO_CONTIGUOUS_RUN = 2,
+        ALLOC_FAIL_NO_LEASE_SLOT = 3
+    };
+
+    /* Stats function pointer callbacks*/
+    typedef int (*FreeRamProviderFn)();
+    typedef void (*LeaseDumpCallback)(const char *line, void *userCtx);
+
     struct Stats {
         uint16_t freeBlocks;
         uint16_t usedBlocks;
@@ -67,49 +79,109 @@ class MemPool {
         uint16_t bytesFree;
         uint16_t systemRamTotalBytes;
         uint16_t systemRamFreeBytes;
+
+        uint32_t allocCalls;
+        uint32_t releaseCalls;
+        uint32_t writeCalls;
+        uint32_t readCalls;
+        uint32_t clearCalls;
+
+        uint32_t bytesRequested;
+        uint32_t bytesGranted;
+        uint32_t bytesReleased;
+
+        uint16_t failedTooLarge;
+        uint16_t failedNoContiguousRun;
+        uint16_t failedNoLeaseSlot;
+        uint16_t failedReleaseInvalid;
+        uint16_t failedReleaseCorrupt;
+
+        uint16_t maxContiguousFreeBlocks;
+        uint8_t lastAllocFailureReason;
     };
 
     MemPool() { init(); }
 
+    /**
+     * Reset pool arena, ownership maps, and all runtime counters.
+     */
     bool init() {
         memset(arena_, 0, sizeof(arena_));
-        for (size_t i = 0; i < LOOM_MEMPOOL_BLOCK_COUNT; i++) {
+        for (size_t i = 0; i < MEMPOOL_BLOCK_COUNT; i++) {
             ownerByBlock_[i] = kFreeBlockOwner;
         }
 
-        for (size_t i = 0; i < LOOM_MEMPOOL_MAX_LEASES; i++) {
+        for (size_t i = 0; i < MEMPOOL_MAX_LEASES; i++) {
             leaseActive_[i] = false;
             leaseGeneration_[i] = 0;
             leaseStart_[i] = 0;
             leaseBlocks_[i] = 0;
             leaseSize_[i] = 0;
+            leaseTag_[i][0] = '\0';
         }
 
-        freeBlocks_ = LOOM_MEMPOOL_BLOCK_COUNT;
+        freeBlocks_ = MEMPOOL_BLOCK_COUNT;
         usedBlocks_ = 0;
         highWaterBlocks_ = 0;
         failedAllocs_ = 0;
         activeLeases_ = 0;
+
+        allocCalls_ = 0;
+        releaseCalls_ = 0;
+        writeCalls_ = 0;
+        readCalls_ = 0;
+        clearCalls_ = 0;
+
+        bytesRequested_ = 0;
+        bytesGranted_ = 0;
+        bytesReleased_ = 0;
+
+        failedTooLarge_ = 0;
+        failedNoContiguousRun_ = 0;
+        failedNoLeaseSlot_ = 0;
+        failedReleaseInvalid_ = 0;
+        failedReleaseCorrupt_ = 0;
+        lastAllocFailureReason_ = ALLOC_FAIL_NONE;
+
+        freeRamProvider_ = nullptr;
         return true;
     }
 
-    // Alloc cannot allocate 0 bytes, sets 0 to 1.
-    Handle alloc(size_t bytes) {
+    /**
+     * Register a callback used by stats() to report system free RAM.
+     */
+    void setFreeRamProvider(FreeRamProviderFn provider) { freeRamProvider_ = provider; }
+
+    /**
+     * Allocate a lease without a debug tag.
+     */
+    Handle alloc(size_t bytes) { return alloc(bytes, nullptr); }
+
+    /**
+     * Allocate a lease of at least `bytes` and optionally label it with `tag`.
+     * Allocation uses first-fit contiguous blocks and returns Handle::invalid() on failure.
+     */
+    Handle alloc(size_t bytes, const char *tag) {
+        allocCalls_++;
+
+        // Alloc cannot allocate 0 bytes, normalize to 1 byte.
         if (bytes == 0) {
             bytes = 1;
         }
+        bytesRequested_ += (uint32_t)bytes;
+        lastAllocFailureReason_ = ALLOC_FAIL_NONE;
 
-        const size_t blocksNeeded = (bytes + LOOM_MEMPOOL_BLOCK_SIZE - 1) / LOOM_MEMPOOL_BLOCK_SIZE;
-        if (blocksNeeded > LOOM_MEMPOOL_BLOCK_COUNT) {
-            return failAllocation();
+        const size_t blocksNeeded = (bytes + MEMPOOL_BLOCK_SIZE - 1) / MEMPOOL_BLOCK_SIZE;
+        if (blocksNeeded > MEMPOOL_BLOCK_COUNT) {
+            return failAllocation(ALLOC_FAIL_TOO_LARGE);
         }
 
         size_t runStart = 0;
         size_t runLength = 0;
         bool found = false;
 
-        /* Find a run with contigous blocks */
-        for (size_t i = 0; i < LOOM_MEMPOOL_BLOCK_COUNT; i++) {
+        // Find a contiguous free run.
+        for (size_t i = 0; i < MEMPOOL_BLOCK_COUNT; i++) {
             if (ownerByBlock_[i] == kFreeBlockOwner) {
                 if (runLength == 0) {
                     runStart = i;
@@ -125,12 +197,12 @@ class MemPool {
         }
 
         if (!found) {
-            return failAllocation();
+            return failAllocation(ALLOC_FAIL_NO_CONTIGUOUS_RUN);
         }
 
         const uint16_t leaseSlot = findFreeLeaseSlot();
         if (leaseSlot == Handle::INVALID_SLOT) {
-            return failAllocation();
+            return failAllocation(ALLOC_FAIL_NO_LEASE_SLOT);
         }
 
         uint16_t generation = (uint16_t)(leaseGeneration_[leaseSlot] + 1);
@@ -143,29 +215,37 @@ class MemPool {
         leaseStart_[leaseSlot] = (uint16_t)runStart;
         leaseBlocks_[leaseSlot] = (uint16_t)blocksNeeded;
         leaseSize_[leaseSlot] = bytes;
+        setLeaseTag(leaseSlot, tag);
 
         for (size_t i = runStart; i < runStart + blocksNeeded; i++) {
             ownerByBlock_[i] = leaseSlot;
         }
 
         usedBlocks_ = (uint16_t)(usedBlocks_ + blocksNeeded);
-        freeBlocks_ = (uint16_t)(LOOM_MEMPOOL_BLOCK_COUNT - usedBlocks_);
+        freeBlocks_ = (uint16_t)(MEMPOOL_BLOCK_COUNT - usedBlocks_);
         if (usedBlocks_ > highWaterBlocks_) {
             highWaterBlocks_ = usedBlocks_;
         }
         activeLeases_++;
+        bytesGranted_ += (uint32_t)(blocksNeeded * MEMPOOL_BLOCK_SIZE);
 
-#if LOOM_MEMPOOL_ZERO_ON_ALLOC
-        memset(arena_ + (runStart * LOOM_MEMPOOL_BLOCK_SIZE), 0,
-               blocksNeeded * LOOM_MEMPOOL_BLOCK_SIZE);
+#if MEMPOOL_ZERO_ON_ALLOC
+        memset(arena_ + (runStart * MEMPOOL_BLOCK_SIZE), 0, blocksNeeded * MEMPOOL_BLOCK_SIZE);
 #endif
 
         Handle h = {leaseSlot, generation};
         return h;
     }
 
+    /**
+     * Release a valid lease handle back to the pool.
+     * Returns false if handle is invalid or ownership metadata is inconsistent.
+     */
     bool release(Handle h) {
+        releaseCalls_++;
+
         if (!valid(h)) {
+            failedReleaseInvalid_++;
             return false;
         }
 
@@ -173,19 +253,21 @@ class MemPool {
         const uint16_t blockStart = leaseStart_[slot];
         const uint16_t blockCount = leaseBlocks_[slot];
 
-        if (blockCount == 0 || (size_t)blockStart + (size_t)blockCount > LOOM_MEMPOOL_BLOCK_COUNT) {
+        if (blockCount == 0 || (size_t)blockStart + (size_t)blockCount > MEMPOOL_BLOCK_COUNT) {
+            failedReleaseCorrupt_++;
             return false;
         }
 
         for (size_t i = blockStart; i < (size_t)blockStart + (size_t)blockCount; i++) {
             if (ownerByBlock_[i] != slot) {
+                failedReleaseCorrupt_++;
                 return false;
             }
         }
 
-#if LOOM_MEMPOOL_ZERO_ON_FREE
-        memset(arena_ + (blockStart * LOOM_MEMPOOL_BLOCK_SIZE), 0,
-               (size_t)blockCount * LOOM_MEMPOOL_BLOCK_SIZE);
+#if MEMPOOL_ZERO_ON_FREE
+        memset(arena_ + (blockStart * MEMPOOL_BLOCK_SIZE), 0,
+               (size_t)blockCount * MEMPOOL_BLOCK_SIZE);
 #endif
 
         for (size_t i = blockStart; i < (size_t)blockStart + (size_t)blockCount; i++) {
@@ -196,6 +278,7 @@ class MemPool {
         leaseStart_[slot] = 0;
         leaseBlocks_[slot] = 0;
         leaseSize_[slot] = 0;
+        leaseTag_[slot][0] = '\0';
 
         if (activeLeases_ > 0) {
             activeLeases_--;
@@ -206,10 +289,14 @@ class MemPool {
         } else {
             usedBlocks_ = 0;
         }
-        freeBlocks_ = (uint16_t)(LOOM_MEMPOOL_BLOCK_COUNT - usedBlocks_);
+        freeBlocks_ = (uint16_t)(MEMPOOL_BLOCK_COUNT - usedBlocks_);
+        bytesReleased_ += (uint32_t)(blockCount * MEMPOOL_BLOCK_SIZE);
         return true;
     }
 
+    /**
+     * Get the logical byte size requested for a lease.
+     */
     size_t size(Handle h) const {
         if (!valid(h)) {
             return 0;
@@ -217,7 +304,22 @@ class MemPool {
         return leaseSize_[h.slot];
     }
 
+    /**
+     * Get the debug tag associated with a lease, if present.
+     */
+    const char *tag(Handle h) const {
+        if (!valid(h)) {
+            return nullptr;
+        }
+        return leaseTag_[h.slot];
+    }
+
+    /**
+     * Copy len bytes from src into lease memory at offset.
+     */
     bool write(Handle h, size_t offset, const void *src, size_t len) {
+        writeCalls_++;
+
         if (!valid(h)) {
             return false;
         }
@@ -243,17 +345,15 @@ class MemPool {
     }
 
     /**
-     * Copies len bytes from the lease starting at offset into dst.
-     * Returns false if the handle is invalid or the read is out of bounds.
-     * @param Handle the lease handle of the caller
-     * 
-     * @returns bool 
+     * Copy len bytes from lease memory at offset into dst.
      */
-    bool read(Handle h, size_t offset, void *dst, size_t len) const {
-      const uint8_t *src = data(h);
-      if (src == nullptr) {
-        return false;
-      }
+    bool read(Handle h, size_t offset, void *dst, size_t len) {
+        readCalls_++;
+
+        const uint8_t *src = data(h);
+        if (src == nullptr) {
+            return false;
+        }
         if (len == 0) {
             return true;
         }
@@ -269,37 +369,28 @@ class MemPool {
         memcpy(dst, src + offset, len);
         return true;
     }
-    
+
     /**
-     * Clears the entire memory chunk for a valid handle.
-     * By default, memory is zeroed. Size is determined from the
-     * lease block count and block size.
-     * @param Handle the lease handle of the caller
-     * @param value the value used to reset the chunk
-     * 
-     * @returns bool 
+     * Fill all blocks owned by a lease with a single byte value.
      */
     bool clear(Handle h, uint8_t value = 0) {
+        clearCalls_++;
+
         uint8_t *dst = data(h);
-        if(dst == nullptr) {
-          return false;
+        if (dst == nullptr) {
+            return false;
         }
-        const size_t byteCount = (size_t)leaseBlocks_[h.slot] * LOOM_MEMPOOL_BLOCK_SIZE;
-        
+        const size_t byteCount = (size_t)leaseBlocks_[h.slot] * MEMPOOL_BLOCK_SIZE;
+
         memset(dst, value, byteCount);
         return true;
     }
 
     /**
-     * Returns true if passed handle is still active (currently allocated and matches lease)
-     * Inactive handles set to default 0xFFFF
-     * Handles generation must be active and match mempools internal generation
-     * @param Handle the lease handle of the caller
-     * 
-     * @returns bool 
+     * Returns true only when handle slot is active and generation matches.
      */
     bool valid(Handle h) const {
-        if (h.slot >= LOOM_MEMPOOL_MAX_LEASES || h.generation == 0) {
+        if (h.slot >= MEMPOOL_MAX_LEASES || h.generation == 0) {
             return false;
         }
         if (!leaseActive_[h.slot]) {
@@ -309,76 +400,104 @@ class MemPool {
     }
 
     /**
-     **********DANGEROUS METHODS***************
-     * Reintepret cast is used safely here because we are only
-     * converting bytes (uint8 -> char). This cast cannot be done
-     * to datatypes larger than that safely. 
-     * 
-     * Currently testing for MongoDB::publish()
-     * Using to return char bytes
+     * DANGEROUS: Cast for uint8 leases that need to be char buffers.
+     *            Take extra care to ensure you're only storing chars in this buffer.
      */
-    char *chars(Handle h) {
-      return reinterpret_cast<char*>(data(h));
-    }
-    
-    const char *chars(Handle h) const {
-      return reinterpret_cast<const char*>(data(h));
-    }
-  
+    char *chars(Handle h) { return reinterpret_cast<char *>(data(h)); }
+    const char *chars(Handle h) const { return reinterpret_cast<const char *>(data(h)); }
 
+    /**
+     * Iterate active leases and emit one formatted line per lease through callback.
+     * Returns number of active leases.
+     */
+    size_t dumpActiveLeases(LeaseDumpCallback cb = nullptr, void *userCtx = nullptr) const {
+        size_t count = 0;
+        for (uint16_t slot = 0; slot < MEMPOOL_MAX_LEASES; slot++) {
+            if (!leaseActive_[slot]) {
+                continue;
+            }
+            count++;
+            if (cb != nullptr) {
+                char line[MEMPOOL_DUMP_LINE_BYTES];
+                snprintf(line, sizeof(line), "slot=%u gen=%u start=%u blocks=%u size=%u tag=%s",
+                         (unsigned int)slot, (unsigned int)leaseGeneration_[slot],
+                         (unsigned int)leaseStart_[slot], (unsigned int)leaseBlocks_[slot],
+                         (unsigned int)leaseSize_[slot],
+                         leaseTag_[slot][0] != '\0' ? leaseTag_[slot] : "-");
+                cb(line, userCtx);
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Snapshot pool/system stats and runtime counters.
+     */
     Stats stats() const {
         Stats s = {};
         s.freeBlocks = freeBlocks_;
         s.usedBlocks = usedBlocks_;
-        s.totalBlocks = LOOM_MEMPOOL_BLOCK_COUNT;
+        s.totalBlocks = MEMPOOL_BLOCK_COUNT;
         s.highWaterBlocks = highWaterBlocks_;
         s.failedAllocs = failedAllocs_;
         s.activeLeases = activeLeases_;
-        s.bytesTotal = (uint16_t)(LOOM_MEMPOOL_BLOCK_SIZE * LOOM_MEMPOOL_BLOCK_COUNT);
-        s.bytesUsed = (uint16_t)(usedBlocks_ * LOOM_MEMPOOL_BLOCK_SIZE);
-        s.bytesFree = (uint16_t)(freeBlocks_ * LOOM_MEMPOOL_BLOCK_SIZE);
-        s.systemRamTotalBytes = (uint16_t)LOOM_SYSTEM_RAM_TOTAL_BYTES;
-        s.systemRamFreeBytes = 0;
+        s.bytesTotal = (uint16_t)(MEMPOOL_BLOCK_SIZE * MEMPOOL_BLOCK_COUNT);
+        s.bytesUsed = (uint16_t)(usedBlocks_ * MEMPOOL_BLOCK_SIZE);
+        s.bytesFree = (uint16_t)(freeBlocks_ * MEMPOOL_BLOCK_SIZE);
+        s.systemRamTotalBytes = (uint16_t)SYSTEM_RAM_TOTAL_BYTES;
+        s.systemRamFreeBytes = readSystemFreeRam();
+
+        s.allocCalls = allocCalls_;
+        s.releaseCalls = releaseCalls_;
+        s.writeCalls = writeCalls_;
+        s.readCalls = readCalls_;
+        s.clearCalls = clearCalls_;
+
+        s.bytesRequested = bytesRequested_;
+        s.bytesGranted = bytesGranted_;
+        s.bytesReleased = bytesReleased_;
+
+        s.failedTooLarge = failedTooLarge_;
+        s.failedNoContiguousRun = failedNoContiguousRun_;
+        s.failedNoLeaseSlot = failedNoLeaseSlot_;
+        s.failedReleaseInvalid = failedReleaseInvalid_;
+        s.failedReleaseCorrupt = failedReleaseCorrupt_;
+
+        s.maxContiguousFreeBlocks = maxContiguousFreeBlocks();
+        s.lastAllocFailureReason = lastAllocFailureReason_;
         return s;
     }
 
   private:
-    // Manager is the internal pool owner 
-    // SD file/stream paths and needs direct lease pointers.
     friend class SDManager;
-    
-    // Assigns freeblocks to invalid (unallocated) slots
+
     static constexpr uint16_t kFreeBlockOwner = Handle::INVALID_SLOT;
 
     /**
-     * read-write data pointer 
-     * @param Handle the lease handle of the caller
-     * 
-     * @returns pointer to the start of the lease
-     * */
+     * Internal read-write pointer to lease start.
+     */
     uint8_t *data(Handle h) {
         if (!valid(h)) {
             return nullptr;
         }
-        return arena_ + ((size_t)leaseStart_[h.slot] * LOOM_MEMPOOL_BLOCK_SIZE);
+        return arena_ + ((size_t)leaseStart_[h.slot] * MEMPOOL_BLOCK_SIZE);
     }
 
     /**
-     * read-only data pointer 
-     * @param Handle the lease handle of the caller
-     * 
-     * @returns const pointer to the start of the lease
-     * */
+     * Internal read-only pointer to lease start.
+     */
     const uint8_t *data(Handle h) const {
         if (!valid(h)) {
             return nullptr;
         }
-        return arena_ + ((size_t)leaseStart_[h.slot] * LOOM_MEMPOOL_BLOCK_SIZE);
+        return arena_ + ((size_t)leaseStart_[h.slot] * MEMPOOL_BLOCK_SIZE);
     }
 
-    /* Internal helper for locating free lease locations */
+    /**
+     * Internal helper for locating the first available lease slot.
+     */
     uint16_t findFreeLeaseSlot() const {
-        for (uint16_t i = 0; i < LOOM_MEMPOOL_MAX_LEASES; i++) {
+        for (uint16_t i = 0; i < MEMPOOL_MAX_LEASES; i++) {
             if (!leaseActive_[i]) {
                 return i;
             }
@@ -387,27 +506,111 @@ class MemPool {
     }
 
     /**
-     * Increments the failedAllocs counter
-     * 
-     * @returns invalid handle -> 0xFFFF (65535)
-     * */
-    Handle failAllocation() {
+     * Internal helper to safely set a fixed-size lease tag.
+     */
+    void setLeaseTag(uint16_t slot, const char *tag) {
+        if (slot >= MEMPOOL_MAX_LEASES) {
+            return;
+        }
+        if (tag == nullptr) {
+            leaseTag_[slot][0] = '\0';
+            return;
+        }
+        strncpy(leaseTag_[slot], tag, MEMPOOL_TAG_MAX_LEN - 1);
+        leaseTag_[slot][MEMPOOL_TAG_MAX_LEN - 1] = '\0';
+    }
+
+    /**
+     * Centralized allocation failure accounting and invalid-handle return.
+     */
+    Handle failAllocation(AllocFailureReason reason) {
         failedAllocs_++;
+        lastAllocFailureReason_ = (uint8_t)reason;
+        switch (reason) {
+        case ALLOC_FAIL_TOO_LARGE:
+            failedTooLarge_++;
+            break;
+        case ALLOC_FAIL_NO_CONTIGUOUS_RUN:
+            failedNoContiguousRun_++;
+            break;
+        case ALLOC_FAIL_NO_LEASE_SLOT:
+            failedNoLeaseSlot_++;
+            break;
+        case ALLOC_FAIL_NONE:
+        default:
+            break;
+        }
         return Handle::invalid();
     }
 
-    uint8_t arena_[LOOM_MEMPOOL_BLOCK_SIZE * LOOM_MEMPOOL_BLOCK_COUNT];
-    uint16_t ownerByBlock_[LOOM_MEMPOOL_BLOCK_COUNT];
+    /**
+     * Compute largest contiguous free run in blocks.
+     */
+    uint16_t maxContiguousFreeBlocks() const {
+        uint16_t best = 0;
+        uint16_t run = 0;
+        for (size_t i = 0; i < MEMPOOL_BLOCK_COUNT; i++) {
+            if (ownerByBlock_[i] == kFreeBlockOwner) {
+                run++;
+                if (run > best) {
+                    best = run;
+                }
+            } else {
+                run = 0;
+            }
+        }
+        return best;
+    }
 
-    bool leaseActive_[LOOM_MEMPOOL_MAX_LEASES];
-    uint16_t leaseGeneration_[LOOM_MEMPOOL_MAX_LEASES];
-    uint16_t leaseStart_[LOOM_MEMPOOL_MAX_LEASES];
-    uint16_t leaseBlocks_[LOOM_MEMPOOL_MAX_LEASES];
-    size_t leaseSize_[LOOM_MEMPOOL_MAX_LEASES];
+    /**
+     * Read system free RAM via registered callback, clamped to uint16_t.
+     */
+    uint16_t readSystemFreeRam() const {
+        if (freeRamProvider_ == nullptr) {
+            return 0;
+        }
+        int freeRam = freeRamProvider_();
+        if (freeRam < 0) {
+            freeRam = 0;
+        }
+        if (freeRam > 0xFFFF) {
+            freeRam = 0xFFFF;
+        }
+        return (uint16_t)freeRam;
+    }
+
+    uint8_t arena_[MEMPOOL_BLOCK_SIZE * MEMPOOL_BLOCK_COUNT];
+    uint16_t ownerByBlock_[MEMPOOL_BLOCK_COUNT];
+
+    bool leaseActive_[MEMPOOL_MAX_LEASES];
+    uint16_t leaseGeneration_[MEMPOOL_MAX_LEASES];
+    uint16_t leaseStart_[MEMPOOL_MAX_LEASES];
+    uint16_t leaseBlocks_[MEMPOOL_MAX_LEASES];
+    size_t leaseSize_[MEMPOOL_MAX_LEASES];
+    char leaseTag_[MEMPOOL_MAX_LEASES][MEMPOOL_TAG_MAX_LEN];
 
     uint16_t freeBlocks_;
     uint16_t usedBlocks_;
     uint16_t highWaterBlocks_;
     uint16_t failedAllocs_;
     uint16_t activeLeases_;
+
+    uint32_t allocCalls_;
+    uint32_t releaseCalls_;
+    uint32_t writeCalls_;
+    uint32_t readCalls_;
+    uint32_t clearCalls_;
+
+    uint32_t bytesRequested_;
+    uint32_t bytesGranted_;
+    uint32_t bytesReleased_;
+
+    uint16_t failedTooLarge_;
+    uint16_t failedNoContiguousRun_;
+    uint16_t failedNoLeaseSlot_;
+    uint16_t failedReleaseInvalid_;
+    uint16_t failedReleaseCorrupt_;
+    uint8_t lastAllocFailureReason_;
+
+    FreeRamProviderFn freeRamProvider_;
 };

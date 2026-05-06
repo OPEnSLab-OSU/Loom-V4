@@ -64,7 +64,7 @@ class Loom_ThingSpeak : public MQTTComponent {
      * @param jsonString JSON formatted string containing the login credentials, this is freed at
      * the end
      */
-    void loadConfigFromJSON(char *json) override;
+    void loadConfigFromJSON(const char *json) override;
 
     /**
      * Add a new function to the list of functions that we are going to pass into ThingSpeak

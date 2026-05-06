@@ -59,7 +59,7 @@ class Loom_Ethernet : public NetworkComponent {
      *
      * @param jsonString JSON formatted string containing the mac address and IP
      */
-    void loadConfigFromJSON(char *json);
+    void loadConfigFromJSON(const char *json);
 
     /**
      * Attempt to connect to the configured network

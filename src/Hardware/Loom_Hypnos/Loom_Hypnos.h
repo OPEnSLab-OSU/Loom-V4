@@ -7,8 +7,8 @@
 
 #include "Arduino.h"
 #include "Internet/Connectivity/NetworkComponent.h"
-#include "Sensors/Loom_Analog/Loom_Analog.h"
 #include "Module.h"
+#include "Sensors/Loom_Analog/Loom_Analog.h"
 
 #include "Hardware/Loom_Hypnos/SDManager.h"
 #include "Loom_Manager.h"
@@ -221,14 +221,8 @@ class Loom_Hypnos : public Module {
     TimeSpan getConfigFromSD(const char *fileName);
 
     /**
-     * Read file from SD
-     * @param fileName File to read from
-     */
-    char *readFile(const char *fileName) { return sdMan->readFile(fileName); };
-
-    /**
      * Read file contents from SD into a memory pool lease.
-     * @param fileName File to read from
+     * @param fileName File to read from.
      */
     MemPool::Handle readFileLease(const char *fileName) { return sdMan->readFileLease(fileName); };
 
@@ -273,6 +267,11 @@ class Loom_Hypnos : public Module {
     void printPoolStats() { sdMan->printPoolStats(); };
 
     /**
+     * Print active SD pool leases.
+     */
+    void dumpActiveLeases() { sdMan->dumpActiveLeases(); };
+
+    /**
      * Get the default SD card file name
      */
     const char *getDefaultFilename() { return sdMan->getDefaultFilename(); };
@@ -300,7 +299,7 @@ class Loom_Hypnos : public Module {
     bool isRTCInitialized() { return RTC_initialized; };
 
     /**
-     * 
+     *
      * @brief A minimum required voltage check for a complete cycle. Minimum voltage varies by
      * device and should be determined by the user. This method is more flexible than the analog
      * class and allows us to create control methods for the hypnos class based on the voltage.
@@ -311,8 +310,8 @@ class Loom_Hypnos : public Module {
      * @param mv Whether you want millivolts returned with volts. (default = false)
      * @param num_samples Number of samples if you want to get an average. (default = 1)
      */
-    bool checkVoltageAverage(float vmin = 0.0, int analogPin = A7, float scale = 2.0f, bool mv = false,
-                      int num_samples = 1);
+    bool checkVoltageAverage(float vmin = 0.0, int analogPin = A7, float scale = 2.0f,
+                             bool mv = false, int num_samples = 1);
 
   private:
     Manager *manInst = nullptr;                   // Instance of the manager
@@ -351,10 +350,10 @@ class Loom_Hypnos : public Module {
 
     bool custom_time = false; // Set the RTC to a user specified time
 
-    /** 
+    /**
      *  Voltage Check Definitions
-     * 
-     * Voltage check bitmaps 0-7 LSB-first 
+     *
+     * Voltage check bitmaps 0-7 LSB-first
      * */
     static constexpr uint8_t VF_CHECKED = (1u << 0);    // 00000001 | 0x01
     static constexpr uint8_t VF_CRITICAL = (1u << 1);   // 00000010 | 0x02

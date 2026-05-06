@@ -52,19 +52,12 @@ class SDManager : public Module {
     bool log(DateTime currentTime);
 
     /**
-     * Read the contents of a given file on the SD card and return them as a string
-     *
-     * YOU MUST FREE THIS BLOCK OF MEMORY AS IT IS 10kb
-     *
-     * @param fileName Name of the file to read from
-     */
-    char *readFile(const char *fileName);
-
-    /**
      * Read the contents of a file into a memory-pool lease.
      *
-     * @param fileName Name of the file to read from.
-     * @return Memory pool handle. Invalid handle indicates failure.
+     * @param fileName
+     * Name of the file to read from.
+     * @return Memory pool handle. Invalid handle indicates
+     * failure.
      */
     MemPool::Handle readFileLease(const char *fileName);
 
@@ -106,6 +99,11 @@ class SDManager : public Module {
      * Print current pool stats for debugging.
      */
     void printPoolStats();
+
+    /**
+     * Print active pool lease entries (slot, generation, span, size, tag).
+     */
+    void dumpActiveLeases();
 
     /*
      * Returns a pointer to the opened filed
@@ -202,10 +200,10 @@ class SDManager : public Module {
     bool schemaHashInitialized = false;
 
     void logBatch(); // Log data in batch format
-    
+
     void writeHeaders(); // Create the headers for the CSV file based off what info we are storing
     // Hashes used a low-memory way to compare current and incoming file headers
-    void buildSchemaHashes(uint64_t &hash1, uint64_t &hash2); 
+    void buildSchemaHashes(uint64_t &hash1, uint64_t &hash2);
     void setCurrentLogFileNames();
     bool updateCurrentFileName(); // Update the current file name to log to based on files already
                                   // existing on the SD card

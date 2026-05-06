@@ -588,13 +588,14 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char *fileName) {
     StaticJsonDocument<OUTPUT_SIZE> doc;
     char output[OUTPUT_SIZE];
     MemPool::Handle fileLease = sdMan->readFileLease(fileName);
-    const char *fileRead = sdMan->leaseData(fileLease); 
+    const char *fileRead = sdMan->leaseData(fileLease);
     if (fileRead == nullptr) {
         ERROR(F("There was an error reading the config from SD: could not acquire lease data, "
                 "defaulting sampling interval to 20 minutes."));
         return TimeSpan(0, 0, 20, 0);
     } else {
-      LOGF("Successfully read file into lease space");}
+        LOGF("Successfully read file into lease space");
+    }
 
     // avoid zero-copy behavior
     DeserializationError deserialError = deserializeJson(doc, (const char *)fileRead);
@@ -681,7 +682,8 @@ bool Loom_Hypnos::logToSD() {
 
 /* Voltage Checks */
 
-bool Loom_Hypnos::checkVoltageAverage(float vmin, int analogPin, float scale, bool mv, int num_samples) {
+bool Loom_Hypnos::checkVoltageAverage(float vmin, int analogPin, float scale, bool mv,
+                                      int num_samples) {
     INSTRUMENT();
     analogReadResolution(12);
 

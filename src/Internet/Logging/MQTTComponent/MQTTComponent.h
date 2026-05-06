@@ -117,7 +117,7 @@ class MQTTComponent : public Module {
      * @param jsonString JSON formatted string containing the login credentials, this is freed at
      * the end
      */
-    virtual void loadConfigFromJSON(char *json) = 0;
+    virtual void loadConfigFromJSON(const char *json) = 0;
 
     /**
      * Set the maximum number of reconnection attempts to make before failing

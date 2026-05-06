@@ -42,6 +42,13 @@ struct CsvEscapedBufferWriter {
         return i;
     }
 };
+
+void poolLeaseDumpSink(const char *line, void *ctx) {
+    SDManager *manager = static_cast<SDManager *>(ctx);
+    if (manager != nullptr && line != nullptr) {
+        manager->printModuleName(line);
+    }
+}
 } // namespace
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -50,6 +57,7 @@ SDManager::SDManager(Manager *man, int sd_chip_select)
     snprintf(device_name, sizeof(device_name), "%s", manInst->get_device_name());
     memset(overrideFileName, '\0', 260);
     manInst->getPool().init();
+    manInst->getPool().setFreeRamProvider(freeMemory);
 } // Disables Lora so we can use the SD card on hypnos
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -528,38 +536,6 @@ bool SDManager::updateCurrentFileName() {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/**
- * Outdated: To be replaced with MemPool.ex
- */
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-char *SDManager::readFile(const char *fileName) {
-    // Clear contents
-    char *fileContents = (char *)malloc(5000);
-    memset(fileContents, '\0', 5000);
-
-    long index = 0;
-    if (sdInitialized) {
-        myFile = sd.open(fileName);
-
-        if (myFile) {
-            // read from the file until there's nothing else in it:
-            while (myFile.available()) {
-                fileContents[index] = (char)(myFile.read());
-                index++;
-            }
-            fileContents[index] = '\0';
-            myFile.close();
-        } else {
-            printModuleName("Failed to open file!");
-        }
-    } else {
-        printModuleName("Failed to read! SD card not Initialized!");
-    }
-    return fileContents;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 MemPool::Handle SDManager::readFileLease(const char *fileName) {
     if (!sdInitialized) {
         printModuleName("Failed to read! SD card not Initialized!");
@@ -583,7 +559,7 @@ MemPool::Handle SDManager::readFileLease(const char *fileName) {
     }
     file.close();
 
-    MemPool::Handle lease = manInst->getPool().alloc(byteCount + 1);
+    MemPool::Handle lease = manInst->getPool().alloc(byteCount + 1, "sd_file");
     if (!manInst->getPool().valid(lease)) {
         printModuleName("Failed to allocate memory-pool lease for file read!");
         return MemPool::Handle::invalid();
@@ -669,7 +645,7 @@ bool SDManager::streamFile(const char *fileName, size_t chunkBytes, StreamChunkC
     size_t chunkIndex = 0;
 
     while (true) {
-        MemPool::Handle lease = manInst->getPool().alloc(chunkBytes);
+        MemPool::Handle lease = manInst->getPool().alloc(chunkBytes, "sd_stream");
         if (!manInst->getPool().valid(lease)) {
             file.close();
             printModuleName("Failed to allocate streaming chunk from pool!");
@@ -733,16 +709,7 @@ bool SDManager::streamFile(const char *fileName, size_t chunkBytes, StreamChunkC
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-MemPool::Stats SDManager::getPoolStats() const {
-    MemPool::Stats stats = manInst->getPool().stats();
-
-    int freeRam = freeMemory();
-    if (freeRam < 0) {
-        freeRam = 0;
-    }
-    stats.systemRamFreeBytes = (uint16_t)freeRam;
-    return stats;
-}
+MemPool::Stats SDManager::getPoolStats() const { return manInst->getPool().stats(); }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -765,9 +732,43 @@ void SDManager::printPoolStats() {
              (unsigned int)stats.failedAllocs);
     printModuleName(output);
 
+    snprintf(output, sizeof(output),
+             "Pool calls alloc/release/read/write/clear: %lu/%lu/%lu/%lu/%lu",
+             (unsigned long)stats.allocCalls, (unsigned long)stats.releaseCalls,
+             (unsigned long)stats.readCalls, (unsigned long)stats.writeCalls,
+             (unsigned long)stats.clearCalls);
+    printModuleName(output);
+
+    snprintf(output, sizeof(output), "Pool bytes req/granted/released: %lu/%lu/%lu",
+             (unsigned long)stats.bytesRequested, (unsigned long)stats.bytesGranted,
+             (unsigned long)stats.bytesReleased);
+    printModuleName(output);
+
+    snprintf(output, sizeof(output), "Pool alloc fails tooLarge/noRun/noSlot: %u/%u/%u",
+             (unsigned int)stats.failedTooLarge, (unsigned int)stats.failedNoContiguousRun,
+             (unsigned int)stats.failedNoLeaseSlot);
+    printModuleName(output);
+
+    snprintf(output, sizeof(output), "Pool release fails invalid/corrupt: %u/%u",
+             (unsigned int)stats.failedReleaseInvalid, (unsigned int)stats.failedReleaseCorrupt);
+    printModuleName(output);
+
+    snprintf(output, sizeof(output), "Pool max contiguous free blocks: %u",
+             (unsigned int)stats.maxContiguousFreeBlocks);
+    printModuleName(output);
+
     snprintf(output, sizeof(output), "System RAM free/total: %u/%u",
              (unsigned int)stats.systemRamFreeBytes, (unsigned int)stats.systemRamTotalBytes);
     printModuleName(output);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void SDManager::dumpActiveLeases() {
+    size_t count = manInst->getPool().dumpActiveLeases(poolLeaseDumpSink, this);
+    if (count == 0) {
+        printModuleName("No active pool leases.");
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

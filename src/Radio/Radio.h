@@ -85,5 +85,5 @@ class Radio : public Module {
      * @param moduleName Name of the module
      * @param maxLength The maximum length a packet can be
      */
-    Radio(const char *moduleName) : Module(moduleName){};
+    Radio(const char *moduleName) : Module(moduleName) {};
 };

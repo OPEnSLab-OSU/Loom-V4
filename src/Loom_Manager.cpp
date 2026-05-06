@@ -151,7 +151,6 @@ JsonObject Manager::get_data_object(const char *moduleName) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::power_up() {
     FUNCTION_START;
-    char noInitLog[50];
     for (int i = 0; i < modules.size(); i++) {
         Watchdog.reset();
         if (modules[i].second->moduleInitialized) {
@@ -162,9 +161,7 @@ void Manager::power_up() {
             modules[i].second->power_up();
         } else {
             /* Converted warning from printModuleName to logger*/
-            memset(noInitLog, '\0', 50);
-            snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
-            WARNING(noInitLog);
+            warningModuleNotInitialized(modules[i].second);
         }
         TIMER_RESET;
     }
@@ -178,15 +175,12 @@ void Manager::power_up() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::power_down() {
     FUNCTION_START;
-    char noInitLog[50];
     for (int i = 0; i < modules.size(); i++) {
         if (modules[i].second->moduleInitialized)
             modules[i].second->power_down();
         else {
             /* Converted warning from printModuleName to logger*/
-            memset(noInitLog, '\0', 50);
-            snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
-            WARNING(noInitLog);
+            warningModuleNotInitialized(modules[i].second);
         }
         TIMER_RESET;
     }
@@ -277,5 +271,20 @@ void Manager::pause(const uint32_t ms) const {
     while (millis() < waitTime)
         ;
     TIMER_ENABLE;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Manager::warningModuleNotInitialized(Module *module) {
+    MemPool::Handle lease = pool_.alloc(MEMPOOL_BLOCK_SIZE, "init_log");
+
+    if (!pool_.valid(lease)) {
+        WARNING(F("Module not initialized!"));
+        return;
+    }
+    // Blocks are uint8 and must be cast to char to be accepted for snprintf
+    char *buffer = pool_.chars(lease);
+    snprintf(buffer, pool_.size(lease), "%s Not initialized!", module->getModuleName());
+
+    WARNING(buffer);
+    pool_.release(lease);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
