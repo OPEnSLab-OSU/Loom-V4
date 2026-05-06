@@ -1,5 +1,6 @@
 #include "Loom_Wifi.h"
 #include "Logger.h"
+#include <RTClib.h>
 
 // Reserve a section of memory called WiFi config
 FlashStorage(WiFiConfig, WifiInfo);
@@ -140,7 +141,7 @@ void Loom_WIFI::connect_to_network() {
 
     snprintf(output, OUTPUT_SIZE, "Attempting to connect to SSID: %s", wifi_name);
     LOG(output);
-    TIMER_DISABLE;
+    // TIMER_DISABLE;
 
     // If we are logging into a network with a password
     if (strlen(wifi_password) > 0) {
@@ -167,7 +168,7 @@ void Loom_WIFI::connect_to_network() {
                     start_ap();
                 }
 
-                TIMER_ENABLE;
+                // TIMER_ENABLE;
                 FUNCTION_END;
                 return;
             }
@@ -195,7 +196,7 @@ void Loom_WIFI::connect_to_network() {
                              manInst->get_instance_num());
                     start_ap();
                 }
-                TIMER_ENABLE;
+                // TIMER_ENABLE;
                 FUNCTION_END;
                 return;
             }
@@ -210,7 +211,7 @@ void Loom_WIFI::connect_to_network() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_WIFI::start_ap() {
     FUNCTION_START;
-    TIMER_DISABLE;
+    // TIMER_DISABLE;
     char output[OUTPUT_SIZE];
     snprintf(output, OUTPUT_SIZE, "Starting access point on: %s", wifi_name);
     LOG(output);
@@ -229,7 +230,7 @@ void Loom_WIFI::start_ap() {
     while (WiFi.status() != WL_AP_CONNECTED)
         ;
     LOG(F("Device connected to AP!"));
-    TIMER_ENABLE;
+    // TIMER_ENABLE;
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

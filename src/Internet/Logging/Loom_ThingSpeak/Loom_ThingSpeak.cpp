@@ -31,7 +31,7 @@ bool Loom_ThingSpeak::publish() {
     char message[MAX_JSON_SIZE];
     char topic[MAX_TOPIC_LENGTH];
     if (moduleInitialized) {
-        TIMER_DISABLE;
+        // TIMER_DISABLE;
 
         /* Attempt to connect to the broker if it fails we should just return */
         if (!connectToBroker()) {
@@ -55,7 +55,7 @@ bool Loom_ThingSpeak::publish() {
         return false;
     }
     FUNCTION_END;
-    TIMER_ENABLE;
+    // TIMER_ENABLE;
     return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

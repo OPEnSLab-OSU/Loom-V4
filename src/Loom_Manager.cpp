@@ -152,22 +152,22 @@ JsonObject Manager::get_data_object(const char *moduleName) {
 void Manager::power_up() {
     FUNCTION_START;
     for (int i = 0; i < modules.size(); i++) {
-        Watchdog.reset();
+        WD_TIMER_RESET
         if (modules[i].second->moduleInitialized) {
             // If we are about to power up the LTE we should turn off the watchdog
             if (strcmp(modules[i].second->getModuleName(), "LTE") == 0) {
-                Watchdog.disable();
+                WD_TIMER_DISABLE
             }
             modules[i].second->power_up();
         } else {
             /* Converted warning from printModuleName to logger*/
             warningModuleNotInitialized(modules[i].second);
         }
-        TIMER_RESET;
+        WD_TIMER_RESET
     }
 
     // If we didn't already disable the timer from finding the LTE we should disable it now
-    Watchdog.disable();
+    WD_TIMER_DISABLE
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -182,7 +182,7 @@ void Manager::power_down() {
             /* Converted warning from printModuleName to logger*/
             warningModuleNotInitialized(modules[i].second);
         }
-        TIMER_RESET;
+        WD_TIMER_RESET
     }
     FUNCTION_END;
 }

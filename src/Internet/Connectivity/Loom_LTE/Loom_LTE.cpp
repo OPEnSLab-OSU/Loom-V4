@@ -1,5 +1,6 @@
 #include "Loom_LTE.h"
 #include "Logger.h"
+#include <RTClib.h>
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_LTE::Loom_LTE(Manager &man, const char *apn, const char *user, const char *pass, const int pin,
@@ -133,7 +134,7 @@ void Loom_LTE::power_up() {
     // If not connected to a network we want to connect
     if (moduleInitialized) {
         LOG(F("Powering up GPRS Modem. This should take about 10 seconds..."));
-        TIMER_DISABLE;
+        // TIMER_DISABLE;
 
         // Power on whatever the currently used LTE board is
         powerBoardOn();
@@ -144,7 +145,7 @@ void Loom_LTE::power_up() {
         modem.restart();
         LOG(F("Powering up complete!"));
         powered = true;
-        TIMER_ENABLE;
+        // TIMER_ENABLE;
     }
     // If the module isn't initialized we want to try again
     else {
@@ -191,7 +192,7 @@ bool Loom_LTE::connect() {
     char output[OUTPUT_SIZE];
     uint8_t attemptCount = 1; // Tracks number of attempts, 5 is a fail
 
-    TIMER_DISABLE;
+    // TIMER_DISABLE;
     do {
         LOG(F("Waiting for network..."));
         if (!modem.waitForNetwork()) {
@@ -215,7 +216,7 @@ bool Loom_LTE::connect() {
             LOG(F("Successfully Connected!"));
             delay(6000);
             FUNCTION_END;
-            TIMER_ENABLE;
+            // TIMER_ENABLE;
             return true;
         } else {
             snprintf(output, OUTPUT_SIZE, "Connection failed %u / 10. Retrying...", attemptCount);
@@ -228,7 +229,7 @@ bool Loom_LTE::connect() {
         if (attemptCount > 5) {
             ERROR(F("Connection reattempts exceeded 10 tries. Connection Failed"));
             FUNCTION_END;
-            TIMER_ENABLE;
+            // TIMER_ENABLE;
             return false;
         }
     } while (!isConnected());
@@ -282,14 +283,14 @@ bool Loom_LTE::verifyConnection() {
         client.stop();
         returnStatus = true;
     }
-    TIMER_RESET;
+    // TIMER_RESET;
     FUNCTION_END;
     return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LTE::loadConfigFromJSON(const char *json) {
+void Loom_LTE::loadConfigFromJSON(char *json) {
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     // Doc to store the JSON data from the SD card in
@@ -326,22 +327,31 @@ Client *Loom_LTE::getClient() { return (Client *)&client; }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::getNetworkTime(int *year, int *month, int *day, int *hour, int *minute, int *second,
                               float *tz) {
-    // Get the timezone that we are in converted to an int
-    int tzInt = (int)*tz;
+    // modem.getNetworkTime overwrites the refrenced values to UTC time
+    // so we have to remember the original timezone value and reset it
+    // before returning from this function.
+    float timezone = *tz;
 
     // Pull the current values from the GSM
-    if (modem.getNetworkTime(year, month, day, hour, minute, second, tz)) {
-        // Create a date time object and then add the TimeZone back to get UTC time
-        DateTime time = DateTime(*year, *month, *day, *hour, *minute, *second) +
-                        TimeSpan(0, ((int)(*tz)) * (-1), 0, 0);
-        *year = time.year();
-        *month = time.month();
-        *day = time.day();
-        *hour = time.hour();
-        *minute = time.minute();
-        *second = time.second();
-        return true;
+    if (!modem.getNetworkTime(year, month, day, hour, minute, second, tz)) {
+        // Reset original timezone value.
+        *tz = timezone;
+        return false;
     }
-    return false;
+
+    // Create a DateTime object from GSM UTC time and then add the
+    // timezone to the value to get adjusted local time.
+    DateTime utcTime = DateTime(*year, *month, *day, *hour, *minute, *second);
+    DateTime localTime = utcTime + TimeSpan(0, (int)timezone, 0, 0);
+    *year = localTime.year();
+    *month = localTime.month();
+    *day = localTime.day();
+    *hour = localTime.hour();
+    *minute = localTime.minute();
+    *second = localTime.second();
+
+    // Reset original timezone value.
+    *tz = timezone;
+    return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

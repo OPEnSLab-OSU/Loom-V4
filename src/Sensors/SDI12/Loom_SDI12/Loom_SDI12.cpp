@@ -228,7 +228,7 @@ void Loom_SDI12::getData(char addr) {
         sendCommand(response, addr, "M!");
         sendCommand(response, addr, "D0!");
 
-        TIMER_RESET;
+        // TIMER_RESET;
         if (strlen(response) == 1) {
             WARNING(F("Retrying for a second time..."));
             delay(3000);
@@ -236,7 +236,7 @@ void Loom_SDI12::getData(char addr) {
             // Request a measurement from the sensor at the given address
             sendCommand(response, addr, "M!");
             sendCommand(response, addr, "D0!");
-            TIMER_RESET;
+            // TIMER_RESET;
         }
     }
 

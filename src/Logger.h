@@ -73,7 +73,7 @@ class Logger {
     SDManager *sdInst = nullptr;
     Loom_Hypnos *hypnosInst = nullptr;
 
-    Logger() {};
+    Logger(){};
 
     /**
      * Generic log function - prints to Serial and logs to SD
@@ -135,9 +135,11 @@ class Logger {
         truncateFileName(fileName, log.file);
 
         if (hypnosInst != nullptr && hypnosInst->isRTCInitialized()) {
-            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s] [%s:%s:%u] %s"),
-                       hypnosInst->getCurrentTime().text(), log.level, fileName, log.func,
-                       log.lineNum, msg);
+            DateTime t = hypnosInst->getCurrentTime();
+            char tbuf[21];
+            hypnosInst->dateTime_toString(t, tbuf);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s] [%s:%s:%u] %s"), tbuf, log.level,
+                       fileName, log.func, log.lineNum, msg);
         } else {
             snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s:%s:%u] %s"), log.level, fileName,
                        log.func, log.lineNum, msg);

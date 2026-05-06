@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ArduinoLowPower.h>
-#include <OPEnS_RTC.h>
+#include <RTClib.h>
 #include <map>
 #include <tuple>
 
@@ -12,6 +12,7 @@
 
 #include "Hardware/Loom_Hypnos/SDManager.h"
 #include "Loom_Manager.h"
+#include "Sensors/Loom_Analog/Loom_Analog.h"
 
 // Used to pass along the user defined interrupt callback
 using InterruptCallbackFunction = void (*)();
@@ -29,10 +30,7 @@ enum POWERRAIL_CONFIG {
 /**
  * Enum to easily see if we are going to sleep or waking up from sleep
  */
-enum DEVICE_STATE {
-    ENTERING_SLEEP,
-    EXITING_SLEEP,
-};
+enum DEVICE_STATE { ENTERING_SLEEP, EXITING_SLEEP };
 
 /**
  * Tracks the hypnos version and matches the version with the correct chip select pin
