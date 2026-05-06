@@ -18,12 +18,12 @@
 #include "../../Sensors/I2C/Loom_MPU6050/Loom_MPU6050.h"
 #include "../../Sensors/I2C/Loom_MS5803/Loom_MS5803.h"
 #include "../../Sensors/I2C/Loom_SEN55/Loom_SEN55.h"
+#include "../../Sensors/I2C/Loom_SEN66/Loom_SEN66.h"
 #include "../../Sensors/I2C/Loom_SHT31/Loom_SHT31.h"
 #include "../../Sensors/I2C/Loom_STEMMA/Loom_STEMMA.h"
 #include "../../Sensors/I2C/Loom_T6793/Loom_T6793.h"
 #include "../../Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h"
 #include "../../Sensors/I2C/Loom_ZXGesture/Loom_ZXGesture.h"
-#include "../../Sensors/I2C/Loom_SEN66/Loom_SEN66.h"
 
 /**
  * Adds Hot Swappable functionality for TCA9548 multiplexer
@@ -56,30 +56,30 @@ class Loom_Multiplexer : public Module {
      */
     Loom_Multiplexer(Manager &man, const std::vector<byte> &addresses);
 
-		/**
-		 * @brief Construct a new Loom_Multiplexer object with hypnos object
-		 * 
-		 * @param man Reference to the manager
-		 * @param hypnos hypnos object, will allow for SD card access
-		 */
-		Loom_Multiplexer(Manager& man, Loom_Hypnos& hypnos, const char* filename);
+    /**
+     * @brief Construct a new Loom_Multiplexer object with hypnos object
+     *
+     * @param man Reference to the manager
+     * @param hypnos hypnos object, will allow for SD card access
+     */
+    Loom_Multiplexer(Manager &man, Loom_Hypnos &hypnos, const char *filename);
 
-		// Destructor removes all new sensor instances
-		~Loom_Multiplexer();
+    // Destructor removes all new sensor instances
+    ~Loom_Multiplexer();
 
-		/**
-         * @brief Load custom multiplexer addresses stored in SD 
-         * 
-         * @param fileName The file name of the json in root of SD card
-         */
-        void loadAddressesFromSD(const char* fileName);
-        
-    private:
-        Manager* manInst;                                       // Instance of the manager
-		SDManager* sdMan = nullptr; 							// pointer to the SD manager
-		const char* sdFile = nullptr;							// name of file on SD card				
-		byte activeMuxAddr;										// The port which we want to try to communicate over
-		const uint8_t numPorts = 8;								// Number of ports on the multiplexer
+    /**
+     * @brief Load custom multiplexer addresses stored in SD
+     *
+     * @param fileName The file name of the json in root of SD card
+     */
+    void loadAddressesFromSD(const char *fileName);
+
+  private:
+    Manager *manInst;             // Instance of the manager
+    SDManager *sdMan = nullptr;   // pointer to the SD manager
+    const char *sdFile = nullptr; // name of file on SD card
+    byte activeMuxAddr;           // The port which we want to try to communicate over
+    const uint8_t numPorts = 8;   // Number of ports on the multiplexer
 
     std::vector<std::tuple<byte, Module *, int>> sensors; // List of sensors
 
@@ -116,15 +116,8 @@ class Loom_Multiplexer : public Module {
         0x77  ///< MS5803
     };
 
-		/**
-		 * Possible alternate addresses for the TCA9548
-		 */ 
-		const std::array<byte, 9>  alt_addresses = {
-			0x71,
-			0x72,
-			0x73,
-			0x74,
-			0x75,
-			0x78
-		};
-	};
+    /**
+     * Possible alternate addresses for the TCA9548
+     */
+    const std::array<byte, 9> alt_addresses = {0x71, 0x72, 0x73, 0x74, 0x75, 0x78};
+};

@@ -60,9 +60,9 @@ void Loom_DFMultiGasSensor::measure() {
 
             // Update the current gas type
             currentGasType = gasSensor.queryGasType();
-            if(strlen(currentGasType) <= 0){
+            if (strlen(currentGasType) <= 0) {
                 currentGasType = "INV_TYPE";
-                }
+            }
 
             if (gasSensor.dataIsAvailable()) {
                 LOG(F("Sensor has data availible. Reading ..."));
