@@ -135,12 +135,13 @@ void Manager::package() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // add parameter to pass in JSON for custom heartbeats per project
+// make sure this doesn't log to sd card
 void Manager::package(bool heartbeat){
     FUNCTION_START;
     if (!heartbeat || intervalCount == normalWorkInterval) {
         // normal work interval
         package();
-        interval = 0;
+        currentInterval = 0;
         return;
     }
 
@@ -148,7 +149,7 @@ void Manager::package(bool heartbeat){
 
     char noInitLog[50];
 
-    LOG(F("** Packaging Heartbeat**"));
+    LOG(F("** Packaging Heartbeat **"));
     
     // Clear the document so that we don't get null characters after too many updates
     doc.clear();
@@ -156,7 +157,7 @@ void Manager::package(bool heartbeat){
     doc["id"]["name"] = get_device_name();
     doc["id"]["instance"] = get_instance_num();
     
-    intervalCount++;
+    currentInterval++;
 
     LOG(F("** Packaging Heartbeat Complete **"));
     FUNCTION_END;

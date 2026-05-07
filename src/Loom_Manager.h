@@ -175,6 +175,6 @@ class Manager {
                                 // be able to initialize
 
     /* Heartbeat Interval Variables */
-        uint32_t normalWorkInterval = 0;
-        uint32_t intervalCount = 0;
+    uint32_t normalWorkInterval = 0;
+    uint32_t currentInterval = 0;
 };
