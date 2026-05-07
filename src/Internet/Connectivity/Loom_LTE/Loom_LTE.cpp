@@ -37,8 +37,9 @@ void Loom_LTE::powerBoardOn(){
     else{
         pinMode(powerPin, OUTPUT);
         digitalWrite(powerPin, HIGH);
+        delay(1000);
+        digitalWrite(powerPin, LOW);
         delay(5000);
-        pinMode(powerPin, INPUT);
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,12 +49,12 @@ void Loom_LTE::powerBoardOn(){
 void Loom_LTE::powerBoardOff(){
     // NOTE: We don't need to power off the sparkfun LTE board we can just use the power off command
     // Handle powering off the parkfun board
-    if(lteBoardVersion == OPENS){
-         pinMode(powerPin, OUTPUT);
-        digitalWrite(powerPin, LOW);
-        delay(2500);
-        pinMode(powerPin, INPUT);
-    }
+    // if(lteBoardVersion == OPENS){
+    //      pinMode(powerPin, OUTPUT);
+    //     digitalWrite(powerPin, LOW);
+    //     delay(2500);
+    //     pinMode(powerPin, INPUT);
+    // }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -64,13 +65,10 @@ void Loom_LTE::initialize(){
     char ip[16];
     // Set the pin to output so we can write to it
     pinMode(powerPin, INPUT);
-
     // Start up the module
     power_up();
-
     // Get the modem info
     char const* modemInfo = modem.getModemInfo().c_str();
-
     // If no LTE shield is found we should not initialize the module
     if(modemInfo == NULL){
         ERROR(F("LTE shield not detected! This can also be triggered if there isn't a SIM card in the board"));
@@ -118,7 +116,7 @@ void Loom_LTE::initialize(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::power_up(){
     FUNCTION_START;
-    // If the batch_sd is initialized and the current batch is one less than the maximum so we turn on the device before the last batch
+    // If the batch_sd is initialized, turn on the device before the last batch
     if(batch_sd != nullptr && !firstInit){
         if(batch_sd->getCurrentBatch() != batch_sd->getBatchSize()-1){
             powerUp = false;
@@ -129,33 +127,32 @@ void Loom_LTE::power_up(){
         }
     }
 
-    // If not connected to a network we want to connect
-    if(moduleInitialized){
-        LOG(F("Powering up GPRS Modem. This should take about 10 seconds..."));
-        TIMER_DISABLE;
+    LOG(F("Powering up GPRS Modem. This should take about 10 seconds..."));
+    TIMER_DISABLE;
 
-        // Power on whatever the currently used LTE board is
-        powerBoardOn();
+    // Power on whatever the currently used LTE board is (sends the 500ms pulse)
+    powerBoardOn();
 
-        // Delay an additional one second to allow communication to open up
-        SerialAT.begin(9600);
-        delay(1000);
-        modem.restart();
-        LOG(F("Powering up complete!"));
-        powered = true;
-        TIMER_ENABLE;
-    }
-    // If the module isn't initialized we want to try again
-    else{
-        initialize();
-    }
+    // Give the SARA-R5 operating system 5 seconds to fully boot up
+    delay(5000);
+
+    // Start serial at the correct SARA-R5 baud rate
+    SerialAT.begin(115200);
     
+    // Restart the modem to prep for AT commands
+    modem.init();
+    LOG(F("Powering up complete!"));
+    powered = true;
+    TIMER_ENABLE;
+    
+    // Connect to the network if we aren't on the first pass
     if(!firstInit && moduleInitialized)
-            connect();
+        connect();
 
     FUNCTION_END;
-
 }
+
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -190,11 +187,14 @@ bool Loom_LTE::connect(){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     uint8_t attemptCount = 1; // Tracks number of attempts, 5 is a fail
-
     TIMER_DISABLE;
     do{
+        LOG(F("Injecting APN profile..."));
+        modem.sendAT(GF("+CGDCONT=1,\"IP\",\""), APN, GF("\""));
+        modem.waitResponse();
+
         LOG(F("Waiting for network..."));
-        if(!modem.waitForNetwork()){
+        if(!modem.waitForNetwork(600000L)){
             ERROR(F("No Response from network!"));
             FUNCTION_END;
             return false;

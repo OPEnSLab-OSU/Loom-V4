@@ -2,11 +2,11 @@
 
 // GSM Model Number
 //#define TINY_GSM_MODEM_UBLOX
-#define TINY_GSM_MODEM_SARAR4
-
+// #define TINY_GSM_MODEM_SARAR4
+#define TINY_GSM_MODEM_SARAR5
 #include "Loom_Manager.h"
 #include "../NetworkComponent.h"
-#include <TinyGsmClient.h>
+#include <TinyGSM.h>
 #include <functional>
 
 #include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"

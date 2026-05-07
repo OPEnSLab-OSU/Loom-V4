@@ -97,6 +97,7 @@ class MQTTComponent : public Module{
             port = 0;
             memset(username, '\0', 100);
             memset(password, '\0', 100);
+            mqttClient.setTxPayloadSize(MAX_JSON_SIZE);
         };
 
         /* Publishes the current sample to the remote broker */
