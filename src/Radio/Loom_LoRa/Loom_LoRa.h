@@ -31,8 +31,7 @@ enum class FragReceiveStatus {
 };
 
 enum class HandshakeReceiveStatus {
-    Accepted,         // node received hub acceptance
-    AwaitingPayload,  // hub accepted request and is waiting for data
+    Accepted,         // hub accepted request and is ready to receive data
     Failed            // invalid handshake or response transmit failed
 };
 
@@ -217,7 +216,7 @@ private:
     bool handleSingleFrag(JsonDocument &workingDoc);
     bool handleLostFrag(JsonDocument &workingDoc, uint8_t fromAddress);
 
-    HandshakeReceiveStatus handleHandshakeReceive(JsonDocument &tempDoc, uint8_t* fromAddress);
+    HandshakeReceiveStatus handleHandshakeReceive(const char *handshakeValue, uint8_t* fromAddress);
     void beginHandshake(uint8_t peerAddress);
     void clearHandshake();
     bool clearExpiredHandshake();

@@ -184,13 +184,10 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
         return FragReceiveStatus::Error;
     }
 
-    clearExpiredHandshake();
-
     uint8_t buf[MAX_MESSAGE_LENGTH] = {};
 
     bool recvStatus = receiveFromLoRa(buf, sizeof(buf), timeout, fromAddress);
     if (!recvStatus) {
-        clearExpiredHandshake();
         return FragReceiveStatus::Error;
     }
 
@@ -213,6 +210,7 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
             return FragReceiveStatus::Error;
         }
 
+        // Handshake should be cleared right here if it expires
         if (strcmp(handshakeValue, "Request") == 0
             && this->handshakeEstablished
             && !clearExpiredHandshake()) {
@@ -221,13 +219,9 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
             return FragReceiveStatus::Incomplete;
         }
 
-        HandshakeReceiveStatus handshakeStatus = handleHandshakeReceive(tempDoc, fromAddress);
+        HandshakeReceiveStatus handshakeStatus = handleHandshakeReceive(handshakeValue, fromAddress);
         if (handshakeStatus == HandshakeReceiveStatus::Accepted) {
             return FragReceiveStatus::HandshakeAccepted;
-        }
-
-        if (handshakeStatus == HandshakeReceiveStatus::AwaitingPayload) {
-            return FragReceiveStatus::Incomplete;
         }
 
         return FragReceiveStatus::Error;
@@ -289,19 +283,12 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-HandshakeReceiveStatus Loom_LoRa::handleHandshakeReceive(JsonDocument &tempDoc, uint8_t* fromAddress) {
-    const char *handshakeValue = tempDoc["handshake"].as<const char*>();
-    if (!handshakeValue) {
-        return HandshakeReceiveStatus::Failed;
-    }
-
-    if (strcmp(handshakeValue, "Accept") == 0) {
-        return HandshakeReceiveStatus::Accepted;
-    } else if (strcmp(handshakeValue, "Request") == 0) {
+HandshakeReceiveStatus Loom_LoRa::handleHandshakeReceive(const char *handshakeValue, uint8_t* fromAddress) {
+    if (strcmp(handshakeValue, "Request") == 0) {
         LOGF("[HANDSHAKE] Hub sending handshake response");
         if (sendHandshakeResponse(*fromAddress)) {
             beginHandshake(*fromAddress);
-            return HandshakeReceiveStatus::AwaitingPayload;
+            return HandshakeReceiveStatus::Accepted;
         }
     }
 
@@ -428,8 +415,9 @@ bool Loom_LoRa::receive(uint timeout, uint8_t* fromAddress, bool shouldProxy) {
         case FragReceiveStatus::Complete:
             return true;
         case FragReceiveStatus::HandshakeAccepted:
+            return true;
         case FragReceiveStatus::Incomplete:
-            break;
+            continue;
         case FragReceiveStatus::Error:
             retryCount--;
             break;
