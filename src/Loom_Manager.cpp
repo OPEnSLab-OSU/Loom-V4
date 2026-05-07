@@ -138,7 +138,7 @@ void Manager::package() {
 // make sure this doesn't log to sd card
 void Manager::package(bool heartbeat){
     FUNCTION_START;
-    if (!heartbeat || intervalCount == normalWorkInterval) {
+    if (!heartbeat || currentInterval == normalWorkInterval) {
         // normal work interval
         package();
         currentInterval = 0;
