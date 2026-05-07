@@ -3,7 +3,7 @@
 Logger* Logger::instance = nullptr;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Manager::Manager(const char* devName, uint32_t instanceNum) : instanceNumber(instanceNum), doc(MAX_JSON_SIZE) {
+Manager::Manager(const char* devName, uint32_t instanceNum, uint32_t nw_int) : instanceNumber(instanceNum), doc(MAX_JSON_SIZE), normalWorkInterval(nw_int) {
     strncpy(this->deviceName, devName, 100);
     Logger::getInstance();
 }
@@ -123,6 +123,38 @@ void Manager::package(){
     packetNumber++;
     
     LOG(F("** Packaging Complete **"));
+    FUNCTION_END;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// add parameter to pass in JSON for custom heartbeats per project
+void Manager::package(bool heartbeat){
+    FUNCTION_START;
+    if (!heartbeat || intervalCount == normalWorkInterval) {
+        // normal work interval
+        package();
+        interval = 0;
+        return;
+    }
+
+    // heartbeat interval
+
+    char noInitLog[50];
+
+    LOG(F("** Packaging Heartbeat**"));
+    
+    // Clear the document so that we don't get null characters after too many updates
+    doc.clear();
+    doc[F("type")] = F("heartbeat");
+    doc["id"]["name"] = get_device_name();
+    doc["id"]["instance"] = get_instance_num();
+    
+    intervalCount++;
+
+    LOG(F("** Packaging Heartbeat Complete **"));
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

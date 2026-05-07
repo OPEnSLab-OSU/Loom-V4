@@ -23,7 +23,7 @@ class Manager{
          * @param devName Device name to provided for logging purposes
          * @param instanceNum Instance number for logging purposes
          */ 
-        Manager(const char* devName, uint32_t instanceNum);
+        Manager(const char* devName, uint32_t instanceNum, uint32_t );
 
         /**
          * Registers a new sub-module to be controlled by the manager (Used on sensors so measure and package calls can all be called at once)
@@ -69,6 +69,7 @@ class Manager{
          *  Calls the package function to store all data from those sensors into a nice JSON package
          */
         void package();
+        void package(bool heartbeat);
 
         /**
          *  Calls the power_up function on each module to re-init after sleep
@@ -169,5 +170,7 @@ class Manager{
         bool usingHypnos = false;                               // If the setup is using a hypnos
         bool hypnosEnabled = false;                             // If the power rails on the hypnos are enabled this means we should be able to initialize
 
-       
+        /* Heartbeat Interval Variables */
+        uint32_t normalWorkInterval = 0;
+        uint32_t intervalCount = 0;
 };
