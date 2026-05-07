@@ -204,45 +204,16 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
 
     // Always check for handshake packets first
     if (tempDoc.containsKey("handshake")) {
-        const char *handshakeValue = tempDoc["handshake"].as<const char*>();
-        if (!handshakeValue) {
-            ERROR(F("[HANDSHAKE] Invalid handshake packet"));
-            return FragReceiveStatus::Error;
-        }
-
         // Handshake should be cleared right here if it expires
-        if (strcmp(handshakeValue, "Request") == 0
-            && this->handshakeEstablished
-            && !clearExpiredHandshake()) {
-            LOGF("[HANDSHAKE] Hub already waiting for payload from %i",
-                 this->handshakePeerAddress);
+        if (this->handshakeEstablished && !clearExpiredHandshake()) {
+            LOGF("[HANDSHAKE] Hub already in handshake with %i", this->handshakePeerAddress);
             return FragReceiveStatus::Incomplete;
         }
 
-        HandshakeReceiveStatus handshakeStatus = handleHandshakeReceive(handshakeValue, fromAddress);
-        if (handshakeStatus == HandshakeReceiveStatus::Accepted) {
+        if(handleHandshakeReceive(tempDoc, fromAddress)) {
             return FragReceiveStatus::HandshakeAccepted;
         }
-
         return FragReceiveStatus::Error;
-    }
-
-    // If a device reaches a point where its receiving a packet that is NOT a
-    // handshake packet:
-    // - That means that a handshake was succesfully established 
-    // - So, once normal receive is done we can end the handshake
-    
-    // Clear an active handshake only when the payload comes from the node that
-    // was accepted, so another node cannot accidentally reset the handshake.
-    if (this->handshakeEstablished) {
-        if (*fromAddress == this->handshakePeerAddress) {
-            clearHandshake();
-
-        } else if (!clearExpiredHandshake()) {
-            LOGF("[HANDSHAKE] Ignoring packet from %i while waiting for %i",
-                 *fromAddress, this->handshakePeerAddress);
-            return FragReceiveStatus::Incomplete;
-        }
     }
 
     bool isReady = false;
@@ -283,16 +254,24 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-HandshakeReceiveStatus Loom_LoRa::handleHandshakeReceive(const char *handshakeValue, uint8_t* fromAddress) {
+bool Loom_LoRa::handleHandshakeReceive(JsonDocument &tempDoc, uint8_t* fromAddress) {
+    // Check if valid handshake packet
+    const char *handshakeValue = tempDoc["handshake"].as<const char*>();
+    if (!handshakeValue) {
+        ERROR(F("[HANDSHAKE] Invalid handshake packet"));
+        return false;
+    }
+
+    // Check if request
     if (strcmp(handshakeValue, "Request") == 0) {
         LOGF("[HANDSHAKE] Hub sending handshake response");
         if (sendHandshakeResponse(*fromAddress)) {
             beginHandshake(*fromAddress);
-            return HandshakeReceiveStatus::Accepted;
+            return true;
         }
     }
 
-    return HandshakeReceiveStatus::Failed;
+    return false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -415,7 +394,8 @@ bool Loom_LoRa::receive(uint timeout, uint8_t* fromAddress, bool shouldProxy) {
         case FragReceiveStatus::Complete:
             return true;
         case FragReceiveStatus::HandshakeAccepted:
-            return true;
+            // continue as now the hub needs to receive payload
+            continue;
         case FragReceiveStatus::Incomplete:
             continue;
         case FragReceiveStatus::Error:
@@ -430,7 +410,9 @@ bool Loom_LoRa::receive(uint timeout, uint8_t* fromAddress, bool shouldProxy) {
 
 bool Loom_LoRa::receive(uint timeout, bool shouldProxy) {
     uint8_t fromAddress;
-    return receive(timeout, &fromAddress, shouldProxy);
+    bool receive_status = receive(timeout, &fromAddress, shouldProxy);
+    clearHandshake();
+    return receive_status;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -581,15 +563,6 @@ bool Loom_LoRa::send(const uint8_t destinationAddress,
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-// HANDSHAKE TO DO
-// PROGRAMMING SIDE:
-// Simplify code comments
-// Go over proper practices with Loom team
-
-// HARDWARE/TESTING SIDE:
-// Test more robust error modes
-// Possibly implement sleep in .ino file instead of waiting in send function
-
 bool Loom_LoRa::sendHandshakeRequest(const uint8_t destinationAddress) {
     const uint8_t HANDSHAKE_SIZE = 100; // enough for the handshake key and string value
     StaticJsonDocument<HANDSHAKE_SIZE> handshakeDoc;

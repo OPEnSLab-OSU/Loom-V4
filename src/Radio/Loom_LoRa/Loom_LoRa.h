@@ -26,13 +26,8 @@
 enum class FragReceiveStatus {
     Incomplete,  // no packet has been completed
     Complete,    // packet has been loaded into the global document
-    HandshakeAccepted, // node received a handshake acceptance packet
+    HandshakeAccepted, // hub succesfully in handshake with node
     Error        // could not receive fragment
-};
-
-enum class HandshakeReceiveStatus {
-    Accepted,         // hub accepted request and is ready to receive data
-    Failed            // invalid handshake or response transmit failed
 };
 
 struct PartialPacket {
@@ -216,7 +211,7 @@ private:
     bool handleSingleFrag(JsonDocument &workingDoc);
     bool handleLostFrag(JsonDocument &workingDoc, uint8_t fromAddress);
 
-    HandshakeReceiveStatus handleHandshakeReceive(const char *handshakeValue, uint8_t* fromAddress);
+    bool handleHandshakeReceive(JsonDocument &tempDoc, uint8_t* fromAddress);
     void beginHandshake(uint8_t peerAddress);
     void clearHandshake();
     bool clearExpiredHandshake();
