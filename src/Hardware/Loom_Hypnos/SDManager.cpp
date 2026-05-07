@@ -56,7 +56,6 @@ SDManager::SDManager(Manager *man, int sd_chip_select)
     : manInst(man), Module("SD Manager"), chip_select(sd_chip_select) {
     snprintf(device_name, sizeof(device_name), "%s", manInst->get_device_name());
     memset(overrideFileName, '\0', 260);
-    manInst->getPool().init();
     manInst->getPool().setFreeRamProvider(freeMemory);
 } // Disables Lora so we can use the SD card on hypnos
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -89,25 +88,33 @@ bool SDManager::writeLineToFile(const char *filename, const char *content) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void SDManager::writeHeaders() {
-    char header1[513];
-    char header2[513];
+    // Allocates 576 bytes per header within this scope (size returns 513)
+    // Capacity returns 576
+    MemPool::Lease header1 = manInst->getPool().allocLease(513, "sd_hdr1");
+    MemPool::Lease header2 = manInst->getPool().allocLease(513, "sd_hdr2");
+
+    if (!header1 || !header2) {
+        printModuleName("Failed to allocate SD header buffers!");
+        return;
+    }
 
     // Append the serial number to the top of the CSV file, reset the header1 array
-    snprintf_P(header1, 512, PSTR("%s\n"), manInst->get_serial_num());
+    snprintf_P(header1.chars(), header1.size(), PSTR("%s"), manInst->get_serial_num());
     myFile.println(header1);
 
     // Clear both arrays
-    memset(header1, '\0', 512);
-    memset(header2, '\0', 512);
+    header1.chars()[0] = '\0';
+    header2.chars()[0] = '\0';
 
     JsonObject document = manInst->getDocument().as<JsonObject>();
-    strncat(header1, "ID,,", 512);
-    strncat(header2, "name,instance,", 512);
+    // count = size - contents - null terminator
+    strncat(header1.chars(), "ID,,", header1.size() - strlen(header1) - 1);
+    strncat(header2.chars(), "name,instance,", header2.size() - strlen(header2) - 1);
 
     // If there is a key that contains timestamp data when need to include that separately
     if (document.containsKey("timestamp")) {
-        strncat(header1, "timestamp,,", 512);
-        strncat(header2, "time_utc,time_local,", 512);
+        strncat(header1.chars(), "timestamp,,", header1.size() - strlen(header1) - 1);
+        strncat(header2.chars(), "time_utc,time_local,", header2.size() - strlen(header2) - 1);
     }
 
     // Get the contents containing the reset of the sensor data
@@ -116,20 +123,20 @@ void SDManager::writeHeaders() {
     // Loop over each
     for (JsonVariant v : contentsArray) {
         // Get the module name
-        strncat(header1, v.as<JsonObject>()["module"].as<const char *>(), 512);
+        strncat(header1, v.as<JsonObject>()["module"].as<const char *>(),
+                header1.size() - strlen(header1) - 1);
 
         // Get all JSON keys
         for (JsonPair keyValue : v.as<JsonObject>()["data"].as<JsonObject>()) {
-            strncat(header2, keyValue.key().c_str(), 512);
-            strncat(header2, ",", 512);
-            strncat(header1, ",", 512);
+            strncat(header2, keyValue.key().c_str(), header2.size() - strlen(header2) - 1);
+            strncat(header2, ",", header2.size() - strlen(header2) - 1);
+            strncat(header1, ",", header1.size() - strlen(header1) - 1);
         }
     }
-
     // Write the headers to the file
     myFile.println(header1);
     myFile.println(header2);
-}
+} // Leases release here
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void SDManager::buildSchemaHashes(uint64_t &hash1, uint64_t &hash2) {
@@ -551,16 +558,16 @@ bool SDManager::updateCurrentFileName() {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-MemPool::Handle SDManager::readFileLease(const char *fileName) {
+MemPool::Lease SDManager::readFileLease(const char *fileName) {
     if (!sdInitialized) {
         printModuleName("Failed to read! SD card not Initialized!");
-        return MemPool::Handle::invalid();
+        return MemPool::Lease();
     }
 
     File file = sd.open(fileName, O_RDONLY);
     if (!file) {
         printModuleName("Failed to open file!");
-        return MemPool::Handle::invalid();
+        return MemPool::Lease();
     }
 
     size_t byteCount = 0;
@@ -568,29 +575,27 @@ MemPool::Handle SDManager::readFileLease(const char *fileName) {
         if (file.read() < 0) {
             file.close();
             printModuleName("Failed to count file contents!");
-            return MemPool::Handle::invalid();
+            return MemPool::Lease();
         }
         byteCount++;
     }
     file.close();
 
-    MemPool::Handle lease = manInst->getPool().alloc(byteCount + 1, "sd_file");
-    if (!manInst->getPool().valid(lease)) {
+    MemPool::Lease lease = manInst->getPool().allocLease(byteCount + 1, "sd_file");
+    if (!lease) {
         printModuleName("Failed to allocate memory-pool lease for file read!");
-        return MemPool::Handle::invalid();
+        return MemPool::Lease();
     }
 
-    uint8_t *buffer = manInst->getPool().data(lease);
+    uint8_t *buffer = lease.bytes();
     if (buffer == nullptr) {
-        manInst->getPool().release(lease);
-        return MemPool::Handle::invalid();
+        return MemPool::Lease();
     }
 
     file = sd.open(fileName, O_RDONLY);
     if (!file) {
         printModuleName("Failed to open file!");
-        manInst->getPool().release(lease);
-        return MemPool::Handle::invalid();
+        return MemPool::Lease();
     }
 
     size_t index = 0;
@@ -598,9 +603,8 @@ MemPool::Handle SDManager::readFileLease(const char *fileName) {
         int value = file.read();
         if (value < 0) {
             file.close();
-            manInst->getPool().release(lease);
             printModuleName("Failed while reading file into lease!");
-            return MemPool::Handle::invalid();
+            return MemPool::Lease();
         }
 
         buffer[index] = (uint8_t)value;
@@ -609,9 +613,8 @@ MemPool::Handle SDManager::readFileLease(const char *fileName) {
     file.close();
 
     if (index != byteCount) {
-        manInst->getPool().release(lease);
         printModuleName("Failed to read full file into lease!");
-        return MemPool::Handle::invalid();
+        return MemPool::Lease();
     }
 
     buffer[index] = '\0';
@@ -620,21 +623,13 @@ MemPool::Handle SDManager::readFileLease(const char *fileName) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-const char *SDManager::leaseData(MemPool::Handle h) const {
-    const uint8_t *ptr = manInst->getPool().data(h);
-    if (ptr == nullptr) {
-        return nullptr;
+DeserializationError SDManager::deserializeJsonFile(const char *fileName, JsonDocument &doc) {
+    MemPool::Lease lease = readFileLease(fileName);
+    if (!lease || lease.chars() == nullptr) {
+        return DeserializationError::EmptyInput;
     }
-    return (const char *)ptr;
+    return deserializeJson(doc, lease.chars());
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-size_t SDManager::leaseSize(MemPool::Handle h) const { return manInst->getPool().size(h); }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-bool SDManager::releaseLease(MemPool::Handle h) { return manInst->getPool().release(h); }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -660,16 +655,15 @@ bool SDManager::streamFile(const char *fileName, size_t chunkBytes, StreamChunkC
     size_t chunkIndex = 0;
 
     while (true) {
-        MemPool::Handle lease = manInst->getPool().alloc(chunkBytes, "sd_stream");
-        if (!manInst->getPool().valid(lease)) {
+        MemPool::Lease lease = manInst->getPool().allocLease(chunkBytes, "sd_stream");
+        if (!lease) {
             file.close();
             printModuleName("Failed to allocate streaming chunk from pool!");
             return false;
         }
 
-        uint8_t *buffer = manInst->getPool().data(lease);
+        uint8_t *buffer = lease.bytes();
         if (buffer == nullptr) {
-            manInst->getPool().release(lease);
             file.close();
             return false;
         }
@@ -678,7 +672,6 @@ bool SDManager::streamFile(const char *fileName, size_t chunkBytes, StreamChunkC
         while (bytesRead < chunkBytes && file.available()) {
             int value = file.read();
             if (value < 0) {
-                manInst->getPool().release(lease);
                 file.close();
                 printModuleName("Streaming read failed!");
                 return false;
@@ -690,7 +683,6 @@ bool SDManager::streamFile(const char *fileName, size_t chunkBytes, StreamChunkC
 
         bool eof = !file.available();
         if (bytesRead == 0) {
-            manInst->getPool().release(lease);
             if (eof) {
                 break;
             }
@@ -700,7 +692,7 @@ bool SDManager::streamFile(const char *fileName, size_t chunkBytes, StreamChunkC
         }
 
         bool shouldContinue = cb(buffer, bytesRead, fileOffset, chunkIndex, eof, userCtx);
-        if (!manInst->getPool().release(lease)) {
+        if (!lease.release()) {
             file.close();
             return false;
         }
@@ -789,7 +781,12 @@ void SDManager::dumpActiveLeases() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void SDManager::logBatch() {
-    char jsonString[MAX_JSON_SIZE];
+    MemPool::Lease jsonLease = manInst->getPool().allocLease(MAX_JSON_SIZE, "sd_batch");
+    if (!jsonLease) {
+        printModuleName("Failed to allocate memory-pool lease for batch log!");
+        return;
+    }
+
     const char *f_name = getBatchFilename();
     // We want to clear the file after the batch size has been exceeded
     if (current_batch >= batch_size) {
@@ -801,8 +798,8 @@ void SDManager::logBatch() {
     // Check if the file has been opened properly and write the JSON packet to one line
     if (myFile) {
 
-        manInst->getJSONString(jsonString);
-        myFile.println(jsonString);
+        manInst->getJSONString(jsonLease.chars());
+        myFile.println(jsonLease.chars());
         myFile.close();
         current_batch++;
 

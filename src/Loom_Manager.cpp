@@ -274,17 +274,16 @@ void Manager::pause(const uint32_t ms) const {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::warningModuleNotInitialized(Module *module) {
-    MemPool::Handle lease = pool_.alloc(MEMPOOL_BLOCK_SIZE, "init_log");
+    MemPool::Lease lease = pool_.allocBlock("init_log");
 
-    if (!pool_.valid(lease)) {
+    if (!lease) {
         WARNING(F("Module not initialized!"));
         return;
     }
     // Blocks are uint8 and must be cast to char to be accepted for snprintf
-    char *buffer = pool_.chars(lease);
-    snprintf(buffer, pool_.size(lease), "%s Not initialized!", module->getModuleName());
+    char *buffer = lease.chars();
+    snprintf(buffer, lease.size(), "%s Not initialized!", module->getModuleName());
 
     WARNING(buffer);
-    pool_.release(lease);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

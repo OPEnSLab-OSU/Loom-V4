@@ -607,23 +607,7 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char *fileName) {
     // Doc to store the JSON data from the SD card in
     StaticJsonDocument<OUTPUT_SIZE> doc;
     char output[OUTPUT_SIZE];
-    MemPool::Handle fileLease = sdMan->readFileLease(fileName);
-    const char *fileRead = sdMan->leaseData(fileLease);
-    if (fileRead == nullptr) {
-        ERROR(F("There was an error reading the config from SD: could not acquire lease data, "
-                "defaulting sampling interval to 20 minutes."));
-        return TimeSpan(0, 0, 20, 0);
-    } else {
-        LOGF("Successfully read file into lease space");
-    }
-
-    // avoid zero-copy behavior
-    DeserializationError deserialError = deserializeJson(doc, (const char *)fileRead);
-    if (sdMan->releaseLease(fileLease)) {
-        LOGF("Released SD Lease");
-    } else {
-        WARNINGF("Failed to release SD Lease");
-    }
+    DeserializationError deserialError = sdMan->deserializeJsonFile(fileName, doc);
 
     // Create json object to easily pull data from
     JsonObject json = doc.as<JsonObject>();

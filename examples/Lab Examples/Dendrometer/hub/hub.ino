@@ -29,7 +29,11 @@ void setup()
     setRTC();
 
     // load MQTT credentials from the SD card, if they exist
-    mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
+    {
+        MemPool::Lease mqttConfig = hypnos.readFileLease("mqtt_creds.json");
+        if (mqttConfig)
+            mqtt.loadConfigFromJSON(mqttConfig.chars());
+    }
 
     // Initialize the modules
     manager.initialize();

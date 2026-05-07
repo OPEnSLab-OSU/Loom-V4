@@ -55,7 +55,67 @@ class MemPool {
             return h;
         }
     };
+    /**
+     * Resource Acquisition Is Initialization (RAII) for lease lifecycles.
+     * Moves the burden resource management from callers to the pool.
+     */
+    class Lease {
+      public:
+        Lease() : pool_(nullptr), handle_(Handle::invalid()) {}
+        Lease(MemPool *pool, Handle handle) : pool_(pool), handle_(handle) {}
+        ~Lease() { release(); }
 
+        Lease(const Lease &) = delete;
+        Lease &operator=(const Lease &) = delete;
+
+        Lease(Lease &&other) : pool_(other.pool_), handle_(other.handle_) {
+            other.pool_ = nullptr;
+            other.handle_ = Handle::invalid();
+        }
+
+        Lease &operator=(Lease &&other) {
+            if (this != &other) {
+                release();
+                pool_ = other.pool_;
+                handle_ = other.handle_;
+                other.pool_ = nullptr;
+                other.handle_ = Handle::invalid();
+            }
+            return *this;
+        }
+
+        bool valid() const { return pool_ != nullptr && pool_->valid(handle_); }
+        explicit operator bool() const { return valid(); }
+
+        bool release() {
+            if (!valid()) {
+                pool_ = nullptr;
+                handle_ = Handle::invalid();
+                return false;
+            }
+
+            bool released = pool_->release(handle_);
+            pool_ = nullptr;
+            handle_ = Handle::invalid();
+            return released;
+        }
+
+        Handle handle() const { return handle_; }
+        size_t size() const { return valid() ? pool_->size(handle_) : 0; }
+        size_t capacity() const { return valid() ? pool_->capacity(handle_) : 0; }
+        char *chars() { return valid() ? pool_->chars(handle_) : nullptr; }
+        const char *chars() const { return valid() ? pool_->chars(handle_) : nullptr; }
+        uint8_t *bytes() { return valid() ? pool_->bytes(handle_) : nullptr; }
+        const uint8_t *bytes() const { return valid() ? pool_->bytes(handle_) : nullptr; }
+
+      private:
+        MemPool *pool_;
+        Handle handle_;
+    };
+
+    /**
+     * Mempool failure flags
+     */
     enum AllocFailureReason : uint8_t {
         ALLOC_FAIL_NONE = 0,
         ALLOC_FAIL_TOO_LARGE = 1,
@@ -156,6 +216,12 @@ class MemPool {
      * Allocate a lease without a debug tag.
      */
     Handle alloc(size_t bytes) { return alloc(bytes, nullptr); }
+
+    Lease allocLease(size_t bytes, const char *tag = nullptr) {
+        return Lease(this, alloc(bytes, tag));
+    }
+
+    Lease allocBlock(const char *tag = nullptr) { return allocLease(MEMPOOL_BLOCK_SIZE, tag); }
 
     /**
      * Allocate a lease of at least `bytes` and optionally label it with `tag`.
@@ -305,6 +371,16 @@ class MemPool {
     }
 
     /**
+     * Get the physical byte capacity reserved for a lease.
+     */
+    size_t capacity(Handle h) const {
+        if (!valid(h)) {
+            return 0;
+        }
+        return (size_t)leaseBlocks_[h.slot] * MEMPOOL_BLOCK_SIZE;
+    }
+
+    /**
      * Get the debug tag associated with a lease, if present.
      */
     const char *tag(Handle h) const {
@@ -400,11 +476,22 @@ class MemPool {
     }
 
     /**
-     * DANGEROUS: Cast for uint8 leases that need to be char buffers.
-     *            Take extra care to ensure you're only storing chars in this buffer.
+     * DANGEROUS: chars() and bytes() return borrowed raw pointers to data within the pool.
+     * These pointers allow callers to access any memory position in the pool.
+     * You must ensure you do not go beyond the handles lease when using these.
+     * Otherwise you risk going out-of-bounds and causing issues.
+     * Borrowed pointers must not exceed leases lifetime.
+     *
+     * Primily used for snprintf and json serialize/deserialize
      */
-    char *chars(Handle h) { return reinterpret_cast<char *>(data(h)); }
-    const char *chars(Handle h) const { return reinterpret_cast<const char *>(data(h)); }
+    uint8_t *bytes(Handle h) { return data(h); }
+    const uint8_t *bytes(Handle h) const { return data(h); }
+
+    /**
+     * Cast for uint8 leases that need to be char buffers.
+     */
+    char *chars(Handle h) { return reinterpret_cast<char *>(bytes(h)); }
+    const char *chars(Handle h) const { return reinterpret_cast<const char *>(bytes(h)); }
 
     /**
      * Iterate active leases and emit one formatted line per lease through callback.
@@ -512,12 +599,24 @@ class MemPool {
         if (slot >= MEMPOOL_MAX_LEASES) {
             return;
         }
-        if (tag == nullptr) {
-            leaseTag_[slot][0] = '\0';
-            return;
+
+        copyCString(leaseTag_[slot], MEMPOOL_TAG_MAX_LEN, tag);
+    }
+
+    /**
+     * strlcpy is available in the Loom SAMD/newlib-nano target.
+     */
+    static size_t copyCString(char *dst, size_t dstSize, const char *src) {
+        if (dstSize == 0) {
+            return src != nullptr ? strlen(src) : 0;
         }
-        strncpy(leaseTag_[slot], tag, MEMPOOL_TAG_MAX_LEN - 1);
-        leaseTag_[slot][MEMPOOL_TAG_MAX_LEN - 1] = '\0';
+
+        if (src == nullptr) {
+            dst[0] = '\0';
+            return 0;
+        }
+
+        return strlcpy(dst, src, dstSize);
     }
 
     /**

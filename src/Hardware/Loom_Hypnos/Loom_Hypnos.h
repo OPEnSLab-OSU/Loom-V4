@@ -220,27 +220,20 @@ class Loom_Hypnos : public Module {
 
     /**
      * Read file contents from SD into a memory pool lease.
-     * @param fileName File to read from.
+     * @param fileName File to
+     * read from.
      */
-    MemPool::Handle readFileLease(const char *fileName) { return sdMan->readFileLease(fileName); };
+    MemPool::Lease readFileLease(const char *fileName) { return sdMan->readFileLease(fileName); };
 
     /**
-     * Get lease data for a file lease handle.
-     * @param h Handle returned from readFileLease
+     * Deserialize JSON from an SD file through a scoped memory-pool lease.
+     * @param
+     * fileName File to read from.
+     * @param doc JSON document to populate.
      */
-    const char *leaseData(MemPool::Handle h) const { return sdMan->leaseData(h); };
-
-    /**
-     * Get lease size for a file lease handle.
-     * @param h Handle returned from readFileLease
-     */
-    size_t leaseSize(MemPool::Handle h) const { return sdMan->leaseSize(h); };
-
-    /**
-     * Release a lease returned from readFileLease.
-     * @param h Handle returned from readFileLease
-     */
-    bool releaseLease(MemPool::Handle h) { return sdMan->releaseLease(h); };
+    DeserializationError deserializeJsonFile(const char *fileName, JsonDocument &doc) {
+        return sdMan->deserializeJsonFile(fileName, doc);
+    };
 
     /**
      * Stream a file from SD in fixed-size chunks.

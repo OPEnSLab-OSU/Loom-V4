@@ -56,28 +56,17 @@ class SDManager : public Module {
      *
      * @param fileName
      * Name of the file to read from.
-     * @return Memory pool handle. Invalid handle indicates
-     * failure.
+     * @return Scoped memory pool lease. Invalid lease indicates failure.
      */
-    MemPool::Handle readFileLease(const char *fileName);
+    MemPool::Lease readFileLease(const char *fileName);
 
     /**
-     * Get a const char pointer from a lease handle.
-     * @param h Handle returned from readFileLease
-     */
-    const char *leaseData(MemPool::Handle h) const;
-
-    /**
-     * Get the logical size of a lease.
-     * @param h Handle returned from readFileLease
-     */
-    size_t leaseSize(MemPool::Handle h) const;
-
-    /**
-     * Release a lease returned from readFileLease.
-     * @param h Handle returned from readFileLease
-     */
-    bool releaseLease(MemPool::Handle h);
+     * Deserialize JSON from a file through a scoped memory-pool lease.
+     * @param
+     * fileName Name of the file to deserialize.
+     * @param doc JSON document to populate.
+ */
+    DeserializationError deserializeJsonFile(const char *fileName, JsonDocument &doc);
 
     /**
      * Stream file contents in fixed-size chunks.

@@ -96,8 +96,16 @@ void setup()
     wifi.setBatchSD(batchSD);
     wifi.setMaxRetries(2);
     mqtt.setMaxRetries(1);
-    wifi.loadConfigFromJSON(hypnos.readFile("wifi_creds.json"));
-    mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
+    {
+        MemPool::Lease wifiConfig = hypnos.readFileLease("wifi_creds.json");
+        if (wifiConfig)
+            wifi.loadConfigFromJSON(wifiConfig.chars());
+    }
+    {
+        MemPool::Lease mqttConfig = hypnos.readFileLease("mqtt_creds.json");
+        if (mqttConfig)
+            mqtt.loadConfigFromJSON(mqttConfig.chars());
+    }
 #endif
     manager.initialize();
 
