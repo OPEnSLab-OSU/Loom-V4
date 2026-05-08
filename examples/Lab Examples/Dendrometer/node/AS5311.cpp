@@ -12,7 +12,8 @@ AS5311::AS5311(uint8_t cs_pin, uint8_t clk_pin, uint8_t do_pin)
 /**
  *  Initialize pins for serial read procedure
  */
-void AS5311::initializePins() {
+void AS5311::initializePins()
+{
     // initalize pins
     digitalWrite(CS_PIN, HIGH);
     pinMode(CS_PIN, OUTPUT);
@@ -24,7 +25,8 @@ void AS5311::initializePins() {
 /**
  * deinitialize pins after serial read
  */
-void AS5311::deinitializePins() {
+void AS5311::deinitializePins()
+{
     pinMode(CS_PIN, INPUT);
     digitalWrite(CS_PIN, LOW);
     pinMode(CLK_PIN, INPUT);
@@ -36,12 +38,16 @@ void AS5311::deinitializePins() {
  *  Returns the serial output from AS533
  * @return 32 bit value, of which the 18 least signifcant bits contain the sensor data
  */
-uint32_t AS5311::bitbang(bool angleData = true) {
+uint32_t AS5311::bitbang(bool angleData = true)
+{
     initializePins();
 
-    if (angleData) {
+    if (angleData)
+    {
         digitalWrite(CLK_PIN, HIGH); // write clock high to select the angular position data
-    } else {
+    }
+    else
+    {
         digitalWrite(CLK_PIN, LOW); // write clock high to select the magnetic field strength data
     }
 
@@ -55,12 +61,14 @@ uint32_t AS5311::bitbang(bool angleData = true) {
 
     uint32_t data = 0;
     const uint8_t BITS = 18;
-    for (int i = 0; i < BITS; i++) {
+    for (int i = 0; i < BITS; i++)
+    {
         delayMicroseconds(DATA_TIMING_US);
         digitalWrite(CLK_PIN, HIGH);
 
         // don't set clock low on last bit
-        if (i < (BITS - 1)) {
+        if (i < (BITS - 1))
+        {
             delayMicroseconds(DATA_TIMING_US);
             digitalWrite(CLK_PIN, LOW);
         }
@@ -68,7 +76,8 @@ uint32_t AS5311::bitbang(bool angleData = true) {
         delayMicroseconds(DATA_TIMING_US);
 
         auto readval = digitalRead(DO_PIN);
-        if (readval == HIGH) {
+        if (readval == HIGH)
+        {
             data |= 1 << (BITS - 1) - i;
         }
     }
@@ -86,12 +95,12 @@ uint32_t AS5311::bitbang(bool angleData = true) {
  * See pages 12 to 15 of the AS5311 datasheet for more information
  * @return magnetStatus enum
  */
-magnetStatus AS5311::getMagnetStatus() {
+magnetStatus AS5311::getMagnetStatus()
+{
     uint32_t data = bitbang();
 
     // invalid data
-    if (!(data & (1 << OCF)) || data & (1 << COF) ||
-        __builtin_parity(data)) //__builtin_parity returns 1 if odd parity
+    if (!(data & (1 << OCF)) || data & (1 << COF) || __builtin_parity(data)) //__builtin_parity returns 1 if odd parity
         return magnetStatus::error;
 
     // magnetic field out of range
@@ -109,27 +118,38 @@ magnetStatus AS5311::getMagnetStatus() {
  * Return the raw sensor binary data
  * @return raw sensor data
  */
-uint32_t AS5311::getRawData() { return bitbang(true); }
+uint32_t AS5311::getRawData()
+{
+    return bitbang(true);
+}
 
 /**
  * Right shift the raw sensor data to isolate the absolute position component
  * @return 12-bit absolute postion value
  */
-uint16_t AS5311::getPosition() { return bitbang(true) >> DATAOFFSET; }
+uint16_t AS5311::getPosition()
+{
+    return bitbang(true) >> DATAOFFSET;
+}
 
 /**
  * Right shift the raw sensor data to isolate the field strength component
  * @return 12-bit magnetic field strength value
  */
-uint16_t AS5311::getFieldStrength() { return bitbang(false) >> DATAOFFSET; }
+uint16_t AS5311::getFieldStrength()
+{
+    return bitbang(false) >> DATAOFFSET;
+}
 
 /**
  * Takes multiple position measurements and average them
  * @return averaged 12-bit absolute position value
  */
-uint16_t AS5311::getFilteredPosition() {
+uint16_t AS5311::getFilteredPosition()
+{
     uint16_t average = 0;
-    for (int i = 0; i < AVERAGE_MEASUREMENTS; i++) {
+    for (int i = 0; i < AVERAGE_MEASUREMENTS; i++)
+    {
         average += getPosition();
     }
     average /= AVERAGE_MEASUREMENTS;
@@ -139,23 +159,25 @@ uint16_t AS5311::getFilteredPosition() {
 /**
  * Record the data from the magnet sensor, process it, and add it to the manager's packet.
  */
-void AS5311::measure(Manager &manager) {
+void AS5311::measure(Manager &manager)
+{
     int filteredPosition = (int)getFilteredPosition();
+    int rawPosition = (int)getPosition();
 
     recordMagnetStatus(manager);
     manager.addData("AS5311", "mag", getFieldStrength());
-    manager.addData("AS5311", "pos_raw", (int)getPosition());
+    manager.addData("AS5311", "pos_raw", rawPosition);
     manager.addData("AS5311", "pos_avg", filteredPosition);
-    manager.addData("displacement", "um", measureDisplacement(filteredPosition));
+    manager.addData("displacement", "um", measureDisplacement(rawPosition));
 }
 
 /**
  * Calculate the displacement of the magnet given a position.
  * Keeps a persistent count of sensor range overflows
- * Moving the sensor too much (about 1mm) in between calls to this function will result in invalid
- * data.
+ * Moving the sensor too much (about 1mm) in between calls to this function will result in invalid data.
  */
-float AS5311::measureDisplacement(int pos) {
+float AS5311::measureDisplacement(int pos)
+{
     static const int WRAP_THRESHOLD = 2048;
     static const int TICKS = 4096;                   // 2^12 == 4096   see datasheet page 10
     static const float POLE_PAIR_LENGTH_UM = 2000.0; // 2mm == 2000um
@@ -168,7 +190,8 @@ float AS5311::measureDisplacement(int pos) {
     int magnetPosition = pos;
 
     int difference = magnetPosition - lastPosition;
-    if (abs(difference) > WRAP_THRESHOLD) {
+    if (abs(difference) > WRAP_THRESHOLD)
+    {
         if (difference < 0) // high to low overflow
             overflows += 1;
         else // low to high overflow
@@ -182,9 +205,11 @@ float AS5311::measureDisplacement(int pos) {
 /**
  * Record the alignment status of the magnet sensor
  */
-void AS5311::recordMagnetStatus(Manager &manager) {
+void AS5311::recordMagnetStatus(Manager &manager)
+{
     magnetStatus status = getMagnetStatus();
-    switch (status) {
+    switch (status)
+    {
     case magnetStatus::red:
         manager.addData("AS5311", "Alignment", "Red");
         break;
