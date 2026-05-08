@@ -285,6 +285,7 @@ void Loom_LoRa::beginHandshake(uint8_t peerAddress) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LoRa::clearHandshake() {
+    LOGF("[HANDSHAKE] Clearing active handshake");
     this->handshakeEstablished = false;
     this->handshakePeerAddress = 0;
     this->handshakeEstablishedAt = 0;
