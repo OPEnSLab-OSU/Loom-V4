@@ -28,10 +28,16 @@ Loom_ThingSpeak::Loom_ThingSpeak(Manager &man, NetworkComponent &internet_client
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_ThingSpeak::publish() {
     FUNCTION_START;
-    char message[MAX_JSON_SIZE];
     char topic[MAX_TOPIC_LENGTH];
     if (moduleInitialized) {
         // TIMER_DISABLE;
+
+        MemPool::Lease messageLease = manInst->getPool().allocLease(MAX_JSON_SIZE, "things_msg");
+        if (!messageLease) {
+            ERROR(F("Failed to allocate memory-pool lease for ThingSpeak publish!"));
+            FUNCTION_END;
+            return false;
+        }
 
         /* Attempt to connect to the broker if it fails we should just return */
         if (!connectToBroker()) {
@@ -40,10 +46,10 @@ bool Loom_ThingSpeak::publish() {
         }
 
         /* Format the message we want to publish */
-        formatMessage(topic, message);
+        formatMessage(topic, messageLease.chars());
 
         /* Publish the message to the given topic */
-        if (!publishMessage(topic, message, false, 0)) {
+        if (!publishMessage(topic, messageLease.chars(), false, 0)) {
             FUNCTION_END;
             return false;
         }
@@ -127,7 +133,7 @@ void Loom_ThingSpeak::formatMessage(char topic[MAX_TOPIC_LENGTH], char message[M
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_ThingSpeak::loadConfigFromJSON(char *json) {
+void Loom_ThingSpeak::loadConfigFromJSON(const char *json) {
     FUNCTION_START;
     char output[OUTPUT_SIZE];
 
@@ -158,7 +164,6 @@ void Loom_ThingSpeak::loadConfigFromJSON(char *json) {
     if (!doc["password"].isNull())
         strncpy(password, doc["password"].as<const char *>(), 100);
 
-    free(json);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

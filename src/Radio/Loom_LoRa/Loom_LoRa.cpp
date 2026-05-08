@@ -309,16 +309,26 @@ bool Loom_LoRa::receive(uint timeout, bool shouldProxy) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::transmitToLoRa(JsonObject json, uint8_t destinationAddress) {
-    uint8_t buffer[MAX_MESSAGE_LENGTH] = {};
+    MemPool::Lease bufferLease = manager->getPool().allocLease(MAX_MESSAGE_LENGTH, "lora_msg");
+    if (!bufferLease) {
+        ERROR(F("Failed to allocate memory-pool lease for LoRa packet!"));
+        return false;
+    }
+
+    uint8_t *buffer = bufferLease.bytes();
+    if (buffer == nullptr) {
+        ERROR(F("Failed to access LoRa packet lease!"));
+        return false;
+    }
     bool status = false;
 
-    status = serializeMsgPack(json, buffer, MAX_MESSAGE_LENGTH);
+    status = serializeMsgPack(json, buffer, bufferLease.size());
     if (!status) {
         ERROR(F("Failed to convert JSON to MsgPack"));
         return false;
     }
 
-    status = radioManager->sendtoWait(buffer, sizeof(buffer), destinationAddress);
+    status = radioManager->sendtoWait(buffer, bufferLease.size(), destinationAddress);
     if (!status) {
         ERROR(F("Failed to send packet to specified address!"));
         return false;

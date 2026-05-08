@@ -7,6 +7,9 @@
 #include "MemPool.hpp"
 #include "Module.h"
 
+// required to move json allocator to the mempool
+#include "MemPoolJson.hpp"
+
 #define WAIT_TIME_MS 20000 // Time to wait for the serial interface to start
 #define BAUD_RATE 115200   // Serial interface baud rate
 
@@ -48,7 +51,7 @@ class Manager {
      * Get a reference to the JSON document that sensor data is stored in
      * @return reference to the main JSON document
      */
-    DynamicJsonDocument &getDocument(); // Returns a reference to the main JSON document storing
+    JsonDocument &getDocument(); // Returns a reference to the main JSON document storing
 
     MemPool &getPool() { return pool_; }
 
@@ -180,11 +183,11 @@ class Manager {
      */
     void warningModuleNotInitialized(Module *module);
 
-    /* Module Data */
-    DynamicJsonDocument doc; // JSON document that will store all sensor information
+    /* Pool now holds all the sensor information */
+    MemPool pool_;
+    LoomJsonDocument doc; // JSON document that will store all sensor information
     JsonArray contentsArray; // Stores the contents of the modules
 
-    MemPool pool_;
 
     std::vector<std::pair<const char *, Module *>>
         modules; // List of modules that have been added to the stack

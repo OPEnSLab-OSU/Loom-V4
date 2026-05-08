@@ -42,6 +42,9 @@ class SDManager;
 /**
  * MemPool uses deterministic fixed-size blocks to avoid heap fragmentation.
  * Default config reserves 8KB (64 blocks * 128 bytes) at compile time.
+ * 
+ * The main reason for using this mempool is to help debug and prevent dynamic 
+ * and buffer bounds memory issues.
  */
 class MemPool {
   public:
@@ -56,24 +59,31 @@ class MemPool {
         }
     };
     /**
-     * Resource Acquisition Is Initialization (RAII) for lease lifecycles.
-     * Moves the burden resource management from callers to the pool.
+     * Resource Acquisition Is Initialization (RAII)/RRID for lease lifecycles.
+     * Moves the burden of resource management from callers to the pool.
+     *
+     * **Copy method** is defined but results in nothing. We DO NOT want to copy leases...
+     * it can lead to bad things (two leases "own" the same memory).
+     *
+     * **Copy method**
      */
     class Lease {
       public:
         Lease() : pool_(nullptr), handle_(Handle::invalid()) {}
         Lease(MemPool *pool, Handle handle) : pool_(pool), handle_(handle) {}
-        ~Lease() { release(); }
 
-        Lease(const Lease &) = delete;
-        Lease &operator=(const Lease &) = delete;
+        /* The Big-5 */
+        ~Lease() { release(); } /* Destructor   */
 
-        Lease(Lease &&other) : pool_(other.pool_), handle_(other.handle_) {
+        Lease(const Lease &) = delete;            /* Disabled copy */
+        Lease &operator=(const Lease &) = delete; /* Disabled Copy Assignment Operator */
+
+        Lease(Lease &&other) : pool_(other.pool_), handle_(other.handle_) { /* Move */
             other.pool_ = nullptr;
             other.handle_ = Handle::invalid();
         }
 
-        Lease &operator=(Lease &&other) {
+        Lease &operator=(Lease &&other) { /* Move Assignment Operator */
             if (this != &other) {
                 release();
                 pool_ = other.pool_;
@@ -85,7 +95,9 @@ class MemPool {
         }
 
         bool valid() const { return pool_ != nullptr && pool_->valid(handle_); }
-        explicit operator bool() const { return valid(); }
+        explicit operator bool() const {
+            return valid();
+        } /* Lets leases be used as a bool (valid) */
 
         bool release() {
             if (!valid()) {
@@ -230,7 +242,7 @@ class MemPool {
     Handle alloc(size_t bytes, const char *tag) {
         allocCalls_++;
 
-        // Alloc cannot allocate 0 bytes, normalize to 1 byte.
+        // alloc cannot allocate 0 bytes, normalize to 1 byte.
         if (bytes == 0) {
             bytes = 1;
         }
@@ -476,6 +488,40 @@ class MemPool {
     }
 
     /**
+     * Return the active lease handle whose allocation starts at ptr.
+     * This is primarily for allocator-style integrations that receive only a raw pointer
+     * during deallocation.
+     */
+    Handle handleFromPointer(const void *ptr) const {
+        if (ptr == nullptr) {
+            return Handle::invalid();
+        }
+
+        const uint8_t *bytePtr = static_cast<const uint8_t *>(ptr);
+        const uint8_t *arenaStart = arena_;
+        const uint8_t *arenaEnd = arena_ + sizeof(arena_);
+        if (bytePtr < arenaStart || bytePtr >= arenaEnd) {
+            return Handle::invalid();
+        }
+
+        const size_t offset = (size_t)(bytePtr - arenaStart);
+        if ((offset % MEMPOOL_BLOCK_SIZE) != 0) {
+            return Handle::invalid();
+        }
+
+        const uint16_t block = (uint16_t)(offset / MEMPOOL_BLOCK_SIZE);
+        const uint16_t slot = ownerByBlock_[block];
+        if (slot >= MEMPOOL_MAX_LEASES || leaseStart_[slot] != block) {
+            return Handle::invalid();
+        }
+
+        Handle h = {slot, leaseGeneration_[slot]};
+        return valid(h) ? h : Handle::invalid();
+    }
+
+    bool releasePointer(void *ptr) { return release(handleFromPointer(ptr)); }
+
+    /**
      * DANGEROUS: chars() and bytes() return borrowed raw pointers to data within the pool.
      * These pointers allow callers to access any memory position in the pool.
      * You must ensure you do not go beyond the handles lease when using these.
@@ -604,7 +650,8 @@ class MemPool {
     }
 
     /**
-     * strlcpy is available in the Loom SAMD/newlib-nano target.
+     * strlcpy is supported in the Loom core and should replace all strcpy and strncpy.
+     * anyways this function is a null-ptr safe strcpy.
      */
     static size_t copyCString(char *dst, size_t dstSize, const char *src) {
         if (dstSize == 0) {
@@ -620,7 +667,7 @@ class MemPool {
     }
 
     /**
-     * Centralized allocation failure accounting and invalid-handle return.
+     *  Allocation failure tracking and invalid-handle return.
      */
     Handle failAllocation(AllocFailureReason reason) {
         failedAllocs_++;
@@ -678,7 +725,7 @@ class MemPool {
         return (uint16_t)freeRam;
     }
 
-    uint8_t arena_[MEMPOOL_BLOCK_SIZE * MEMPOOL_BLOCK_COUNT];
+    alignas(max_align_t) uint8_t arena_[MEMPOOL_BLOCK_SIZE * MEMPOOL_BLOCK_COUNT];
     uint16_t ownerByBlock_[MEMPOOL_BLOCK_COUNT];
 
     bool leaseActive_[MEMPOOL_MAX_LEASES];

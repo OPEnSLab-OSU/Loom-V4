@@ -301,6 +301,8 @@ class Loom_Hypnos : public Module {
      * @param mv Whether you want millivolts returned with volts. (default = false)
      * @param num_samples Number of samples if you want to get an average. (default = 1)
      */
+    bool checkVoltage(float vmin = 0.0, int analogPin = A7, float scale = 2.0f,
+                      bool mv = false, int num_samples = 1);
     bool checkVoltageAverage(float vmin = 0.0, int analogPin = A7, float scale = 2.0f,
                              bool mv = false, int num_samples = 1);
 

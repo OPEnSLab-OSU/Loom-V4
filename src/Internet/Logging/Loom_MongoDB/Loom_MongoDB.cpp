@@ -31,10 +31,16 @@ Loom_MongoDB::Loom_MongoDB(Manager &man, NetworkComponent &internet_client)
 bool Loom_MongoDB::publish() {
     FUNCTION_START;
 
-    char jsonString[MAX_JSON_SIZE];
     if (moduleInitialized) {
 
         // TIMER_DISABLE;
+
+        MemPool::Lease jsonLease = manInst->getPool().allocLease(MAX_JSON_SIZE, "mongo_json");
+        if (!jsonLease) {
+            ERROR(F("Failed to allocate memory-pool lease for MongoDB publish!"));
+            FUNCTION_END;
+            return false;
+        }
 
         if (strlen(projectServer) > 0)
             // Formulate a topic to publish on with the format
@@ -54,8 +60,8 @@ bool Loom_MongoDB::publish() {
         }
 
         /* Attempt to publish the data to the given topic */
-        manInst->getJSONString(jsonString);
-        if (!publishMessage(topic, jsonString)) {
+        manInst->getJSONString(jsonLease.chars());
+        if (!publishMessage(topic, jsonLease.chars())) {
             FUNCTION_END;
             return false;
         }
@@ -72,12 +78,11 @@ bool Loom_MongoDB::publish() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_MongoDB::publishMetadata(char *metadata) {
+bool Loom_MongoDB::publishMetadata(const char *metadata) {
     FUNCTION_START;
 
     if (moduleInitialized) {
 
-        char jsonString[MAX_JSON_SIZE];
         // TIMER_DISABLE;
 
         if (strlen(projectServer) > 0)
@@ -228,7 +233,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_MongoDB::loadConfigFromJSON(char *json) {
+void Loom_MongoDB::loadConfigFromJSON(const char *json) {
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     char topic[MAX_TOPIC_LENGTH];
@@ -284,7 +289,6 @@ void Loom_MongoDB::loadConfigFromJSON(char *json) {
     }
 
     moduleInitialized = true;
-    free(json);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

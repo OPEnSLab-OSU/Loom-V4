@@ -90,31 +90,52 @@ bool SDManager::writeLineToFile(const char *filename, const char *content) {
 void SDManager::writeHeaders() {
     // Allocates 576 bytes per header within this scope (size returns 513)
     // Capacity returns 576
-    MemPool::Lease header1 = manInst->getPool().allocLease(513, "sd_hdr1");
-    MemPool::Lease header2 = manInst->getPool().allocLease(513, "sd_hdr2");
+    MemPool::Lease headerLease1 = manInst->getPool().allocLease(513, "sd_hdr1");
+    MemPool::Lease headerLease2 = manInst->getPool().allocLease(513, "sd_hdr2");
 
-    if (!header1 || !header2) {
+    if (!headerLease1 || !headerLease2) {
         printModuleName("Failed to allocate SD header buffers!");
         return;
     }
 
+    char *header1 = headerLease1.chars();
+    char *header2 = headerLease2.chars();
+
+    auto appendHeader = [](char *dst, size_t dstSize, const char *text) -> bool {
+        if (dst == nullptr) {
+            return false;
+        }
+        if (text == nullptr) {
+            text = "";
+        }
+
+        size_t used = strlen(dst);
+        if (used >= dstSize) {
+            return false;
+        }
+
+        size_t remaining = dstSize - used - 1;
+        strncat(dst, text, remaining);
+        return strlen(text) <= remaining;
+    };
+    
     // Append the serial number to the top of the CSV file, reset the header1 array
-    snprintf_P(header1.chars(), header1.size(), PSTR("%s"), manInst->get_serial_num());
+    snprintf_P(header1, headerLease1.size(), PSTR("%s"), manInst->get_serial_num());
     myFile.println(header1);
 
     // Clear both arrays
-    header1.chars()[0] = '\0';
-    header2.chars()[0] = '\0';
+    header1[0] = '\0';
+    header2[0] = '\0';
 
     JsonObject document = manInst->getDocument().as<JsonObject>();
     // count = size - contents - null terminator
-    strncat(header1.chars(), "ID,,", header1.size() - strlen(header1) - 1);
-    strncat(header2.chars(), "name,instance,", header2.size() - strlen(header2) - 1);
+    appendHeader(header1, headerLease1.size(), "ID,,");
+    appendHeader(header2, headerLease2.size(), "name,instance,");
 
     // If there is a key that contains timestamp data when need to include that separately
     if (document.containsKey("timestamp")) {
-        strncat(header1.chars(), "timestamp,,", header1.size() - strlen(header1) - 1);
-        strncat(header2.chars(), "time_utc,time_local,", header2.size() - strlen(header2) - 1);
+        appendHeader(header1, headerLease1.size(), "timestamp,,");
+        appendHeader(header2, headerLease2.size(), "time_utc,time_local,");
     }
 
     // Get the contents containing the reset of the sensor data
@@ -123,14 +144,13 @@ void SDManager::writeHeaders() {
     // Loop over each
     for (JsonVariant v : contentsArray) {
         // Get the module name
-        strncat(header1, v.as<JsonObject>()["module"].as<const char *>(),
-                header1.size() - strlen(header1) - 1);
+        appendHeader(header1, headerLease1.size(), v.as<JsonObject>()["module"] | "");
 
         // Get all JSON keys
         for (JsonPair keyValue : v.as<JsonObject>()["data"].as<JsonObject>()) {
-            strncat(header2, keyValue.key().c_str(), header2.size() - strlen(header2) - 1);
-            strncat(header2, ",", header2.size() - strlen(header2) - 1);
-            strncat(header1, ",", header1.size() - strlen(header1) - 1);
+            appendHeader(header2, headerLease2.size(), keyValue.key().c_str());
+            appendHeader(header2, headerLease2.size(), ",");
+            appendHeader(header1, headerLease1.size(), ",");
         }
     }
     // Write the headers to the file
@@ -628,7 +648,8 @@ DeserializationError SDManager::deserializeJsonFile(const char *fileName, JsonDo
     if (!lease || lease.chars() == nullptr) {
         return DeserializationError::EmptyInput;
     }
-    return deserializeJson(doc, lease.chars());
+    const char *json = lease.chars();
+    return deserializeJson(doc, json );
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
