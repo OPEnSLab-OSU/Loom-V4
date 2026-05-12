@@ -3,10 +3,16 @@
 Logger *Logger::instance = nullptr;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Manager::Manager(const char *devName, uint32_t instanceNum, uint32_t nw_interval)
-    : instanceNumber(instanceNum), doc(MAX_JSON_SIZE), normalWorkInterval(nw_interval) {
+Manager::Manager(const char *devName, uint32_t instanceNum)
+    : instanceNumber(instanceNum), doc(MAX_JSON_SIZE) {
     strncpy(this->deviceName, devName, 100);
     Logger::getInstance();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Manager::useHeartbeat(Heartbeat *heartbeat) {
+    this->heartbeat = heartbeat;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -94,6 +100,16 @@ void Manager::measure() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::package() {
+    if (heartbeat == nullptr || heartbeat->shouldPackageData()) {
+        packageData();
+    } else {
+        packageHeartbeat();
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Manager::packageData() {
     FUNCTION_START;
     char noInitLog[50];
 
@@ -130,36 +146,16 @@ void Manager::package() {
     LOG(F("** Packaging Complete **"));
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// add parameter to pass in JSON for custom heartbeats per project
-// make sure this doesn't log to sd card
-void Manager::package(bool heartbeat){
+void Manager::packageHeartbeat() {
     FUNCTION_START;
-    if (!heartbeat || currentInterval == normalWorkInterval) {
-        // normal work interval
-        package();
-        currentInterval = 0;
-        return;
+    LOG(F("** Packaging Heartbeat **"));
+
+    if (heartbeat != nullptr) {
+        heartbeat->package(doc, get_device_name(), get_instance_num());
     }
 
-    // heartbeat interval
-
-    char noInitLog[50];
-
-    LOG(F("** Packaging Heartbeat **"));
-    
-    // Clear the document so that we don't get null characters after too many updates
-    doc.clear();
-    doc[F("type")] = F("heartbeat");
-    doc["id"]["name"] = get_device_name();
-    doc["id"]["instance"] = get_instance_num();
-    
-    currentInterval++;
-
-    LOG(F("** Packaging Heartbeat Complete **"));
+    LOG(F("** Heartbeat Packaging Complete **"));
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

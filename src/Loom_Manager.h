@@ -6,6 +6,8 @@
 
 #include "Module.h"
 
+#include "Heartbeat.h"
+
 #define WAIT_TIME_MS 20000 // Time to wait for the serial interface to start
 #define BAUD_RATE 115200   // Serial interface baud rate
 
@@ -22,7 +24,13 @@ class Manager {
      * @param devName Device name to provided for logging purposes
      * @param instanceNum Instance number for logging purposes
      */
-    Manager(const char *devName, uint32_t instanceNum, uint32_t nw_interval);
+    Manager(const char *devName, uint32_t instanceNum);
+
+    /**
+     * Attach a heartbeat configuration to control data vs heartbeat packaging intervals
+     * @param heartbeat Pointer to the heartbeat object to use
+     */
+    void useHeartbeat(Heartbeat *heartbeat);
 
     /**
      * Registers a new sub-module to be controlled by the manager (Used on sensors so measure and
@@ -71,7 +79,6 @@ class Manager {
      *  Calls the package function to store all data from those sensors into a nice JSON package
      */
     void package();
-    void package(bool heartbeat);
 
     /**
      *  Calls the power_up function on each module to re-init after sleep
@@ -174,7 +181,9 @@ class Manager {
     bool hypnosEnabled = false; // If the power rails on the hypnos are enabled this means we should
                                 // be able to initialize
 
-    /* Heartbeat Interval Variables */
-    uint32_t normalWorkInterval = 0;
-    uint32_t currentInterval = 0;
+    /* Package Methods */
+    void packageData();
+    void packageHeartbeat();
+
+    Heartbeat *heartbeat = nullptr;
 };
