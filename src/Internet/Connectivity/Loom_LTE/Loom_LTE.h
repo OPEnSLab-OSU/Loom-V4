@@ -76,16 +76,16 @@ class Loom_LTE : public NetworkComponent {
      */
     void loadConfigFromJSON(char *json);
 
-        /**
-         * @brief uses TinyGSM AT commands to retrieve GPS coordinates. 
-         *  Stores Latitude and Longitude data in class variables lon and lat
-         * Executes during initalization, and is included in the package function
-         * @param modem sensor type, meaning GNSS reciever or cellLocate. Cell locate (SARAR4) uses less power and is 
-         * less accurate. Technically compatible with SARAR4 but needs to be ironed out. 
-         *  Can switch to GNSS reciever (SARAR5) for higher precision, but higher power usage. Only compatible with SARA-R510M8S and
-         * the newer SARA-R520M10. 
-         */
-        void getCoordinates (GPS_TYPE modem); 
+    /**
+     * @brief uses TinyGSM AT commands to retrieve GPS coordinates. 
+     *  Stores Latitude and Longitude data in class variables lon and lat
+     * Executes during initalization, and is included in the package function
+     * @param modem sensor type, meaning GNSS reciever or cellLocate. Cell locate (SARAR4) uses less power and is 
+     * less accurate. Technically compatible with SARAR4 but needs to be ironed out. 
+     *  Can switch to GNSS reciever (SARAR5) for higher precision, but higher power usage. Only compatible with SARA-R510M8S and
+     * the newer SARA-R520M10. 
+     */
+    void getCoordinates (GPS_TYPE modem); 
 
     /**
      * Turn on batch upload for the lte which means it will only initialize the module when we need
@@ -154,9 +154,12 @@ class Loom_LTE : public NetworkComponent {
     Loom_BatchSD *batch_sd = nullptr; // If we are using batch publish
 
     bool powered = false; // Device power status
-        float lat = 0;                          // GPS latitude
 
-        float lon = 0;                          // GPS longitude
+    char locationMethod[20]; // either GPS or CellLocate, indicates expected accuracy. GPS accuracy > CellLocate accuracy
+
+    float lat = 0;                          // GPS latitude
+
+    float lon = 0;                          // GPS longitude
 
 
 
