@@ -11,7 +11,7 @@ SDManager::SDManager(Manager *man, int sd_chip_select)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::writeLineToFile(const char *filename, const char *content) {
-
+    
     // Check if the SD card is actually functional
     if (sdInitialized) {
         // Open the given file for writing
@@ -80,20 +80,18 @@ void SDManager::writeHeaders() {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+// Check if EOD reached, use currentTime from SDmanager log()
+// int Day, track day num, then file.close(), then file = sd.open, Day = currentTime.day() to update Day
 bool SDManager::log(DateTime currentTime) {
     char output[MAX_JSON_SIZE + 1];
 
     if (sdInitialized) {
 
-        // Open the file in read/write mode, create the file if we need to and append the content to
-        // the end of the file
-        myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
-
         if (myFile) {
 
             // If this file has never been written to before we need to create and write the proper
             // headers to the file
-            if (myFile.available() <= 3) {
+            if (myFile.size() <= 3) {
                 // Set the date created timestamp of the File
                 myFile.timestamp(T_CREATE, currentTime.year(), currentTime.month(),
                                  currentTime.day(), currentTime.hour(), currentTime.minute(),
@@ -157,12 +155,18 @@ bool SDManager::log(DateTime currentTime) {
             // Write the matching data into the CSV file
             myFile.println(output);
 
-            // Set the last modified date
-            myFile.timestamp(T_WRITE, currentTime.year(), currentTime.month(), currentTime.day(),
-                             currentTime.hour(), currentTime.minute(), currentTime.second());
+            // // Set the last modified date
+            // myFile.timestamp(T_WRITE, currentTime.year(), currentTime.month(), currentTime.day(),
+            //                  currentTime.hour(), currentTime.minute(), currentTime.second());
 
-            // Close the file
-            myFile.close();
+            // Sync file, don't close unless EOD
+            myFile.sync();
+
+            if(currentTime.day() != lastClosed){
+                myFile.close();
+                myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
+                lastClosed = currentTime.day();
+            }
 
             // Inform the user that we have successfully written to the file
             snprintf_P(output, MAX_JSON_SIZE, PSTR("Successfully logged data to %s"), fileName);
@@ -227,6 +231,9 @@ bool SDManager::begin() {
             return false;
         }
         updateCurrentFileName();
+        // Open the file in read/write mode, create the file if we need to and append the content to
+        // the end of the file
+        myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
     }
 
     // Once the SD card has initialized the first round through we don't want to update the file
@@ -331,16 +338,16 @@ void SDManager::logBatch() {
     // We want to clear the file after the batch size has been exceeded
     if (current_batch >= batch_size) {
         current_batch = 0;
-        myFile = sd.open(f_name, O_WRITE | O_TRUNC | O_APPEND);
+        batchFile = sd.open(f_name, O_WRITE | O_TRUNC | O_APPEND);
     } else {
-        myFile = sd.open(f_name, O_WRITE | O_CREAT | O_APPEND);
+        batchFile = sd.open(f_name, O_WRITE | O_CREAT | O_APPEND);
     }
     // Check if the file has been opened properly and write the JSON packet to one line
-    if (myFile) {
+    if (batchFile) {
 
         manInst->getJSONString(jsonString);
-        myFile.println(jsonString);
-        myFile.close();
+        batchFile.println(jsonString);
+        batchFile.close();
         current_batch++;
 
     } else {

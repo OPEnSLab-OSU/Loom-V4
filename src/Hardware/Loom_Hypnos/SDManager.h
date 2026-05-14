@@ -109,12 +109,15 @@ class SDManager : public Module {
     /* Get whatever number we are currently appending to the SD fileNames*/
     int getCurrentFileNumber() { return file_count; };
 
-  private:
+    private:
     Manager *manInst; // Reference to the manager
 
     File myFile;       // File object used to handle reading and writing
+    File batchFile;    // for txt file, not csv 
     File scanningFile; // Used specifically to search through the directory
     File root;         // Open the root directory as a file
+
+    int lastClosed = -1;
 
     SdFat sd; // SD Card Object
 
