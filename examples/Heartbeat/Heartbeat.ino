@@ -1,28 +1,43 @@
 #include <Loom_Manager.h>
 
+#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
+
 Manager manager("HeartbeatDevice", 1);
+Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 
 // Send a full data packet every 3 package calls; send heartbeat packets between them.
 Heartbeat heartbeat(3);
 
+void isrTrigger(){
+  hypnos.wakeup();
+}
+
 void setup() {
-  // Start the serial interface and wait for the user to open the serial monitor
   manager.beginSerial();
 
-  // Attach heartbeat behavior before the first package call
+  // register heartbeat
   manager.useHeartbeat(&heartbeat);
 
-  // Initialize the manager
+  hypnos.enable();
+
   manager.initialize();
+
+  hypnos.registerInterrupt(isrTrigger);
 }
 
 void loop() {
-  // Package the data or heartbeat into JSON
+  hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 10));
+
+  manager.measure();
+
   manager.package();
 
-  // Print the JSON document to the Serial monitor
   manager.display_data();
 
-  // Wait for 5 seconds
-  manager.pause(5000);
+  // log to SD
+  hypnos.logToSD();
+
+  hypnos.reattachRTCInterrupt();
+  
+  hypnos.sleep();
 }

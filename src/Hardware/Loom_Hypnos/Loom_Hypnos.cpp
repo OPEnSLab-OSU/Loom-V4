@@ -688,7 +688,12 @@ void Loom_Hypnos::createTimezoneMap() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::logToSD() {
     FUNCTION_START;
-    sdMan->log(getCurrentTime());
+
+    const char *packetType = manInst->getDocument()["type"] | "";
+    if (strcmp(packetType, "heartbeat") != 0) {
+        sdMan->log(getCurrentTime());
+    }
+
     FUNCTION_END;
 }
 
