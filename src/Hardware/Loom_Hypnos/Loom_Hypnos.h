@@ -201,6 +201,8 @@ class Loom_Hypnos : public Module{
          */
         DateTime getCurrentTime();
 
+         DateTime getLocalTime(DateTime time);                                               // Convert a given UTC time to local time
+
         /**
          * Convert the current time to a ISO 8601 compatible time string
          *
@@ -304,7 +306,6 @@ class Loom_Hypnos : public Module{
         void createTimezoneMap();                                                           // Map Timezone Strings to Timezone enum
         std::map<const char*, TIME_ZONE, cmp_str> timezoneMap;                              // String to Timezone enum, use custom compare to ensure that strings are compared correctly
 
-        DateTime getLocalTime(DateTime time);                                               // Convert a given UTC time to local time
         TIME_ZONE timezone;                                                                 // Timezone the RTC was set to
 
         DateTime time;                                                                      // UTC time
