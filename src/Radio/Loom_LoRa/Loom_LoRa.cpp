@@ -193,7 +193,8 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
 
     LOGF("Received packet from %i", *fromAddress);
 
-    StaticJsonDocument<300> tempDoc;
+    const size_t SAFE_JSON_SIZE = 1500;
+    StaticJsonDocument<SAFE_JSON_SIZE> tempDoc;
 
     // cast buf to const to avoid mutation
     auto err = deserializeMsgPack(tempDoc, (const char *)buf, sizeof(buf));

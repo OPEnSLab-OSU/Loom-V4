@@ -28,7 +28,7 @@ class Loom_Heartbeat {
 
         // returns the heartbeat json document, for users to possibly edit
         // the contents and append information
-        DynamicJsonDocument& getDoc();
+        JsonDocument& getDoc();
 
         // does all construction of the heartbeat packet and information before
         // any transmissions occur
@@ -41,7 +41,7 @@ class Loom_Heartbeat {
         bool transmitCustom(const uint8_t destinationAddress, JsonDocument& document);
 
     private:
-        DynamicJsonDocument heartbeatDoc;
+        StaticJsonDocument<300> heartbeatDoc;
 
         Manager* managerInstance;
         Loom_Hypnos* hypnosInstance;

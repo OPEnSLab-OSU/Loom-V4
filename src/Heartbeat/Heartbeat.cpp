@@ -6,8 +6,7 @@ Loom_Heartbeat::Loom_Heartbeat(uint32_t normalWorkInterval,
                           Manager* managerInstance, 
                           Loom_Hypnos* hypnosInstance,
                           Loom_LoRa* loraInstance) 
-            : heartbeatDoc(1024),
-              normalWorkInterval(normalWorkInterval),
+            : normalWorkInterval(normalWorkInterval),
               managerInstance(managerInstance),
               hypnosInstance(hypnosInstance),
               loraInstance(loraInstance) {
@@ -76,10 +75,14 @@ void Loom_Heartbeat::addData(const char* module, const char* dataName, const cha
         dataObj = heartbeatDoc.createNestedObject(module);
     }
 
+    if (!dataObj[dataName].set(data)) {
+        LOGF("[HEARTBEAT] addData failed: document full, could not add %s/%s", module, dataName);
+    }
+
     dataObj[dataName] = data;
 }
 
-DynamicJsonDocument& Loom_Heartbeat::getDoc() {
+JsonDocument& Loom_Heartbeat::getDoc() {
     return heartbeatDoc;
 }
 
