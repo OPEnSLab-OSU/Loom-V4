@@ -4,6 +4,7 @@
 Loom_Multiplexer::Loom_Multiplexer(Manager &man) : Module("Multiplexer"), manInst(&man) {
     moduleInitialized = false;
     manInst->registerModule(this);
+    known_addresses = default_addresses;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -13,6 +14,16 @@ Loom_Multiplexer::Loom_Multiplexer(Manager &man, const std::vector<byte> &addres
     moduleInitialized = false;
     manInst->registerModule(this);
     known_addresses = addresses;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+Loom_Multiplexer::Loom_Multiplexer(Manager &man, Loom_Hypnos &hypnos, const char *fileName)
+    : Module("Multiplexer"), manInst(&man) {
+    moduleInitialized = false;
+    manInst->registerModule(this);
+    sdMan = hypnos.getSDManager();
+    sdFile = fileName;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -30,6 +41,11 @@ void Loom_Multiplexer::initialize() {
     char output[OUTPUT_SIZE];
     Wire.begin();
     int moduleIndex = 0;
+
+    if (sdMan != nullptr) {
+        loadAddressesFromSD(sdFile);
+    }
+
     // Find the multiplexer at the possible addresses
     for (byte addr : alt_addresses) {
 
@@ -212,6 +228,70 @@ bool Loom_Multiplexer::isDeviceConnected(byte addr) {
     FUNCTION_END;
     return response;
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Loom_Multiplexer::loadAddressesFromSD(const char *fileName) {
+    FUNCTION_START;
+    // Doc to store the JSON data from the SD card in
+    StaticJsonDocument<OUTPUT_SIZE> doc;
+    char output[OUTPUT_SIZE];
+
+    char *fileRead = sdMan->readFile(fileName);
+    // avoid zero-copy behavior
+    DeserializationError deserialError = deserializeJson(doc, (const char *)fileRead);
+    free(fileRead);
+
+    // Create JsonArray object to store sensor array
+    JsonArray sensorMap = doc["sensors"];
+
+    if (deserialError != DeserializationError::Ok) {
+        snprintf(
+            output, OUTPUT_SIZE,
+            "There was an error reading the config from SD: %s, default addresses will be used",
+            deserialError.c_str());
+        ERROR(output);
+        known_addresses = default_addresses;
+    } else {
+        LOG(F("Config successfully loaded from SD!"));
+        if (!sensorMap.isNull()) {
+            if (sensorMap.size()) {
+                // reserve space in known_addresses before loop
+                known_addresses.reserve(sensorMap.size());
+
+                for (int i = 0; i < sensorMap.size(); i++) {
+
+                    known_addresses.push_back(
+                        static_cast<byte>(strtol(sensorMap[i]["addr"], NULL, 16)));
+                    // debugging to see each address pulled
+                    snprintf(output, OUTPUT_SIZE, "Address 0x%X pulled from SD",
+                             known_addresses.back());
+                    LOG(output);
+                }
+                snprintf(output, OUTPUT_SIZE, "Using %u addresses from SD.",
+                         known_addresses.size());
+                LOG(output);
+            } else {
+                snprintf(output, OUTPUT_SIZE,
+                         "JSON \"Sensors\" array empty. Using default addresses");
+                LOG(output);
+                known_addresses = default_addresses;
+            }
+
+        }
+
+        // If the sensors array is null.
+        else {
+            snprintf(output, OUTPUT_SIZE,
+                     "There was an error retrieving addresses from the JSON document, default "
+                     "address's will be used");
+            ERROR(output);
+            known_addresses = default_addresses;
+        }
+    }
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -277,6 +357,12 @@ Module *Loom_Multiplexer::loadSensor(const byte addr) {
     /// MB1232
     case 0x70:
         return new Loom_MB1232(*manInst, 0x70, true);
+
+    // SEN66
+    case 0x6B:
+        return new Loom_SEN66(*manInst, 0x6B, true);
     }
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
