@@ -59,7 +59,7 @@ void loop() {
     heartbeat.transmit(0);
   }
   else {
-    lora.send(0)
+    lora.send(0);
   }
 
   // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
