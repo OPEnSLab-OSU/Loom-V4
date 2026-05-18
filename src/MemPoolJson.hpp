@@ -46,8 +46,9 @@ struct MemPoolJsonAllocator {
         }
 
         const size_t oldSize = pool->size(oldHandle);
-        if (new_size <= oldSize) {
-            return ptr;
+        const size_t oldCapacity = pool->capacity(oldHandle);
+        if (new_size <= oldCapacity) {
+            return pool->resize(oldHandle, new_size) ? ptr : nullptr;
         }
 
         MemPool::Handle newHandle = pool->alloc(new_size, "json_doc");

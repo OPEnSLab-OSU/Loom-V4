@@ -34,7 +34,7 @@
 #endif
 
 #ifndef MEMPOOL_DUMP_LINE_BYTES
-#define MEMPOOL_DUMP_LINE_BYTES 96
+#define MEMPOOL_DUMP_LINE_BYTES 128
 #endif
 
 class SDManager;
@@ -172,12 +172,14 @@ class MemPool {
         uint8_t lastAllocFailureReason;
     };
 
-    MemPool() { init(); }
+    MemPool() : freeRamProvider_(nullptr) { init(); }
 
     /**
      * Reset pool arena, ownership maps, and all runtime counters.
      */
     bool init() {
+        FreeRamProviderFn preservedProvider = freeRamProvider_;
+
         memset(arena_, 0, sizeof(arena_));
         for (size_t i = 0; i < MEMPOOL_BLOCK_COUNT; i++) {
             ownerByBlock_[i] = kFreeBlockOwner;
@@ -215,7 +217,7 @@ class MemPool {
         failedReleaseCorrupt_ = 0;
         lastAllocFailureReason_ = ALLOC_FAIL_NONE;
 
-        freeRamProvider_ = nullptr;
+        freeRamProvider_ = preservedProvider;
         return true;
     }
 
@@ -390,6 +392,19 @@ class MemPool {
             return 0;
         }
         return (size_t)leaseBlocks_[h.slot] * MEMPOOL_BLOCK_SIZE;
+    }
+    /**
+     * Resize the logical byte size of a lease inside its current physical capacity.
+     */
+    bool resize(Handle h, size_t newSize) {
+        if (!valid(h)) {
+            return false;
+        }
+        if (newSize > capacity(h)) {
+            return false;
+        }
+        leaseSize_[h.slot] = newSize;
+        return true;
     }
 
     /**
@@ -599,6 +614,68 @@ class MemPool {
         s.maxContiguousFreeBlocks = maxContiguousFreeBlocks();
         s.lastAllocFailureReason = lastAllocFailureReason_;
         return s;
+    }
+    /**
+     * Get largest currently allocatable contiguous byte span.
+     */
+    size_t maxAllocBytes() const {
+        return (size_t)maxContiguousFreeBlocks() * MEMPOOL_BLOCK_SIZE;
+    }
+
+    /**
+     * Emit a complete, self-contained pool stats report through callback.
+     */
+    void dumpStats(LeaseDumpCallback cb = nullptr, void *userCtx = nullptr) const {
+        if (cb == nullptr) {
+            return;
+        }
+
+        Stats s = stats();
+        char line[MEMPOOL_DUMP_LINE_BYTES];
+
+        snprintf(line, sizeof(line), "Pool blocks used/free/total: %u/%u/%u",
+                 (unsigned int)s.usedBlocks, (unsigned int)s.freeBlocks,
+                 (unsigned int)s.totalBlocks);
+        cb(line, userCtx);
+
+        snprintf(line, sizeof(line), "Pool bytes used/free/total: %u/%u/%u",
+                 (unsigned int)s.bytesUsed, (unsigned int)s.bytesFree,
+                 (unsigned int)s.bytesTotal);
+        cb(line, userCtx);
+
+        snprintf(line, sizeof(line), "Pool leases=%u highWater=%u failedAllocs=%u",
+                 (unsigned int)s.activeLeases, (unsigned int)s.highWaterBlocks,
+                 (unsigned int)s.failedAllocs);
+        cb(line, userCtx);
+
+        snprintf(line, sizeof(line),
+                 "Pool calls alloc/release/read/write/clear: %lu/%lu/%lu/%lu/%lu",
+                 (unsigned long)s.allocCalls, (unsigned long)s.releaseCalls,
+                 (unsigned long)s.readCalls, (unsigned long)s.writeCalls,
+                 (unsigned long)s.clearCalls);
+        cb(line, userCtx);
+
+        snprintf(line, sizeof(line), "Pool bytes req/granted/released: %lu/%lu/%lu",
+                 (unsigned long)s.bytesRequested, (unsigned long)s.bytesGranted,
+                 (unsigned long)s.bytesReleased);
+        cb(line, userCtx);
+
+        snprintf(line, sizeof(line), "Pool alloc fails tooLarge/noRun/noSlot: %u/%u/%u",
+                 (unsigned int)s.failedTooLarge, (unsigned int)s.failedNoContiguousRun,
+                 (unsigned int)s.failedNoLeaseSlot);
+        cb(line, userCtx);
+
+        snprintf(line, sizeof(line), "Pool release fails invalid/corrupt: %u/%u",
+                 (unsigned int)s.failedReleaseInvalid, (unsigned int)s.failedReleaseCorrupt);
+        cb(line, userCtx);
+
+        snprintf(line, sizeof(line), "Pool max contiguous free blocks/bytes: %u/%u",
+                 (unsigned int)s.maxContiguousFreeBlocks, (unsigned int)maxAllocBytes());
+        cb(line, userCtx);
+
+        snprintf(line, sizeof(line), "System RAM free/total: %u/%u",
+                 (unsigned int)s.systemRamFreeBytes, (unsigned int)s.systemRamTotalBytes);
+        cb(line, userCtx);
     }
 
   private:

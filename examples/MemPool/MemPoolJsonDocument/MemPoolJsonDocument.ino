@@ -8,36 +8,25 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include <MemoryFree.h>
 #include <MemPool.hpp>
 #include <MemPoolJson.hpp>
 
 MemPool pool;
 bool demoRan = false;
 
-void printPoolStats(const char *label) {
-    MemPool::Stats stats = pool.stats();
+void dumpPoolLine(const char *line, void *ctx) {
+    (void)ctx;
+    Serial.print(F("  "));
+    Serial.println(line);
+}
 
+void printPoolStats(const char *label) {
     Serial.print(F("["));
     Serial.print(label);
     Serial.println(F("]"));
-
-    Serial.print(F("  active leases: "));
-    Serial.println(stats.activeLeases);
-
-    Serial.print(F("  blocks used/free: "));
-    Serial.print(stats.usedBlocks);
-    Serial.print(F("/"));
-    Serial.println(stats.freeBlocks);
-
-    Serial.print(F("  bytes used/free: "));
-    Serial.print(stats.bytesUsed);
-    Serial.print(F("/"));
-    Serial.println(stats.bytesFree);
-
-    Serial.print(F("  failed allocs: "));
-    Serial.println(stats.failedAllocs);
+    pool.dumpStats(dumpPoolLine, nullptr);
 }
-
 void dumpLeaseLine(const char *line, void *ctx) {
     (void)ctx;
     Serial.print(F("  lease: "));
@@ -46,6 +35,7 @@ void dumpLeaseLine(const char *line, void *ctx) {
 
 void runJsonDocumentDemo() {
     Serial.println(F("\n--- MemPool JSON document demo start ---"));
+    pool.setFreeRamProvider(freeMemory);
     pool.init();
     printPoolStats("after pool.init()");
 
