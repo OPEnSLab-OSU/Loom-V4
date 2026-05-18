@@ -53,7 +53,7 @@ class MemPool {
         uint16_t slot;
         uint16_t generation;
 
-        static Handle invalid() {
+        static Handle invalid(void) {
             Handle h = {INVALID_SLOT, 0};
             return h;
         }
@@ -69,11 +69,11 @@ class MemPool {
      */
     class Lease {
       public:
-        Lease() : pool_(nullptr), handle_(Handle::invalid()) {}
+        Lease(void) : pool_(nullptr), handle_(Handle::invalid()) {}
         Lease(MemPool *pool, Handle handle) : pool_(pool), handle_(handle) {}
 
         /* The Big-5 */
-        ~Lease() { release(); } /* Destructor   */
+        ~Lease() { release(); } /* Destructor  */
 
         Lease(const Lease &) = delete;            /* Disabled copy */
         Lease &operator=(const Lease &) = delete; /* Disabled Copy Assignment Operator */
@@ -94,12 +94,12 @@ class MemPool {
             return *this;
         }
 
-        bool valid() const { return pool_ != nullptr && pool_->valid(handle_); }
-        explicit operator bool() const {
+        bool valid(void) const { return pool_ != nullptr && pool_->valid(handle_); }
+        explicit operator bool(void) const {
             return valid();
         } /* Lets leases be used as a bool (valid) */
 
-        bool release() {
+        bool release(void) {
             if (!valid()) {
                 pool_ = nullptr;
                 handle_ = Handle::invalid();
@@ -112,13 +112,13 @@ class MemPool {
             return released;
         }
 
-        Handle handle() const { return handle_; }
-        size_t size() const { return valid() ? pool_->size(handle_) : 0; }
-        size_t capacity() const { return valid() ? pool_->capacity(handle_) : 0; }
-        char *chars() { return valid() ? pool_->chars(handle_) : nullptr; }
-        const char *chars() const { return valid() ? pool_->chars(handle_) : nullptr; }
-        uint8_t *bytes() { return valid() ? pool_->bytes(handle_) : nullptr; }
-        const uint8_t *bytes() const { return valid() ? pool_->bytes(handle_) : nullptr; }
+        Handle handle(void) const { return handle_; }
+        size_t size(void) const { return valid() ? pool_->size(handle_) : 0; }
+        size_t capacity(void) const { return valid() ? pool_->capacity(handle_) : 0; }
+        char *chars(void) { return valid() ? pool_->chars(handle_) : nullptr; }
+        const char *chars(void) const { return valid() ? pool_->chars(handle_) : nullptr; }
+        uint8_t *bytes(void) { return valid() ? pool_->bytes(handle_) : nullptr; }
+        const uint8_t *bytes(void) const { return valid() ? pool_->bytes(handle_) : nullptr; }
 
       private:
         MemPool *pool_;
@@ -136,7 +136,7 @@ class MemPool {
     };
 
     /* Stats function pointer callbacks*/
-    typedef int (*FreeRamProviderFn)();
+    typedef int (*FreeRamProviderFn)(void);
     typedef void (*LeaseDumpCallback)(const char *line, void *userCtx);
 
     struct Stats {
@@ -172,12 +172,12 @@ class MemPool {
         uint8_t lastAllocFailureReason;
     };
 
-    MemPool() : freeRamProvider_(nullptr) { init(); }
+    MemPool(void) : freeRamProvider_(nullptr) { init(); }
 
     /**
      * Reset pool arena, ownership maps, and all runtime counters.
      */
-    bool init() {
+    bool init(void) {
         FreeRamProviderFn preservedProvider = freeRamProvider_;
 
         memset(arena_, 0, sizeof(arena_));
@@ -581,7 +581,7 @@ class MemPool {
     /**
      * Snapshot pool/system stats and runtime counters.
      */
-    Stats stats() const {
+    Stats stats(void) const {
         Stats s = {};
         s.freeBlocks = freeBlocks_;
         s.usedBlocks = usedBlocks_;
@@ -618,7 +618,7 @@ class MemPool {
     /**
      * Get largest currently allocatable contiguous byte span.
      */
-    size_t maxAllocBytes() const {
+    size_t maxAllocBytes(void) const {
         return (size_t)maxContiguousFreeBlocks() * MEMPOOL_BLOCK_SIZE;
     }
 
@@ -706,7 +706,7 @@ class MemPool {
     /**
      * Internal helper for locating the first available lease slot.
      */
-    uint16_t findFreeLeaseSlot() const {
+    uint16_t findFreeLeaseSlot(void) const {
         for (uint16_t i = 0; i < MEMPOOL_MAX_LEASES; i++) {
             if (!leaseActive_[i]) {
                 return i;
@@ -769,7 +769,7 @@ class MemPool {
     /**
      * Compute largest contiguous free run in blocks.
      */
-    uint16_t maxContiguousFreeBlocks() const {
+    uint16_t maxContiguousFreeBlocks(void) const {
         uint16_t best = 0;
         uint16_t run = 0;
         for (size_t i = 0; i < MEMPOOL_BLOCK_COUNT; i++) {
@@ -788,7 +788,7 @@ class MemPool {
     /**
      * Read system free RAM via registered callback, clamped to uint16_t.
      */
-    uint16_t readSystemFreeRam() const {
+    uint16_t readSystemFreeRam(void) const {
         if (freeRamProvider_ == nullptr) {
             return 0;
         }
