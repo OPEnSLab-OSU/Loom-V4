@@ -1,4 +1,4 @@
-﻿#include "SDManager.h"
+#include "SDManager.h"
 #include "Logger.h"
 
 namespace {
@@ -88,10 +88,8 @@ bool SDManager::writeLineToFile(const char *filename, const char *content) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void SDManager::writeHeaders() {
-    // Allocates 576 bytes per header within this scope (size returns 513)
-    // Capacity returns 576
-    MemPool::Lease headerLease1 = manInst->getPool().allocLease(513, "sd_hdr1");
-    MemPool::Lease headerLease2 = manInst->getPool().allocLease(513, "sd_hdr2");
+    MemPool::Lease headerLease1 = manInst->getPool().allocLease(512, "sd_hdr1");
+    MemPool::Lease headerLease2 = manInst->getPool().allocLease(512, "sd_hdr2");
 
     if (!headerLease1 || !headerLease2) {
         printModuleName("Failed to allocate SD header buffers!");
@@ -99,7 +97,7 @@ void SDManager::writeHeaders() {
     }
 
     char *header1 = headerLease1.chars();
-    char *header2 = headerLease2.chars();
+    char *header2 = headerLease2.chars();    bool headerOk = true;
 
     auto appendHeader = [](char *dst, size_t dstSize, const char *text) -> bool {
         if (dst == nullptr) {
@@ -129,13 +127,13 @@ void SDManager::writeHeaders() {
 
     JsonObject document = manInst->getDocument().as<JsonObject>();
     // count = size - contents - null terminator
-    appendHeader(header1, headerLease1.size(), "ID,,");
-    appendHeader(header2, headerLease2.size(), "name,instance,");
+    headerOk &= appendHeader(header1, headerLease1.size(), "ID,,");
+    headerOk &= appendHeader(header2, headerLease2.size(), "name,instance,");
 
     // If there is a key that contains timestamp data when need to include that separately
     if (document.containsKey("timestamp")) {
-        appendHeader(header1, headerLease1.size(), "timestamp,,");
-        appendHeader(header2, headerLease2.size(), "time_utc,time_local,");
+        headerOk &= appendHeader(header1, headerLease1.size(), "timestamp,,");
+        headerOk &= appendHeader(header2, headerLease2.size(), "time_utc,time_local,");
     }
 
     // Get the contents containing the reset of the sensor data
@@ -144,14 +142,17 @@ void SDManager::writeHeaders() {
     // Loop over each
     for (JsonVariant v : contentsArray) {
         // Get the module name
-        appendHeader(header1, headerLease1.size(), v.as<JsonObject>()["module"] | "");
+        headerOk &= appendHeader(header1, headerLease1.size(), v.as<JsonObject>()["module"] | "");
 
         // Get all JSON keys
         for (JsonPair keyValue : v.as<JsonObject>()["data"].as<JsonObject>()) {
-            appendHeader(header2, headerLease2.size(), keyValue.key().c_str());
-            appendHeader(header2, headerLease2.size(), ",");
-            appendHeader(header1, headerLease1.size(), ",");
+            headerOk &= appendHeader(header2, headerLease2.size(), keyValue.key().c_str());
+            headerOk &= appendHeader(header2, headerLease2.size(), ",");
+            headerOk &= appendHeader(header1, headerLease1.size(), ",");
         }
+    }
+    if (!headerOk) {
+        printModuleName("CSV header truncated!");
     }
     // Write the headers to the file
     myFile.println(header1);
@@ -216,7 +217,14 @@ void SDManager::setCurrentLogFileNames() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::log(DateTime currentTime) {
-    char output[MAX_JSON_SIZE + 1];
+    MemPool::Lease outputLease = manInst->getPool().allocLease(MAX_JSON_SIZE, "sd_csv_row");
+    if (!outputLease) {
+        printModuleName("Failed to allocate memory-pool lease for SD CSV row!");
+        return false;
+    }
+
+    char *output = outputLease.chars();
+    const size_t outputSize = outputLease.size();
     output[0] = '\0';
     bool truncated = false;
     bool time_error = false;
@@ -232,7 +240,7 @@ bool SDManager::log(DateTime currentTime) {
         if (!s)
             s = "";
         size_t used = strlen(output);
-        size_t rem = sizeof(output) - used - 1; // Must leave room for terminator
+        size_t rem = outputSize - used - 1; // Must leave room for terminator
         if (rem == 0)
             return false;
         strncat(output, s, rem);
@@ -311,7 +319,7 @@ bool SDManager::log(DateTime currentTime) {
         if (!append("\""))
             return false;
 
-        CsvEscapedBufferWriter writer(output, sizeof(output));
+        CsvEscapedBufferWriter writer(output, outputSize);
         size_t n = serializeJson(v, writer);
         if (!writer.ok || n == 0)
             return false;
@@ -456,7 +464,7 @@ bool SDManager::log(DateTime currentTime) {
     if (!myFile.close())
         success = false;
 
-    snprintf_P(output, sizeof(output), PSTR("Logged data to %s: success=%s: truncated=%s: time=%s"),
+    snprintf_P(output, outputSize, PSTR("Logged data to %s: success=%s: truncated=%s: time=%s"),
                fileName, success ? "true" : "false", truncated ? "true" : "false",
                time_error ? "failed" : "success");
     LOG(output);
@@ -737,67 +745,15 @@ bool SDManager::streamFile(const char *fileName, size_t chunkBytes, StreamChunkC
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-MemPool::Stats SDManager::getPoolStats() const { return manInst->getPool().stats(); }
+MemPool::Stats SDManager::getPoolStats() const { return manInst->getPoolStats(); }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void SDManager::printPoolStats() {
-    MemPool::Stats stats = getPoolStats();
-
-    char output[OUTPUT_SIZE];
-    snprintf(output, sizeof(output), "Pool blocks used/free/total: %u/%u/%u",
-             (unsigned int)stats.usedBlocks, (unsigned int)stats.freeBlocks,
-             (unsigned int)stats.totalBlocks);
-    printModuleName(output);
-
-    snprintf(output, sizeof(output), "Pool bytes used/free/total: %u/%u/%u",
-             (unsigned int)stats.bytesUsed, (unsigned int)stats.bytesFree,
-             (unsigned int)stats.bytesTotal);
-    printModuleName(output);
-
-    snprintf(output, sizeof(output), "Pool leases=%u highWater=%u failedAllocs=%u",
-             (unsigned int)stats.activeLeases, (unsigned int)stats.highWaterBlocks,
-             (unsigned int)stats.failedAllocs);
-    printModuleName(output);
-
-    snprintf(output, sizeof(output),
-             "Pool calls alloc/release/read/write/clear: %lu/%lu/%lu/%lu/%lu",
-             (unsigned long)stats.allocCalls, (unsigned long)stats.releaseCalls,
-             (unsigned long)stats.readCalls, (unsigned long)stats.writeCalls,
-             (unsigned long)stats.clearCalls);
-    printModuleName(output);
-
-    snprintf(output, sizeof(output), "Pool bytes req/granted/released: %lu/%lu/%lu",
-             (unsigned long)stats.bytesRequested, (unsigned long)stats.bytesGranted,
-             (unsigned long)stats.bytesReleased);
-    printModuleName(output);
-
-    snprintf(output, sizeof(output), "Pool alloc fails tooLarge/noRun/noSlot: %u/%u/%u",
-             (unsigned int)stats.failedTooLarge, (unsigned int)stats.failedNoContiguousRun,
-             (unsigned int)stats.failedNoLeaseSlot);
-    printModuleName(output);
-
-    snprintf(output, sizeof(output), "Pool release fails invalid/corrupt: %u/%u",
-             (unsigned int)stats.failedReleaseInvalid, (unsigned int)stats.failedReleaseCorrupt);
-    printModuleName(output);
-
-    snprintf(output, sizeof(output), "Pool max contiguous free blocks: %u",
-             (unsigned int)stats.maxContiguousFreeBlocks);
-    printModuleName(output);
-
-    snprintf(output, sizeof(output), "System RAM free/total: %u/%u",
-             (unsigned int)stats.systemRamFreeBytes, (unsigned int)stats.systemRamTotalBytes);
-    printModuleName(output);
-}
+void SDManager::printPoolStats() { manInst->printPoolStats(); }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void SDManager::dumpActiveLeases() {
-    size_t count = manInst->getPool().dumpActiveLeases(poolLeaseDumpSink, this);
-    if (count == 0) {
-        printModuleName("No active pool leases.");
-    }
-}
+void SDManager::dumpActiveLeases() { manInst->dumpActivePoolLeases(); }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////

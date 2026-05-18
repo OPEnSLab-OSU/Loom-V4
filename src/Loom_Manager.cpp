@@ -1,12 +1,23 @@
 #include "Loom_Manager.h"
 #include "Logger.h"
+#include <MemoryFree.h>
 Logger *Logger::instance = nullptr;
+
+namespace {
+void managerPoolDumpSink(const char *line, void *ctx) {
+    (void)ctx;
+    if (line != nullptr) {
+        LOG(line);
+    }
+}
+} // namespace
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Manager::Manager(const char *devName, uint32_t instanceNum)
-    : instanceNumber(instanceNum), doc(MAX_JSON_SIZE) {
+    : instanceNumber(instanceNum), doc(MAX_JSON_SIZE, MemPoolJsonAllocator(&pool_)) {
     strncpy(this->deviceName, devName, 100);
     Logger::getInstance();
+    pool_.setFreeRamProvider(freeMemory);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -46,6 +57,18 @@ void Manager::registerModule(Module *module) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 JsonDocument &Manager::getDocument() { return doc; }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Manager::printPoolStats() { pool_.dumpStats(managerPoolDumpSink, nullptr); }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Manager::dumpActivePoolLeases() {
+    size_t count = pool_.dumpActiveLeases(managerPoolDumpSink, nullptr);
+    if (count == 0) {
+        LOG(F("No active pool leases."));
+    }
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -190,7 +213,6 @@ void Manager::power_down() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::display_data() {
-    char jsonStr[MAX_JSON_SIZE];
     FUNCTION_START;
     if (!doc.isNull()) {
 
@@ -199,9 +221,16 @@ void Manager::display_data() {
             modules[i].second->display_data();
         }
 
-        serializeJsonPretty(doc, jsonStr, MAX_JSON_SIZE);
+        MemPool::Lease jsonLease = pool_.allocLease(MAX_JSON_SIZE, "mgr_display");
+        if (!jsonLease) {
+            ERROR(F("Failed to allocate memory-pool lease for Manager display JSON!"));
+            FUNCTION_END;
+            return;
+        }
+
+        serializeJsonPretty(doc, jsonLease.chars(), jsonLease.size());
         LOG(F("Data Json: \n"));
-        LOG_LONG(jsonStr);
+        LOG_LONG(jsonLease.chars());
     } else {
         LOG(F("JSON Document is Null there is no data to display"));
     }

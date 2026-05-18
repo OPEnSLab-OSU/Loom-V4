@@ -54,6 +54,22 @@ class Manager {
     JsonDocument &getDocument(); // Returns a reference to the main JSON document storing
 
     MemPool &getPool() { return pool_; }
+    const MemPool &getPool() const { return pool_; }
+
+    /**
+     * Get current memory pool stats.
+     */
+    MemPool::Stats getPoolStats() const { return pool_.stats(); }
+
+    /**
+     * Print the current memory pool stats through the shared manager logger.
+     */
+    void printPoolStats();
+
+    /**
+     * Print active memory pool lease entries.
+     */
+    void dumpActivePoolLeases();
 
     /**
      * Add a random piece of data to the overall JSON package in the given module name with a name

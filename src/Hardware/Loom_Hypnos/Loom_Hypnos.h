@@ -248,19 +248,19 @@ class Loom_Hypnos : public Module {
     };
 
     /**
-     * Get SD memory pool stats.
+     * Get Manager memory pool stats.
      */
-    MemPool::Stats getPoolStats() const { return sdMan->getPoolStats(); };
+    MemPool::Stats getPoolStats() const { return manInst->getPoolStats(); };
 
     /**
-     * Print SD memory pool stats.
+     * Print Manager memory pool stats.
      */
-    void printPoolStats() { sdMan->printPoolStats(); };
+    void printPoolStats() { manInst->printPoolStats(); };
 
     /**
-     * Print active SD pool leases.
+     * Print active Manager pool leases.
      */
-    void dumpActiveLeases() { sdMan->dumpActiveLeases(); };
+    void dumpActiveLeases() { manInst->dumpActivePoolLeases(); };
 
     /**
      * Get the default SD card file name
