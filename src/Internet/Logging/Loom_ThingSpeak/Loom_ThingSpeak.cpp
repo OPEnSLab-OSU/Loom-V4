@@ -46,7 +46,11 @@ bool Loom_ThingSpeak::publish() {
         }
 
         /* Format the message we want to publish */
-        formatMessage(topic, messageLease.chars());
+        if (!formatMessage(topic, messageLease.chars())) {
+            ERROR(F("ThingSpeak publish message exceeded buffer capacity!"));
+            FUNCTION_END;
+            return false;
+        }
 
         /* Publish the message to the given topic */
         if (!publishMessage(topic, messageLease.chars(), false, 0)) {
@@ -80,7 +84,7 @@ void Loom_ThingSpeak::addFunction(int fieldNumber, FloatReturnFuncDefsWithParam 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_ThingSpeak::formatMessage(char topic[MAX_TOPIC_LENGTH], char message[MAX_JSON_SIZE]) {
+bool Loom_ThingSpeak::formatMessage(char topic[MAX_TOPIC_LENGTH], char message[MAX_JSON_SIZE]) {
     char tempBuffer[100];
 
     /* Clear all buffers */
@@ -90,6 +94,20 @@ void Loom_ThingSpeak::formatMessage(char topic[MAX_TOPIC_LENGTH], char message[M
 
     /* Format the topic to publish to many fields at once */
     snprintf(topic, MAX_TOPIC_LENGTH, "channels/%i/publish", channelID);
+    auto appendMessage = [&](const char *text) -> bool {
+        if (text == nullptr) {
+            text = "";
+        }
+
+        size_t used = strlen(message);
+        if (used >= MAX_JSON_SIZE) {
+            return false;
+        }
+
+        size_t remaining = MAX_JSON_SIZE - used - 1;
+        strncat(message, text, remaining);
+        return strlen(text) <= remaining;
+    };
 
     // Check if combined size of both function lists is more than 8
     if (functionsNoParam.size() + functionsParam.size() > 8) {
@@ -105,7 +123,9 @@ void Loom_ThingSpeak::formatMessage(char topic[MAX_TOPIC_LENGTH], char message[M
         // Set the field number and then call the corresponding function to update
         snprintf(tempBuffer, 100, "field%i=%f&", functionsNoParam[i].first,
                  functionsNoParam[i].second());
-        strncat(message, tempBuffer, MAX_JSON_SIZE);
+        if (!appendMessage(tempBuffer)) {
+            return false;
+        }
         totalAdded++;
     }
 
@@ -115,7 +135,9 @@ void Loom_ThingSpeak::formatMessage(char topic[MAX_TOPIC_LENGTH], char message[M
         // Set the field number and then call the corresponding function to update
         snprintf(tempBuffer, 100, "field%i=%f&", std::get<0>(functionsParam[i]),
                  std::get<1>(functionsParam[i])(std::get<2>(functionsParam[i])));
-        strncat(message, tempBuffer, MAX_JSON_SIZE);
+        if (!appendMessage(tempBuffer)) {
+            return false;
+        }
         totalAdded++;
     }
 
@@ -124,11 +146,13 @@ void Loom_ThingSpeak::formatMessage(char topic[MAX_TOPIC_LENGTH], char message[M
     if (!manInst->getDocument()["timestamp"].isNull()) {
         snprintf(tempBuffer, 100, "created_at=%s&",
                  manInst->getDocument()["timestamp"]["time_local"].as<const char *>());
-        strncat(message, tempBuffer, MAX_JSON_SIZE);
+        if (!appendMessage(tempBuffer)) {
+            return false;
+        }
     }
 
     /* Finally end the message with the status */
-    strncat(message, "status=MQTTPUBLISH", MAX_JSON_SIZE);
+    return appendMessage("status=MQTTPUBLISH");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
