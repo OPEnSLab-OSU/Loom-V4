@@ -83,12 +83,25 @@ bool Loom_Freewave::receive(uint maxWaitTime) {
     if (recvStatus) {
         LOG(F("Packet Received!"));
         signalStrength = driver.lastRssi();
-        recvStatus = bufferToJson(buffer);
-        size_t jsonSize = measureJson(recvDoc) + 1;
-        recvData = (char *)malloc(jsonSize);
-        serializeJson(recvDoc, recvData, jsonSize);
-        deserializeJson(manInst->getDocument(), recvData);
-        free(recvData);
+
+        LoomJsonDocument recvDoc(1000, MemPoolJsonAllocator(&manInst->getPool()));
+        if (recvDoc.capacity() == 0) {
+            ERROR(F("Failed to allocate memory-pool JSON document for Freewave receive"));
+            driver.sleep();
+            return false;
+        }
+
+        recvStatus = bufferToJson(buffer, len, recvDoc);
+        if (!recvStatus) {
+            driver.sleep();
+            return false;
+        }
+
+        if (!manInst->getDocument().set(recvDoc)) {
+            ERROR(F("Failed to copy received Freewave JSON into manager document"));
+            driver.sleep();
+            return false;
+        }
 
         // Update device name
         manInst->set_device_name(manInst->getDocument()["id"]["name"].as<const char *>());
