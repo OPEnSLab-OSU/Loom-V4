@@ -1,4 +1,5 @@
 #include "Loom_Max.h"
+#include "Loom_Manager.h"
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -111,8 +112,11 @@ bool Loom_Max::subscribe() {
     // If there is a packet available
     if (udpRecv->parsePacket()) {
 
-        // Clear the JSON document
-        messageJson.clear();
+        LoomJsonDocument messageJson(1000, MemPoolJsonAllocator(&manInst->getPool()));
+        if (messageJson.capacity() == 0) {
+            ERROR(F("Failed to allocate memory-pool JSON document for Max receive"));
+            return false;
+        }
 
         DeserializationError error = deserializeJson(messageJson, (*udpRecv));
         if (error != DeserializationError::Ok) {
@@ -163,11 +167,14 @@ bool Loom_Max::subscribe() {
             wifiInst->ipToString(udpRecv->remoteIP(), ip);
             snprintf(output, OUTPUT_SIZE, "Packet received from: %s", ip);
             LOG(output);
-            char jsonStr[MAX_JSON_SIZE];
-
             LOG(F("Message Json: "));
-            serializeJsonPretty(messageJson, jsonStr, MAX_JSON_SIZE);
-            LOG(jsonStr);
+            MemPool::Lease jsonLease = manInst->getPool().allocLease(MAX_JSON_SIZE, "max_json");
+            if (jsonLease) {
+                serializeJsonPretty(messageJson, jsonLease.chars(), jsonLease.size());
+                LOG(jsonLease.chars());
+            } else {
+                ERROR(F("Failed to allocate memory-pool lease for Max JSON display!"));
+            }
 
             // If we are receiving a command for the MaxSub module
             if (strstr(messageJson["commands"][0]["module"].as<const char *>(), "MaxSub") != NULL) {

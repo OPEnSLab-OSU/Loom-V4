@@ -131,8 +131,17 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
         return false;
     }
 
-    char line[MAX_JSON_SIZE];
-    int packetNumber = 0, index = 0;
+    MemPool::Lease lineLease = manInst->getPool().allocLease(MAX_JSON_SIZE, "mongo_batch");
+    if (!lineLease || lineLease.size() < 2) {
+        ERROR(F("Failed to allocate memory-pool lease for MongoDB batch line!"));
+        FUNCTION_END;
+        return false;
+    }
+
+    char *line = lineLease.chars();
+    const size_t lineSize = lineLease.size();
+    int packetNumber = 0;
+    size_t index = 0;
     char c;
     if (moduleInitialized) {
         // TIMER_DISABLE;
@@ -156,8 +165,33 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
 
             /* Get the file containing our batch of data */
             File fileOutput = batchSD.getBatch();
+            if (!fileOutput) {
+                ERROR(F("Failed to open BatchSD file for MongoDB publish"));
+                FUNCTION_END;
+                return false;
+            }
 
             bool allDataSuccess = true;
+
+            auto publishLine = [&]() -> bool {
+                line[index] = '\0';
+
+                snprintf_P(output, OUTPUT_SIZE, PSTR("Publishing Packet %i of %i with len=%u"),
+                           packetNumber + 1, batchSD.getBatchSize(), (unsigned int)index);
+                LOG(output);
+
+                bool publishSuccess = publishMessage(topic, line);
+                if (!publishSuccess) {
+                    snprintf(output, OUTPUT_SIZE, PSTR("Failed to publish packet #%i"),
+                             packetNumber + 1);
+                    WARNING(output);
+                }
+
+                delay(500);
+                index = 0;
+                packetNumber++;
+                return publishSuccess;
+            };
 
             /* Utilize a stream so it doesn't matter how much data we have as its read in one by one
              */
@@ -172,36 +206,39 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
                     connectToBroker();
                 }
 
-                // \r Marks the end of a line, at this point we want to publish that whole packet
-                if (c == '\r') {
-
-                    // Track the packet number we are currently publishing
-                    snprintf_P(output, OUTPUT_SIZE, PSTR("Publishing Packet %i of %i with len=%d"),
-                               packetNumber + 1, batchSD.getBatchSize(), index);
-                    LOG(output);
-
-                    // Replace the \r with a null character
-                    line[index] = '\0';
-
-                    if (!publishMessage(topic, line)) {
-
-                        snprintf(output, OUTPUT_SIZE, PSTR("Failed to publish packet #%i"),
-                                 packetNumber + 1);
-                        WARNING(output);
-                        allDataSuccess = false;
+                if (c == '\r' || c == '\n') {
+                    if (index == 0) {
+                        continue;
                     }
 
-                    delay(500);
-                    index = 0;
-                    packetNumber++;
+                    if (!publishLine()) {
+                        allDataSuccess = false;
+                    }
+                    continue;
                 }
 
                 // If not just add the packet to the line array
                 else {
+                    if (index >= lineSize - 1) {
+                        WARNING(F("BatchSD packet exceeds MongoDB line buffer and was skipped"));
+                        allDataSuccess = false;
+                        index = 0;
+                        while (fileOutput.available()) {
+                            c = fileOutput.read();
+                            if (c == '\r' || c == '\n') {
+                                break;
+                            }
+                        }
+                        continue;
+                    }
                     line[index] = c;
                     index++;
                 }
             }
+            if (index > 0 && !publishLine()) {
+                allDataSuccess = false;
+            }
+
             fileOutput.close();
 
             // Check if we actually sent all the data successfully
