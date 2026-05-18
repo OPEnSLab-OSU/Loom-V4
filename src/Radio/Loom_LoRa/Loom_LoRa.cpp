@@ -2,6 +2,7 @@
 #include "ArduinoJson.hpp"
 #include "FatLib/ArduinoFiles.h"
 #include "Logger.h"
+#include "MemPoolJson.hpp"
 #include "Module.h"
 #include <cstdint>
 #include <cstdio>
@@ -128,18 +129,23 @@ void Loom_LoRa::setAddress(const uint8_t newAddress) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LoRa::receiveFromLoRa(uint8_t *buf, uint8_t buf_size, uint timeout,
+bool Loom_LoRa::receiveFromLoRa(uint8_t *buf, uint8_t *buf_size, uint timeout,
                                 uint8_t *fromAddress) {
     bool status = true;
 
-    memset(buf, 0, buf_size);
+    if (buf == nullptr || buf_size == nullptr || *buf_size == 0) {
+        ERROR(F("Invalid LoRa receive buffer"));
+        return false;
+    }
+
+    memset(buf, 0, *buf_size);
 
     LOG(F("Waiting for message..."));
 
     if (timeout) {
-        status = radioManager->recvfromAckTimeout(buf, &buf_size, timeout, fromAddress);
+        status = radioManager->recvfromAckTimeout(buf, buf_size, timeout, fromAddress);
     } else {
-        status = radioManager->recvfromAck(buf, &buf_size, fromAddress);
+        status = radioManager->recvfromAck(buf, buf_size, fromAddress);
     }
 
     if (!status) {
@@ -159,8 +165,9 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy, uint8_t
     }
 
     uint8_t buf[MAX_MESSAGE_LENGTH] = {};
+    uint8_t receivedLen = sizeof(buf);
 
-    bool recvStatus = receiveFromLoRa(buf, sizeof(buf), timeout, fromAddress);
+    bool recvStatus = receiveFromLoRa(buf, &receivedLen, timeout, fromAddress);
     if (!recvStatus) {
         return FragReceiveStatus::Error;
     }
@@ -170,7 +177,7 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy, uint8_t
     StaticJsonDocument<300> tempDoc;
 
     // cast buf to const to avoid mutation
-    auto err = deserializeMsgPack(tempDoc, (const char *)buf, sizeof(buf));
+    auto err = deserializeMsgPack(tempDoc, (const char *)buf, receivedLen);
     if (err != DeserializationError::Ok) {
         ERRORF("Error occurred parsing MsgPack: %s", err.c_str());
         return FragReceiveStatus::Error;
@@ -322,13 +329,19 @@ bool Loom_LoRa::transmitToLoRa(JsonObject json, uint8_t destinationAddress) {
     }
     bool status = false;
 
-    status = serializeMsgPack(json, buffer, bufferLease.size());
-    if (!status) {
+    const size_t expectedLength = measureMsgPack(json);
+    if (expectedLength == 0 || expectedLength > bufferLease.size()) {
+        ERROR(F("LoRa MsgPack packet exceeds transmit buffer"));
+        return false;
+    }
+
+    size_t packetLength = serializeMsgPack(json, buffer, bufferLease.size());
+    if (packetLength != expectedLength) {
         ERROR(F("Failed to convert JSON to MsgPack"));
         return false;
     }
 
-    status = radioManager->sendtoWait(buffer, bufferLease.size(), destinationAddress);
+    status = radioManager->sendtoWait(buffer, packetLength, destinationAddress);
     if (!status) {
         ERROR(F("Failed to send packet to specified address!"));
         return false;
@@ -385,7 +398,11 @@ bool Loom_LoRa::sendFragmentedPacket(JsonObject json, uint8_t destinationAddress
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::sendPacketHeader(JsonObject json, uint8_t destinationAddress) {
-    StaticJsonDocument<MAX_MESSAGE_LENGTH * 2> sendDoc;
+    LoomJsonDocument sendDoc(MAX_MESSAGE_LENGTH * 2, MemPoolJsonAllocator(&manager->getPool()));
+    if (sendDoc.capacity() == 0) {
+        ERROR(F("Failed to allocate memory-pool JSON document for LoRa packet header"));
+        return false;
+    }
 
     sendDoc["type"] = json["type"].as<const char *>();
     sendDoc["numPackets"] = json["contents"].size();
@@ -429,8 +446,6 @@ bool Loom_LoRa::send(const uint8_t destinationAddress, JsonObject json) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
-    bool status = false;
-
     if (!moduleInitialized) {
         ERROR(F("Module not initialized!"));
         return false;
@@ -446,31 +461,66 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
         return true;
     }
 
+    MemPool::Lease packetLease = manager->getPool().allocLease(MAX_JSON_SIZE, "lora_batch");
+    if (!packetLease || packetLease.size() < 2) {
+        ERROR(F("Failed to allocate memory-pool lease for LoRa batch packet!"));
+        return false;
+    }
+
     File fileOutput = batchSD->getBatch();
+    if (!fileOutput) {
+        ERROR(F("Failed to open BatchSD file for LoRa transmission"));
+        return false;
+    }
+
     int batchSize = batchSD->getBatchSize();
+    char *packetBuf = packetLease.chars();
+    const size_t maxRead = packetLease.size() - 1;
+    bool allSent = true;
+    bool sentAny = false;
 
     for (int i = 0; i < batchSize && fileOutput.available(); i++) {
-        uint8_t packetBuf[2000];
         // read line from file into packetBuf
-        int len = fileOutput.readBytesUntil('\n', packetBuf, sizeof(packetBuf));
+        int len = fileOutput.readBytesUntil('\n', packetBuf, maxRead);
 
         if (!len) {
             WARNING(F("BatchSD data missing ending newline"));
             break;
         }
 
+        packetBuf[len] = '\0';
+        if ((size_t)len == maxRead) {
+            WARNING(F("BatchSD packet exceeds LoRa batch buffer and was skipped"));
+            while (fileOutput.available()) {
+                char discard = fileOutput.read();
+                if (discard == '\n') {
+                    break;
+                }
+            }
+            allSent = false;
+            continue;
+        }
+
         // remove trailing carriage return if DOS line endings have been used
         if (packetBuf[len - 1] == '\r') {
-            packetBuf[len - 1] = 0;
+            packetBuf[--len] = '\0';
         }
 
         // deserialze packet into main document
-        deserializeJson(manager->getDocument(), (const char *)packetBuf, sizeof(packetBuf));
+        DeserializationError err =
+            deserializeJson(manager->getDocument(), (const char *)packetBuf, (size_t)len);
+        if (err != DeserializationError::Ok) {
+            ERRORF("Error occurred parsing BatchSD JSON: %s", err.c_str());
+            allSent = false;
+            continue;
+        }
 
-        status = send(destinationAddress);
+        bool status = send(destinationAddress);
         if (status) {
+            sentAny = true;
             LOGF("Successfully transmitted packet (%i/%i)", i + 1, batchSize);
         } else {
+            allSent = false;
             ERRORF("Failed to transmit packet (%i/%i)", i + 1, batchSize);
         }
 
@@ -480,6 +530,7 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
     }
 
     fileOutput.close();
+    return sentAny && allSent;
 }
 
 bool Loom_LoRa::receiveBatch(uint timeout, int *numberOfPackets) {

@@ -187,7 +187,7 @@ class Loom_LoRa : public Module {
 
   private:
     // receives some data from lora
-    bool receiveFromLoRa(uint8_t *buf, uint8_t buf_size, uint timeout, uint8_t *fromAddress);
+    bool receiveFromLoRa(uint8_t *buf, uint8_t *buf_size, uint timeout, uint8_t *fromAddress);
 
     // receives a single fragment from some device
     FragReceiveStatus receiveFrag(uint timeout, bool shouldProxy, uint8_t *fromAddress);
