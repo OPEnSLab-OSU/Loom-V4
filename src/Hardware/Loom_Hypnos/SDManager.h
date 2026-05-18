@@ -117,7 +117,7 @@ class SDManager : public Module {
     File scanningFile; // Used specifically to search through the directory
     File root;         // Open the root directory as a file
 
-    int lastClosed = -1;
+    int lastClosed = 0;
 
     SdFat sd; // SD Card Object
 

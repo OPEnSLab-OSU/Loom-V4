@@ -11,16 +11,15 @@ SDManager::SDManager(Manager *man, int sd_chip_select)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::writeLineToFile(const char *filename, const char *content) {
-    
     // Check if the SD card is actually functional
     if (sdInitialized) {
         // Open the given file for writing
-        myFile = sd.open(filename, O_RDWR | O_CREAT | O_APPEND);
+        File tempFile = sd.open(filename, O_RDWR | O_CREAT | O_APPEND);
 
         // Check if the file was actually opened, if so write the content to the file
-        if (myFile) {
-            myFile.println(content);
-            myFile.close();
+        if (tempFile) {
+            tempFile.println(content);
+            tempFile.close();
             return true;
         }
         printModuleName("Failed to Open File!");
@@ -98,6 +97,7 @@ bool SDManager::log(DateTime currentTime) {
                                  currentTime.second());
 
                 writeHeaders();
+                lastClosed = currentTime.day();
             }
 
             snprintf_P(output, MAX_JSON_SIZE, PSTR("%s,%i,"), manInst->get_device_name(),
@@ -155,10 +155,6 @@ bool SDManager::log(DateTime currentTime) {
             // Write the matching data into the CSV file
             myFile.println(output);
 
-            // // Set the last modified date
-            // myFile.timestamp(T_WRITE, currentTime.year(), currentTime.month(), currentTime.day(),
-            //                  currentTime.hour(), currentTime.minute(), currentTime.second());
-
             // Sync file, don't close unless EOD
             myFile.sync();
 
@@ -178,8 +174,8 @@ bool SDManager::log(DateTime currentTime) {
 
         // If we want to log batch data do so
         if (batch_size > 0)
-            logBatch();
-
+            logBatch();   
+            
     } else {
         printModuleName("Failed to log! SD card not Initialized!");
     }
@@ -231,8 +227,10 @@ bool SDManager::begin() {
             return false;
         }
         updateCurrentFileName();
+
         // Open the file in read/write mode, create the file if we need to and append the content to
         // the end of the file
+        // Don't want it to open every time hypnos wakes up, will overwrite persistent handle
         myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
     }
 
@@ -310,16 +308,16 @@ char *SDManager::readFile(const char *fileName) {
 
     long index = 0;
     if (sdInitialized) {
-        myFile = sd.open(fileName);
+        File tempFile = sd.open(fileName);
 
-        if (myFile) {
+        if (tempFile) {
             // read from the file until there's nothing else in it:
-            while (myFile.available()) {
-                fileContents[index] = (char)(myFile.read());
+            while (tempFile.available()) {
+                fileContents[index] = (char)(tempFile.read());
                 index++;
             }
             fileContents[index] = '\0';
-            myFile.close();
+            tempFile.close();
         } else {
             printModuleName("Failed to open file!");
         }
