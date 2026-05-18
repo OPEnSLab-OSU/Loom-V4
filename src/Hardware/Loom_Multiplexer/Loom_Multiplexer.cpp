@@ -239,10 +239,16 @@ void Loom_Multiplexer::loadAddressesFromSD(const char *fileName) {
     StaticJsonDocument<OUTPUT_SIZE> doc;
     char output[OUTPUT_SIZE];
 
-    char *fileRead = sdMan->readFile(fileName);
+    MemPool::Lease fileRead = sdMan->readFileLease(fileName);
+    if (!fileRead) {
+        ERROR(F("Failed to read mux address config from SD, default addresses will be used"));
+        known_addresses = default_addresses;
+        FUNCTION_END;
+        return;
+    }
+
     // avoid zero-copy behavior
-    DeserializationError deserialError = deserializeJson(doc, (const char *)fileRead);
-    free(fileRead);
+    DeserializationError deserialError = deserializeJson(doc, fileRead.chars());
 
     // Create JsonArray object to store sensor array
     JsonArray sensorMap = doc["sensors"];
@@ -360,7 +366,7 @@ Module *Loom_Multiplexer::loadSensor(const byte addr) {
 
     // SEN66
     case 0x6B:
-        return new Loom_SEN66(*manInst, 0x6B, true);
+        return new Loom_SEN66(*manInst, true, true);
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

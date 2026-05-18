@@ -67,8 +67,8 @@ class Loom_DFMultiGasSensor : public I2CDevice {
                               DFRobot_GAS::eSwitch_t gasCompMode = DFRobot_GAS::eSwitch_t::ON);
 
     // --- Sensor Readings
-    // Strinified reading of the current gas type
-    const char *currentGasType = "";
+    // Gas type pointer returned by the DFRobot library. This must point to static storage.
+    const char *currentGasType = "INV_TYPE";
     float currentConcentration = 0.0f;
     float currentTemperature = 0.0f;
 };
