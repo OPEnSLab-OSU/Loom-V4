@@ -201,6 +201,7 @@ bool SDManager::log(DateTime currentTime) {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// NEEDS TESTING
 bool SDManager::verifyChecksum(File myFile){
     char lineBuf[MAX_JSON_SIZE];
     int lineIndex = 0;
@@ -236,7 +237,7 @@ bool SDManager::verifyChecksum(File myFile){
             }
             lineIndex = 0;
             memset(lineBuf, '\0', MAX_JSON_SIZE);
-            
+
         }
         else{
             lineBuf[lineIndex++] = c;

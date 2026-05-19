@@ -44,6 +44,11 @@ class SDManager : public Module {
     bool log(DateTime currentTime);
 
     /**
+     * Needs testing
+     */
+    bool verifyChecksum(File myFile);
+
+    /**
      * Read the contents of a given file on the SD card and return them as a string
      *
      * YOU MUST FREE THIS BLOCK OF MEMORY AS IT IS 10kb
