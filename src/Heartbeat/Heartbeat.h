@@ -14,7 +14,7 @@ class Loom_Heartbeat {
         Loom_Heartbeat(uint32_t normalWorkInterval, 
                        Manager* managerInstance, 
                        Loom_Hypnos* hypnosInstance,
-                       Loom_LoRa* loraInstance);
+                       Loom_LoRa* loraInstance = nullptr);
 
         // returns true if a heartbeat packet is meant to be transmitted
         // returns false if a normal packet is meant to be transmitted
@@ -46,7 +46,7 @@ class Loom_Heartbeat {
         Manager* managerInstance;
         Loom_Hypnos* hypnosInstance;
         Loom_LoRa* loraInstance;
-
+        
         uint32_t normalWorkInterval = 0;
         uint32_t currentInterval = 0;
 };

@@ -1,7 +1,9 @@
 #include "Heartbeat.h"
 #include "Logger.h"
 
-
+// Heartbeat constructor
+// Lora set default to nullptr so if no lora object is passed in lora 
+// is disabled, if lora object is passed in lora will work
 Loom_Heartbeat::Loom_Heartbeat(uint32_t normalWorkInterval, 
                           Manager* managerInstance, 
                           Loom_Hypnos* hypnosInstance,
@@ -90,12 +92,22 @@ void Loom_Heartbeat::makeHeartbeat() {
     createDoc();
 }
 
+// transmit packet over lora
 bool Loom_Heartbeat::transmit(const uint8_t destinationAddress) {
     LOGF("[HEARTBEAT] Transmitting heartbeat packet");
+    if (loraInstance == nullptr) {
+        LOGF("[HEARTBEAT] LoRa module not initialized, failed to transmit");
+        return false;
+    }
     return loraInstance->send(destinationAddress, heartbeatDoc.as<JsonObject>());
 }
 
+// transmit custom packet over lora, user can pass in custom doc
 bool Loom_Heartbeat::transmitCustom(const uint8_t destinationAddress, JsonDocument& document) {
     LOGF("[HEARTBEAT] Transmitting custom heartbeat packet");
+    if (loraInstance == nullptr) {
+        LOGF("[HEARTBEAT] LoRa module not initialized, failed to transmit");
+        return false;
+    }
     return loraInstance->send(destinationAddress, document.as<JsonObject>());
 }
