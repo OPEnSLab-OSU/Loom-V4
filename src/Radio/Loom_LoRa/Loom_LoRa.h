@@ -26,6 +26,7 @@
 enum class FragReceiveStatus {
     Incomplete,  // no packet has been completed
     Complete,    // packet has been loaded into the global document
+    HandshakeAccepted, // hub succesfully in handshake with node
     Error        // could not receive fragment
 };
 
@@ -210,6 +211,13 @@ private:
     bool handleSingleFrag(JsonDocument &workingDoc);
     bool handleLostFrag(JsonDocument &workingDoc, uint8_t fromAddress);
 
+    bool handleHandshakeReceive(JsonDocument &tempDoc, uint8_t* fromAddress);
+    void beginHandshake(uint8_t peerAddress);
+    void clearHandshake();
+    bool clearExpiredHandshake();
+
+    bool handshakeReceive(const uint8_t destinationAddress);
+
     // transmits a json document to over lora
     bool transmitToLoRa(JsonObject json, uint8_t destinationAddress);
 
@@ -217,6 +225,8 @@ private:
     bool sendFullPacket(JsonObject json, uint8_t destinationAddress);
     bool sendFragmentedPacket(JsonObject json, uint8_t destinationAddress);
     bool sendPacketHeader(JsonObject json, uint8_t destinationAddress);
+    bool sendHandshakeRequest(const uint8_t destinationAddress);
+    bool sendHandshakeResponse(const uint8_t destinationAddress);
 
     Manager* manager;                  // Instance of the Loom manager
     RHReliableDatagram* radioManager;  // Radio manager
@@ -233,6 +243,11 @@ private:
     uint8_t sendRetryCount;     // Number of transmission retries allowed
     uint8_t receiveRetryCount;  // Number of fragment receive retries allowed
     uint16_t retryTimeout;      // Delay between retries (MS)
+
+    bool handshakeEstablished = false;
+    uint8_t handshakePeerAddress = 0;
+    uint32_t handshakeEstablishedAt = 0;
+    static constexpr uint32_t HANDSHAKE_TIMEOUT_MS = 15000;
 
     std::unordered_map<uint8_t, PartialPacket> frags; // Partial packets sorted by address
     

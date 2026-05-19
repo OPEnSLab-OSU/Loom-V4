@@ -202,6 +202,20 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
         return FragReceiveStatus::Error;
     }
 
+    // Always check for handshake packets first
+    if (tempDoc.containsKey("handshake")) {
+        // Handshake should be cleared right here if it expires
+        if (this->handshakeEstablished && !clearExpiredHandshake()) {
+            LOGF("[HANDSHAKE] Hub already in handshake with %i", this->handshakePeerAddress);
+            return FragReceiveStatus::Incomplete;
+        }
+
+        if(handleHandshakeReceive(tempDoc, fromAddress)) {
+            return FragReceiveStatus::HandshakeAccepted;
+        }
+        return FragReceiveStatus::Error;
+    }
+
     bool isReady = false;
     if (tempDoc.containsKey("batch_size")) {
         isReady = handleBatchHeader(tempDoc);
@@ -236,6 +250,61 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
     } else {
         return FragReceiveStatus::Incomplete;
     }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::handleHandshakeReceive(JsonDocument &tempDoc, uint8_t* fromAddress) {
+    // Check if valid handshake packet
+    const char *handshakeValue = tempDoc["handshake"].as<const char*>();
+    if (!handshakeValue) {
+        ERROR(F("[HANDSHAKE] Invalid handshake packet"));
+        return false;
+    }
+
+    // Check if request
+    if (strcmp(handshakeValue, "Request") == 0) {
+        LOGF("[HANDSHAKE] Hub sending handshake response");
+        if (sendHandshakeResponse(*fromAddress)) {
+            beginHandshake(*fromAddress);
+            return true;
+        }
+    }
+
+    return false;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LoRa::beginHandshake(uint8_t peerAddress) {
+    this->handshakeEstablished = true;
+    this->handshakePeerAddress = peerAddress;
+    this->handshakeEstablishedAt = millis();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LoRa::clearHandshake() {
+    LOGF("[HANDSHAKE] Clearing active handshake");
+    this->handshakeEstablished = false;
+    this->handshakePeerAddress = 0;
+    this->handshakeEstablishedAt = 0;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::clearExpiredHandshake() {
+    if (!this->handshakeEstablished) {
+        return false;
+    }
+
+    if (millis() - this->handshakeEstablishedAt < HANDSHAKE_TIMEOUT_MS) {
+        return false;
+    }
+
+    LOGF("[HANDSHAKE] Timed out waiting for payload; resetting handshake");
+    clearHandshake();
+    return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -325,6 +394,11 @@ bool Loom_LoRa::receive(uint timeout, uint8_t* fromAddress, bool shouldProxy) {
         switch (status) {
         case FragReceiveStatus::Complete:
             return true;
+        case FragReceiveStatus::HandshakeAccepted:
+            // continue as now the hub needs to receive payload
+            continue;
+        case FragReceiveStatus::Incomplete:
+            continue;
         case FragReceiveStatus::Error:
             retryCount--;
             break;
@@ -337,7 +411,9 @@ bool Loom_LoRa::receive(uint timeout, uint8_t* fromAddress, bool shouldProxy) {
 
 bool Loom_LoRa::receive(uint timeout, bool shouldProxy) {
     uint8_t fromAddress;
-    return receive(timeout, &fromAddress, shouldProxy);
+    bool receive_status = receive(timeout, &fromAddress, shouldProxy);
+    clearHandshake();
+    return receive_status;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -437,7 +513,35 @@ bool Loom_LoRa::sendPacketHeader(JsonObject json,
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::send(const uint8_t destinationAddress) {
-    return send(destinationAddress, manager->getDocument().as<JsonObject>());
+    // Before devices send normal packets, a handshake packet will be sent
+    uint8_t handshakeRetries = 2;
+    while(handshakeRetries > 0) {
+        bool handshakeTransmitSuccess = false;
+        bool handshakeAccepted = false;
+        // Send handshake request to hub
+        handshakeTransmitSuccess = sendHandshakeRequest(destinationAddress);
+        if(handshakeTransmitSuccess) {
+            LOGF("[HANDSHAKE] Handshake request sent succesfully");
+            // Wait for accept response from hub
+            handshakeAccepted = handshakeReceive(destinationAddress);
+        }
+
+        if(handshakeAccepted) {
+            return send(destinationAddress, manager->getDocument().as<JsonObject>());
+        }
+
+        else {
+            handshakeRetries--;
+            LOGF("[HANDSHAKE] Pausing to retry, %lu attempts remaining", handshakeRetries);
+            const uint32_t currentTime = millis();
+            while((currentTime + 10000) > millis()) {
+
+            }
+        }
+    }
+    // Once out of retries, fail
+    LOGF("Send failed");
+    return false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -454,7 +558,86 @@ bool Loom_LoRa::send(const uint8_t destinationAddress,
     } else {
         return sendFullPacket(json, destinationAddress);
     }
+
+    
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::sendHandshakeRequest(const uint8_t destinationAddress) {
+    const uint8_t HANDSHAKE_SIZE = 100; // enough for the handshake key and string value
+    StaticJsonDocument<HANDSHAKE_SIZE> handshakeDoc;
+    // Special handshake packet with "Request" value
+    handshakeDoc["handshake"] = "Request";
+
+    // Send special handshake packet and check if it went through
+    bool handshakeTransmitStatus = sendFullPacket(handshakeDoc.as<JsonObject>(), destinationAddress);
+    if(!handshakeTransmitStatus) {
+        LOGF("[HANDSHAKE] Sending handshake request failed, hub busy");
+        return false;
+    }
+    return true;
+}
+
+bool Loom_LoRa::sendHandshakeResponse(const uint8_t destinationAddress) {
+    const uint8_t HANDSHAKE_SIZE = 100; // enough for the handshake key and string value
+    StaticJsonDocument<HANDSHAKE_SIZE> handshakeDoc;
+    // Special handshake packet with "Accept" value
+    handshakeDoc["handshake"] = "Accept";
+
+    bool handshakeTransmitStatus = sendFullPacket(handshakeDoc.as<JsonObject>(), destinationAddress);
+    if(!handshakeTransmitStatus) {
+        LOGF("[HANDSHAKE] Sending handshake acceptance failed");
+        return false;
+    }
+    LOGF("[HANDSHAKE] Hub succesfully sent handshake acceptance");
+    return true;
+}
+
+bool Loom_LoRa::handshakeReceive(const uint8_t destinationAddress) {
+    // Function for node waiting to receive acceptance packet from hub
+    LOGF("[HANDSHAKE] Attempting to receive acceptance from hub");
+
+    int retryCount = receiveRetryCount;
+    while (retryCount > 0) {
+        uint8_t buf[MAX_MESSAGE_LENGTH] = {};
+        uint8_t fromAddress = 0;
+
+        if (!receiveFromLoRa(buf, sizeof(buf), 5000, &fromAddress)) {
+            retryCount--;
+            continue;
+        }
+
+        StaticJsonDocument<300> tempDoc;
+        auto err = deserializeMsgPack(tempDoc, (const char *)buf, sizeof(buf));
+        if (err != DeserializationError::Ok) {
+            ERRORF("[HANDSHAKE] Error parsing acceptance packet: %s", err.c_str());
+            retryCount--;
+            continue;
+        }
+
+        const char *handshakeValue = tempDoc["handshake"].as<const char*>();
+        if (!handshakeValue || strcmp(handshakeValue, "Accept") != 0) {
+            WARNING(F("[HANDSHAKE] Ignoring non-acceptance packet"));
+            retryCount--;
+            continue;
+        }
+
+        if (fromAddress != destinationAddress) {
+            WARNINGF("[HANDSHAKE] Ignoring acceptance from unexpected address %i",
+                     fromAddress);
+            retryCount--;
+            continue;
+        }
+
+        LOGF("[HANDSHAKE] Handshake accepted");
+        return true;
+    }
+
+    LOGF("[HANDSHAKE] Handshake rejected");
+    return false;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
@@ -511,6 +694,7 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
     }
 
     fileOutput.close();
+    return status;
 }
 
 bool Loom_LoRa::receiveBatch(uint timeout, int* numberOfPackets) {
