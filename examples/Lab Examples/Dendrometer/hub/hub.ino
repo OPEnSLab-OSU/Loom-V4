@@ -45,6 +45,39 @@ void loop()
         mqtt.publish();
     }
 
+    // Send error packet to MongoDB under Hub folder
+    else {
+        manager.set_device_name("Hub");
+        manager.set_instance_num(0);
+
+        // // Clear manager JSON doc
+        manager.getDocument().clear();
+
+        // Manually construct error message
+        manager.getDocument()[F("type")] = F("error");
+        manager.getDocument()["id"]["name"] = "Hub";
+        manager.getDocument()["id"]["instance"] = 0;
+
+        // Get timestamp from RTC, format it
+        DateTime now = hypnos.getCurrentTime();
+        DateTime local = hypnos.getLocalTime(now);
+    
+        char utc[20];
+        snprintf(utc, sizeof(utc), "%04d-%02d-%02dT%02d:%02d:%02dZ",
+            now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second());
+        
+        char local_time[20];
+        snprintf(local_time, sizeof(local_time), "%04d-%02d-%02dT%02d:%02d:%02dZ",
+            local.year(), local.month(), local.day(), local.hour(), local.minute(), local.second());
+
+        manager.getDocument()["time_utc"] = utc;
+        manager.getDocument()["time_local"] = local_time;
+        manager.getDocument()["Message"] = "Packet receiving failure in transmission";
+
+        // Send to MongoDB
+        mqtt.publish();
+    }
+
     static unsigned long timer = millis();
     if (millis() - timer > REPORT_INTERVAL)
     {
