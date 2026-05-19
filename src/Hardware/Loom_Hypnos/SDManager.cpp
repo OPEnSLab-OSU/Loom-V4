@@ -73,14 +73,14 @@ void SDManager::writeHeaders() {
         }
     }
 
+    strncat(header2, "checksum,", 512);
+
     // Write the headers to the file
     myFile.println(header1);
     myFile.println(header2);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-// Check if EOD reached, use currentTime from SDmanager log()
-// int Day, track day num, then file.close(), then file = sd.open, Day = currentTime.day() to update Day
 bool SDManager::log(DateTime currentTime) {
     char output[MAX_JSON_SIZE + 1];
 
@@ -152,6 +152,17 @@ bool SDManager::log(DateTime currentTime) {
                 }
             }
 
+            // Compute checksum for line
+            uint16_t checksum = 0;
+            for(int i = 0; i < strlen(output); i++){
+                checksum += (uint8_t)output[i];
+            }
+
+            // Append to line
+            char checksumString[8];
+            snprintf(checksumString, 8, "%u,", checksum);
+            strncat(output, checksumString, MAX_JSON_SIZE);
+
             // Write the matching data into the CSV file
             myFile.println(output);
 
@@ -159,8 +170,16 @@ bool SDManager::log(DateTime currentTime) {
             myFile.sync();
 
             if(currentTime.day() != lastClosed){
-                myFile.close();
-                myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
+                if(verifyChecksum(myFile)){
+                    myFile.close();
+                    myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
+                }
+                else{
+                    myFile.close();
+                    // open new file
+                    updateCurrentFileName();
+                    myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
+                }
                 lastClosed = currentTime.day();
             }
 
@@ -181,6 +200,52 @@ bool SDManager::log(DateTime currentTime) {
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool SDManager::verifyChecksum(File myFile){
+    char lineBuf[MAX_JSON_SIZE];
+    int lineIndex = 0;
+    int lineCount = 0;
+    
+    while(myFile.available()){
+        char c = myFile.read();
+
+        if(c == '\n'){
+            lineBuf[lineIndex] = '\0';
+
+            char* checksumComma = strrchr(lineBuf, ',');
+
+            lineCount++;
+
+            // Skip headers in csv
+            if(lineCount > 3){
+                if(checksumComma != nullptr){
+                    uint16_t actualChecksum = atoi(checksumComma + 1);
+
+                    *checksumComma = '\0';
+
+                    uint16_t lineChecksum = 0;
+                    for(int i = 0; i < strlen(lineBuf); i++){
+                        lineChecksum += (uint8_t)lineBuf[i];
+                    }
+
+                    if(actualChecksum != lineChecksum){
+                        printModuleName("Error: Checksum Failed");
+                        return false;
+                    }
+                }
+            }
+            lineIndex = 0;
+            memset(lineBuf, '\0', MAX_JSON_SIZE);
+            
+        }
+        else{
+            lineBuf[lineIndex++] = c;
+        }
+    }    
+    printModuleName("Checksum Passed");
+    return true;
+}
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::begin() {
