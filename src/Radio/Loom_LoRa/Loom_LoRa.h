@@ -154,6 +154,14 @@ public:
     bool send(const uint8_t destinationAddress);
 
     /**
+     * Send the heartbeat JSON data to specified address
+     *
+     * @param destinationAddress The address to send the data to.
+     * @param heartbeatJson The heartbeat JSON object to transmit.
+     */ 
+    bool sendHeartbeat(const uint8_t destinationAddress, JsonObject heartbeatJson);
+
+    /**
      * Sends a handshake request and if succesful, sends arbitrary JSON doc
      *
      * @param destinationAddress The address to send the data to.

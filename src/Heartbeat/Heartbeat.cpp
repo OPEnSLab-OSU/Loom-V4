@@ -99,7 +99,7 @@ bool Loom_Heartbeat::transmit(const uint8_t destinationAddress) {
         LOGF("[HEARTBEAT] LoRa module not initialized, failed to transmit");
         return false;
     }
-    return loraInstance->send(destinationAddress, heartbeatDoc.as<JsonObject>());
+    return loraInstance->sendHeartbeat(destinationAddress, heartbeatDoc.as<JsonObject>());
 }
 
 // transmit custom packet over lora, user can pass in custom doc
@@ -109,5 +109,5 @@ bool Loom_Heartbeat::transmitCustom(const uint8_t destinationAddress, JsonDocume
         LOGF("[HEARTBEAT] LoRa module not initialized, failed to transmit");
         return false;
     }
-    return loraInstance->send(destinationAddress, document.as<JsonObject>());
+    return loraInstance->sendHeartbeat(destinationAddress, document.as<JsonObject>());
 }
