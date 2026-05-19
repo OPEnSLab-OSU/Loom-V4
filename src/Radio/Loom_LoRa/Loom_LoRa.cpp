@@ -513,6 +513,12 @@ bool Loom_LoRa::sendPacketHeader(JsonObject json,
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::send(const uint8_t destinationAddress) {
+    return sendHandshake(destinationAddress, manager->getDocument().as<JsonObject>());
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::sendHandshake(const uint8_t destinationAddress, JsonObject json) {
     // Before devices send normal packets, a handshake packet will be sent
     uint8_t handshakeRetries = 2;
     while(handshakeRetries > 0) {
@@ -527,7 +533,7 @@ bool Loom_LoRa::send(const uint8_t destinationAddress) {
         }
 
         if(handshakeAccepted) {
-            return send(destinationAddress, manager->getDocument().as<JsonObject>());
+            return send(destinationAddress, json);
         }
 
         else {
