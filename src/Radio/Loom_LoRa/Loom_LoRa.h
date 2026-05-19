@@ -154,6 +154,14 @@ public:
     bool send(const uint8_t destinationAddress);
 
     /**
+     * Sends a handshake request and if succesful, sends arbitrary JSON doc
+     *
+     * @param destinationAddress The address to send the data to.
+     * @param json The JSON object to transmit.
+     */ 
+    bool sendHandshake(const uint8_t destinationAddress, JsonObject json);
+
+    /**
      * Send an arbitrary JSON object to the specified address.
      *
      * @param destinationAddress The address to send the data to.
