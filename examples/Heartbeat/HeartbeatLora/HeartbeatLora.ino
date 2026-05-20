@@ -53,9 +53,13 @@ void loop() {
   // Log the data to the SD card              
   hypnos.logToSD();
 
+  // Determine if normal work or heartbeat work will occur
   if (heartbeat.getHeartbeatFlag()) {
+    // Form heartbeat packet
     heartbeat.makeHeartbeat();
+    // Add custom data
     heartbeat.addData("FieldName", "DataName", "Data");
+    // Transmit over LoRa
     heartbeat.transmit(0);
   }
   else {
