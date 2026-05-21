@@ -86,10 +86,12 @@ bool SDManager::log(DateTime currentTime) {
 
     if (sdInitialized) {
 
+        // File should be opened already from begin or from previous log
         if (myFile) {
 
             // If this file has never been written to before we need to create and write the proper
             // headers to the file
+            // Dependent on file size because opening in O_APPEND mode
             if (myFile.size() <= 3) {
                 // Set the date created timestamp of the File
                 myFile.timestamp(T_CREATE, currentTime.year(), currentTime.month(),
@@ -152,13 +154,13 @@ bool SDManager::log(DateTime currentTime) {
                 }
             }
 
-            // Compute checksum for line
+            // Compute checksum for line for later checking
             uint16_t checksum = 0;
             for(int i = 0; i < strlen(output); i++){
                 checksum += (uint8_t)output[i];
             }
 
-            // Append to line
+            // Append checksum value to end of line, last column 
             char checksumString[8];
             snprintf(checksumString, 8, "%u,", checksum);
             strncat(output, checksumString, MAX_JSON_SIZE);
@@ -166,20 +168,25 @@ bool SDManager::log(DateTime currentTime) {
             // Write the matching data into the CSV file
             myFile.println(output);
 
-            // Sync file, don't close unless EOD
+            // Sync/flush file, don't close unless EOD
             myFile.sync();
 
+            // Checks if the day has chenged, if so we enter and will close, reopen file
             if(currentTime.day() != lastClosed){
+                // Run the checksum by going through the file
+                // If passes verification, close and reopen file
                 if(verifyChecksum(myFile)){
                     myFile.close();
                     myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
                 }
+                // If failed verification, open new file
                 else{
                     myFile.close();
                     // open new file
                     updateCurrentFileName();
                     myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
                 }
+                // Update day integer to current time so don't close file until end of next day
                 lastClosed = currentTime.day();
             }
 
@@ -201,18 +208,22 @@ bool SDManager::log(DateTime currentTime) {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// NEEDS TESTING
+// NEEDS TESTING, what if file is too big to parse through for feather board?
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::verifyChecksum(File myFile){
     char lineBuf[MAX_JSON_SIZE];
     int lineIndex = 0;
     int lineCount = 0;
     
     while(myFile.available()){
+        // Go through every char in file
         char c = myFile.read();
 
+        // When we hit a new line, we start evaluating
         if(c == '\n'){
             lineBuf[lineIndex] = '\0';
 
+            // Find last comma = checksum, don't evaluate on the checksum number since it is point of reference
             char* checksumComma = strrchr(lineBuf, ',');
 
             lineCount++;
@@ -220,29 +231,36 @@ bool SDManager::verifyChecksum(File myFile){
             // Skip headers in csv
             if(lineCount > 3){
                 if(checksumComma != nullptr){
+                    // Get the value to compare to
                     uint16_t actualChecksum = atoi(checksumComma + 1);
 
                     *checksumComma = '\0';
 
+                    // Go through the lineBuf (one line in csv) and manually add checksum
                     uint16_t lineChecksum = 0;
                     for(int i = 0; i < strlen(lineBuf); i++){
                         lineChecksum += (uint8_t)lineBuf[i];
                     }
 
+                    // Compare actual checksum to computed checksum, if fails then file is corrupted
                     if(actualChecksum != lineChecksum){
-                        printModuleName("Error: Checksum Failed");
+                        char buf[64];
+                        snprintf(buf, 64, "Error: Checksum Failed at Line %i", lineCount);
+                        printModuleName(buf);
                         return false;
                     }
                 }
             }
+            // Reset for next line
             lineIndex = 0;
             memset(lineBuf, '\0', MAX_JSON_SIZE);
-
         }
+        // When not at endline, just keep adding to lineBuf that will represent array of csv characters
         else{
             lineBuf[lineIndex++] = c;
         }
     }    
+    // If verification passes, file is not corrupted
     printModuleName("Checksum Passed");
     return true;
 }

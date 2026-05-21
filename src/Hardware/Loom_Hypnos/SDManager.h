@@ -40,11 +40,15 @@ class SDManager : public Module {
      * Log the current sensor data to the SD card
      * @param currentTime The current time provided by the RTC this allows us to set accurate
      * modified/created times for files
+     * Opens and closes once per day
      */
     bool log(DateTime currentTime);
 
     /**
-     * Needs testing
+     * NEEDS TESTING
+     * @param myFile The name of the csv file to verify
+     * Checks line by line the file's contents and evalutes a checksum that
+     * is compared to the appended checksum computed from log
      */
     bool verifyChecksum(File myFile);
 
