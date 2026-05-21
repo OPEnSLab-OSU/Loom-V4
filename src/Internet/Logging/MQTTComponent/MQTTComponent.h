@@ -26,11 +26,11 @@ class MQTTComponent : public Module {
      * @param message The message we want to publish to the given topic
      * @param retain Whether or not we want to the message to be retained on the specified topic
      * (default = false)
-     * @param qos What quality-of-service we want to upload the message with (default = 2)
+     * @param qos What quality-of-service we want to upload the message with (default = 1, ensures the message is sent at least 1 time)
      *
      * @return The status of the publish attempt
      */
-    bool publishMessage(const char *topic, const char *message, bool retain = false, int qos = 2);
+    bool publishMessage(const char *topic, const char *message, bool retain = false, int qos = 1);
 
     /**
      * Subscribe to a given topic to get the retained message and then immediately unsubscribe
