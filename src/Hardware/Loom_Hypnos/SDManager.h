@@ -50,7 +50,7 @@ class SDManager : public Module {
      * Checks line by line the file's contents and evalutes a checksum that
      * is compared to the appended checksum computed from log
      */
-    bool verifyChecksum(File myFile);
+    bool verifyChecksum(File& myFile);
 
     /**
      * Read the contents of a given file on the SD card and return them as a string

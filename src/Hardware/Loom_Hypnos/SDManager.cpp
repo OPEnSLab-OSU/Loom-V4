@@ -105,9 +105,6 @@ bool SDManager::log(DateTime currentTime) {
             snprintf_P(output, MAX_JSON_SIZE, PSTR("%s,%i,"), manInst->get_device_name(),
                        manInst->get_instance_num());
 
-            // Write the Instance data that isn't included in the JSON packet
-            myFile.print(output);
-            memset(output, '\0', MAX_JSON_SIZE); // Clear array
 
             JsonObject document = manInst->getDocument().as<JsonObject>();
 
@@ -160,9 +157,23 @@ bool SDManager::log(DateTime currentTime) {
                 checksum += (uint8_t)output[i];
             }
 
+            // LEAVE IN FOR TESTING TO ENTER VERIFY CHECKSUM BELOW
+            checksum++;
+            // REMOVE LATER
+
+            // TESTING CHECKSUM VALUE AND CSV LINE HERE TO COMPARE TO VERIFY CHECKSUM BELOW
+            char buf[64];
+            snprintf(buf, 64, "log Checksum: %i", checksum);
+            printModuleName(buf);
+
+            char buff[MAX_JSON_SIZE + 32];
+            snprintf(buff, MAX_JSON_SIZE + 32, "LOG OUTPUT BEFORE APPEND: %s", output);
+            printModuleName(buff);
+            ///////////////////////////////////////////////////////////////////////////
+
             // Append checksum value to end of line, last column 
             char checksumString[8];
-            snprintf(checksumString, 8, "%u,", checksum);
+            snprintf(checksumString, 8, ",%u", checksum);
             strncat(output, checksumString, MAX_JSON_SIZE);
 
             // Write the matching data into the CSV file
@@ -171,9 +182,14 @@ bool SDManager::log(DateTime currentTime) {
             // Sync/flush file, don't close unless EOD
             myFile.sync();
 
+            // LEAVE IN FOR TESTING TO ENTER IF BELOW
+            lastClosed++;
+            /////////////////////////////////////////
+
             // Checks if the day has chenged, if so we enter and will close, reopen file
             if(currentTime.day() != lastClosed){
                 // Run the checksum by going through the file
+                LOG(F("End of day detected, verifying checksum"));
                 // If passes verification, close and reopen file
                 if(verifyChecksum(myFile)){
                     myFile.close();
@@ -183,8 +199,12 @@ bool SDManager::log(DateTime currentTime) {
                 else{
                     myFile.close();
                     // open new file
-                    updateCurrentFileName();
-                    myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
+                    if(root.open("/", O_RDONLY)){
+                        updateCurrentFileName();
+                        myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
+                    } else {
+                        ERROR(F("Failed to open root for file rotation"));
+                    }
                 }
                 // Update day integer to current time so don't close file until end of next day
                 lastClosed = currentTime.day();
@@ -208,9 +228,10 @@ bool SDManager::log(DateTime currentTime) {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// NEEDS TESTING, what if file is too big to parse through for feather board?
+// NEEDS TESTING
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool SDManager::verifyChecksum(File myFile){
+bool SDManager::verifyChecksum(File& myFile){
+    myFile.seekSet(0);
     char lineBuf[MAX_JSON_SIZE];
     int lineIndex = 0;
     int lineCount = 0;
@@ -229,7 +250,7 @@ bool SDManager::verifyChecksum(File myFile){
             lineCount++;
 
             // Skip headers in csv
-            if(lineCount > 3){
+            if(lineCount > 4){
                 if(checksumComma != nullptr){
                     // Get the value to compare to
                     uint16_t actualChecksum = atoi(checksumComma + 1);
@@ -242,11 +263,21 @@ bool SDManager::verifyChecksum(File myFile){
                         lineChecksum += (uint8_t)lineBuf[i];
                     }
 
+                    // FOR TESTING PURPOSES TO COMPARE CHECKSUM VALUES AND LINE OUTPUTS
+                    char buf[64];
+                    snprintf(buf, 64, "checksum from csv: %i, computed checksum: %i", actualChecksum, lineChecksum);
+                    printModuleName(buf);
+
+                    char buff[MAX_JSON_SIZE + 32];
+                    snprintf(buff, MAX_JSON_SIZE + 32, "VERIFY LINE OUTPUT: %s", lineBuf);
+                    printModuleName(buff);
+                    ///////////////////////////////////////////////////////////////////////////
+
                     // Compare actual checksum to computed checksum, if fails then file is corrupted
                     if(actualChecksum != lineChecksum){
-                        char buf[64];
+                        // char buf[64];
                         snprintf(buf, 64, "Error: Checksum Failed at Line %i", lineCount);
-                        printModuleName(buf);
+                        ERROR(buf);
                         return false;
                     }
                 }
@@ -264,7 +295,7 @@ bool SDManager::verifyChecksum(File myFile){
     printModuleName("Checksum Passed");
     return true;
 }
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::begin() {
