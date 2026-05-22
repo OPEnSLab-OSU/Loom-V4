@@ -300,8 +300,7 @@ DateTime Loom_Hypnos::getLocalTime(DateTime time) {
         return time + TimeSpan(0, (timezone), 0, 0);
     }
 }
-///////////////////////////////////////
-//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::isDaylightSavings() {
@@ -480,6 +479,73 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration) {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::setSecondAlarmInterruptDuration(const TimeSpan duration) {
+    FUNCTION_START;
+
+    // The time in the future that the second alarm will be set for
+    alarmTime2 = RTC_DS.now() + duration;
+    RTC_DS.setAlarm2(alarmTime2, DS3231_A2_Date);
+
+    // Print the time that the next interrupt is set to trigger
+    DateTime t = getLocalTime(RTC_DS.now());
+    char tbuf[21];
+    dateTime_toString(t, tbuf);
+    LOGF("Current Time (Local): %s", tbuf, true);
+    t = getLocalTime(alarmTime2);
+    dateTime_toString(t, tbuf);
+    LOGF("Next 2nd interrupt alarm set for: %s", tbuf, true);
+
+    FUNCTION_END;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Loom_Hypnos::clearAlarms() {
+    RTC_DS.clearAlarm(1);
+    RTC_DS.clearAlarm(2);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+uint8_t Loom_Hypnos::checkTriggeredAlarms() {
+    uint8_t triggeredAlarmsBitMask = 0;
+
+    if (RTC_DS.alarmFired(1)) {
+        LOG("Alarm 1 has woken the device up from sleep!");
+        triggeredAlarmsBitMask |= BM_ALARM_1;
+        RTC_DS.clearAlarm(1); // Clear the alarm 1 flag in the RTC
+    }
+
+    if (RTC_DS.alarmFired(2)) {
+        LOG("Alarm 2 has woken the device up from sleep!");
+        triggeredAlarmsBitMask |= BM_ALARM_2;
+        RTC_DS.clearAlarm(2); // Clear the alarm 2 flag in the RTC
+    }
+
+    if (triggeredAlarmsBitMask == BM_NONE)
+        ERROR("No alarms have triggered!");
+    else if (triggeredAlarmsBitMask == BM_BOTH)
+        ERROR("Both alarms have triggered!");
+
+    return triggeredAlarmsBitMask;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+DateTime Loom_Hypnos::getAlarmDate(const uint8_t alarmNumber) {
+    if (alarmNumber < 1 || alarmNumber > 2) {
+        ERROR("Attempted to get alarm date for invalid alarm number, valid numbers are 1 and 2");
+        return DateTime();
+    }
+
+    if (alarmNumber == 1)
+        return RTC_DS.getAlarm1();
+    else
+        return RTC_DS.getAlarm2();
+
+    return DateTime(); // empty return if something goes wrong, should never be reached
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /* Sleep Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -495,15 +561,22 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
         manInst->power_down();
 
         // After powering down the devices check if the alarmed time is less than the current time,
-        // this means that the alarm may have already triggered Adafruit getAlarm1() returns alarm
-        // day/hour/min/sec with placeholder year/month; build comparable time from current date
+        // this means that the alarm may have already triggered. Rebuild alarm DateTime with current
+        // year/month since getAlarm() returns placeholder year/month (May 2000).
         DateTime now = RTC_DS.now();
-        DateTime alarmReg = RTC_DS.getAlarm1();
-        DateTime alarmDateTime(now.year(), now.month(), alarmReg.day(), alarmReg.hour(),
-                               alarmReg.minute(), alarmReg.second());
-        uint32_t alarmedTime = alarmDateTime.unixtime();
+        DateTime alarm1 = RTC_DS.getAlarm1();
+        DateTime alarm2 = RTC_DS.getAlarm2();
+
+        DateTime alarm1DateTime(now.year(), now.month(), alarm1.day(), alarm1.hour(),
+                                alarm1.minute(), alarm1.second());
+        DateTime alarm2DateTime(now.year(), now.month(), alarm2.day(), alarm2.hour(),
+                                alarm2.minute(), alarm2.second());
+
+        uint32_t alarmedTime1 = alarm1DateTime.unixtime();
+        uint32_t alarmedTime2 = alarm2DateTime.unixtime();
         uint32_t currentTime = now.unixtime();
-        hasAlarmTriggered = alarmedTime <= currentTime;
+
+        hasAlarmTriggered = alarmedTime1 <= currentTime || alarmedTime2 <= currentTime;
 
         // 50ms delay allows this last message to be sent before the bus disconnects
         LOG("Entering Standby Sleep...");
@@ -519,8 +592,11 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
     }
     // If it has we want to trigger a resample which requires powering the sensors back up
     else {
-        WARNING("Alarm triggered during sample, specified sample duration was too short! "
+        WARNING("Alarm triggered during sample. Specified sample duration was too short. "
                 "Resampling...");
+        uint8_t firedAlarmsBitMask = checkTriggeredAlarms();
+        LOGF("Fired Alarms Bitmask: %u. Cleared alarms registers after checking them.",
+             firedAlarmsBitMask);
         reattachRTCInterrupt();
         if (shouldPowerUp) {
             manInst->power_up();
@@ -581,6 +657,8 @@ void Loom_Hypnos::post_sleep(bool waitForSerial) {
 
         LOG(F("Device has awoken from sleep!"));
         WD_TIMER_RESET;
+
+        firedAlarmsBitMask = checkTriggeredAlarms();
 
         // Clear any pending RTC alarms
         RTC_DS.clearAlarm(1);
