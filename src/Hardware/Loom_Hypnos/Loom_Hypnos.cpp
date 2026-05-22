@@ -180,6 +180,12 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
     if (!RTC_initialized && interruptPin == 12)
         initializeRTC();
 
+        if (!RTC_initialized) {
+          ERROR(F("Failed to register RTC interrupt because RTC did not initialize."))
+          FUNCTION_END;
+          return false;
+        }
+
     // Make sure a callback function was supplied
     if (isrFunc != nullptr) {
 
@@ -213,26 +219,21 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin) {
     FUNCTION_START;
-    if (std::get<2>(pinToInterrupt[interruptPin]) != SLEEP) {
+    auto it = pinToInterrupt.find(interruptPin);
+    if (it == pinToInterrupt.end()) {
+      ERROR(F("Failed to reattach interrupt! Interrupt has not been previously registered."));
+      FUNCTION_END;
+      return false;
+    }
 
-        // If we haven't previously registered the interrupt we need to do this before we can
-        // reattach to an interrupt that doesn't exist
-        if (pinToInterrupt.count(interruptPin) <= 0) {
-            ERROR(
-                F("Failed to reattach interrupt! Interrupt has not previously been registered..."));
-            FUNCTION_END;
-            return false;
-        }
+    InterruptCallbackFunction isrFunc = std::get<0>(it->second);
+    int triggerState = std::get<1>(it->second);
+    HypnosInterruptType interruptType = std::get<2>(it->second);
 
-        attachInterrupt(digitalPinToInterrupt(interruptPin),
-                        std::get<0>(pinToInterrupt[interruptPin]),
-                        std::get<1>(pinToInterrupt[interruptPin]));
-        attachInterrupt(digitalPinToInterrupt(interruptPin),
-                        std::get<0>(pinToInterrupt[interruptPin]),
-                        std::get<1>(pinToInterrupt[interruptPin]));
+    if (interruptType != SLEEP) {
+      attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
     } else {
-        LowPower.attachInterruptWakeup(interruptPin, std::get<0>(pinToInterrupt[interruptPin]),
-                                       std::get<1>(pinToInterrupt[interruptPin]));
+      LowPower.attachInterruptWakeup(interruptPin, isrFunc, triggerState);
     }
     LOG(F("Interrupt successfully reattached!"));
     FUNCTION_END;
@@ -320,11 +321,15 @@ bool Loom_Hypnos::isDaylightSavings() {
 DateTime Loom_Hypnos::getCurrentTime() {
     if (RTC_initialized)
         return RTC_DS.now();
-    else {
-        LOG(F("Attempted to pull time when RTC was not previously initialized! Returned default "
-              "datetime"));
-        return DateTime();
-    }
+
+    // Prevents duplicate log prints if we have a broken RTC
+    static bool warned = false;
+    if (!warned) {
+      LOG(F("Attempted to pull time when RTC was not previously initialized! Returned default "
+            "datetime"));
+      warned = true;
+  }
+  return DateTime();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -685,47 +690,57 @@ void Loom_Hypnos::post_sleep(bool waitForSerial) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 TimeSpan Loom_Hypnos::getConfigFromSD(const char *fileName) {
     FUNCTION_START;
-    // Doc to store the JSON data from the SD card in
-    StaticJsonDocument<OUTPUT_SIZE> doc;
-    char output[OUTPUT_SIZE];
-    DeserializationError deserialError = sdMan->deserializeJsonFile(fileName, doc);
 
-    // Create json object to easily pull data from
+    // Create a mempool json buffer
+    LoomJsonDocument doc(OUTPUT_SIZE, MemPoolJsonAllocator(&manInst->getPool()));
+
+    // Create the output buffer
+    MemPool::Lease outputLease = manInst->getPool().allocLease(OUTPUT_SIZE, "config_out");
+    if (!outputLease) {
+      ERROR(F("Failed to allocate config output buffer!"));
+      FUNCTION_END;
+      return TimeSpan(0, 0, 20, 0);
+    }
+    
+    // Get a char* from the lease. 
+    char *output = outputLease.chars();
+    DeserializationError deserialError = sdMan->deserializeJsonFile(fileName, doc);
     JsonObject json = doc.as<JsonObject>();
 
     if (deserialError != DeserializationError::Ok) {
-        snprintf(output, OUTPUT_SIZE,
+        snprintf(output, outputLease.size(),
                  "There was an error reading the config from SD: %s, defaulting sampling interval "
                  "to 20 minutes.",
                  deserialError.c_str());
         ERROR(output);
+        FUNCTION_END;
         return TimeSpan(0, 0, 20, 0);
-    } else {
-        LOG(F("Config successfully loaded from SD!"));
-        if (!json["timezone"].isNull()) {
-            const char *timezoneStr = json["timezone"].as<const char *>();
-            snprintf(output, OUTPUT_SIZE, "Selected timezone: %s, UTC offset: %i", timezoneStr,
-                     (int)timezoneMap[(const char *)timezoneStr]);
-            LOG(output);
-            timezone = timezoneMap[(const char *)timezoneStr];
-        }
+    } 
 
-        // If the sleep interval key is not supplied we want to set some default
-        if (!json["SleepInterval"].isNull()) {
-            // Return the interval as set in the json
-            return TimeSpan(json["SleepInterval"]["days"].as<int>(),
-                            json["SleepInterval"]["hours"].as<int>(),
-                            json["SleepInterval"]["minutes"].as<int>(),
-                            json["SleepInterval"]["seconds"].as<int>());
-        } else {
-            snprintf(output, OUTPUT_SIZE,
-                     "There was an error reading the sampling interval from SD, defaulting "
-                     "sampling interval to 20 minutes.");
-            ERROR(output);
-            return TimeSpan(0, 0, 20, 0);
-        }
+    LOG(F("Config successfully loaded from SD!"));
+
+    if (!json["timezone"].isNull()) {
+        const char *timezoneStr = json["timezone"].as<const char *>();
+        snprintf(output, outputLease.size(), "Selected timezone: %s, UTC offset: %i", timezoneStr,
+                  (int)timezoneMap[(const char *)timezoneStr]);
+        LOG(output);
+        timezone = timezoneMap[(const char *)timezoneStr];
     }
+
+    if (!json["SleepInterval"].isNull()) {
+      // Return the interval as set in the json
+      FUNCTION_END;
+      return TimeSpan(json["SleepInterval"]["days"].as<int>(),
+      json["SleepInterval"]["hours"].as<int>(),
+      json["SleepInterval"]["minutes"].as<int>(),
+      json["SleepInterval"]["seconds"].as<int>());
+    } 
+    
+    // If the sleep interval key is not supplied we want to set some default
+    ERROR(F("There was an error reading the sampling interval from SD, defaulting to 20 minutes."));
     FUNCTION_END;
+    return TimeSpan(0, 0, 20, 0);
+  
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////

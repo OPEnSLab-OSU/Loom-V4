@@ -5,6 +5,8 @@
  */
 #include <Loom_Manager.h>
 
+#include <MemPoolJson.hpp>
+
 #include <Radio/Loom_LoRa/Loom_LoRa.h>
 
 #include <Heartbeat/Loom_Heartbeat.h>
@@ -18,6 +20,8 @@ Loom_LoRa lora(manager);
 uint32_t hbInterval_s = 15;
 uint32_t normalInterval_s = 35;
 Loom_Heartbeat heartbeat(hbInterval_s, normalInterval_s, &manager);
+
+const size_t JSON_HEARTBEAT_BUFFER_SIZE = 300;
 
 void setup() {
   manager.beginSerial();
@@ -34,8 +38,13 @@ void loop() {
 
     heartbeat.flashLight();
     
-    const uint16_t JSON_HEARTBEAT_BUFFER_SIZE = 300;
-    StaticJsonDocument<JSON_HEARTBEAT_BUFFER_SIZE> payload;
+    LoomJsonDocument payload(JSON_HEARTBEAT_BUFFER_SIZE, MemPoolJsonAllocator(&manager.getPool()));
+    if (payload.capacity() == 0) {
+      Serial.println(F("Failed to allocate heartbeat JSON document from memory pool"));
+      manager.printPoolStats();
+      return;
+    }
+
     heartbeat.createJSONPayload(payload);
 
     // append any additional information you wish to send over heartbeat
@@ -53,9 +62,9 @@ void loop() {
     lora.send(0);
   }
 
-  int milliseconds = heartbeat.calculateNextEvent().totalseconds() * 1000;
+  uint32_t milliseconds = heartbeat.calculateNextEvent().totalseconds() * 1000UL;
   Serial.print("Pause for: ");
-  Serial.print(String(milliseconds));
+  Serial.print(milliseconds);
   Serial.println("");
 
   // Wait X seconds between transmits

@@ -77,22 +77,34 @@ bool MQTTComponent::publishMessage(const char *topic, const char *message, bool 
     FUNCTION_START;
 
     // Make sure the module is initialized
-    if (moduleInitialized && internetClient.moduleInitialized) {
-        if (mqttClient.connected()) {
-            // Tell the broker we are still here
-            mqttClient.poll();
+    if (moduleInitialized && internetClient.moduleInitialized) { 
+      // Tell the broker we are still here
+      // IF we get "MQTT Client not connected to broker" we know poll failed
+      mqttClient.poll();
+      if (mqttClient.connected()) {
+            // Check if we're still connected after poll
+            LOGF("MQTT connected before begin: %i", mqttClient.connected());
 
             // Start a message write the data and close the message, publish all messages with
             // retain
             if (mqttClient.beginMessage(topic, retain, qos) != 1) {
                 ERROR(F("Failed to begin message!"));
+                mqttClient.stop();
+                FUNCTION_END;
+                return false;
             }
 
             // Print the message to the topic
-            mqttClient.println(message);
+            size_t written = mqttClient.println(message);
+            LOGF("MQTT payload bytes written: %u", (unsigned int)written);
+
+            LOGF("MQTT connected before end: %i", mqttClient.connected());
+            int endResult = mqttClient.endMessage();
+            LOGF("MQTT end result: %i connected after: %i", endResult, mqttClient.connected());
 
             // Check to see if we are actually closing messages properly
-            if (mqttClient.endMessage() != 1) {
+            if (endResult != 1) {
+                mqttClient.stop();
                 ERROR(F("Failed to close message!"));
                 FUNCTION_END;
                 return false;
