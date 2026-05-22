@@ -679,10 +679,7 @@ class MemPool {
     }
 
   private:
-    friend class SDManager;
-
     static constexpr uint16_t kFreeBlockOwner = Handle::INVALID_SLOT;
-
     /**
      * Internal read-write pointer to lease start.
      */
