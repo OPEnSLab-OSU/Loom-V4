@@ -201,9 +201,8 @@ class Manager {
 
     /* Pool now holds all the sensor information */
     MemPool pool_;
-    LoomJsonDocument doc; // JSON document that will store all sensor information
+    LoomJsonDocument doc;    // JSON document that will store all sensor information
     JsonArray contentsArray; // Stores the contents of the modules
-
 
     std::vector<std::pair<const char *, Module *>>
         modules; // List of modules that have been added to the stack

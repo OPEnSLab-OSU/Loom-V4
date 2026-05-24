@@ -1,8 +1,8 @@
 #pragma once
 
-#include <string.h>
-#include <ArduinoJson.h>
 #include "MemPool.hpp"
+#include <ArduinoJson.h>
+#include <string.h>
 
 struct MemPoolJsonAllocator {
     MemPool *pool;

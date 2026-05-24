@@ -8,7 +8,7 @@
 class EZOSensor : public I2CDevice {
   public:
     /* Construct a new EZO device */
-    EZOSensor(const char *modName) : I2CDevice(modName) {};
+    EZOSensor(const char *modName) : I2CDevice(modName){};
 
     /* General command to transmit data over I2C to the given device*/
     bool sendTransmission(const char *command) {

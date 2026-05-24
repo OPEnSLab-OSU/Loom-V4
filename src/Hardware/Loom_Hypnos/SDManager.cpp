@@ -97,7 +97,8 @@ void SDManager::writeHeaders() {
     }
 
     char *header1 = headerLease1.chars();
-    char *header2 = headerLease2.chars();    bool headerOk = true;
+    char *header2 = headerLease2.chars();
+    bool headerOk = true;
 
     auto appendHeader = [](char *dst, size_t dstSize, const char *text) -> bool {
         if (dst == nullptr) {
@@ -116,7 +117,7 @@ void SDManager::writeHeaders() {
         strncat(dst, text, remaining);
         return strlen(text) <= remaining;
     };
-    
+
     // Append the serial number to the top of the CSV file, reset the header1 array
     snprintf_P(header1, headerLease1.size(), PSTR("%s"), manInst->get_serial_num());
     myFile.println(header1);
@@ -657,7 +658,7 @@ DeserializationError SDManager::deserializeJsonFile(const char *fileName, JsonDo
         return DeserializationError::EmptyInput;
     }
     const char *json = lease.chars();
-    return deserializeJson(doc, json );
+    return deserializeJson(doc, json);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

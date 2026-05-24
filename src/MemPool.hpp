@@ -42,8 +42,8 @@ class SDManager;
 /**
  * MemPool uses deterministic fixed-size blocks to avoid heap fragmentation.
  * Default config reserves 8KB (64 blocks * 128 bytes) at compile time.
- * 
- * The main reason for using this mempool is to help debug and prevent dynamic 
+ *
+ * The main reason for using this mempool is to help debug and prevent dynamic
  * and buffer bounds memory issues.
  */
 class MemPool {
@@ -639,8 +639,7 @@ class MemPool {
         cb(line, userCtx);
 
         snprintf(line, sizeof(line), "Pool bytes used/free/total: %u/%u/%u",
-                 (unsigned int)s.bytesUsed, (unsigned int)s.bytesFree,
-                 (unsigned int)s.bytesTotal);
+                 (unsigned int)s.bytesUsed, (unsigned int)s.bytesFree, (unsigned int)s.bytesTotal);
         cb(line, userCtx);
 
         snprintf(line, sizeof(line), "Pool leases=%u highWater=%u failedAllocs=%u",
@@ -648,11 +647,10 @@ class MemPool {
                  (unsigned int)s.failedAllocs);
         cb(line, userCtx);
 
-        snprintf(line, sizeof(line),
-                 "Pool calls alloc/release/read/write/clear: %lu/%lu/%lu/%lu/%lu",
-                 (unsigned long)s.allocCalls, (unsigned long)s.releaseCalls,
-                 (unsigned long)s.readCalls, (unsigned long)s.writeCalls,
-                 (unsigned long)s.clearCalls);
+        snprintf(
+            line, sizeof(line), "Pool calls alloc/release/read/write/clear: %lu/%lu/%lu/%lu/%lu",
+            (unsigned long)s.allocCalls, (unsigned long)s.releaseCalls, (unsigned long)s.readCalls,
+            (unsigned long)s.writeCalls, (unsigned long)s.clearCalls);
         cb(line, userCtx);
 
         snprintf(line, sizeof(line), "Pool bytes req/granted/released: %lu/%lu/%lu",

@@ -73,7 +73,7 @@ class Logger {
     SDManager *sdInst = nullptr;
     Loom_Hypnos *hypnosInst = nullptr;
 
-    Logger() {};
+    Logger(){};
 
     /**
      * Generic log function - prints to Serial and logs to SD

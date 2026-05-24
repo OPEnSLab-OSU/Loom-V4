@@ -65,7 +65,7 @@ class SDManager : public Module {
      * @param
      * fileName Name of the file to deserialize.
      * @param doc JSON document to populate.
- */
+     */
     DeserializationError deserializeJsonFile(const char *fileName, JsonDocument &doc);
 
     /**

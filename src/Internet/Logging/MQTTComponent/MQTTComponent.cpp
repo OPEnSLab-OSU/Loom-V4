@@ -77,11 +77,11 @@ bool MQTTComponent::publishMessage(const char *topic, const char *message, bool 
     FUNCTION_START;
 
     // Make sure the module is initialized
-    if (moduleInitialized && internetClient.moduleInitialized) { 
-      // Tell the broker we are still here
-      // IF we get "MQTT Client not connected to broker" we know poll failed
-      mqttClient.poll();
-      if (mqttClient.connected()) {
+    if (moduleInitialized && internetClient.moduleInitialized) {
+        // Tell the broker we are still here
+        // IF we get "MQTT Client not connected to broker" we know poll failed
+        mqttClient.poll();
+        if (mqttClient.connected()) {
             // Check if we're still connected after poll
             LOGF("MQTT connected before begin: %i", mqttClient.connected());
 

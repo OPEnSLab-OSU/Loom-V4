@@ -33,25 +33,26 @@ bool Loom_MongoDB::publish() {
 
     /* Should work for proxying hubs aswell. Gives each connection a fixed ID. */
     char clientId[64];
-    snprintf(clientId, sizeof(clientId), "%s%i", manInst->get_device_name(), manInst->get_instance_num());
+    snprintf(clientId, sizeof(clientId), "%s%i", manInst->get_device_name(),
+             manInst->get_instance_num());
     setClientID(clientId);
 
     if (moduleInitialized) {
-      
-      // TIMER_DISABLE;
 
-      /** 
-       * Attempt to connect to the broker if it fails we should just return.
-       * If the client thinks their connection was terminated but the host doesn't
-       * then we need to call stop again. 
-       * */
-      if (!isConnected()) {
-        disconnectFromBroker();
-        if (!connectToBroker()) {
-            FUNCTION_END;
-            return false;
+        // TIMER_DISABLE;
+
+        /**
+         * Attempt to connect to the broker if it fails we should just return.
+         * If the client thinks their connection was terminated but the host doesn't
+         * then we need to call stop again.
+         * */
+        if (!isConnected()) {
+            disconnectFromBroker();
+            if (!connectToBroker()) {
+                FUNCTION_END;
+                return false;
+            }
         }
-      }
 
         MemPool::Lease jsonLease = manInst->getPool().allocLease(MAX_JSON_SIZE, "mongo_json");
         if (!jsonLease) {
@@ -70,7 +71,6 @@ bool Loom_MongoDB::publish() {
             // "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
             snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name,
                        manInst->get_device_name(), manInst->get_instance_num());
-
 
         /* Attempt to publish the data to the given topic */
         manInst->getJSONString(jsonLease.chars());

@@ -24,7 +24,6 @@ class Radio : public Module {
     uint8_t retryCount;    // Number transmission retries allowed
     uint16_t retryTimeout; // Delay between retries (MS)
 
-
     /**
      * Get this device's address
      */
@@ -82,5 +81,5 @@ class Radio : public Module {
      * @param moduleName Name of the module
      * @param maxLength The maximum length a packet can be
      */
-    Radio(const char *moduleName) : Module(moduleName) {};
+    Radio(const char *moduleName) : Module(moduleName){};
 };

@@ -117,8 +117,7 @@ void Loom_RemoteManager::loadConfigFromJSON(const char *json) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_RemoteManager::updateHypnosInterval(char topic[MAX_TOPIC_LENGTH],
-                                              char message[MAX_JSON_SIZE],
-                                              JsonDocument &json) {
+                                              char message[MAX_JSON_SIZE], JsonDocument &json) {
     // Clear message and topic and json
     memset(topic, '\0', MAX_TOPIC_LENGTH);
     memset(message, '\0', MAX_JSON_SIZE);

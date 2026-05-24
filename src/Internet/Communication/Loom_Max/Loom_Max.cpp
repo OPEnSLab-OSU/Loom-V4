@@ -1,6 +1,6 @@
 #include "Loom_Max.h"
-#include "Loom_Manager.h"
 #include "Logger.h"
+#include "Loom_Manager.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Max::Loom_Max(Manager &man, Loom_WIFI &wifi)
