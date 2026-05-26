@@ -1,6 +1,6 @@
 #include "arduino_secrets.h"
 
-#include <Loom_Manager.h>
+#include <Loom_Manager.h> //4.7
 
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Radio/Loom_LoRa/Loom_LoRa.h>
@@ -10,16 +10,23 @@
 
 const unsigned long REPORT_INTERVAL = 1 * 60 * 60 * 1000;
 
-Manager manager("Hub", 0);
-
+Manager manager("HubName", 0);
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 Loom_Analog batteryVoltage(manager);
 Loom_LoRa lora(manager);
 Loom_LTE lte(manager, "hologram", "", "", A5);
-Loom_MongoDB mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
+Loom_MongoDB mqtt(manager, lte, SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
 
+
+int packetNumber = 0;
 void setup()
 {
+
+  /* Enables logging logs to the SD card for later viewing under the 'debug' folder */
+  ENABLE_SD_LOGGING;   
+  
+  /* Enables generation of function summaries */
+  ENABLE_FUNC_SUMMARIES;
     // Start the serial interface
     manager.beginSerial();
 
@@ -27,6 +34,10 @@ void setup()
     hypnos.enable();
 
     setRTC();
+
+    // Sets the LTE board to use batch SD to only start when we actually need to publish data
+
+
 
     // load MQTT credentials from the SD card, if they exist
     mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
@@ -38,19 +49,19 @@ void setup()
 void loop()
 {
     // Wait 5 seconds for a message
-    if (lora.receive(5000))
+    if (lora.receive(5000, true))
     {
         manager.display_data();
         hypnos.logToSD();
         mqtt.publish();
     }
-
-    // Send error packet to MongoDB under Hub folder
-    else {
+    else
+    {
+        // Send error packet to MongoDB under Hub folder
         manager.set_device_name("Hub");
         manager.set_instance_num(0);
 
-        // // Clear manager JSON doc
+        // Clear manager JSON doc
         manager.getDocument().clear();
 
         // Manually construct error message
@@ -58,32 +69,34 @@ void loop()
         manager.getDocument()["id"]["name"] = "Hub";
         manager.getDocument()["id"]["instance"] = 0;
 
-        // Get timestamp from RTC, format it
+        // Get timestamp from RTC
         DateTime now = hypnos.getCurrentTime();
         DateTime local = hypnos.getLocalTime(now);
-    
+
         char utc[20];
-        snprintf(utc, sizeof(utc), "%04d-%02d-%02dT%02d:%02d:%02dZ",
-            now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second());
-        
+        snprintf(utc, sizeof(utc),
+            "%04d-%02d-%02dT%02d:%02d:%02dZ",
+            now.year(), now.month(), now.day(),
+            now.hour(), now.minute(), now.second());
+
         char local_time[20];
-        snprintf(local_time, sizeof(local_time), "%04d-%02d-%02dT%02d:%02d:%02dZ",
-            local.year(), local.month(), local.day(), local.hour(), local.minute(), local.second());
+        snprintf(local_time, sizeof(local_time),
+            "%04d-%02d-%02dT%02d:%02d:%02dZ",
+            local.year(), local.month(), local.day(),
+            local.hour(), local.minute(), local.second());
 
         manager.getDocument()["time_utc"] = utc;
         manager.getDocument()["time_local"] = local_time;
-        manager.getDocument()["Message"] = "Packet receiving failure in transmission";
+        manager.getDocument()["Message"] =
+            "Packet receiving failure in transmission";
 
-        // Send to MongoDB
         mqtt.publish();
     }
 
     static unsigned long timer = millis();
+
     if (millis() - timer > REPORT_INTERVAL)
     {
-        manager.set_device_name("Hub");
-        manager.set_instance_num(0);
-
         manager.measure();
         manager.package();
         manager.display_data();
@@ -92,6 +105,7 @@ void loop()
         timer = millis();
     }
 }
+
 
 void setRTC()
 {
