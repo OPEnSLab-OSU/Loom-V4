@@ -24,10 +24,10 @@
 #define RECV_DATA_SIZE 256
 
 enum class FragReceiveStatus {
-    Incomplete,  // no packet has been completed
-    Complete,    // packet has been loaded into the global document
+    Incomplete,        // no packet has been completed
+    Complete,          // packet has been loaded into the global document
     HandshakeAccepted, // hub succesfully in handshake with node
-    Error        // could not receive fragment
+    Error              // could not receive fragment
 };
 
 struct PartialPacket {
@@ -149,7 +149,7 @@ class Loom_LoRa : public Module {
      *
      * @param destinationAddress The address to send the data to.
      * @param heartbeatJson The heartbeat JSON object to transmit.
-     */ 
+     */
     bool sendHeartbeat(const uint8_t destinationAddress, JsonObject heartbeatJson);
 
     /**
@@ -157,7 +157,7 @@ class Loom_LoRa : public Module {
      *
      * @param destinationAddress The address to send the data to.
      * @param json The JSON object to transmit.
-     */ 
+     */
     bool sendHandshake(const uint8_t destinationAddress, JsonObject json);
 
     /**
@@ -216,7 +216,7 @@ class Loom_LoRa : public Module {
     bool handleSingleFrag(JsonDocument &workingDoc);
     bool handleLostFrag(JsonDocument &workingDoc, uint8_t fromAddress);
 
-    bool handleHandshakeReceive(JsonDocument &tempDoc, uint8_t* fromAddress);
+    bool handleHandshakeReceive(JsonDocument &tempDoc, uint8_t *fromAddress);
     void beginHandshake(uint8_t peerAddress);
     void clearHandshake();
     bool clearExpiredHandshake();
