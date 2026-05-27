@@ -5,6 +5,7 @@
 #include "ArduinoJson.hpp"
 #include "ArduinoJson/Object/JsonObject.hpp"
 #include "Hardware/Loom_BatchSD/Loom_BatchSD.h"
+#include "MemPoolJson.hpp"
 #include <ArduinoJson.h>
 #include <Logger.h>
 #include <Module.h>
@@ -14,7 +15,9 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <tuple> // for forward_as_tuple
 #include <unordered_map>
+#include <utility> // for piecewise_construct
 
 #define MAX_MESSAGE_LENGTH RH_RF95_MAX_MESSAGE_LEN
 
@@ -27,14 +30,18 @@
 #define RECV_DATA_SIZE 256
 
 enum class FragReceiveStatus {
-    Incomplete, // no packet has been completed
-    Complete,   // packet has been loaded into the global document
-    Error       // could not receive fragment
+    Incomplete,        // no packet has been completed
+    Complete,          // packet has been loaded into the global document
+    HandshakeAccepted, // hub succesfully in handshake with node
+    Error              // could not receive fragment
 };
 
 struct PartialPacket {
     int remainingFragments;
-    DynamicJsonDocument working;
+    LoomJsonDocument working;
+
+    PartialPacket(int fragments, size_t capacity, MemPool *pool)
+        : remainingFragments(fragments), working(capacity, MemPoolJsonAllocator(pool)) {}
 };
 
 class Loom_LoRa : public Module {
@@ -147,6 +154,22 @@ class Loom_LoRa : public Module {
     bool send(const uint8_t destinationAddress);
 
     /**
+     * Send the heartbeat JSON data to specified address
+     *
+     * @param destinationAddress The address to send the data to.
+     * @param heartbeatJson The heartbeat JSON object to transmit.
+     */
+    bool sendHeartbeat(const uint8_t destinationAddress, JsonObject heartbeatJson);
+
+    /**
+     * Sends a handshake request and if succesful, sends arbitrary JSON doc
+     *
+     * @param destinationAddress The address to send the data to.
+     * @param json The JSON object to transmit.
+     */
+    bool sendHandshake(const uint8_t destinationAddress, JsonObject json);
+
+    /**
      * Send an arbitrary JSON object to the specified address.
      *
      * @param destinationAddress The address to send the data to.
@@ -212,6 +235,13 @@ class Loom_LoRa : public Module {
     bool handleSingleFrag(JsonDocument &workingDoc);
     bool handleLostFrag(JsonDocument &workingDoc, uint8_t fromAddress);
 
+    bool handleHandshakeReceive(JsonDocument &tempDoc, uint8_t *fromAddress);
+    void beginHandshake(uint8_t peerAddress);
+    void clearHandshake();
+    bool clearExpiredHandshake();
+
+    bool handshakeReceive(const uint8_t destinationAddress);
+
     // transmits a json document to over lora
     bool transmitToLoRa(JsonObject json, uint8_t destinationAddress);
 
@@ -219,6 +249,8 @@ class Loom_LoRa : public Module {
     bool sendFullPacket(JsonObject json, uint8_t destinationAddress);
     bool sendFragmentedPacket(JsonObject json, uint8_t destinationAddress);
     bool sendPacketHeader(JsonObject json, uint8_t destinationAddress);
+    bool sendHandshakeRequest(const uint8_t destinationAddress);
+    bool sendHandshakeResponse(const uint8_t destinationAddress);
 
     Manager *manager;                 // Instance of the Loom manager
     RHReliableDatagram *radioManager; // Radio manager
@@ -235,6 +267,11 @@ class Loom_LoRa : public Module {
     uint8_t sendRetryCount;    // Number of transmission retries allowed
     uint8_t receiveRetryCount; // Number of fragment receive retries allowed
     uint16_t retryTimeout;     // Delay between retries (MS)
+
+    bool handshakeEstablished = false;
+    uint8_t handshakePeerAddress = 0;
+    uint32_t handshakeEstablishedAt = 0;
+    static constexpr uint32_t HANDSHAKE_TIMEOUT_MS = 15000;
 
     std::unordered_map<uint8_t, PartialPacket> frags; // Partial packets sorted by address
 

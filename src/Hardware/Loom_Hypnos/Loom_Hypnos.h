@@ -418,8 +418,6 @@ class Loom_Hypnos : public Module {
 
     uint8_t voltage_flags = 0; // Flag mask defaults to 0x00
 
-    TIME_ZONE timezone; // Timezone the RTC was set to
-
     // Map the given pin to an interrupt call back
     // 0th - ISR
     // 1st - Interrupt Trigger
@@ -434,18 +432,8 @@ class Loom_Hypnos : public Module {
                      // compared correctly
 
     uint8_t firedAlarmsBitMask = 0; // Which alarm triggered the wakeup
-
-    /**
-     * Get which alarm triggered the wakeup
-     *
-     * This returns a bitmask representing which alarms triggered:
-     * - 0b00 (0): No alarms triggered
-     * - 0b01 (1): Alarm 1 triggered
-     * - 0b10 (2): Alarm 2 triggered
-     * - 0b11 (3): Both alarms triggered
-     * You can use the ALARM_BITMASKS enum for easier evaluation.
-     */
     uint8_t checkTriggeredAlarms();
+    TIME_ZONE timezone; // Timezone the RTC was set to
 
     DateTime time;      // UTC time
     DateTime localTime; // Local time
