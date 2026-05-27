@@ -320,13 +320,11 @@ bool Loom_LoRa::handleFragHeader(JsonDocument &workingDoc, uint8_t fromAddress) 
 
     if ((size_t)expectedFragCount + 1 >
         LORA_MAX_FRAG_WORKING_DOC_SIZE / LORA_FRAG_JSON_BYTES_PER_PACKET) {
-        ERRORF("Fragmented packet from %i exceeds LoRa fragment working document cap",
-               fromAddress);
+        ERRORF("Fragmented packet from %i exceeds LoRa fragment working document cap", fromAddress);
         return false;
     }
 
-    const size_t packetSpace =
-        LORA_FRAG_JSON_BYTES_PER_PACKET * ((size_t)expectedFragCount + 1u);
+    const size_t packetSpace = LORA_FRAG_JSON_BYTES_PER_PACKET * ((size_t)expectedFragCount + 1u);
 
     const size_t maxAlloc = manager->getPool().maxAllocBytes();
     if (packetSpace > maxAlloc) {
