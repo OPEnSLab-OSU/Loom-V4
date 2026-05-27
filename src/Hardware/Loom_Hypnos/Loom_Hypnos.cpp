@@ -511,24 +511,24 @@ void Loom_Hypnos::clearAlarms() {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-uint8_t Loom_Hypnos::checkTriggeredAlarms() {
-    uint8_t triggeredAlarmsBitMask = 0;
+ALARM_BITMASKS Loom_Hypnos::checkTriggeredAlarms() {
+    ALARM_BITMASKS triggeredAlarmsBitMask = ALARM_BITMASKS::BM_NONE;
 
     if (RTC_DS.alarmFired(1)) {
         LOG("Alarm 1 has woken the device up from sleep!");
-        triggeredAlarmsBitMask |= BM_ALARM_1;
+        triggeredAlarmsBitMask |= ALARM_BITMASKS::BM_ALARM_1;
         RTC_DS.clearAlarm(1); // Clear the alarm 1 flag in the RTC
     }
 
     if (RTC_DS.alarmFired(2)) {
         LOG("Alarm 2 has woken the device up from sleep!");
-        triggeredAlarmsBitMask |= BM_ALARM_2;
+        triggeredAlarmsBitMask |= ALARM_BITMASKS::BM_ALARM_2;
         RTC_DS.clearAlarm(2); // Clear the alarm 2 flag in the RTC
     }
 
-    if (triggeredAlarmsBitMask == BM_NONE)
+    if (triggeredAlarmsBitMask == ALARM_BITMASKS::BM_NONE)
         ERROR("No alarms have triggered!");
-    else if (triggeredAlarmsBitMask == BM_BOTH)
+    else if (triggeredAlarmsBitMask == ALARM_BITMASKS::BM_BOTH)
         ERROR("Both alarms have triggered!");
 
     return triggeredAlarmsBitMask;
@@ -599,9 +599,9 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
     else {
         WARNING("Alarm triggered during sample. Specified sample duration was too short. "
                 "Resampling...");
-        uint8_t firedAlarmsBitMask = checkTriggeredAlarms();
+        ALARM_BITMASKS firedAlarmsBitMask = checkTriggeredAlarms();
         LOGF("Fired Alarms Bitmask: %u. Cleared alarms registers after checking them.",
-             firedAlarmsBitMask);
+             static_cast<unsigned int>(firedAlarmsBitMask));
         reattachRTCInterrupt();
         if (shouldPowerUp) {
             manInst->power_up();

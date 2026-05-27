@@ -158,12 +158,14 @@ void Loom_Heartbeat::ensureHeartbeatHypnosAlarmsActive() {
     }
 
     // checks if the alarms fired.
-    uint8_t firedAlarmsBitMask = hypnosPtr->getFiredAlarmsBM();
-    bool setAlarm1 = firedAlarmsBitMask & BM_ALARM_1;
-    bool setAlarm2 = firedAlarmsBitMask & BM_ALARM_2;
+    ALARM_BITMASKS firedAlarmsBitMask = hypnosPtr->getFiredAlarmsBM();
+    bool setAlarm1 =
+        (firedAlarmsBitMask & ALARM_BITMASKS::BM_ALARM_1) != ALARM_BITMASKS::BM_NONE;
+    bool setAlarm2 =
+        (firedAlarmsBitMask & ALARM_BITMASKS::BM_ALARM_2) != ALARM_BITMASKS::BM_NONE;
     // check if alarm registers are cleared. Any cleared registers need to be re-set with the
     // appropriate intervals.
-    if (firedAlarmsBitMask == BM_NONE) {
+    if (firedAlarmsBitMask == ALARM_BITMASKS::BM_NONE) {
         setAlarm1 = true;
         setAlarm2 = true;
     }

@@ -73,7 +73,25 @@ enum TIME_ZONE {
     AEST = 10
 };
 
-enum ALARM_BITMASKS { BM_NONE = 0b00, BM_ALARM_1 = 0b01, BM_ALARM_2 = 0b10, BM_BOTH = 0b11 };
+enum class ALARM_BITMASKS : uint8_t {
+    BM_NONE = 0b00,
+    BM_ALARM_1 = 0b01,
+    BM_ALARM_2 = 0b10,
+    BM_BOTH = 0b11
+};
+
+inline ALARM_BITMASKS operator|(ALARM_BITMASKS lhs, ALARM_BITMASKS rhs) {
+    return static_cast<ALARM_BITMASKS>(static_cast<uint8_t>(lhs) | static_cast<uint8_t>(rhs));
+}
+
+inline ALARM_BITMASKS &operator|=(ALARM_BITMASKS &lhs, ALARM_BITMASKS rhs) {
+    lhs = lhs | rhs;
+    return lhs;
+}
+
+inline ALARM_BITMASKS operator&(ALARM_BITMASKS lhs, ALARM_BITMASKS rhs) {
+    return static_cast<ALARM_BITMASKS>(static_cast<uint8_t>(lhs) & static_cast<uint8_t>(rhs));
+}
 
 /**
  * Type of interrupt to register
@@ -322,16 +340,20 @@ class Loom_Hypnos : public Module {
                              bool mv = false, int num_samples = 1);
 
     /** Return whether alarm 1 fired */
-    bool alarm1Fired() { return (firedAlarmsBitMask & BM_ALARM_1) != 0; };
+    bool alarm1Fired() {
+        return (firedAlarmsBitMask & ALARM_BITMASKS::BM_ALARM_1) != ALARM_BITMASKS::BM_NONE;
+    };
 
     /** Return whether alarm 2 fired */
-    bool alarm2Fired() { return (firedAlarmsBitMask & BM_ALARM_2) != 0; };
+    bool alarm2Fired() {
+        return (firedAlarmsBitMask & ALARM_BITMASKS::BM_ALARM_2) != ALARM_BITMASKS::BM_NONE;
+    };
 
     /* Return a bitmask representing what alarm triggered the wakeup */
-    uint8_t getFiredAlarmsBM() { return firedAlarmsBitMask; };
+    ALARM_BITMASKS getFiredAlarmsBM() { return firedAlarmsBitMask; };
 
     /* Clear the fired alarms bitmask */
-    void clearFiredAlarmsBM() { firedAlarmsBitMask = 0; };
+    void clearFiredAlarmsBM() { firedAlarmsBitMask = ALARM_BITMASKS::BM_NONE; };
 
     /**
      * Clear both alarm flags on the DS3231 RTC.
@@ -431,8 +453,8 @@ class Loom_Hypnos : public Module {
         timezoneMap; // String to Timezone enum, use custom compare to ensure that strings are
                      // compared correctly
 
-    uint8_t firedAlarmsBitMask = 0; // Which alarm triggered the wakeup
-    uint8_t checkTriggeredAlarms();
+    ALARM_BITMASKS firedAlarmsBitMask = ALARM_BITMASKS::BM_NONE; // Which alarm triggered the wakeup
+    ALARM_BITMASKS checkTriggeredAlarms();
     TIME_ZONE timezone; // Timezone the RTC was set to
 
     DateTime time;      // UTC time
