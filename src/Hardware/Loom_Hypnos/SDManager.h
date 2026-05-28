@@ -49,7 +49,7 @@ class SDManager : public Module {
      * Checks line by line the file's contents and evalutes a checksum that
      * is compared to the appended checksum computed from log
      */
-    bool verifyChecksum(File& myFile);
+    bool verifyChecksum(File &myFile);
 
     /**
      * Read the contents of a given file on the SD card and return them as a string
@@ -117,11 +117,11 @@ class SDManager : public Module {
     /* Get whatever number we are currently appending to the SD fileNames*/
     int getCurrentFileNumber() { return file_count; };
 
-    private:
+  private:
     Manager *manInst; // Reference to the manager
 
     File myFile;       // File object used to handle reading and writing
-    File batchFile;    // for txt file, not csv 
+    File batchFile;    // for txt file, not csv
     File scanningFile; // Used specifically to search through the directory
     File root;         // Open the root directory as a file
 

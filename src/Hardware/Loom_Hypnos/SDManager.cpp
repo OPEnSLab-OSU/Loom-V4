@@ -105,7 +105,6 @@ bool SDManager::log(DateTime currentTime) {
             snprintf_P(output, MAX_JSON_SIZE, PSTR("%s,%i,"), manInst->get_device_name(),
                        manInst->get_instance_num());
 
-
             JsonObject document = manInst->getDocument().as<JsonObject>();
 
             // If there is a key that contains timestamp data when need to include that separately
@@ -153,11 +152,11 @@ bool SDManager::log(DateTime currentTime) {
 
             // Compute checksum for line for later checking
             uint16_t checksum = 0;
-            for(int i = 0; i < strlen(output); i++){
+            for (int i = 0; i < strlen(output); i++) {
                 checksum += (uint8_t)output[i];
             }
 
-            // Append checksum value to end of line, last column 
+            // Append checksum value to end of line, last column
             char checksumString[8];
             snprintf(checksumString, 8, ",%u", checksum);
             strncat(output, checksumString, MAX_JSON_SIZE);
@@ -169,19 +168,19 @@ bool SDManager::log(DateTime currentTime) {
             myFile.sync();
 
             // Checks if the day has chenged, if so we enter and will close, reopen file
-            if(currentTime.day() != lastClosed){
+            if (currentTime.day() != lastClosed) {
                 // Run the checksum by going through the file
                 LOG(F("End of day detected, verifying checksum"));
                 // If passes verification, close and reopen file
-                if(verifyChecksum(myFile)){
+                if (verifyChecksum(myFile)) {
                     myFile.close();
                     myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
                 }
                 // If failed verification, open new file
-                else{
+                else {
                     myFile.close();
                     // open new file
-                    if(root.open("/", O_RDONLY)){
+                    if (root.open("/", O_RDONLY)) {
                         updateCurrentFileName();
                         myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
                     } else {
@@ -202,8 +201,8 @@ bool SDManager::log(DateTime currentTime) {
 
         // If we want to log batch data do so
         if (batch_size > 0)
-            logBatch();   
-            
+            logBatch();
+
     } else {
         printModuleName("Failed to log! SD card not Initialized!");
     }
@@ -211,28 +210,29 @@ bool SDManager::log(DateTime currentTime) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool SDManager::verifyChecksum(File& myFile){
+bool SDManager::verifyChecksum(File &myFile) {
     myFile.seekSet(0);
     char lineBuf[MAX_JSON_SIZE];
     int lineIndex = 0;
     int lineCount = 0;
-    
-    while(myFile.available()){
+
+    while (myFile.available()) {
         // Go through every char in file
         char c = myFile.read();
 
         // When we hit a new line, we start evaluating
-        if(c == '\n'){
+        if (c == '\n') {
             lineBuf[lineIndex] = '\0';
 
-            // Find last comma = checksum, don't evaluate on the checksum number since it is point of reference
-            char* checksumComma = strrchr(lineBuf, ',');
+            // Find last comma = checksum, don't evaluate on the checksum number since it is point
+            // of reference
+            char *checksumComma = strrchr(lineBuf, ',');
 
             lineCount++;
 
             // Skip headers in csv
-            if(lineCount > 4){
-                if(checksumComma != nullptr){
+            if (lineCount > 4) {
+                if (checksumComma != nullptr) {
                     // Get the value to compare to
                     uint16_t actualChecksum = atoi(checksumComma + 1);
 
@@ -240,12 +240,12 @@ bool SDManager::verifyChecksum(File& myFile){
 
                     // Go through the lineBuf (one line in csv) and manually add checksum
                     uint16_t lineChecksum = 0;
-                    for(int i = 0; i < strlen(lineBuf); i++){
+                    for (int i = 0; i < strlen(lineBuf); i++) {
                         lineChecksum += (uint8_t)lineBuf[i];
                     }
 
                     // Compare actual checksum to computed checksum, if fails then file is corrupted
-                    if(actualChecksum != lineChecksum){
+                    if (actualChecksum != lineChecksum) {
                         char buf[64];
                         snprintf(buf, 64, "Error: Checksum Failed at Line %i", lineCount);
                         ERROR(buf);
@@ -257,11 +257,12 @@ bool SDManager::verifyChecksum(File& myFile){
             lineIndex = 0;
             memset(lineBuf, '\0', MAX_JSON_SIZE);
         }
-        // When not at endline, just keep adding to lineBuf that will represent array of csv characters
-        else{
+        // When not at endline, just keep adding to lineBuf that will represent array of csv
+        // characters
+        else {
             lineBuf[lineIndex++] = c;
         }
-    }    
+    }
     // If verification passes, file is not corrupted
     printModuleName("Checksum Passed");
     return true;
