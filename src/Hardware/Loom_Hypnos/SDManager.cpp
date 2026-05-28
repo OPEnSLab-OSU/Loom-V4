@@ -157,20 +157,6 @@ bool SDManager::log(DateTime currentTime) {
                 checksum += (uint8_t)output[i];
             }
 
-            // LEAVE IN FOR TESTING TO ENTER VERIFY CHECKSUM BELOW
-            checksum++;
-            // REMOVE LATER
-
-            // TESTING CHECKSUM VALUE AND CSV LINE HERE TO COMPARE TO VERIFY CHECKSUM BELOW
-            char buf[64];
-            snprintf(buf, 64, "log Checksum: %i", checksum);
-            printModuleName(buf);
-
-            char buff[MAX_JSON_SIZE + 32];
-            snprintf(buff, MAX_JSON_SIZE + 32, "LOG OUTPUT BEFORE APPEND: %s", output);
-            printModuleName(buff);
-            ///////////////////////////////////////////////////////////////////////////
-
             // Append checksum value to end of line, last column 
             char checksumString[8];
             snprintf(checksumString, 8, ",%u", checksum);
@@ -181,10 +167,6 @@ bool SDManager::log(DateTime currentTime) {
 
             // Sync/flush file, don't close unless EOD
             myFile.sync();
-
-            // LEAVE IN FOR TESTING TO ENTER IF BELOW
-            lastClosed++;
-            /////////////////////////////////////////
 
             // Checks if the day has chenged, if so we enter and will close, reopen file
             if(currentTime.day() != lastClosed){
@@ -228,7 +210,6 @@ bool SDManager::log(DateTime currentTime) {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// NEEDS TESTING
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::verifyChecksum(File& myFile){
     myFile.seekSet(0);
@@ -263,19 +244,9 @@ bool SDManager::verifyChecksum(File& myFile){
                         lineChecksum += (uint8_t)lineBuf[i];
                     }
 
-                    // FOR TESTING PURPOSES TO COMPARE CHECKSUM VALUES AND LINE OUTPUTS
-                    char buf[64];
-                    snprintf(buf, 64, "checksum from csv: %i, computed checksum: %i", actualChecksum, lineChecksum);
-                    printModuleName(buf);
-
-                    char buff[MAX_JSON_SIZE + 32];
-                    snprintf(buff, MAX_JSON_SIZE + 32, "VERIFY LINE OUTPUT: %s", lineBuf);
-                    printModuleName(buff);
-                    ///////////////////////////////////////////////////////////////////////////
-
                     // Compare actual checksum to computed checksum, if fails then file is corrupted
                     if(actualChecksum != lineChecksum){
-                        // char buf[64];
+                        char buf[64];
                         snprintf(buf, 64, "Error: Checksum Failed at Line %i", lineCount);
                         ERROR(buf);
                         return false;

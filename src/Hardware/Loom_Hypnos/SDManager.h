@@ -45,7 +45,6 @@ class SDManager : public Module {
     bool log(DateTime currentTime);
 
     /**
-     * NEEDS TESTING
      * @param myFile The name of the csv file to verify
      * Checks line by line the file's contents and evalutes a checksum that
      * is compared to the appended checksum computed from log
