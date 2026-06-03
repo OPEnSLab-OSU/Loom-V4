@@ -500,7 +500,6 @@ void Loom_Hypnos::setSecondAlarmInterruptDuration(const TimeSpan duration) {
     t = getLocalTime(alarmTime2);
     dateTime_toString(t, tbuf);
     LOGF("Next 2nd interrupt alarm set for: %s", tbuf, true);
-
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -514,13 +513,16 @@ void Loom_Hypnos::clearAlarms() {
 ALARM_BITMASKS Loom_Hypnos::checkTriggeredAlarms() {
     ALARM_BITMASKS triggeredAlarmsBitMask = ALARM_BITMASKS::BM_NONE;
 
-    if (RTC_DS.alarmFired(1)) {
+    bool a1 = RTC_DS.alarmFired(1);
+    bool a2 = RTC_DS.alarmFired(2);
+
+    if (a1) {
         LOG("Alarm 1 has woken the device up from sleep!");
         triggeredAlarmsBitMask |= ALARM_BITMASKS::BM_ALARM_1;
         RTC_DS.clearAlarm(1); // Clear the alarm 1 flag in the RTC
     }
 
-    if (RTC_DS.alarmFired(2)) {
+    if (a2) {
         LOG("Alarm 2 has woken the device up from sleep!");
         triggeredAlarmsBitMask |= ALARM_BITMASKS::BM_ALARM_2;
         RTC_DS.clearAlarm(2); // Clear the alarm 2 flag in the RTC
@@ -599,7 +601,7 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
     else {
         WARNING("Alarm triggered during sample. Specified sample duration was too short. "
                 "Resampling...");
-        ALARM_BITMASKS firedAlarmsBitMask = checkTriggeredAlarms();
+        firedAlarmsBitMask = checkTriggeredAlarms();
         LOGF("Fired Alarms Bitmask: %u. Cleared alarms registers after checking them.",
              static_cast<unsigned int>(firedAlarmsBitMask));
         reattachRTCInterrupt();
@@ -665,7 +667,7 @@ void Loom_Hypnos::post_sleep(bool waitForSerial) {
 
         firedAlarmsBitMask = checkTriggeredAlarms();
 
-        // Clear any pending RTC alarms
+        // Clear any pending RTC alarm flags since we have now handled the alarm trigger
         RTC_DS.clearAlarm(1);
         RTC_DS.clearAlarm(2);
         WD_TIMER_RESET;
