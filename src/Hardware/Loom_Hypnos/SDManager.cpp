@@ -221,7 +221,7 @@ bool SDManager::verifyChecksum(File &myFile) {
         char c = myFile.read();
 
         // Never let WD timer reset while reading/verifying file
-        WD_TIMER_RESET; 
+        WD_TIMER_RESET;
 
         // When we hit a new line, we start evaluating
         if (c == '\n') {
