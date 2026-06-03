@@ -105,8 +105,10 @@ void Loom_LTE::initialize() {
         snprintf(output, OUTPUT_SIZE, "Modem Information: %s", modemInfo);
     }
 
+    // SARA R5 initialization with its sparkfun library
     #ifdef TINY_GSM_MODEM_SARAR5
     if(lteBoardVersion == R5){
+        // Open serial connection with LTE board
         if (r5.begin(Serial1, 115200)) {
             LOG(F("SARA-R5 connected!"));
         } else {
@@ -115,20 +117,23 @@ void Loom_LTE::initialize() {
             return;
         }
 
+        // Check to see if we are already connected to an operator
         String currentOperator = "";
         if(r5.getOperator(&currentOperator) == SARA_R5_ERROR_SUCCESS){
             snprintf(output, OUTPUT_SIZE,"Already connected to %s", currentOperator.c_str());
             LOG(output);
         }
         else{
-            // what dis
+            // Set MNO to network operator from ifdef
             r5.setNetworkProfile(MOBILE_NETWORK_OPERATOR);
 
+            // Set APN which should be hologram
             LOG(F("Setting APN..."));
             r5.setAPN(APN);
 
             LOG(F("Creating and registering Operator..."));
 
+            // Manually create operator for Rogers or ATT
             if(MOBILE_NETWORK_OPERATOR == MNO_GLOBAL){
                 op.stat = 1;
                 op.shortOp = "Rogers";
@@ -143,7 +148,8 @@ void Loom_LTE::initialize() {
                 op.numOp = 310410;
                 op.act = 7;
             }
-
+            
+            // Register the operator
             r5.registerOperator(op);
         }
     }
@@ -204,6 +210,7 @@ void Loom_LTE::power_up() {
         powerBoardOn();
 
         // Delay an additional one second to allow communication to open up
+        // R5 uses 115200, R4 uses 9600
         SerialAT.begin(lteBoardVersion == R5 ? 115200 : 9600);
         delay(1000);
         modem.restart();
