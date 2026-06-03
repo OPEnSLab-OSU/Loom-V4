@@ -2,19 +2,29 @@
 
 // GSM Model Number
 // #define TINY_GSM_MODEM_UBLOX
-#define TINY_GSM_MODEM_SARAR4
 
 #include "../NetworkComponent.h"
 #include "Loom_Manager.h"
 #include <TinyGsmClient.h>
 #include <functional>
+#ifdef TINY_GSM_MODEM_SARAR5
+  #include <SparkFun_u-blox_SARA-R5_Arduino_Library.h>
+ #ifdef USE_ROGERS
+    const mobile_network_operator_t MOBILE_NETWORK_OPERATOR = MNO_GLOBAL;
+  #else
+    const mobile_network_operator_t MOBILE_NETWORK_OPERATOR = MNO_ATT;
+  #endif
+#else
+  #define TINY_GSM_MODEM_SARAR4
+#endif
 
 #include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
 
 // Specify what serial interface we want to use
 #define SerialAT Serial1
 
-enum LTE_VERSION { SPARKFUN, OPENS };
+enum LTE_VERSION { SPARKFUN, OPENS, R5 };
+
 
 /**
  * Loomified Control for a 4G LTE Board
@@ -129,6 +139,10 @@ class Loom_LTE : public NetworkComponent {
 
     TinyGsm modem;        // LTE Modem
     TinyGsmClient client; // LTE Client
+    #ifdef TINY_GSM_MODEM_SARAR5
+    SARA_R5 r5;
+    struct operator_stats op;
+    #endif
 
     bool powerUp = true;
     bool firstInit = true;            // First time it was initialized

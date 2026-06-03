@@ -5,20 +5,31 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_LTE::Loom_LTE(Manager &man, const char *apn, const char *user, const char *pass, const int pin,
                    LTE_VERSION version)
-    : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem) {
+    #ifdef TINY_GSM_MODEM_SARAR5
+    : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem), r5(Serial1)
+    #else
+    : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem)
+    #endif 
+    {
     strncpy(this->APN, apn, 100);
     strncpy(this->gprsUser, user, 100);
     strncpy(this->gprsPass, pass, 100);
     this->powerPin = pin;
 
     lteBoardVersion = version;
+
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_LTE::Loom_LTE(Manager &man)
-    : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem) {
+    #ifdef TINY_GSM_MODEM_SARAR5
+    : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem), r5(Serial1)
+    #else
+    : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem)
+    #endif 
+    {
     manInst->registerModule(this);
 
     // Not initialized because we don't actually know what to connect to yet
@@ -28,8 +39,9 @@ Loom_LTE::Loom_LTE(Manager &man)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::powerBoardOn() {
+    // Different startup sequences for different lteBoardVersion of hardware needed, to accomodate differences in PCBs
 
-    // Handle powering on the parkfun board
+    // Handle powering on the sparkfun board
     if (lteBoardVersion == SPARKFUN) {
         int16_t waitMs = 3000;
         pinMode(powerPin, OUTPUT);
@@ -38,11 +50,19 @@ void Loom_LTE::powerBoardOn() {
         pinMode(powerPin, INPUT);
     }
     // Use opens board power on pin mode
-    else {
+    else if (lteBoardVersion == OPENS) {
         pinMode(powerPin, OUTPUT);
         digitalWrite(powerPin, HIGH);
         delay(5000);
         pinMode(powerPin, INPUT);
+    }
+    // SARA R5 ver
+    else if (lteBoardVersion == R5){
+        pinMode(powerPin, OUTPUT);
+        digitalWrite(powerPin, HIGH);
+        delay(1000);
+        digitalWrite(powerPin, LOW);
+        delay(5000);
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -85,6 +105,50 @@ void Loom_LTE::initialize() {
         snprintf(output, OUTPUT_SIZE, "Modem Information: %s", modemInfo);
     }
 
+    #ifdef TINY_GSM_MODEM_SARAR5
+    if(lteBoardVersion == R5){
+        if (r5.begin(Serial1, 115200)) {
+            LOG(F("SARA-R5 connected!"));
+        } else {
+            ERROR(F("Unable to initialize SARA-R5"));
+            moduleInitialized = false;
+            return;
+        }
+
+        String currentOperator = "";
+        if(r5.getOperator(&currentOperator) == SARA_R5_ERROR_SUCCESS){
+            snprintf(output, OUTPUT_SIZE,"Already connected to %s", currentOperator.c_str());
+            LOG(output);
+        }
+        else{
+            // what dis
+            r5.setNetworkProfile(MOBILE_NETWORK_OPERATOR);
+
+            LOG(F("Setting APN..."));
+            r5.setAPN(APN);
+
+            LOG(F("Creating and registering Operator..."));
+
+            if(MOBILE_NETWORK_OPERATOR == MNO_GLOBAL){
+                op.stat = 1;
+                op.shortOp = "Rogers";
+                op.longOp = "Rogers Wireless";
+                op.numOp = 302320;
+                op.act = 7;
+            }
+            else{
+                op.stat = 1;
+                op.shortOp = "AT&T";
+                op.longOp = "AT&T";
+                op.numOp = 310410;
+                op.act = 7;
+            }
+
+            r5.registerOperator(op);
+        }
+    }
+    #endif
+    
     // Connect to the LTE network
     moduleInitialized = connect();
 
@@ -140,7 +204,7 @@ void Loom_LTE::power_up() {
         powerBoardOn();
 
         // Delay an additional one second to allow communication to open up
-        SerialAT.begin(9600);
+        SerialAT.begin(lteBoardVersion == R5 ? 115200 : 9600);
         delay(1000);
         modem.restart();
         LOG(F("Powering up complete!"));
