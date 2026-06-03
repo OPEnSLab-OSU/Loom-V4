@@ -220,6 +220,9 @@ bool SDManager::verifyChecksum(File &myFile) {
         // Go through every char in file
         char c = myFile.read();
 
+        // Never let WD timer reset while reading/verifying file
+        WD_TIMER_RESET; 
+
         // When we hit a new line, we start evaluating
         if (c == '\n') {
             lineBuf[lineIndex] = '\0';
