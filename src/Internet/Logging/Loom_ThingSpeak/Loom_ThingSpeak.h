@@ -64,7 +64,7 @@ class Loom_ThingSpeak : public MQTTComponent {
      * @param jsonString JSON formatted string containing the login credentials, this is freed at
      * the end
      */
-    void loadConfigFromJSON(char *json) override;
+    void loadConfigFromJSON(const char *json) override;
 
     /**
      * Add a new function to the list of functions that we are going to pass into ThingSpeak
@@ -94,7 +94,7 @@ class Loom_ThingSpeak : public MQTTComponent {
      * @param topic The topic buffer we should format to publish data to our given feed
      * @param message The message buffer we should fill with our formatted packet
      */
-    void formatMessage(char topic[MAX_TOPIC_LENGTH], char message[MAX_JSON_SIZE]);
+    bool formatMessage(char topic[MAX_TOPIC_LENGTH], char message[MAX_JSON_SIZE]);
 
     /* List of mappings from field names to functions */
     std::vector<std::pair<int, FloatReturnFuncDefs>>

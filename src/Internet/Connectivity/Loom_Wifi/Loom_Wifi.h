@@ -74,7 +74,7 @@ class Loom_WIFI : public NetworkComponent {
      *
      * @param jsonString JSON formatted string containing the SSID and password
      */
-    void loadConfigFromJSON(char *json);
+    void loadConfigFromJSON(const char *json);
 
     /**
      * Returns a reference to the WifiClient

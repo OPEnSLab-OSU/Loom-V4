@@ -59,14 +59,14 @@ class Loom_MongoDB : public MQTTComponent {
     /**
      * Publish metadata to the database
      */
-    bool publishMetadata(char *metadata);
+    bool publishMetadata(const char *metadata);
 
     /**
      * Load the MQTT credentials from a JSON string, used to pull credentials from a file
      * @param jsonString JSON formatted string containing the login credentials, this is freed at
      * the end
      */
-    void loadConfigFromJSON(char *json) override;
+    void loadConfigFromJSON(const char *json) override;
 
   private:
     Manager *manInst; // Instance of the manager

@@ -24,9 +24,6 @@ class Radio : public Module {
     uint8_t retryCount;    // Number transmission retries allowed
     uint16_t retryTimeout; // Delay between retries (MS)
 
-    StaticJsonDocument<1000> recvDoc; // Individual Document Representing what is being received
-    StaticJsonDocument<1000> sendDoc; // Individual Document Representing what is being sent
-
     /**
      * Get this device's address
      */
@@ -54,11 +51,10 @@ class Radio : public Module {
     /**
      * Convert the message pack to json
      */
-    bool bufferToJson(uint8_t *buffer) {
+    bool bufferToJson(uint8_t *buffer, size_t length, JsonDocument &doc) {
         char output[OUTPUT_SIZE];
 
-        DeserializationError error =
-            deserializeMsgPack(recvDoc, (const char *)buffer, maxMessageLength);
+        DeserializationError error = deserializeMsgPack(doc, (const char *)buffer, length);
 
         // Check if an error occurred
         if (error != DeserializationError::Ok) {

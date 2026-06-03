@@ -42,8 +42,19 @@ bool Loom_RemoteManager::publish() {
     // Create topic name buffer and message buffer as well as a temp JSON document to parse the
     // received packets into
     char topic[MAX_TOPIC_LENGTH];
-    char message[MAX_JSON_SIZE];
-    StaticJsonDocument<MAX_JSON_SIZE> tempDoc;
+    MemPool::Lease messageLease = manInst->getPool().allocLease(MAX_JSON_SIZE, "remote_msg");
+    if (!messageLease) {
+        ERROR(F("Failed to allocate memory-pool lease for RemoteManager message!"));
+        return false;
+    }
+
+    LoomJsonDocument tempDoc(MAX_JSON_SIZE, MemPoolJsonAllocator(&manInst->getPool()));
+    if (tempDoc.capacity() == 0) {
+        ERROR(F("Failed to allocate memory-pool JSON document for RemoteManager!"));
+        return false;
+    }
+
+    char *message = messageLease.chars();
 
     // Update the current device status
     updateDeviceStatus(true);
@@ -65,7 +76,7 @@ bool Loom_RemoteManager::publish() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_RemoteManager::loadConfigFromJSON(char *json) {
+void Loom_RemoteManager::loadConfigFromJSON(const char *json) {
     FUNCTION_START;
     char output[OUTPUT_SIZE];
 
@@ -100,15 +111,13 @@ void Loom_RemoteManager::loadConfigFromJSON(char *json) {
     if (!doc["port"].isNull())
         port = doc["port"].as<int>();
 
-    free(json);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_RemoteManager::updateHypnosInterval(char topic[MAX_TOPIC_LENGTH],
-                                              char message[MAX_JSON_SIZE],
-                                              StaticJsonDocument<MAX_JSON_SIZE> &json) {
+                                              char message[MAX_JSON_SIZE], JsonDocument &json) {
     // Clear message and topic and json
     memset(topic, '\0', MAX_TOPIC_LENGTH);
     memset(message, '\0', MAX_JSON_SIZE);
@@ -145,7 +154,7 @@ void Loom_RemoteManager::updateHypnosInterval(char topic[MAX_TOPIC_LENGTH],
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_RemoteManager::updateHypnosTime(char topic[MAX_TOPIC_LENGTH], char message[MAX_JSON_SIZE],
-                                          StaticJsonDocument<MAX_JSON_SIZE> &json) {
+                                          JsonDocument &json) {
     // Clear message and topic and json
     memset(topic, '\0', MAX_TOPIC_LENGTH);
     memset(message, '\0', MAX_JSON_SIZE);

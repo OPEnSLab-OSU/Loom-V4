@@ -4,10 +4,25 @@
 #include <unordered_map>
 #include <vector>
 
+#include "MemPool.hpp"
 #include "Module.h"
+
+// required to move json allocator to the mempool
+#include "MemPoolJson.hpp"
 
 #define WAIT_TIME_MS 20000 // Time to wait for the serial interface to start
 #define BAUD_RATE 115200   // Serial interface baud rate
+
+/**
+ * Deprecated: keep defined for backwards compatibility, but Manager now always owns a MemPool.
+
+ * * This avoids cross-translation-unit layout mismatches when sketches define this macro
+ * differently
+ * than library sources.
+ */
+#ifndef MANAGER_ENABLE_MEMPOOL
+#define MANAGER_ENABLE_MEMPOOL 1
+#endif
 
 /**
  * Unifies all the various sensors to allow for collection in unison
@@ -31,11 +46,30 @@ class Manager {
      */
     void registerModule(Module *module);
 
+    // Trying to get rid of this (replaced with mempool)
     /**
      * Get a reference to the JSON document that sensor data is stored in
      * @return reference to the main JSON document
      */
-    DynamicJsonDocument &getDocument(); // Returns a reference to the main JSON document storing
+    JsonDocument &getDocument(); // Returns a reference to the main JSON document storing
+
+    MemPool &getPool() { return pool_; }
+    const MemPool &getPool() const { return pool_; }
+
+    /**
+     * Get current memory pool stats.
+     */
+    MemPool::Stats getPoolStats() const { return pool_.stats(); }
+
+    /**
+     * Print the current memory pool stats through the shared manager logger.
+     */
+    void printPoolStats();
+
+    /**
+     * Print active memory pool lease entries.
+     */
+    void dumpActivePoolLeases();
 
     /**
      * Add a random piece of data to the overall JSON package in the given module name with a name
@@ -160,9 +194,16 @@ class Manager {
 
     void read_serial_num(); // Read the serial number out of the feather's registers
 
-    /* Module Data */
-    DynamicJsonDocument doc; // JSON document that will store all sensor information
+    /**
+     * Short helper for power_up and power_down warnings
+     */
+    void warningModuleNotInitialized(Module *module);
+
+    /* Pool now holds all the sensor information */
+    MemPool pool_;
+    LoomJsonDocument doc;    // JSON document that will store all sensor information
     JsonArray contentsArray; // Stores the contents of the modules
+
     std::vector<std::pair<const char *, Module *>>
         modules; // List of modules that have been added to the stack
 

@@ -75,8 +75,6 @@ class Loom_Freewave : public Radio {
   private:
     Manager *manInst; // Instance of the manager
 
-    char *recvData;
-
     HardwareSerial &serial1;     // Serial reference
     RH_Serial driver;            // Freewave Driver
     RHReliableDatagram *manager; // Manager for driver

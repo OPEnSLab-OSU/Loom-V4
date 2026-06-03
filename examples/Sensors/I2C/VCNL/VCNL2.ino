@@ -1,9 +1,6 @@
 #include <Loom_Manager.h>
-
-#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
-#include <Sensors/I2C/Loom_VCNL/Loom_VCNL.h>
-
-#include "Adafruit_VCNL.h"
+#include <src/Sensors/I2C/Loom_VCNL4010>
+#include <src/Hardware/Loom_Hypnos/Loom_Hypnos.h>
 
 Adafruit_VCNL4010 vcnl;
 

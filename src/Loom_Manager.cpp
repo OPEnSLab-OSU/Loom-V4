@@ -1,12 +1,23 @@
 #include "Loom_Manager.h"
 #include "Logger.h"
+#include <MemoryFree.h>
 Logger *Logger::instance = nullptr;
+
+namespace {
+void managerPoolDumpSink(const char *line, void *ctx) {
+    (void)ctx;
+    if (line != nullptr) {
+        LOG(line);
+    }
+}
+} // namespace
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Manager::Manager(const char *devName, uint32_t instanceNum)
-    : instanceNumber(instanceNum), doc(MAX_JSON_SIZE) {
+    : instanceNumber(instanceNum), doc(MAX_JSON_SIZE, MemPoolJsonAllocator(&pool_)) {
     strncpy(this->deviceName, devName, 100);
     Logger::getInstance();
+    pool_.setFreeRamProvider(freeMemory);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -45,7 +56,19 @@ void Manager::registerModule(Module *module) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-DynamicJsonDocument &Manager::getDocument() { return doc; }
+JsonDocument &Manager::getDocument() { return doc; }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Manager::printPoolStats() { pool_.dumpStats(managerPoolDumpSink, nullptr); }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Manager::dumpActivePoolLeases() {
+    size_t count = pool_.dumpActiveLeases(managerPoolDumpSink, nullptr);
+    if (count == 0) {
+        LOG(F("No active pool leases."));
+    }
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -75,13 +98,11 @@ void Manager::measure() {
             if (modules[i].second->moduleInitialized)
                 modules[i].second->measure();
             else {
-
-                /* Converted warning from printModuleName to logger*/
                 memset(noInitLog, '\0', 50);
                 snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
                 WARNING(noInitLog);
             }
-            // TIMER_RESET;
+            WD_TIMER_RESET;
         }
     } else {
         ERROR(F("Unable to collect data as the manager and thus all sensors connected to it have "
@@ -123,7 +144,7 @@ void Manager::package() {
             snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
             WARNING(noInitLog);
         }
-        // TIMER_RESET;
+        WD_TIMER_RESET;
     }
     packetNumber++;
 
@@ -153,27 +174,23 @@ JsonObject Manager::get_data_object(const char *moduleName) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::power_up() {
     FUNCTION_START;
-    WD_TIMER_ENABLE;
-    char noInitLog[50];
     for (int i = 0; i < modules.size(); i++) {
-        WD_TIMER_RESET;
+        WD_TIMER_RESET
         if (modules[i].second->moduleInitialized) {
             // If we are about to power up the LTE we should turn off the watchdog
             if (strcmp(modules[i].second->getModuleName(), "LTE") == 0) {
-                WD_TIMER_DISABLE;
+                WD_TIMER_DISABLE
             }
             modules[i].second->power_up();
         } else {
             /* Converted warning from printModuleName to logger*/
-            memset(noInitLog, '\0', 50);
-            snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
-            WARNING(noInitLog);
+            warningModuleNotInitialized(modules[i].second);
         }
-        WD_TIMER_RESET;
+        WD_TIMER_RESET
     }
 
     // If we didn't already disable the timer from finding the LTE we should disable it now
-    WD_TIMER_DISABLE;
+    WD_TIMER_DISABLE
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -181,17 +198,14 @@ void Manager::power_up() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::power_down() {
     FUNCTION_START;
-    char noInitLog[50];
     for (int i = 0; i < modules.size(); i++) {
         if (modules[i].second->moduleInitialized)
             modules[i].second->power_down();
         else {
             /* Converted warning from printModuleName to logger*/
-            memset(noInitLog, '\0', 50);
-            snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
-            WARNING(noInitLog);
+            warningModuleNotInitialized(modules[i].second);
         }
-        // TIMER_RESET;
+        WD_TIMER_RESET
     }
     FUNCTION_END;
 }
@@ -199,7 +213,6 @@ void Manager::power_down() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::display_data() {
-    char jsonStr[MAX_JSON_SIZE];
     FUNCTION_START;
     if (!doc.isNull()) {
 
@@ -208,9 +221,16 @@ void Manager::display_data() {
             modules[i].second->display_data();
         }
 
-        serializeJsonPretty(doc, jsonStr, MAX_JSON_SIZE);
+        MemPool::Lease jsonLease = pool_.allocLease(MAX_JSON_SIZE, "mgr_display");
+        if (!jsonLease) {
+            ERROR(F("Failed to allocate memory-pool lease for Manager display JSON!"));
+            FUNCTION_END;
+            return;
+        }
+
+        serializeJsonPretty(doc, jsonLease.chars(), jsonLease.size());
         LOG(F("Data Json: \n"));
-        LOG_LONG(jsonStr);
+        LOG_LONG(jsonLease.chars());
     } else {
         LOG(F("JSON Document is Null there is no data to display"));
     }
@@ -238,7 +258,7 @@ void Manager::initialize() {
     hasInitialized = true;
     LOG(F("** Setup Complete ** "));
 
-    // TIMER_ENABLE;
+    WD_TIMER_ENABLE;
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -275,10 +295,24 @@ void Manager::read_serial_num() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::pause(const uint32_t ms) const {
-    // TIMER_DISABLE;
+    WD_TIMER_DISABLE;
     int waitTime = millis() + ms;
     while (millis() < waitTime)
         ;
-    // TIMER_ENABLE;
+    WD_TIMER_ENABLE;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Manager::warningModuleNotInitialized(Module *module) {
+    MemPool::Lease lease = pool_.allocBlock("init_log");
+
+    if (!lease) {
+        WARNING(F("Module not initialized!"));
+        return;
+    }
+    // Blocks are uint8 and must be cast to char to be accepted for snprintf
+    char *buffer = lease.chars();
+    snprintf(buffer, lease.size(), "%s Not initialized!", module->getModuleName());
+
+    WARNING(buffer);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

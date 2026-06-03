@@ -5,7 +5,9 @@
 #include "../../Connectivity/NetworkComponent.h"
 #include "Module.h"
 
-#define MAX_JSON_SIZE 2000   // The maximum length of an MQTT message
+#ifndef MAX_JSON_SIZE
+#define MAX_JSON_SIZE 2048
+#endif
 #define MAX_TOPIC_LENGTH 512 // The maximum length of a topic string
 
 /**
@@ -22,15 +24,16 @@ class MQTTComponent : public Module {
     /**
      * Publish an MQTT message to a given topic and broker
      *
-     * @param topic The MQTT topic we want to publish our message to
-     * @param message The message we want to publish to the given topic
+     * @param topic The MQTT topic we want to publish our message to (size=MAX_TOPIC_SIZE)
+     * @param message The message we want to publish to the given topic (size=MAX_JSON_SIZE)
      * @param retain Whether or not we want to the message to be retained on the specified topic
      * (default = false)
-     * @param qos What quality-of-service we want to upload the message with (default = 2)
+     * @param qos What quality-of-service we want to upload the message with (default = 1, ensures
+     * the message is sent at least 1 time)
      *
      * @return The status of the publish attempt
      */
-    bool publishMessage(const char *topic, const char *message, bool retain = false, int qos = 2);
+    bool publishMessage(const char *topic, const char *message, bool retain = false, int qos = 1);
 
     /**
      * Subscribe to a given topic to get the retained message and then immediately unsubscribe
@@ -51,6 +54,12 @@ class MQTTComponent : public Module {
      * @return The result of the deletion attempt
      * */
     bool deleteRetained(const char *topic);
+
+    /**
+     * Checks if the MQTT client is currently connected to the broker.
+     * @return True if connected, else false.
+     */
+    bool isConnected() { return mqttClient.connected(); }
 
     /**
      * Length of time the broker should keep the connection open for default
@@ -111,7 +120,7 @@ class MQTTComponent : public Module {
      * @param jsonString JSON formatted string containing the login credentials, this is freed at
      * the end
      */
-    virtual void loadConfigFromJSON(char *json) = 0;
+    virtual void loadConfigFromJSON(const char *json) = 0;
 
     /**
      * Set the maximum number of reconnection attempts to make before failing

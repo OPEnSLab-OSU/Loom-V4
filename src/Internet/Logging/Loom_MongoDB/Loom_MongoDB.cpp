@@ -31,10 +31,35 @@ Loom_MongoDB::Loom_MongoDB(Manager &man, NetworkComponent &internet_client)
 bool Loom_MongoDB::publish() {
     FUNCTION_START;
 
-    char jsonString[MAX_JSON_SIZE];
+    /* Should work for proxying hubs aswell. Gives each connection a fixed ID. */
+    char clientId[64];
+    snprintf(clientId, sizeof(clientId), "%s%i", manInst->get_device_name(),
+             manInst->get_instance_num());
+    setClientID(clientId);
+
     if (moduleInitialized) {
 
         // TIMER_DISABLE;
+
+        /**
+         * Attempt to connect to the broker if it fails we should just return.
+         * If the client thinks their connection was terminated but the host doesn't
+         * then we need to call stop again.
+         * */
+        if (!isConnected()) {
+            disconnectFromBroker();
+            if (!connectToBroker()) {
+                FUNCTION_END;
+                return false;
+            }
+        }
+
+        MemPool::Lease jsonLease = manInst->getPool().allocLease(MAX_JSON_SIZE, "mongo_json");
+        if (!jsonLease) {
+            ERROR(F("Failed to allocate memory-pool lease for MongoDB publish!"));
+            FUNCTION_END;
+            return false;
+        }
 
         if (strlen(projectServer) > 0)
             // Formulate a topic to publish on with the format
@@ -47,15 +72,9 @@ bool Loom_MongoDB::publish() {
             snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name,
                        manInst->get_device_name(), manInst->get_instance_num());
 
-        /* Attempt to connect to the broker if it fails we should just return */
-        if (!connectToBroker()) {
-            FUNCTION_END;
-            return false;
-        }
-
         /* Attempt to publish the data to the given topic */
-        manInst->getJSONString(jsonString);
-        if (!publishMessage(topic, jsonString)) {
+        manInst->getJSONString(jsonLease.chars());
+        if (!publishMessage(topic, jsonLease.chars())) {
             FUNCTION_END;
             return false;
         }
@@ -72,12 +91,11 @@ bool Loom_MongoDB::publish() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_MongoDB::publishMetadata(char *metadata) {
+bool Loom_MongoDB::publishMetadata(const char *metadata) {
     FUNCTION_START;
 
     if (moduleInitialized) {
 
-        char jsonString[MAX_JSON_SIZE];
         // TIMER_DISABLE;
 
         if (strlen(projectServer) > 0)
@@ -126,8 +144,17 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
         return false;
     }
 
-    char line[MAX_JSON_SIZE];
-    int packetNumber = 0, index = 0;
+    MemPool::Lease lineLease = manInst->getPool().allocLease(MAX_JSON_SIZE, "mongo_batch");
+    if (!lineLease || lineLease.size() < 2) {
+        ERROR(F("Failed to allocate memory-pool lease for MongoDB batch line!"));
+        FUNCTION_END;
+        return false;
+    }
+
+    char *line = lineLease.chars();
+    const size_t lineSize = lineLease.size();
+    int packetNumber = 0;
+    size_t index = 0;
     char c;
     if (moduleInitialized) {
         // TIMER_DISABLE;
@@ -151,44 +178,80 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
 
             /* Get the file containing our batch of data */
             File fileOutput = batchSD.getBatch();
+            if (!fileOutput) {
+                ERROR(F("Failed to open BatchSD file for MongoDB publish"));
+                FUNCTION_END;
+                return false;
+            }
 
             bool allDataSuccess = true;
+
+            auto publishLine = [&]() -> bool {
+                line[index] = '\0';
+
+                snprintf_P(output, OUTPUT_SIZE, PSTR("Publishing Packet %i of %i with len=%u"),
+                           packetNumber + 1, batchSD.getBatchSize(), (unsigned int)index);
+                LOG(output);
+
+                bool publishSuccess = publishMessage(topic, line);
+                if (!publishSuccess) {
+                    snprintf(output, OUTPUT_SIZE, PSTR("Failed to publish packet #%i"),
+                             packetNumber + 1);
+                    WARNING(output);
+                }
+
+                delay(500);
+                index = 0;
+                packetNumber++;
+                return publishSuccess;
+            };
 
             /* Utilize a stream so it doesn't matter how much data we have as its read in one by one
              */
             while (fileOutput.available()) {
                 c = fileOutput.read();
 
-                // \r Marks the end of a line, at this point we want to publish that whole packet
-                if (c == '\r') {
+                /* Attempt to reconnect if connection has been stopped during publishMessage
+                 * The previous packet that was lost due a stopped connected will not be
+                 * retransmitted.
+                 */
+                if (!isConnected()) {
+                    connectToBroker();
+                }
 
-                    // Track the packet number we are currently publishing
-                    snprintf_P(output, OUTPUT_SIZE, PSTR("Publishing Packet %i of %i"),
-                               packetNumber + 1, batchSD.getBatchSize());
-                    LOG(output);
-
-                    // Replace the \r with a null character
-                    line[index] = '\0';
-
-                    if (!publishMessage(topic, line)) { // This fails if the line is greater than
-                                                        // 2000 bytes Or if the line is malformed
-                        snprintf(output, OUTPUT_SIZE, PSTR("Failed to publish packet #%i"),
-                                 packetNumber + 1);
-                        WARNING(output);
-                        allDataSuccess = false;
+                if (c == '\r' || c == '\n') {
+                    if (index == 0) {
+                        continue;
                     }
 
-                    delay(500);
-                    index = 0;
-                    packetNumber++;
+                    if (!publishLine()) {
+                        allDataSuccess = false;
+                    }
+                    continue;
                 }
 
                 // If not just add the packet to the line array
                 else {
+                    if (index >= lineSize - 1) {
+                        WARNING(F("BatchSD packet exceeds MongoDB line buffer and was skipped"));
+                        allDataSuccess = false;
+                        index = 0;
+                        while (fileOutput.available()) {
+                            c = fileOutput.read();
+                            if (c == '\r' || c == '\n') {
+                                break;
+                            }
+                        }
+                        continue;
+                    }
                     line[index] = c;
                     index++;
                 }
             }
+            if (index > 0 && !publishLine()) {
+                allDataSuccess = false;
+            }
+
             fileOutput.close();
 
             // Check if we actually sent all the data successfully
@@ -220,7 +283,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_MongoDB::loadConfigFromJSON(char *json) {
+void Loom_MongoDB::loadConfigFromJSON(const char *json) {
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     char topic[MAX_TOPIC_LENGTH];
@@ -276,7 +339,6 @@ void Loom_MongoDB::loadConfigFromJSON(char *json) {
     }
 
     moduleInitialized = true;
-    free(json);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

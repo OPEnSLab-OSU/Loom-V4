@@ -82,8 +82,21 @@ void setup()
     
     hypnos.setLogName("NodeName_1data"); //SD card CSV file name
     hypnos.enable();
-    sleepInterval = hypnos.getConfigFromSD("HypnosConfig.json");
-
+#if defined DENDROMETER_WIFI
+    wifi.setBatchSD(batchSD);
+    wifi.setMaxRetries(2);
+    mqtt.setMaxRetries(1);
+    {
+        MemPool::Lease wifiConfig = hypnos.readFileLease("wifi_creds.json");
+        if (wifiConfig)
+            wifi.loadConfigFromJSON(wifiConfig.chars());
+    }
+    {
+        MemPool::Lease mqttConfig = hypnos.readFileLease("mqtt_creds.json");
+        if (mqttConfig)
+            mqtt.loadConfigFromJSON(mqttConfig.chars());
+    }
+#endif
     manager.initialize();
     setRTC(userInput);
 

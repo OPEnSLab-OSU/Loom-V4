@@ -117,13 +117,21 @@ void setup() {
 
   #if USE_LTE
     // Read the MQTT creds file to supply the device with MQTT credentials
-    mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
+    {
+      MemPool::Lease mqttConfig = hypnos.readFileLease("mqtt_creds.json");
+      if (mqttConfig)
+        mqtt.loadConfigFromJSON(mqttConfig.chars());
+    }
   #endif
   // Initialize all in-use modules 
   manager.initialize();
 
   //Publish the metadata.json file from the SD card during initialization (this must be after manager.initialize)
-  // mqtt.publishMetadata(hypnos.readFile("metadata.json")); 
+  // {
+  //   MemPool::Lease metadata = hypnos.readFileLease("metadata.json");
+  //   if (metadata)
+  //     mqtt.publishMetadata(metadata.chars());
+  // }
 
   // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);

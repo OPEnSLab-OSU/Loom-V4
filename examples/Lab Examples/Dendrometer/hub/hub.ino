@@ -40,7 +40,11 @@ void setup()
 
 
     // load MQTT credentials from the SD card, if they exist
-    mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
+    {
+        MemPool::Lease mqttConfig = hypnos.readFileLease("mqtt_creds.json");
+        if (mqttConfig)
+            mqtt.loadConfigFromJSON(mqttConfig.chars());
+    }
 
     // Initialize the modules
     manager.initialize();
@@ -73,13 +77,13 @@ void loop()
         DateTime now = hypnos.getCurrentTime();
         DateTime local = hypnos.getLocalTime(now);
 
-        char utc[20];
+        char utc[21];
         snprintf(utc, sizeof(utc),
             "%04d-%02d-%02dT%02d:%02d:%02dZ",
             now.year(), now.month(), now.day(),
             now.hour(), now.minute(), now.second());
 
-        char local_time[20];
+        char local_time[21];
         snprintf(local_time, sizeof(local_time),
             "%04d-%02d-%02dT%02d:%02d:%02dZ",
             local.year(), local.month(), local.day(),

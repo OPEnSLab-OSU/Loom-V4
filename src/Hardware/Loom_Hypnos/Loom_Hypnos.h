@@ -8,6 +8,7 @@
 #include "Arduino.h"
 #include "Internet/Connectivity/NetworkComponent.h"
 #include "Module.h"
+#include "Sensors/Loom_Analog/Loom_Analog.h"
 
 #include "Hardware/Loom_Hypnos/SDManager.h"
 #include "Loom_Manager.h"
@@ -15,6 +16,13 @@
 
 // Used to pass along the user defined interrupt callback
 using InterruptCallbackFunction = void (*)();
+
+// DS3231 Register Addresses
+#define DS3231_ADDRESS 0x68
+#define DS3231_ALARM1 0x07
+#define DS3231_ALARM2 0x0B
+#define DS3231_CONTROL 0x0E
+#define DS3231_STATUSREG 0x0F
 
 /**
  * Enum to represent all power rail configurations
@@ -63,8 +71,27 @@ enum TIME_ZONE {
     AWST = 8,
     ACST = 10, // Half an hour off so its -9.5
     AEST = 10
-
 };
+
+enum class ALARM_BITMASKS : uint8_t {
+    BM_NONE = 0b00,
+    BM_ALARM_1 = 0b01,
+    BM_ALARM_2 = 0b10,
+    BM_BOTH = 0b11
+};
+
+inline ALARM_BITMASKS operator|(ALARM_BITMASKS lhs, ALARM_BITMASKS rhs) {
+    return static_cast<ALARM_BITMASKS>(static_cast<uint8_t>(lhs) | static_cast<uint8_t>(rhs));
+}
+
+inline ALARM_BITMASKS &operator|=(ALARM_BITMASKS &lhs, ALARM_BITMASKS rhs) {
+    lhs = lhs | rhs;
+    return lhs;
+}
+
+inline ALARM_BITMASKS operator&(ALARM_BITMASKS lhs, ALARM_BITMASKS rhs) {
+    return static_cast<ALARM_BITMASKS>(static_cast<uint8_t>(lhs) & static_cast<uint8_t>(rhs));
+}
 
 /**
  * Type of interrupt to register
@@ -96,6 +123,7 @@ class Loom_Hypnos : public Module {
     void package() override;
 
   public:
+    using StreamChunkCallback = SDManager::StreamChunkCallback;
     volatile bool shouldPowerUp = true;
 
     /**
@@ -196,7 +224,12 @@ class Loom_Hypnos : public Module {
      */
     DateTime getCurrentTime();
 
-    DateTime getLocalTime(DateTime time); // Convert a given UTC time to local time
+    /**
+     * Convert a given UTC time to local time
+     *
+     * @param time The UTC time to convert to local time
+     */
+    DateTime getLocalTime(DateTime time);
 
     /**
      * Convert the current time to a ISO 8601 compatible time string
@@ -219,10 +252,48 @@ class Loom_Hypnos : public Module {
     TimeSpan getConfigFromSD(const char *fileName);
 
     /**
-     * Read file from SD
-     * @param fileName File to read from
+     * Read file contents from SD into a memory pool lease.
+     * @param fileName File to
+     * read from.
      */
-    char *readFile(const char *fileName) { return sdMan->readFile(fileName); };
+    MemPool::Lease readFileLease(const char *fileName) { return sdMan->readFileLease(fileName); };
+
+    /**
+     * Deserialize JSON from an SD file through a scoped memory-pool lease.
+     * @param
+     * fileName File to read from.
+     * @param doc JSON document to populate.
+     */
+    DeserializationError deserializeJsonFile(const char *fileName, JsonDocument &doc) {
+        return sdMan->deserializeJsonFile(fileName, doc);
+    };
+
+    /**
+     * Stream a file from SD in fixed-size chunks.
+     * @param fileName File to stream
+     * @param chunkBytes Chunk size in bytes
+     * @param cb Callback invoked per chunk
+     * @param userCtx User context passed to callback
+     */
+    bool streamFile(const char *fileName, size_t chunkBytes, StreamChunkCallback cb,
+                    void *userCtx = nullptr) {
+        return sdMan->streamFile(fileName, chunkBytes, cb, userCtx);
+    };
+
+    /**
+     * Get Manager memory pool stats.
+     */
+    MemPool::Stats getPoolStats() const { return manInst->getPoolStats(); };
+
+    /**
+     * Print Manager memory pool stats.
+     */
+    void printPoolStats() { manInst->printPoolStats(); };
+
+    /**
+     * Print active Manager pool leases.
+     */
+    void dumpActiveLeases() { manInst->dumpActivePoolLeases(); };
 
     /**
      * Get the default SD card file name
@@ -252,9 +323,10 @@ class Loom_Hypnos : public Module {
     bool isRTCInitialized() { return RTC_initialized; };
 
     /**
+     *
      * @brief A minimum required voltage check for a complete cycle. Minimum voltage varies by
      * device and should be determined by the user. This method is more flexible than the analog
-     * class and allows us to create control methods in the hypnos class based on the voltage.
+     * class and allows us to create control methods for the hypnos class based on the voltage.
      *
      * @param voltage_min Minimum required voltage for your device (default = 0.0)
      * @param analogPin Any pin connected to the ADC input channel. (default = A7)
@@ -264,6 +336,49 @@ class Loom_Hypnos : public Module {
      */
     bool checkVoltage(float vmin = 0.0, int analogPin = A7, float scale = 2.0f, bool mv = false,
                       int num_samples = 1);
+    bool checkVoltageAverage(float vmin = 0.0, int analogPin = A7, float scale = 2.0f,
+                             bool mv = false, int num_samples = 1);
+
+    /** Return whether alarm 1 fired */
+    bool alarm1Fired() {
+        return (firedAlarmsBitMask & ALARM_BITMASKS::BM_ALARM_1) != ALARM_BITMASKS::BM_NONE;
+    };
+
+    /** Return whether alarm 2 fired */
+    bool alarm2Fired() {
+        return (firedAlarmsBitMask & ALARM_BITMASKS::BM_ALARM_2) != ALARM_BITMASKS::BM_NONE;
+    };
+
+    /* Return a bitmask representing what alarm triggered the wakeup */
+    ALARM_BITMASKS getFiredAlarmsBM() { return firedAlarmsBitMask; };
+
+    /* Clear the fired alarms bitmask */
+    void clearFiredAlarmsBM() { firedAlarmsBitMask = ALARM_BITMASKS::BM_NONE; };
+
+    /**
+     * Clear both alarm flags on the DS3231 RTC.
+     */
+    void clearAlarms();
+
+    /**
+     * Get the date (in the form of a DateTime) for when a given alarm is set to trigger
+     * @param alarmNumber The alarm number to get the date for (1 or 2)
+     */
+    DateTime getAlarmDate(const uint8_t alarmNumber);
+
+    /**
+     * Set the second alarm interrupt to be triggered at a set interval in the future
+     * @param duration The time that will elapse before the second alarm interrupt is triggered
+     *
+     * @note DS3231 Alarm 2 only supports minute/hour/day/date resolution and ignores seconds.
+     *          As a result, when setting the second alarm with a TimeSpan that includes seconds,
+     *          the alarm will trigger at the start of the target minute rather than the exact
+     * second. The first wakeup may therefore occur slightly earlier than intended, but subsequent
+     *          intervals remain correct because the alarm is reset relative to the current RTC
+     * time. If precise second-level timing is required, consider using Alarm 1, which supports
+     * seconds.
+     */
+    void setSecondAlarmInterruptDuration(const TimeSpan duration);
 
   private:
     Manager *manInst = nullptr;                   // Instance of the manager
@@ -302,7 +417,11 @@ class Loom_Hypnos : public Module {
 
     bool custom_time = false; // Set the RTC to a user specified time
 
-    /* Voltage check bitmaps 0-7 LSB-first */
+    /**
+     *  Voltage Check Definitions
+     *
+     * Voltage check bitmaps 0-7 LSB-first
+     * */
     static constexpr uint8_t VF_CHECKED = (1u << 0);    // 00000001 | 0x01
     static constexpr uint8_t VF_CRITICAL = (1u << 1);   // 00000010 | 0x02
     static constexpr uint8_t VF_DEGRADED = (1u << 2);   // 00000100 | 0x04
@@ -317,7 +436,7 @@ class Loom_Hypnos : public Module {
     static constexpr float V_DEGRADED = 3.2f; // Minimum for device operation
     static constexpr float V_ACCEPTABLE = 3.35f;
     static constexpr float V_LTE_MIN = 3.45f; // Minimum for LTE transmission
-    static constexpr float V_OPTIMAL = 3.7f;
+    static constexpr float V_OPTIMAL = 3.55f;
 
     uint8_t voltage_flags = 0; // Flag mask defaults to 0x00
 
@@ -334,12 +453,15 @@ class Loom_Hypnos : public Module {
         timezoneMap; // String to Timezone enum, use custom compare to ensure that strings are
                      // compared correctly
 
+    ALARM_BITMASKS firedAlarmsBitMask = ALARM_BITMASKS::BM_NONE; // Which alarm triggered the wakeup
+    ALARM_BITMASKS checkTriggeredAlarms();
     TIME_ZONE timezone; // Timezone the RTC was set to
 
     DateTime time;      // UTC time
     DateTime localTime; // Local time
 
-    DateTime alarmTime; // Time the alarm has been set for
+    DateTime alarmTime;  // Time the alarm has been set for
+    DateTime alarmTime2; // Time the second alarm has been set for
 
     /* Sleep functionality */
     void pre_sleep(); // Called just before the hypnos enters sleep, this disconnects the power

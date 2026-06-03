@@ -66,7 +66,7 @@ class Loom_LTE : public NetworkComponent {
      * Load the config to connect to the LTE network from a JSON string
      * @param json Json file read, this is freed before returning
      */
-    void loadConfigFromJSON(char *json);
+    void loadConfigFromJSON(const char *json);
 
     /**
      * Turn on batch upload for the lte which means it will only initialize the module when we need

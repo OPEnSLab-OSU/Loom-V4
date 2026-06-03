@@ -5,7 +5,9 @@
 #include <SdFat.h>
 
 #include "../../Loom_Manager.h"
+#include "../../MemPool.hpp"
 #include "../../Module.h"
+#include "Hash.hpp"
 
 /**
  * Class used to manage interaction with the SD card read/writer on the Hypnos board
@@ -23,6 +25,12 @@ class SDManager : public Module {
     void power_down() override {};
 
   public:
+    /**
+     * Holds the current file and chunk positions for streaming using the mempool chunks.
+     */
+    using StreamChunkCallback = bool (*)(const uint8_t *data, size_t bytesRead, size_t fileOffset,
+                                         size_t chunkIndex, bool eof, void *userCtx);
+
     /**
      * SDManager Constructor
      *
@@ -44,13 +52,47 @@ class SDManager : public Module {
     bool log(DateTime currentTime);
 
     /**
-     * Read the contents of a given file on the SD card and return them as a string
+     * Read the contents of a file into a memory-pool lease.
      *
-     * YOU MUST FREE THIS BLOCK OF MEMORY AS IT IS 10kb
-     *
-     * @param fileName Name of the file to read from
+     * @param fileName
+     * Name of the file to read from.
+     * @return Scoped memory pool lease. Invalid lease indicates failure.
      */
-    char *readFile(const char *fileName);
+    MemPool::Lease readFileLease(const char *fileName);
+
+    /**
+     * Deserialize JSON from a file through a scoped memory-pool lease.
+     * @param
+     * fileName Name of the file to deserialize.
+     * @param doc JSON document to populate.
+     */
+    DeserializationError deserializeJsonFile(const char *fileName, JsonDocument &doc);
+
+    /**
+     * Stream file contents in fixed-size chunks.
+     *
+     * @param fileName Name of the file to stream
+     * @param chunkBytes Number of bytes to read per callback
+     * @param cb Callback invoked per chunk
+     * @param userCtx User context passed back to callback
+     */
+    bool streamFile(const char *fileName, size_t chunkBytes, StreamChunkCallback cb,
+                    void *userCtx = nullptr);
+
+    /**
+     * Get current memory pool stats.
+     */
+    MemPool::Stats getPoolStats() const;
+
+    /**
+     * Print current pool stats for debugging.
+     */
+    void printPoolStats();
+
+    /**
+     * Print active pool lease entries (slot, generation, span, size, tag).
+     */
+    void dumpActiveLeases();
 
     /*
      * Returns a pointer to the opened filed
@@ -76,7 +118,9 @@ class SDManager : public Module {
      * Get the current batch file name
      */
     const char *getBatchFilename() {
-        snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+        const char *logBase = (strlen(overrideFileName) > 0) ? overrideFileName : device_name;
+        snprintf_P(batchFileName, sizeof(batchFileName), PSTR("Batch%i_%s.txt"),
+                   getCurrentFileNumber(), logBase);
         return batchFileName;
     };
 
@@ -104,7 +148,11 @@ class SDManager : public Module {
     /**
      * Log to a different name other than one matching the device name
      */
-    void setLogName(const char *name) { strncpy(overrideFileName, name, 100); };
+    void setLogName(const char *name) {
+        if (!name)
+            name = "";
+        snprintf(overrideFileName, sizeof(overrideFileName), "%s", name);
+    };
 
     /* Get whatever number we are currently appending to the SD fileNames*/
     int getCurrentFileNumber() { return file_count; };
@@ -133,12 +181,19 @@ class SDManager : public Module {
     int file_count = 0;    // What file number are we logging to
 
     bool sdInitialized = false; // If the SD card actually initialized
-    char
-        *headers[2]; // Contains the main and sub headers that are added to the top of the CSV files
+    char *headers[2];           // Contains the main and sub headers that are
+                                // added to the top of the CSV files
+
+    uint64_t currentSchemaHash1 = 0;
+    uint64_t currentSchemaHash2 = 0;
+    bool schemaHashInitialized = false;
 
     void logBatch(); // Log data in batch format
 
     void writeHeaders(); // Create the headers for the CSV file based off what info we are storing
+    // Hashes used a low-memory way to compare current and incoming file headers
+    void buildSchemaHashes(uint64_t &hash1, uint64_t &hash2);
+    void setCurrentLogFileNames();
     bool updateCurrentFileName(); // Update the current file name to log to based on files already
                                   // existing on the SD card
 };

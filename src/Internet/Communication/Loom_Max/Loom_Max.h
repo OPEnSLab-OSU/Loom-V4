@@ -110,8 +110,6 @@ class Loom_Max : public Module {
     void setUDPPort(); // Set the UDP port to the correct port number
     void setIP();      // Set the remote IP to send the packets too
 
-    StaticJsonDocument<1000> messageJson; // Response packet
-
     std::vector<Actuator *> actuators; // List of actuators we want to control with max
 
     /*
