@@ -29,6 +29,8 @@ bool MQTTComponent::connectToBroker() {
         if (strlen(username) > 0)
             mqttClient.setUsernamePassword(username, password);
 
+        mqttClient.setTxPayloadSize(2000);
+
         int retryAttempts = 0;
 
         // Try to connect multiple times as some may be dropped
