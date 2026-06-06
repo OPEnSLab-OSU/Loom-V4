@@ -175,9 +175,6 @@ void Loom_Multiplexer::power_down() {
         delay(50);
         std::get<1>(sensors[i])->power_down();
     }
-    Wire.beginTransmission(activeMuxAddr);
-    Wire.write(0); 
-    Wire.endTransmission();
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
