@@ -239,8 +239,9 @@ Module *Loom_Multiplexer::loadSensor(const byte addr) {
     case 0x48:
         return new Loom_ADS1115(*manInst, 0x48, true);
 
-    // K30
-    // case 0x68: return new Loom_K30(*manInst, true, 0x68, true);
+    // K30 -
+    case 0x68:
+        return new Loom_K30(*manInst, true, 0x68, true);
 
     // MMA8451
     case 0x1D:

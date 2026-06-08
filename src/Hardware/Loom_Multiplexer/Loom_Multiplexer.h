@@ -23,6 +23,7 @@
 #include "../../Sensors/I2C/Loom_T6793/Loom_T6793.h"
 #include "../../Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h"
 #include "../../Sensors/I2C/Loom_ZXGesture/Loom_ZXGesture.h"
+#include "../../Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h"
 
 /**
  * Adds Hot Swappable functionality for TCA9548 multiplexer
@@ -69,16 +70,15 @@ class Loom_Multiplexer : public Module {
     void disableChannels();            // Disables all channels on the Multiplexer
     bool isDeviceConnected(byte addr); // Check if there is a device at the specified address
 
-    void refreshSensors(); // Checks to see if any new sensors were swapped in allows for hot swapping
+    void
+    refreshSensors(); // Checks to see if any new sensors were swapped in allows for hot swapping
     Module *loadSensor(const byte addr); // Load the correct sensor based on the I2C address
-
 
     std::vector<byte> known_addresses = {};
 
     // Used to optimize searching for sensors:
-    // search addresses in array rather than 0-127 
-    const std::vector<byte> default_addresses = 
-    {
+    // search addresses in array rather than 0-127
+    const std::vector<byte> default_addresses = {
         0x10, ///< ZXGESTURESENSOR
         0x11, ///< ZXGESTURESENSOR
         0x15, ///< T6793
@@ -92,12 +92,12 @@ class Loom_Multiplexer : public Module {
         0x48, ///< ADS1115
         0x49, ///< AS726X / AS7265X
         0x68, ///< K30
-        0x69, ///< MPU6050
+        0x69, ///< SEN55
+        0x6B, ///< SEN66
         0x70, ///< MB1232
         0x74, ///< DFMultiGasSensor
         0x76, ///< MS5803
-        0x77,  ///< MS5803
-        0x6B  ///< SEN66
+        0x77  ///< MS5803
     };
 
     /**
