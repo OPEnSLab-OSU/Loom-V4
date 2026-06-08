@@ -272,6 +272,7 @@ void Loom_Hypnos::initializeRTC() {
     }
 
     // Clear any pending alarms
+    RTC_DS.clearAlarm(1);
     RTC_DS.clearAlarm(2);
 
     RTC_DS.writeSqwPinMode(DS3231_OFF);
@@ -279,7 +280,10 @@ void Loom_Hypnos::initializeRTC() {
     // We successfully started the RTC
     LOG(F("DS3231 Real-Time Clock Initialized Successfully!"));
     RTC_initialized = true;
-    snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
+    DateTime t = getCurrentTime();
+    char tbuf[21];
+    dateTime_toString(t, tbuf);
+    snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", tbuf);
     LOG(output);
     FUNCTION_END;
 }
@@ -340,7 +344,10 @@ bool Loom_Hypnos::networkTimeUpdate() {
             if (networkComponent->getNetworkTime(&year, &month, &day, &hour, &minute, &second,
                                                  &tz)) {
                 RTC_DS.adjust(DateTime(year, month, day, hour, minute, second));
-                snprintf(output, OUTPUT_SIZE, "Network time successfully set to: %s", getCurrentTime().text());
+                DateTime t = getCurrentTime();
+                char tbuf[21];
+                dateTime_toString(t, tbuf);
+                snprintf(output, OUTPUT_SIZE, "Network time successfully set to: %s", tbuf);
                 LOG(output);
                 break;
             } else {
@@ -443,7 +450,10 @@ void Loom_Hypnos::set_custom_time() {
     RTC_initialized = true;
 
     // Output
-    snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
+    DateTime t = getCurrentTime();
+    char tbuf[21];
+    dateTime_toString(t, tbuf);
+    snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", tbuf);
     LOG(output);
     FUNCTION_END;
 }
@@ -452,18 +462,19 @@ void Loom_Hypnos::set_custom_time() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::setInterruptDuration(const TimeSpan duration) {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
 
     // The time in the future that the alarm will be set for
-    DateTime future(RTC_DS.now() + duration);
-    RTC_DS.setAlarm(future);
+    alarmTime = RTC_DS.now() + duration;
+    RTC_DS.setAlarm(alarmTime);
 
     // Print the time that the next interrupt is set to trigger
-    snprintf(output, OUTPUT_SIZE, PSTR("Current Time (Local): %s"), getLocalTime(RTC_DS.now()).text());
-    LOG(output);
-
-    snprintf(output, OUTPUT_SIZE, PSTR("Next Interrupt Alarm Set For: %s"), getLocalTime(future).text());
-    LOG(output);
+    DateTime t = getLocalTime(RTC_DS.now());
+    char tbuf[21];
+    dateTime_toString(t, tbuf);
+    LOGF("Current Time (Local): %s", tbuf, true);
+    t = getLocalTime(alarmTime);
+    dateTime_toString(t, tbuf);
+    LOGF("Next interrupt alarm set for: %s", tbuf, true);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -482,11 +493,17 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
     if (shouldPowerUp) {
         manInst->power_down();
 
-        // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
-        uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
-        uint32_t currentTime = RTC_DS.now().unixtime();
+        // After powering down the devices check if the alarmed time is less than the current time,
+        // this means that the alarm may have already triggered Adafruit getAlarm1() returns alarm
+        // day/hour/min/sec with placeholder year/month; build comparable time from current date
+        DateTime now = RTC_DS.now();
+        DateTime alarmReg = RTC_DS.getAlarm(1);
+        DateTime alarmDateTime(now.year(), now.month(), alarmReg.day(), alarmReg.hour(),
+                               alarmReg.minute(), alarmReg.second());
+        uint32_t alarmedTime = alarmDateTime.unixtime();
+        uint32_t currentTime = now.unixtime();
         hasAlarmTriggered = alarmedTime <= currentTime;
-        
+
         // 50ms delay allows this last message to be sent before the bus disconnects
         LOG("Entering Standby Sleep...");
         delay(50);
@@ -496,8 +513,8 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
     if (!hasAlarmTriggered) {
         pre_sleep(); // Pre-sleep cleanup
         shouldPowerUp = true;
-        LowPower.sleep();                                       // Go to sleep and hang
-        Watchdog.enable(WATCHDOG_TIMEOUT);
+        LowPower.sleep(); // Go to sleep and hang
+        WD_TIMER_ENABLE;
     }
     // If it has we want to trigger a resample which requires powering the sensors back up
     else {
@@ -508,7 +525,7 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
             manInst->power_up();
         }
     }
-    Watchdog.reset();
+    WD_TIMER_RESET;
 
     // If the alarm hadn't triggered last time we want to wake up like normal
     if (!hasAlarmTriggered) {
@@ -542,34 +559,36 @@ void Loom_Hypnos::pre_sleep() {
 void Loom_Hypnos::post_sleep(bool waitForSerial) {
     // Enable the Watchdog timer when waking up
     WD_TIMER_ENABLE;
-    Watchdog.reset();
+    WD_TIMER_RESET;
     
-    if(shouldPowerUp){
+    if (shouldPowerUp) {
         USBDevice.attach();
-        Watchdog.reset();
+        WD_TIMER_RESET;
         Serial.begin(115200);
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
         // Check if they are not disabled to see if they should be enabled
         bool enable5 = !is5VDisabled(DEVICE_STATE::EXITING_SLEEP);
-        Watchdog.reset();
+        WD_TIMER_RESET;
         bool enable33 = !is3VDisabled(DEVICE_STATE::EXITING_SLEEP);
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
         enable(enable33, enable5); // Checks if the 3.3v or 5v are disabled and re-enables them
-        Watchdog.reset();
+        WD_TIMER_RESET;
         delay(1000);
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
         LOG(F("Device has awoken from sleep!"));
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
         // Clear any pending RTC alarms
-        RTC_DS.clearAlarm();
-        Watchdog.reset();
+        RTC_DS.clearAlarm(1);
+        RTC_DS.clearAlarm(2);
+        WD_TIMER_RESET;
 
         // Re-init the modules that need it
         manInst->power_up();
+
         // We want to wait for the user to re-open the serial monitor before continuing to see
         // readouts
         if (waitForSerial) {
@@ -578,6 +597,8 @@ void Loom_Hypnos::post_sleep(bool waitForSerial) {
                 ;
             WD_TIMER_ENABLE;
         }
+    } else {
+        WD_TIMER_DISABLE;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -670,3 +691,64 @@ bool Loom_Hypnos::logToSD() {
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/* Voltage Checks */
+
+bool Loom_Hypnos::checkVoltage(float vmin, int analogPin, float scale, bool mv, int num_samples) {
+    INSTRUMENT();
+    analogReadResolution(12);
+
+    float voltage_sum = 0.0f;
+
+    // Multiple samples for the average voltage
+    for (int i = 0; i < num_samples; i++) {
+        float voltage = 0.0f;
+
+        if (analogPin == A7) {
+            voltage = Loom_Analog::getBatteryVoltage();
+        } else {
+            float pin_reading = analogRead(analogPin);
+            pin_reading *= scale;
+            pin_reading *= VREF;
+            pin_reading /= 4096;
+            voltage = pin_reading;
+        }
+
+        voltage_sum += voltage;
+    }
+
+    float voltage = voltage_sum / num_samples;
+    LOGF("Average Voltage: %.2fV", voltage);
+
+    if (voltage <= vmin) {
+        LOGF("Voltage lower than vmin!");
+    }
+
+    if (mv) {
+        voltage = voltage * 1000.0f;
+    }
+
+    uint8_t new_flags = VF_CHECKED;
+
+    if (voltage < V_CRITICAL) {
+        new_flags |= VF_CRITICAL;
+        LOGF("WARNING: Critical voltage (%.2fV < %.2fV) - device will NOT function properly!",
+             voltage, V_CRITICAL);
+    } else if (voltage < V_DEGRADED) {
+        new_flags |= VF_DEGRADED;
+        LOGF("WARNING: Degraded voltage (%.2fV < %.2fV) - device may not function properly!",
+             voltage, V_DEGRADED);
+    } else if (voltage >= V_ACCEPTABLE && voltage <= V_LTE_MIN) {
+        new_flags |= VF_ACCEPTABLE;
+        LOGF("WARNING: Voltage acceptable for normal operation but may experience issues "
+             "transmitting.");
+    } else if (voltage >= V_LTE_MIN && voltage <= V_OPTIMAL) {
+        new_flags |= VF_LTE_READY;
+        LOGF("Voltage acceptable for LTE transmission but remains suboptimal.");
+    } else {
+        new_flags |= VF_OPTIMAL;
+        LOGF("Voltage is optimal");
+    }
+
+    return (voltage >= vmin);
+}
