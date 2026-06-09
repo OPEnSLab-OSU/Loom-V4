@@ -463,6 +463,10 @@ void Loom_Hypnos::set_custom_time() {
 void Loom_Hypnos::setInterruptDuration(const TimeSpan duration) {
     FUNCTION_START;
 
+    // Clear alarms
+    RTC_DS.clearAlarm(1);
+    RTC_DS.clearAlarm(2);
+
     // The time in the future that the alarm will be set for
     alarmTime = RTC_DS.now() + duration;
     RTC_DS.setAlarm1(alarmTime, DS3231_A1_Date);
