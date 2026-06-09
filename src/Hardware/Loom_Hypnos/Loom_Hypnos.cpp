@@ -275,6 +275,7 @@ void Loom_Hypnos::initializeRTC() {
     RTC_DS.clearAlarm(1);
     RTC_DS.clearAlarm(2);
 
+    // Disable square wave output in order to use interrupts
     RTC_DS.writeSqwPinMode(DS3231_OFF);
 
     // Disable alarm 2 to prevent unwanted wakeup
