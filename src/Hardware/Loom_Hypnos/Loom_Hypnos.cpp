@@ -465,7 +465,7 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration) {
 
     // The time in the future that the alarm will be set for
     alarmTime = RTC_DS.now() + duration;
-    RTC_DS.setAlarm(alarmTime);
+    RTC_DS.setAlarm1(alarmTime, DS3231_A1_Date);
 
     // Print the time that the next interrupt is set to trigger
     DateTime t = getLocalTime(RTC_DS.now());
@@ -497,7 +497,7 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
         // this means that the alarm may have already triggered Adafruit getAlarm1() returns alarm
         // day/hour/min/sec with placeholder year/month; build comparable time from current date
         DateTime now = RTC_DS.now();
-        DateTime alarmReg = RTC_DS.getAlarm(1);
+        DateTime alarmReg = RTC_DS.getAlarm1();
         DateTime alarmDateTime(now.year(), now.month(), alarmReg.day(), alarmReg.hour(),
                                alarmReg.minute(), alarmReg.second());
         uint32_t alarmedTime = alarmDateTime.unixtime();
