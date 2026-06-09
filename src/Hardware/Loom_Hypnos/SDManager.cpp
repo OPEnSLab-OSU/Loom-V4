@@ -11,16 +11,15 @@ SDManager::SDManager(Manager *man, int sd_chip_select)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::writeLineToFile(const char *filename, const char *content) {
-
     // Check if the SD card is actually functional
     if (sdInitialized) {
         // Open the given file for writing
-        myFile = sd.open(filename, O_RDWR | O_CREAT | O_APPEND);
+        File tempFile = sd.open(filename, O_RDWR | O_CREAT | O_APPEND);
 
         // Check if the file was actually opened, if so write the content to the file
-        if (myFile) {
-            myFile.println(content);
-            myFile.close();
+        if (tempFile) {
+            tempFile.println(content);
+            tempFile.close();
             return true;
         }
         printModuleName("Failed to Open File!");
@@ -74,6 +73,8 @@ void SDManager::writeHeaders() {
         }
     }
 
+    strncat(header2, "checksum,", 512);
+
     // Write the headers to the file
     myFile.println(header1);
     myFile.println(header2);
@@ -85,29 +86,24 @@ bool SDManager::log(DateTime currentTime) {
 
     if (sdInitialized) {
 
-        // Open the file in read/write mode, create the file if we need to and append the content to
-        // the end of the file
-        myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
-
+        // File should be opened already from begin or from previous log
         if (myFile) {
 
             // If this file has never been written to before we need to create and write the proper
             // headers to the file
-            if (myFile.available() <= 3) {
+            // Dependent on file size because opening in O_APPEND mode
+            if (myFile.size() <= 3) {
                 // Set the date created timestamp of the File
                 myFile.timestamp(T_CREATE, currentTime.year(), currentTime.month(),
                                  currentTime.day(), currentTime.hour(), currentTime.minute(),
                                  currentTime.second());
 
                 writeHeaders();
+                lastClosed = currentTime.day();
             }
 
             snprintf_P(output, MAX_JSON_SIZE, PSTR("%s,%i,"), manInst->get_device_name(),
                        manInst->get_instance_num());
-
-            // Write the Instance data that isn't included in the JSON packet
-            myFile.print(output);
-            memset(output, '\0', MAX_JSON_SIZE); // Clear array
 
             JsonObject document = manInst->getDocument().as<JsonObject>();
 
@@ -154,15 +150,46 @@ bool SDManager::log(DateTime currentTime) {
                 }
             }
 
+            // Compute checksum for line for later checking
+            uint16_t checksum = 0;
+            for (int i = 0; i < strlen(output); i++) {
+                checksum += (uint8_t)output[i];
+            }
+
+            // Append checksum value to end of line, last column
+            char checksumString[8];
+            snprintf(checksumString, 8, ",%u", checksum);
+            strncat(output, checksumString, MAX_JSON_SIZE);
+
             // Write the matching data into the CSV file
             myFile.println(output);
 
-            // Set the last modified date
-            myFile.timestamp(T_WRITE, currentTime.year(), currentTime.month(), currentTime.day(),
-                             currentTime.hour(), currentTime.minute(), currentTime.second());
+            // Sync/flush file, don't close unless EOD
+            myFile.sync();
 
-            // Close the file
-            myFile.close();
+            // Checks if the day has chenged, if so we enter and will close, reopen file
+            if (currentTime.day() != lastClosed) {
+                // Run the checksum by going through the file
+                LOG(F("End of day detected, verifying checksum"));
+                // If passes verification, close and reopen file
+                if (verifyChecksum(myFile)) {
+                    myFile.close();
+                    myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
+                }
+                // If failed verification, open new file
+                else {
+                    myFile.close();
+                    // open new file
+                    if (root.open("/", O_RDONLY)) {
+                        updateCurrentFileName();
+                        myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
+                    } else {
+                        ERROR(F("Failed to open root for file rotation"));
+                    }
+                }
+                // Update day integer to current time so don't close file until end of next day
+                lastClosed = currentTime.day();
+            }
 
             // Inform the user that we have successfully written to the file
             snprintf_P(output, MAX_JSON_SIZE, PSTR("Successfully logged data to %s"), fileName);
@@ -179,6 +206,69 @@ bool SDManager::log(DateTime currentTime) {
     } else {
         printModuleName("Failed to log! SD card not Initialized!");
     }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool SDManager::verifyChecksum(File &myFile) {
+    myFile.seekSet(0);
+    char lineBuf[MAX_JSON_SIZE];
+    int lineIndex = 0;
+    int lineCount = 0;
+
+    while (myFile.available()) {
+        // Go through every char in file
+        char c = myFile.read();
+
+        // Never let WD timer reset while reading/verifying file
+        WD_TIMER_RESET;
+
+        // When we hit a new line, we start evaluating
+        if (c == '\n') {
+            lineBuf[lineIndex] = '\0';
+
+            // Find last comma = checksum, don't evaluate on the checksum number since it is point
+            // of reference
+            char *checksumComma = strrchr(lineBuf, ',');
+
+            lineCount++;
+
+            // Skip headers in csv
+            if (lineCount > 4) {
+                if (checksumComma != nullptr) {
+                    // Get the value to compare to
+                    uint16_t actualChecksum = atoi(checksumComma + 1);
+
+                    *checksumComma = '\0';
+
+                    // Go through the lineBuf (one line in csv) and manually add checksum
+                    uint16_t lineChecksum = 0;
+                    for (int i = 0; i < strlen(lineBuf); i++) {
+                        lineChecksum += (uint8_t)lineBuf[i];
+                    }
+
+                    // Compare actual checksum to computed checksum, if fails then file is corrupted
+                    if (actualChecksum != lineChecksum) {
+                        char buf[64];
+                        snprintf(buf, 64, "Error: Checksum Failed at Line %i", lineCount);
+                        ERROR(buf);
+                        return false;
+                    }
+                }
+            }
+            // Reset for next line
+            lineIndex = 0;
+            memset(lineBuf, '\0', MAX_JSON_SIZE);
+        }
+        // When not at endline, just keep adding to lineBuf that will represent array of csv
+        // characters
+        else {
+            lineBuf[lineIndex++] = c;
+        }
+    }
+    // If verification passes, file is not corrupted
+    printModuleName("Checksum Passed");
+    return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -227,6 +317,11 @@ bool SDManager::begin() {
             return false;
         }
         updateCurrentFileName();
+
+        // Open the file in read/write mode, create the file if we need to and append the content to
+        // the end of the file
+        // Don't want it to open every time hypnos wakes up, will overwrite persistent handle
+        myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
     }
 
     // Once the SD card has initialized the first round through we don't want to update the file
@@ -303,16 +398,16 @@ char *SDManager::readFile(const char *fileName) {
 
     long index = 0;
     if (sdInitialized) {
-        myFile = sd.open(fileName);
+        File tempFile = sd.open(fileName);
 
-        if (myFile) {
+        if (tempFile) {
             // read from the file until there's nothing else in it:
-            while (myFile.available()) {
-                fileContents[index] = (char)(myFile.read());
+            while (tempFile.available()) {
+                fileContents[index] = (char)(tempFile.read());
                 index++;
             }
             fileContents[index] = '\0';
-            myFile.close();
+            tempFile.close();
         } else {
             printModuleName("Failed to open file!");
         }
@@ -331,16 +426,16 @@ void SDManager::logBatch() {
     // We want to clear the file after the batch size has been exceeded
     if (current_batch >= batch_size) {
         current_batch = 0;
-        myFile = sd.open(f_name, O_WRITE | O_TRUNC | O_APPEND);
+        batchFile = sd.open(f_name, O_WRITE | O_TRUNC | O_APPEND);
     } else {
-        myFile = sd.open(f_name, O_WRITE | O_CREAT | O_APPEND);
+        batchFile = sd.open(f_name, O_WRITE | O_CREAT | O_APPEND);
     }
     // Check if the file has been opened properly and write the JSON packet to one line
-    if (myFile) {
+    if (batchFile) {
 
         manInst->getJSONString(jsonString);
-        myFile.println(jsonString);
-        myFile.close();
+        batchFile.println(jsonString);
+        batchFile.close();
         current_batch++;
 
     } else {

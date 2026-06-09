@@ -40,8 +40,16 @@ class SDManager : public Module {
      * Log the current sensor data to the SD card
      * @param currentTime The current time provided by the RTC this allows us to set accurate
      * modified/created times for files
+     * Opens and closes once per day
      */
     bool log(DateTime currentTime);
+
+    /**
+     * @param myFile The name of the csv file to verify
+     * Checks line by line the file's contents and evalutes a checksum that
+     * is compared to the appended checksum computed from log
+     */
+    bool verifyChecksum(File &myFile);
 
     /**
      * Read the contents of a given file on the SD card and return them as a string
@@ -113,8 +121,11 @@ class SDManager : public Module {
     Manager *manInst; // Reference to the manager
 
     File myFile;       // File object used to handle reading and writing
+    File batchFile;    // for txt file, not csv
     File scanningFile; // Used specifically to search through the directory
     File root;         // Open the root directory as a file
+
+    int lastClosed = 0;
 
     SdFat sd; // SD Card Object
 

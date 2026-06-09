@@ -59,7 +59,7 @@ void Loom_DFMultiGasSensor::measure() {
         if (checkDeviceConnection()) {
 
             // Update the current gas type
-            currentGasType = gasSensor.queryGasType();
+            currentGasType = gasSensor.queryGasType().c_str();
             if (strlen(currentGasType) <= 0) {
                 currentGasType = "INV_TYPE";
             }
