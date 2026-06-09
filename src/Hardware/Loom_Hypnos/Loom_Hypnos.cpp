@@ -277,6 +277,9 @@ void Loom_Hypnos::initializeRTC() {
 
     RTC_DS.writeSqwPinMode(DS3231_OFF);
 
+    // Disable alarm 2 to prevent unwanted wakeup
+    RTC_DS.disableAlarm(2);
+
     // We successfully started the RTC
     LOG(F("DS3231 Real-Time Clock Initialized Successfully!"));
     RTC_initialized = true;
