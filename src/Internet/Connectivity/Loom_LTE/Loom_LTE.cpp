@@ -1,6 +1,5 @@
 #include "Loom_LTE.h"
 #include "Logger.h"
-#include <RTClib.h>
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_LTE::Loom_LTE(Manager &man, const char *apn, const char *user, const char *pass, const int pin,

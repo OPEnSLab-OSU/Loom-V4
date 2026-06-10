@@ -81,7 +81,7 @@ void Manager::measure() {
                 snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
                 WARNING(noInitLog);
             }
-            // TIMER_RESET;
+            WD_TIMER_RESET;
         }
     } else {
         ERROR(F("Unable to collect data as the manager and thus all sensors connected to it have "
@@ -123,7 +123,7 @@ void Manager::package() {
             snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
             WARNING(noInitLog);
         }
-        // TIMER_RESET;
+        WD_TIMER_RESET;
     }
     packetNumber++;
 
@@ -191,7 +191,7 @@ void Manager::power_down() {
             snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
             WARNING(noInitLog);
         }
-        // TIMER_RESET;
+        WD_TIMER_RESET;
     }
     FUNCTION_END;
 }
@@ -238,7 +238,7 @@ void Manager::initialize() {
     hasInitialized = true;
     LOG(F("** Setup Complete ** "));
 
-    // TIMER_ENABLE;
+    WD_TIMER_ENABLE;
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -275,10 +275,10 @@ void Manager::read_serial_num() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::pause(const uint32_t ms) const {
-    // TIMER_DISABLE;
+    WD_TIMER_DISABLE;
     int waitTime = millis() + ms;
     while (millis() < waitTime)
         ;
-    // TIMER_ENABLE;
+    WD_TIMER_ENABLE;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Logger.h"
 #include "Module.h"
+#include "Logger.h"
 
 class I2CDevice : public Module {
   public:

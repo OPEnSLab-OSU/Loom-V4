@@ -1,7 +1,6 @@
 #include "Loom_MongoDB.h"
 #include "../../../Sensors/Loom_Analog/Loom_Analog.h"
 #include "Logger.h"
-#include "../../../Sensors/Loom_Analog/Loom_Analog.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MongoDB::Loom_MongoDB(Manager &man, NetworkComponent &internet_client,
@@ -35,7 +34,7 @@ bool Loom_MongoDB::publish() {
     char jsonString[MAX_JSON_SIZE];
     if (moduleInitialized) {
 
-        // TIMER_DISABLE;
+        WD_TIMER_DISABLE;
 
         if (strlen(projectServer) > 0)
             // Formulate a topic to publish on with the format
@@ -67,7 +66,7 @@ bool Loom_MongoDB::publish() {
         return false;
     }
     FUNCTION_END;
-    // TIMER_ENABLE;
+    WD_TIMER_ENABLE;
     return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -131,7 +130,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
     int packetNumber = 0, index = 0;
     char c;
     if (moduleInitialized) {
-        // TIMER_DISABLE;
+        WD_TIMER_DISABLE;
         if (batchSD.shouldPublish()) {
 
             if (strlen(projectServer) > 0)
@@ -214,7 +213,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
         return false;
     }
     FUNCTION_END;
-    // TIMER_ENABLE;
+    WD_TIMER_ENABLE;
     return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

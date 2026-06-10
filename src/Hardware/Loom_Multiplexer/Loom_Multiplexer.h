@@ -16,14 +16,14 @@
 #include "../../Sensors/I2C/Loom_MMA8451/Loom_MMA8451.h"
 #include "../../Sensors/I2C/Loom_MPU6050/Loom_MPU6050.h"
 #include "../../Sensors/I2C/Loom_MS5803/Loom_MS5803.h"
+#include "../../Sensors/I2C/Loom_SEN55/Loom_SEN55.h"
+#include "../../Sensors/I2C/Loom_SEN66/Loom_SEN66.h"
 #include "../../Sensors/I2C/Loom_SHT31/Loom_SHT31.h"
 #include "../../Sensors/I2C/Loom_STEMMA/Loom_STEMMA.h"
+#include "../../Sensors/I2C/Loom_T6793/Loom_T6793.h"
 #include "../../Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h"
 #include "../../Sensors/I2C/Loom_ZXGesture/Loom_ZXGesture.h"
 #include "../../Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h"
-#include "../../Sensors/I2C/Loom_T6793/Loom_T6793.h"
-#include "../../Sensors/I2C/Loom_SEN55/Loom_SEN55.h"
-#include "../../Sensors/I2C/Loom_SEN66/Loom_SEN66.h"
 
 /**
  * Adds Hot Swappable functionality for TCA9548 multiplexer
@@ -46,7 +46,7 @@ class Loom_Multiplexer : public Module {
      *
      * @param man Reference to the manager
      */
-    Loom_Multiplexer(Manager& man);
+    Loom_Multiplexer(Manager &man);
 
     /**
      * Construct a new Multiplexer with specified addresses
@@ -70,8 +70,9 @@ class Loom_Multiplexer : public Module {
     void disableChannels();            // Disables all channels on the Multiplexer
     bool isDeviceConnected(byte addr); // Check if there is a device at the specified address
 
-    void refreshSensors(); // Checks to see if any new sensors were swapped in allows for hot swapping
-    Module* loadSensor(const byte addr); // Load the correct sensor based on the I2C address
+    void
+    refreshSensors(); // Checks to see if any new sensors were swapped in allows for hot swapping
+    Module *loadSensor(const byte addr); // Load the correct sensor based on the I2C address
 
     std::vector<byte> known_addresses = {};
 
@@ -92,7 +93,7 @@ class Loom_Multiplexer : public Module {
         0x49, ///< AS726X / AS7265X
         0x68, ///< K30
         0x69, ///< SEN55
-        0x6B, ///< SEN55
+        0x6B, ///< SEN66
         0x70, ///< MB1232
         0x74, ///< DFMultiGasSensor
         0x76, ///< MS5803
@@ -102,12 +103,5 @@ class Loom_Multiplexer : public Module {
     /**
      * Possible alternate addresses for the TCA9548
      */
-    const std::array<byte, 9> alt_addresses = {
-        0x71,
-        0x72,
-        0x73,
-        0x74,
-        0x75,
-        0x78
-    };
+    const std::array<byte, 9> alt_addresses = {0x71, 0x72, 0x73, 0x74, 0x75, 0x78};
 };

@@ -1,7 +1,7 @@
 #include "Loom_Multiplexer.h"
 #include "Logger.h"
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Multiplexer::Loom_Multiplexer(Manager& man) : Module("Multiplexer"), manInst(&man) {
+Loom_Multiplexer::Loom_Multiplexer(Manager &man) : Module("Multiplexer"), manInst(&man) {
     moduleInitialized = false;
     manInst->registerModule(this);
 }
@@ -123,7 +123,6 @@ void Loom_Multiplexer::refreshSensors() {
                 moduleIndex++;
             }
         }
-
     }
     FUNCTION_END;
 }
@@ -183,7 +182,8 @@ void Loom_Multiplexer::power_down() {
 void Loom_Multiplexer::selectPin(uint8_t pin) {
     FUNCTION_START;
     // Pin not in range
-    if (pin > 7) return;
+    if (pin > 7)
+        return;
 
     Wire.beginTransmission(activeMuxAddr);
     Wire.write(1 << pin);
@@ -215,7 +215,7 @@ bool Loom_Multiplexer::isDeviceConnected(byte addr) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Module* Loom_Multiplexer::loadSensor(const byte addr) {
+Module *Loom_Multiplexer::loadSensor(const byte addr) {
 
     // Select the correct sensor to load based on the address
     switch (addr) {
@@ -239,7 +239,7 @@ Module* Loom_Multiplexer::loadSensor(const byte addr) {
     case 0x48:
         return new Loom_ADS1115(*manInst, 0x48, true);
 
-    // K30
+    // K30 -
     case 0x68:
         return new Loom_K30(*manInst, true, 0x68, true);
 
@@ -247,11 +247,11 @@ Module* Loom_Multiplexer::loadSensor(const byte addr) {
     case 0x1D:
         return new Loom_MMA8451(*manInst, 0x1D, true);
 
-    //Loom_DFMultiGasSensor
+    // Loom_DFMultiGasSensor
     case 0x74:
-        return new Loom_DFMultiGasSensor(*manInst, 0x74, 10,false, true);
+        return new Loom_DFMultiGasSensor(*manInst, 0x74, 10, false, true);
     case 0x75:
-        return new Loom_DFMultiGasSensor(*manInst, 0x75, 10,false, true);
+        return new Loom_DFMultiGasSensor(*manInst, 0x75, 10, false, true);
 
     // Loom_T6793
     case 0x15:
@@ -262,11 +262,11 @@ Module* Loom_Multiplexer::loadSensor(const byte addr) {
 
     // SEN55
     case 0x69:
-        return new Loom_SEN55(*manInst,0x69, true);
-
-    // SEN66
-    case 0x6B:
-        return new Loom_SEN66(*manInst,0x6B, true);
+        return new Loom_SEN55(*manInst, 0x69, true);
+                                        
+    // SEN66                            
+    case 0x6B:                          
+        return new Loom_SEN66(*manInst, 0x6B, true);
 
     // MS5803
     case 0x76:

@@ -275,7 +275,11 @@ void Loom_Hypnos::initializeRTC() {
     RTC_DS.clearAlarm(1);
     RTC_DS.clearAlarm(2);
 
+    // Disable square wave output in order to use interrupts
     RTC_DS.writeSqwPinMode(DS3231_OFF);
+
+    // Disable alarm 2 to prevent unwanted wakeup
+    RTC_DS.disableAlarm(2);
 
     // We successfully started the RTC
     LOG(F("DS3231 Real-Time Clock Initialized Successfully!"));
@@ -300,8 +304,7 @@ DateTime Loom_Hypnos::getLocalTime(DateTime time) {
         return time + TimeSpan(0, (timezone), 0, 0);
     }
 }
-///////////////////////////////////////
-//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::isDaylightSavings() {
@@ -463,6 +466,10 @@ void Loom_Hypnos::set_custom_time() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::setInterruptDuration(const TimeSpan duration) {
     FUNCTION_START;
+
+    // Clear alarms
+    RTC_DS.clearAlarm(1);
+    RTC_DS.clearAlarm(2);
 
     // The time in the future that the alarm will be set for
     alarmTime = RTC_DS.now() + duration;
@@ -691,6 +698,8 @@ bool Loom_Hypnos::logToSD() {
     sdMan->log(getCurrentTime());
     FUNCTION_END;
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /* Voltage Checks */
 
