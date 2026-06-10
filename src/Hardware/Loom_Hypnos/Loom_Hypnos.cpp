@@ -546,16 +546,6 @@ void Loom_Hypnos::pre_sleep() {
     Serial.end();
     USBDevice.detach();
 
-    /** TEST CODE START **/
-    // Ensure any remaining wake-up alarms are cleared before going to sleep.
-    // In the event that an alarm wasn't caught and cleared earlier, do it now.
-    // This tells the RTC to set the INT line high so that it can be pulled low
-    // to indicate an interrupt.
-    RTC_DS.clearAlarm(1);
-    RTC_DS.clearAlarm(2);
-    WD_TIMER_RESET;
-    /** TEST CODE END **/
-
     // Reattach the interrupt to the RTC interrupt pin
     attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first),
                     std::get<0>(pinToInterrupt.begin()->second),
