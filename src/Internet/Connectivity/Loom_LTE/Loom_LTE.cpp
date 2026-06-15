@@ -207,6 +207,14 @@ void Loom_LTE::powerBoardOn(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::powerBoardOff(){
+    // NOTE: We don't need to power off the sparkfun LTE board we can just use the power off command
+    // Handle powering off the parkfun board
+    // if(lteBoardVersion == OPENS){
+    //      pinMode(powerPin, OUTPUT);
+    //     digitalWrite(powerPin, LOW);
+    //     delay(2500);
+    //     pinMode(powerPin, INPUT);
+    // }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
