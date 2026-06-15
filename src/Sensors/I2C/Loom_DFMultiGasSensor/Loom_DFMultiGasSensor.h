@@ -71,11 +71,11 @@ class Loom_DFMultiGasSensor : public I2CDevice{
         );
 
         // --- Sensor Readings
-        // Strinified reading of the current gas type
-        const char* currentGasType = "";
+        // Stringified reading of the current gas type. Stored as a local buffer to avoid dangling c_str pointers.
+        char currentGasType[24] = "";
         float currentConcentration = 0.0f;
         float currentTemperature = 0.0f;
     
 };
 
-uint8_t findGasBoard(void);
+int16_t findGasBoard(void);

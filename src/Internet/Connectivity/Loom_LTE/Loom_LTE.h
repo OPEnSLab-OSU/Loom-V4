@@ -1,9 +1,107 @@
 #pragma once
 
-// GSM Model Number
-//#define TINY_GSM_MODEM_UBLOX
-// #define TINY_GSM_MODEM_SARAR4
-#define TINY_GSM_MODEM_SARAR5
+/*
+ * Loom LTE modem selection
+ *
+ * A sketch can request the R5 path with:
+ *
+ *     #define LOOM_LTE_USE_SARA_R5
+ *
+ * Arduino compiles library .cpp files separately from the .ino, so the package
+ * also includes Loom_LTE_Config.h. Keep that file beside this header when the
+ * library itself needs to see the same modem selection.
+ */
+
+#if __has_include("Loom_LTE_Config.h")
+    #include "Loom_LTE_Config.h"
+#endif
+
+#if __has_include("arduino_secrets.h")
+    #include "arduino_secrets.h"
+#endif
+
+#if defined(LOOM_LTE_USE_SARA_R5)
+    #undef TINY_GSM_MODEM_UBLOX
+    #undef TINY_GSM_MODEM_SARAR4
+    #define TINY_GSM_MODEM_SARAR5
+#elif defined(LOOM_LTE_USE_SARA_R4)
+    #undef TINY_GSM_MODEM_UBLOX
+    #undef TINY_GSM_MODEM_SARAR5
+    #define TINY_GSM_MODEM_SARAR4
+#elif !defined(TINY_GSM_MODEM_UBLOX) && !defined(TINY_GSM_MODEM_SARAR4) && !defined(TINY_GSM_MODEM_SARAR5)
+    #define TINY_GSM_MODEM_SARAR4
+#endif
+
+// OPEnS/Jolteon control pins drive MOSFET gates. HIGH at the Feather pin
+// pulls the SARA input LOW, which is the active state for PWR_ON/RESET_N.
+#ifndef LOOM_LTE_R5_OPENS_CONTROL_ACTIVE_HIGH
+    #define LOOM_LTE_R5_OPENS_CONTROL_ACTIVE_HIGH 1
+#endif
+
+// R5 power pulses need to be long enough to trigger switch-on but short
+// enough that repeated pulses do not wander into switch-off behavior.
+#ifndef LOOM_LTE_R5_PWR_PULSE_MS
+    #define LOOM_LTE_R5_PWR_PULSE_MS 1100UL
+#endif
+
+#ifndef LOOM_LTE_R5_RESET_PULSE_MS
+    #define LOOM_LTE_R5_RESET_PULSE_MS 250UL
+#endif
+
+#ifndef LOOM_LTE_R5_BOOT_AT_TIMEOUT_MS
+    #define LOOM_LTE_R5_BOOT_AT_TIMEOUT_MS 45000UL
+#endif
+
+#ifndef LOOM_LTE_R5_POST_PWR_SETTLE_MS
+    #define LOOM_LTE_R5_POST_PWR_SETTLE_MS 10000UL
+#endif
+
+#ifndef LOOM_LTE_R5_COMPAT_POWER_FIRST
+    #define LOOM_LTE_R5_COMPAT_POWER_FIRST 1
+#endif
+
+#ifndef LOOM_LTE_R5_ENABLE_RESET_RECOVERY
+    #define LOOM_LTE_R5_ENABLE_RESET_RECOVERY 0
+#endif
+
+#ifndef LOOM_LTE_R5_SCAN_BAUDS_ON_FAILURE
+    #define LOOM_LTE_R5_SCAN_BAUDS_ON_FAILURE 0
+#endif
+
+// Optional carrier lock. For AT&T, this can be set to "310410" to avoid
+// long operator scans during controlled tests. Empty string keeps automatic
+// registration behavior.
+#ifndef LOOM_LTE_R5_FORCE_OPERATOR_NUMERIC
+    #define LOOM_LTE_R5_FORCE_OPERATOR_NUMERIC ""
+#endif
+
+#ifndef LOOM_LTE_R5_FORCE_OPERATOR_ACT
+    #define LOOM_LTE_R5_FORCE_OPERATOR_ACT 7
+#endif
+
+// Keep rail control off by default because most Loom deployments let the
+// manager or Hypnos board own peripheral power. Enable this only for LTE-only
+// bench sketches.
+#ifndef LOOM_LTE_R5_ENABLE_POWER_RAIL_PINS
+    #define LOOM_LTE_R5_ENABLE_POWER_RAIL_PINS 0
+#endif
+
+#ifndef LOOM_LTE_R5_3V3_RAIL_PIN
+    #define LOOM_LTE_R5_3V3_RAIL_PIN 5
+#endif
+
+#ifndef LOOM_LTE_R5_5V_RAIL_PIN
+    #define LOOM_LTE_R5_5V_RAIL_PIN 6
+#endif
+
+#ifndef LOOM_LTE_R5_3V3_RAIL_ON_LEVEL
+    #define LOOM_LTE_R5_3V3_RAIL_ON_LEVEL LOW
+#endif
+
+#ifndef LOOM_LTE_R5_5V_RAIL_ON_LEVEL
+    #define LOOM_LTE_R5_5V_RAIL_ON_LEVEL HIGH
+#endif
+
 #include "Loom_Manager.h"
 #include "../NetworkComponent.h"
 #include <TinyGSM.h>
@@ -11,7 +109,6 @@
 
 #include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
 
-// Specify what serial interface we want to use
 #define SerialAT Serial1
 
 enum LTE_VERSION{
@@ -26,13 +123,11 @@ enum LTE_VERSION{
  */
 class Loom_LTE : public NetworkComponent{
     protected:
-        /* These aren't used with the Wifi manager */
         void measure() override {};
 
         bool isConnected() override { return modem.isGprsConnected(); };
 
     public:
-
         /**
          * Construct a new LTE instance
          * @param man Reference to the manager
@@ -40,6 +135,8 @@ class Loom_LTE : public NetworkComponent{
          * @param user Username to use
          * @param pass Password to use
          * @param powerPin Pin used to power the device
+         * @param version Board power-control style
+         * @param resetPin Pin used to reset the modem on OPEnS/Jolteon-style boards
          */
         Loom_LTE(
             Manager& man,
@@ -47,7 +144,12 @@ class Loom_LTE : public NetworkComponent{
             const char* user,
             const char* pass,
             const int powerPin = A5,
-            LTE_VERSION version = SPARKFUN
+#if defined(TINY_GSM_MODEM_SARAR5)
+            LTE_VERSION version = OPENS,
+#else
+            LTE_VERSION version = SPARKFUN,
+#endif
+            const int resetPin = -1
         );
 
         /**
@@ -56,19 +158,10 @@ class Loom_LTE : public NetworkComponent{
          */
         Loom_LTE(Manager& man);
 
-        // Initialize the device and connect to the network
         void initialize() override;
-
-        // Reconnect to the network
         void power_up() override;
-
-        // Disconnect from the network
         void power_down() override;
-
-        // Signal Strength
         void package() override;
-
-        // Get the current time from the network
         bool getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) override;
 
         /**
@@ -99,17 +192,22 @@ class Loom_LTE : public NetworkComponent{
         bool verifyConnection();
 
         /**
+         * Bridge USB serial to the LTE UART for manual AT-command debugging.
+         * Call this from loop when you want the Serial Monitor to talk directly to the modem.
+         */
+        void debugPassthrough();
+
+        /**
          * Get the client to supply to publish platforms that need to communicate using this internet framework
          */
         Client* getClient() override;
 
-        /* Restart the modem */
         void restartModem() {
             TIMER_RESET;
             modem.poweroff();
-            delay(3000);
-            modem.restart();
-            delay(1000);
+            delay(5000);
+            powered = false;
+            power_up();
             TIMER_RESET;
         };
 
@@ -121,28 +219,48 @@ class Loom_LTE : public NetworkComponent{
         };
 
     private:
-
-
+        // Copy sketch or SD-card credentials into owned buffers.
+        void copyCredential(char* dst, const char* src, size_t dstSize);
+        void driveControlPinIdle(int pin);
+        void driveControlPinActive(int pin);
+        void pulseControlPin(int pin, uint32_t pulseMs, const __FlashStringHelper* label);
+        void idlePowerPin();
+        void idleResetPin();
+        void prepareOptionalPowerRails();
         void powerBoardOn();
         void powerBoardOff();
+        bool waitForModemAT(uint32_t timeoutMs);
+        bool selectWorkingBaud(uint32_t timeoutMs);
+        bool initializeModemFromAT();
+        bool bootModemWithRetries();
+        bool sendATExpectOK(const char* command, uint32_t timeoutMs = 5000L);
+        void applyR5NetworkHints();
+        void logBootChecklist();
+        void logPlainFailure(const __FlashStringHelper* message);
+        void logNetworkDiagnostics();
+        void logSignalDiagnostic();
+        void logSimDiagnostic();
+        void logRegistrationDiagnostic();
+        void logRawAT(const char* command, uint32_t timeoutMs = 3000L);
 
         LTE_VERSION lteBoardVersion = SPARKFUN;
 
-        Manager* manInst;                   // Instance of the manager
+        Manager* manInst;
 
-        char APN[100];                         // LTE Network Name
-        char gprsUser[100];                    // GPRS Username
-        char gprsPass[100];                    // GPRS Password
+        char APN[100];
+        char gprsUser[100];
+        char gprsPass[100];
 
-        int powerPin = A5;                  // Analog pin to power the LTE board
+        int powerPin = A5;
+        int resetPin = -1;
+        uint32_t selectedBaud = 115200;
 
-        TinyGsm modem;                      // LTE Modem
-        TinyGsmClient client;               // LTE Client
+        TinyGsm modem;
+        TinyGsmClient client;
 
         bool powerUp = true;
-        bool firstInit = true;              // First time it was initialized
-        Loom_BatchSD* batch_sd = nullptr;   // If we are using batch publish
+        bool firstInit = true;
+        Loom_BatchSD* batch_sd = nullptr;
 
-        bool powered = false;               // Device power status
-
+        bool powered = false;
 };

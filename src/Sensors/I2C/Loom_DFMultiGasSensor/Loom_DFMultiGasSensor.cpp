@@ -1,4 +1,5 @@
 #include "Loom_DFMultiGasSensor.h"
+#include "Arduino.h"
 #include "Wire.h"
 #include "Logger.h"
 
@@ -31,11 +32,12 @@ void Loom_DFMultiGasSensor::initialize() {
 
     LOG(F("Begin DFRobot Multi Gas Sensor Initialization..."));
 
-    uint8_t addr = findGasBoard();
-    if (addr == -1) {
+    int16_t addr = findGasBoard();
+    if (addr < 0) {
         ERROR(F("No gas board found on this channel."));
         moduleInitialized = false;
-        // return false;
+        FUNCTION_END;
+        return;
     }
 
     snprintf(output, OUTPUT_SIZE, " Gas sensor present at 0x%02X attempting to initialize. Retry limit: %d", addr, retryLimit);
@@ -64,11 +66,17 @@ void Loom_DFMultiGasSensor::measure() {
     if(moduleInitialized ){
         if(checkDeviceConnection()){
 
-            // Update the current gas type
-            currentGasType = gasSensor.queryGasType();
-            if(strlen(currentGasType) <= 0){
-                currentGasType = "INV_TYPE";
+            // Update the current gas type without storing Arduino String internals.
+            String gasType = gasSensor.queryGasType();
+            gasType.trim();
+
+            if(gasType.length() <= 0){
+                strncpy(currentGasType, "INV_TYPE", sizeof(currentGasType));
             }
+            else{
+                gasType.toCharArray(currentGasType, sizeof(currentGasType));
+            }
+            currentGasType[sizeof(currentGasType) - 1] = '\0';
 
             if (gasSensor.dataIsAvailable()) {
                 LOG(F("Sensor has data availible. Reading ..."));
@@ -190,7 +198,7 @@ void Loom_DFMultiGasSensor::configureSensorProperties(DFRobot_GAS::eMethod_t aqu
 
 
 
-uint8_t findGasBoard(void)
+int16_t findGasBoard(void)
 {
 
 char output[OUTPUT_SIZE];
