@@ -10,7 +10,7 @@
 
 // R5 PWR_ON low time for switch-on is 1 to 2 seconds.
 // Keep this below the normal switch-off window.
-#define LOOM_LTE_R5_PWR_PULSE_MS 1100UL
+#define LOOM_LTE_R5_PWR_PULSE_MS 1200UL
 #define LOOM_LTE_R5_RESET_PULSE_MS 250UL
 
 // Optional: only enable these if this sketch, not the Loom manager, controls the Hypnos rails.
