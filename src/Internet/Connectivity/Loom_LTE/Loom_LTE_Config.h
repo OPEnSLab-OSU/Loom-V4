@@ -1,8 +1,14 @@
 #pragma once
 
 // Select exactly one modem family for the Loom LTE library build.
-#define LOOM_LTE_USE_SARA_R5
+// #define LOOM_LTE_USE_SARA_R5 //comment out here before pushing to main as R5 is only for new boards.
 // #define LOOM_LTE_USE_SARA_R4
+
+/*
+//In sketches define R5 usage like:
+#define LOOM_LTE_USE_SARA_R5
+#include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
+*/
 
 // OPEnS/Jolteon PWR_ON and RESET_N are driven through MOSFETs.
 // HIGH at the Feather pin turns the MOSFET on, which pulls the SARA pin LOW.
