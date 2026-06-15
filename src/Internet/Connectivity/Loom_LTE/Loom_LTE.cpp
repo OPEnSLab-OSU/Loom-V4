@@ -227,10 +227,10 @@ bool Loom_LTE::waitForModemAT(uint32_t timeoutMs){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::selectWorkingBaud(uint32_t timeoutMs){
-    // SARA-R5 should be contacted at 115200 first. Print that first attempt so
-    // the UART log matches the actual order and does not make it look like the
-    // code skipped the modem's expected baud.
-    selectedBaud = 115200UL;
+    // The host UART still needs one concrete baud before it can send the first
+    // AT command. Keep that primary rate in Loom_LTE_Config.h so board bring-up
+    // does not require editing this file.
+    selectedBaud = LOOM_LTE_R5_UART_BAUD;
     SerialAT.end();
     delay(100);
     SerialAT.begin(selectedBaud);
@@ -246,12 +246,25 @@ bool Loom_LTE::selectWorkingBaud(uint32_t timeoutMs){
     }
 
 #if defined(TINY_GSM_MODEM_SARAR5) && LOOM_LTE_R5_SCAN_BAUDS_ON_FAILURE
-    // Fallback baud probing is for desperate recovery only. Normal R5 operation
-    // should stay fixed at 115200 so passthrough debugging is predictable.
-    const uint32_t fallbackBauds[] = {9600UL, 19200UL, 38400UL, 57600UL};
+    // Fallback probing is for diagnostics only. The supported one-shot
+    // autobaud rates are listed here, but the configured primary baud is always
+    // tried first and skipped in this fallback loop.
+    static const uint32_t supportedBauds[] = {
+        9600UL,
+        19200UL,
+        38400UL,
+        57600UL,
+        115200UL,
+        230400UL,
+        460800UL,
+        921600UL
+    };
 
-    for(uint8_t i = 0; i < (sizeof(fallbackBauds) / sizeof(fallbackBauds[0])); i++){
-        selectedBaud = fallbackBauds[i];
+    for(uint8_t i = 0; i < (sizeof(supportedBauds) / sizeof(supportedBauds[0])); i++){
+        if(supportedBauds[i] == LOOM_LTE_R5_UART_BAUD)
+            continue;
+
+        selectedBaud = supportedBauds[i];
 
         SerialAT.end();
         delay(100);
@@ -268,7 +281,7 @@ bool Loom_LTE::selectWorkingBaud(uint32_t timeoutMs){
         }
     }
 
-    selectedBaud = 115200UL;
+    selectedBaud = LOOM_LTE_R5_UART_BAUD;
     SerialAT.end();
     delay(100);
     SerialAT.begin(selectedBaud);
@@ -541,7 +554,7 @@ void Loom_LTE::power_up(){
     idleResetPin();
     SerialAT.end();
     delay(100);
-    selectedBaud = 115200UL;
+    selectedBaud = LOOM_LTE_R5_UART_BAUD;
     SerialAT.begin(selectedBaud);
     delay(250);
 
