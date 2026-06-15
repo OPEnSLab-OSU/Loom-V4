@@ -1,15 +1,16 @@
 #pragma once
 
 /*
- * Loom LTE modem selection
+ * Loom LTE modem selection and board configuration
  *
- * A sketch can request the R5 path with:
+ * Loom_LTE_Config.h is the project-level configuration file for R4/R5 selection,
+ * R5 startup timing, UART baud, optional reset recovery, optional rail control,
+ * and optional carrier locking.
  *
- *     #define LOOM_LTE_USE_SARA_R5
- *
- * Arduino compiles library .cpp files separately from the .ino, so the package
- * also includes Loom_LTE_Config.h. Keep that file beside this header when the
- * library itself needs to see the same modem selection.
+ * Arduino compiles library .cpp files separately from the .ino, so sketch-local
+ * defines do not reliably reach Loom_LTE.cpp. Including Loom_LTE_Config.h here
+ * keeps the library translation unit on the same modem and board configuration
+ * as the sketch.
  */
 
 #if __has_include("Loom_LTE_Config.h")
@@ -20,6 +21,16 @@
     #include "arduino_secrets.h"
 #endif
 
+/*
+ * TinyGSM modem profile
+ *
+ * TinyGSM needs exactly one modem profile selected before TinyGSM.h is included.
+ * The Loom-facing defines are translated here so examples can use:
+ *
+ *     #define LOOM_LTE_USE_SARA_R5
+ *
+ * instead of editing TinyGSM internals or this library header per project.
+ */
 #if defined(LOOM_LTE_USE_SARA_R5)
     #undef TINY_GSM_MODEM_UBLOX
     #undef TINY_GSM_MODEM_SARAR4
@@ -32,16 +43,25 @@
     #define TINY_GSM_MODEM_SARAR4
 #endif
 
-// OPEnS/Jolteon control pins drive MOSFET gates. HIGH at the Feather pin
-// pulls the SARA input LOW, which is the active state for PWR_ON/RESET_N.
+/*
+ * R5 control polarity
+ *
+ * OPEnS/Jolteon control pins drive MOSFET gates. HIGH at the Feather pin turns
+ * the control MOSFET on, which pulls the SARA input LOW. For SARA PWR_ON and
+ * RESET_N, that LOW state is the asserted state.
+ */
 #ifndef LOOM_LTE_R5_OPENS_CONTROL_ACTIVE_HIGH
     #define LOOM_LTE_R5_OPENS_CONTROL_ACTIVE_HIGH 1
 #endif
 
-// R5 power pulses need to be long enough to trigger switch-on but short
-// enough that repeated pulses do not wander into switch-off behavior.
+/*
+ * R5 power timing
+ *
+ * The OPEnS/Jolteon R5 startup sequence drives A5 HIGH, waits for the configured pulse
+ * width, releases A5 LOW, and then waits for the modem OS before sending AT.
+ */
 #ifndef LOOM_LTE_R5_PWR_PULSE_MS
-    #define LOOM_LTE_R5_PWR_PULSE_MS 1100UL
+    #define LOOM_LTE_R5_PWR_PULSE_MS 1200UL
 #endif
 
 #ifndef LOOM_LTE_R5_RESET_PULSE_MS
@@ -56,8 +76,29 @@
     #define LOOM_LTE_R5_POST_PWR_SETTLE_MS 10000UL
 #endif
 
+/*
+ * R5 UART timing
+ *
+ * The host UART must open at one baud before it can send the first AT command.
+ * Keep the primary baud configurable so board startup does not require editing
+ * Loom_LTE.cpp. Normal SARA-R5 bring-up uses 115200.
+ */
+#ifndef LOOM_LTE_R5_UART_BAUD
+    #define LOOM_LTE_R5_UART_BAUD 115200UL
+#endif
+
+/*
+ * R5 boot mode switches
+ *
+ * The R5 startup sequence sends the A5 power pulse before probing AT.
+ * Reset recovery and fallback baud probing are opt-in diagnostics.
+ */
 #ifndef LOOM_LTE_R5_COMPAT_POWER_FIRST
     #define LOOM_LTE_R5_COMPAT_POWER_FIRST 1
+#endif
+
+#ifndef LOOM_LTE_R5_EXACT_OPENS_POWER_PATH
+    #define LOOM_LTE_R5_EXACT_OPENS_POWER_PATH 1
 #endif
 
 #ifndef LOOM_LTE_R5_ENABLE_RESET_RECOVERY
@@ -68,9 +109,12 @@
     #define LOOM_LTE_R5_SCAN_BAUDS_ON_FAILURE 0
 #endif
 
-// Optional carrier lock. For AT&T, this can be set to "310410" to avoid
-// long operator scans during controlled tests. Empty string keeps automatic
-// registration behavior.
+/*
+ * Optional carrier lock
+ *
+ * Empty string keeps automatic registration behavior. A numeric operator such
+ * as "310410" can be configured for controlled AT&T tests.
+ */
 #ifndef LOOM_LTE_R5_FORCE_OPERATOR_NUMERIC
     #define LOOM_LTE_R5_FORCE_OPERATOR_NUMERIC ""
 #endif
@@ -79,9 +123,13 @@
     #define LOOM_LTE_R5_FORCE_OPERATOR_ACT 7
 #endif
 
-// Keep rail control off by default because most Loom deployments let the
-// manager or Hypnos board own peripheral power. Enable this only for LTE-only
-// bench sketches.
+/*
+ * Optional Hypnos rail control
+ *
+ * Normal Loom deployments usually let the manager/Hypnos own peripheral rails.
+ * LTE-only bench sketches can enable these pins when they need the LTE library
+ * to power the 3.3 V and 5 V rails directly.
+ */
 #ifndef LOOM_LTE_R5_ENABLE_POWER_RAIL_PINS
     #define LOOM_LTE_R5_ENABLE_POWER_RAIL_PINS 0
 #endif
@@ -109,6 +157,7 @@
 
 #include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
 
+// The LTE modem is connected to the board's hardware Serial1 port.
 #define SerialAT Serial1
 
 enum LTE_VERSION{
@@ -117,9 +166,11 @@ enum LTE_VERSION{
 };
 
 /**
- * Loomified Control for a 4G LTE Board
+ * Loomified control for a u-blox SARA LTE board.
  *
- * @author Will Richards
+ * The class owns power sequencing, low-level AT readiness checks, cellular
+ * registration, APN/PDP activation, socket verification, network diagnostics,
+ * and direct UART passthrough for field debugging.
  */
 class Loom_LTE : public NetworkComponent{
     protected:
@@ -129,14 +180,15 @@ class Loom_LTE : public NetworkComponent{
 
     public:
         /**
-         * Construct a new LTE instance
-         * @param man Reference to the manager
-         * @param apn Name of the LTE network
-         * @param user Username to use
-         * @param pass Password to use
-         * @param powerPin Pin used to power the device
-         * @param version Board power-control style
-         * @param resetPin Pin used to reset the modem on OPEnS/Jolteon-style boards
+         * Construct a configured LTE instance from sketch-supplied credentials.
+         *
+         * @param man Reference to the Loom manager.
+         * @param apn Cellular APN. For Hologram this is usually "hologram".
+         * @param user APN username, usually empty for Hologram.
+         * @param pass APN password, usually empty for Hologram.
+         * @param powerPin Board-level pin that controls LTE PWR_ON.
+         * @param version Board power-control style.
+         * @param resetPin Optional board-level pin that controls LTE RESET_N. Use -1 to leave reset unused.
          */
         Loom_LTE(
             Manager& man,
@@ -153,55 +205,89 @@ class Loom_LTE : public NetworkComponent{
         );
 
         /**
-         * Construct a new LTE instance assuming credentials will be pulled from an SD card
-         * @param man Reference to the manager
+         * Construct an LTE instance whose credentials will be loaded later from
+         * SD-card JSON.
          */
         Loom_LTE(Manager& man);
 
+        /**
+         * Boot the modem, verify AT/TinyGSM readiness, read modem identity, and
+         * open the cellular data session.
+         */
         void initialize() override;
+
+        /**
+         * Apply board power sequencing and bring the modem to an AT-ready state.
+         * Carrier registration and APN/PDP activation are handled by connect().
+         */
         void power_up() override;
+
+        /**
+         * Request modem power-down when the module is initialized and active.
+         */
         void power_down() override;
+
+        /**
+         * Add LTE signal quality to the Loom data package.
+         */
         void package() override;
+
+        /**
+         * Read network time from the modem and convert the modem-reported local
+         * time back to UTC using the supplied timezone offset.
+         */
         bool getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) override;
 
         /**
-         * Load the config to connect to the LTE network from a JSON string
-         * @param json Json file read, this is freed before returning
+         * Load APN credentials and optional pin configuration from JSON.
+         *
+         * Expected credential keys:
+         * - apn
+         * - user
+         * - pass
+         *
+         * Optional pin keys:
+         * - pin
+         * - reset_pin
          */
         void loadConfigFromJSON(char* json);
 
         /**
-         * Turn on batch upload for the lte which means it will only initialize the module when we need to upload
-         * @param batch BatchSD module
+         * Attach a BatchSD module so LTE can remain off until the configured
+         * batch window requires upload.
          */
         void setBatchSD(Loom_BatchSD& batch) { batch_sd = &batch; };
 
         /**
-         * Connect to the cellular network
+         * Register on the cellular network and activate the APN/PDP data session.
          */
         bool connect();
 
         /**
-         * Disconnect from the cellular network
+         * Disconnect the APN/PDP data session.
          */
         void disconnect();
 
         /**
-         * Attempt to connect to something remote to see if we actually have an internet connection
+         * Open a real TCP socket to verify that the data session can route
+         * internet traffic.
          */
         bool verifyConnection();
 
         /**
          * Bridge USB serial to the LTE UART for manual AT-command debugging.
-         * Call this from loop when you want the Serial Monitor to talk directly to the modem.
+         * Call this from loop when the Serial Monitor should talk directly to the modem.
          */
         void debugPassthrough();
 
         /**
-         * Get the client to supply to publish platforms that need to communicate using this internet framework
+         * Return the TinyGSM client used by MQTT and other internet modules.
          */
         Client* getClient() override;
 
+        /**
+         * Request a modem poweroff, then run the normal power-up sequence again.
+         */
         void restartModem() {
             TIMER_RESET;
             modem.poweroff();
@@ -212,20 +298,24 @@ class Loom_LTE : public NetworkComponent{
         };
 
         /**
-         * Convert an IP address to a string
+         * Convert an IPAddress into a dotted IPv4 string.
          */
         void ipToString(IPAddress ip, char array[16]) {
             snprintf(array, 16, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
         };
 
     private:
-        // Copy sketch or SD-card credentials into owned buffers.
+        // Copy sketch or SD-card credentials into owned, null-terminated buffers.
         void copyCredential(char* dst, const char* src, size_t dstSize);
+
+        // Board-level control pin helpers.
         void driveControlPinIdle(int pin);
         void driveControlPinActive(int pin);
         void pulseControlPin(int pin, uint32_t pulseMs, const __FlashStringHelper* label);
         void idlePowerPin();
         void idleResetPin();
+
+        // Board and modem bring-up.
         void prepareOptionalPowerRails();
         void powerBoardOn();
         void powerBoardOff();
@@ -233,8 +323,12 @@ class Loom_LTE : public NetworkComponent{
         bool selectWorkingBaud(uint32_t timeoutMs);
         bool initializeModemFromAT();
         bool bootModemWithRetries();
+
+        // Raw AT helpers and R5 setup hints.
         bool sendATExpectOK(const char* command, uint32_t timeoutMs = 5000L);
         void applyR5NetworkHints();
+
+        // Human-readable diagnostics for field logs.
         void logBootChecklist();
         void logPlainFailure(const __FlashStringHelper* message);
         void logNetworkDiagnostics();
@@ -253,7 +347,7 @@ class Loom_LTE : public NetworkComponent{
 
         int powerPin = A5;
         int resetPin = -1;
-        uint32_t selectedBaud = 115200;
+        uint32_t selectedBaud = LOOM_LTE_R5_UART_BAUD;
 
         TinyGsm modem;
         TinyGsmClient client;

@@ -2,23 +2,24 @@
 #include "Logger.h"
 
 /*
- * SARA-R5 boot strategy
+ * SARA-R5 startup sequence
  *
- * The intermittent R5 failure looks like a bad modem state at boot, not a normal
- * APN failure. The important rule is to avoid blindly pulsing PWR_ON. On SARA-R5,
- * PWR_ON is already pulled up inside the modem and the host requests actions by
- * pulling it low through the board MOSFET. A pulse that is too long or a pulse
- * sent while the modem is already awake can look like a power toggle instead of
- * a clean boot.
+ * LTE startup is split from network registration. A modem that never answers AT
+ * is in a power, control-pin, UART, level-shifter, or modem-profile failure
+ * state. SIM, APN, carrier profile, antenna, and coverage checks are only useful
+ * after AT is stable.
  *
- * The flow below is deliberately staged:
- * 1. Put PWR_ON in its idle state.
- * 2. For OPEnS/Jolteon R5 compatibility, use the same power pulse shape as
- *    the old working Loom code: A5 HIGH for about 1 second, then A5 LOW.
- * 3. Wait for the modem OS before asking for AT.
- * 4. Keep the SARA UART fixed at 115200 unless fallback probing is explicitly enabled.
- * 5. Leave RESET_N alone by default because the old working path never drove A4.
- * 6. Print plain-language logs and raw AT snapshots when any stage fails.
+ * OPEnS/Jolteon R5 boards drive the SARA PWR_ON input through a MOSFET. The
+ * board-level startup sequence asserts A5, waits for LOOM_LTE_R5_PWR_PULSE_MS,
+ * releases A5, then gives the modem OS LOOM_LTE_R5_POST_PWR_SETTLE_MS before
+ * sending AT.
+ *
+ * The SARA-R5 UART uses LOOM_LTE_R5_UART_BAUD for normal operation. Fallback
+ * autobaud probing is a bench diagnostic and remains disabled unless explicitly
+ * enabled in Loom_LTE_Config.h.
+ *
+ * RESET_N recovery is disabled by default. Enable it only after confirming the
+ * reset-pin polarity and timing on the target board.
  */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -37,6 +38,8 @@ void Loom_LTE::copyCredential(char* dst, const char* src, size_t dstSize){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+// Construct a configured LTE module from sketch-supplied APN credentials.
+// The board version determines which PWR_ON sequence is used during power-up.
 Loom_LTE::Loom_LTE(Manager& man, const char* apn, const char* user, const char* pass, const int pin, LTE_VERSION version, const int rstPin) : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem){
     copyCredential(this->APN, apn, sizeof(this->APN));
     copyCredential(this->gprsUser, user, sizeof(this->gprsUser));
@@ -51,6 +54,8 @@ Loom_LTE::Loom_LTE(Manager& man, const char* apn, const char* user, const char* 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+// Construct an LTE module whose APN credentials will be supplied later from SD JSON.
+// R5 builds default to the OPEnS board profile so simple R5 examples use the R5 path.
 Loom_LTE::Loom_LTE(Manager& man) : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem){
     memset(APN, '\0', sizeof(APN));
     memset(gprsUser, '\0', sizeof(gprsUser));
@@ -67,6 +72,8 @@ Loom_LTE::Loom_LTE(Manager& man) : NetworkComponent("LTE"), manInst(&man), modem
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+// Put a board-level control pin into its inactive state.
+// For OPEnS R5 hardware this releases the SARA input through the MOSFET circuit.
 void Loom_LTE::driveControlPinIdle(int pin){
     // Idle means the modem input is released. On OPEnS/Jolteon hardware the
     // Feather drives a MOSFET gate, so the Feather level is the inverse of the
@@ -91,6 +98,8 @@ void Loom_LTE::driveControlPinIdle(int pin){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+// Put a board-level control pin into its active state.
+// Active means the SARA-side input is being asserted by the board control circuit.
 void Loom_LTE::driveControlPinActive(int pin){
     // Active means the SARA input is being pulled low through the board control
     // circuit. This is used for PWR_ON and RESET_N pulses.
@@ -116,7 +125,7 @@ void Loom_LTE::driveControlPinActive(int pin){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::pulseControlPin(int pin, uint32_t pulseMs, const __FlashStringHelper* label){
     // Keep the pulse helper boring and explicit. All pulse timing is configured
-    // in Loom_LTE_Config.h so board bring-up can be tuned without editing logic.
+    // in Loom_LTE_Config.h so board startup can be tuned without editing logic.
     if(pin < 0)
         return;
 
@@ -163,10 +172,12 @@ void Loom_LTE::prepareOptionalPowerRails(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+// Apply the board-specific power-on sequence.
+// R5 OPEnS/Jolteon boards use the explicit startup path configured above.
 void Loom_LTE::powerBoardOn(){
-    // The OPEnS/Jolteon R5 board powers reliably with the original Loom pulse:
-    // A5 HIGH for about 1 second, then A5 LOW, then a fixed boot settle delay.
-    // Keep this explicit because it is the known-good hardware behavior.
+    // The OPEnS/Jolteon R5 board uses a OPEnS/Jolteon R5 startup sequence here:
+    // A5 HIGH requests power-on through the control MOSFET, A5 LOW releases it,
+    // and the following settle delay gives the modem OS time to expose AT.
 #if defined(TINY_GSM_MODEM_SARAR5)
     if(lteBoardVersion == OPENS){
         Serial.print(F("LTE PWR_ON OPENS pulse HIGH for "));
@@ -226,10 +237,13 @@ bool Loom_LTE::waitForModemAT(uint32_t timeoutMs){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+// Open the LTE UART at the configured primary baud and verify AT.
+// Optional fallback probing is only for bench diagnostics.
 bool Loom_LTE::selectWorkingBaud(uint32_t timeoutMs){
     // The host UART still needs one concrete baud before it can send the first
-    // AT command. Keep that primary rate in Loom_LTE_Config.h so board bring-up
+    // AT command. Keep that primary rate in Loom_LTE_Config.h so board startup
     // does not require editing this file.
+    // Restore the configured primary baud before returning failure.
     selectedBaud = LOOM_LTE_R5_UART_BAUD;
     SerialAT.end();
     delay(100);
@@ -261,19 +275,24 @@ bool Loom_LTE::selectWorkingBaud(uint32_t timeoutMs){
     };
 
     for(uint8_t i = 0; i < (sizeof(supportedBauds) / sizeof(supportedBauds[0])); i++){
+        // Skip the configured primary baud because it was already tested first.
         if(supportedBauds[i] == LOOM_LTE_R5_UART_BAUD)
             continue;
 
+        // Try the next supported one-shot autobaud rate.
         selectedBaud = supportedBauds[i];
 
+        // Reopen the UART at the candidate baud.
         SerialAT.end();
         delay(100);
         SerialAT.begin(selectedBaud);
         delay(250);
 
+        // Print each fallback attempt for debug traces.
         Serial.print(F("LTE UART baud probe: "));
         Serial.println(selectedBaud);
 
+        // Accept the candidate baud only if the modem answers AT.
         if(waitForModemAT(3000L)){
             Serial.print(F("LTE UART baud selected: "));
             Serial.println(selectedBaud);
@@ -281,6 +300,7 @@ bool Loom_LTE::selectWorkingBaud(uint32_t timeoutMs){
         }
     }
 
+    // Restore the configured primary baud before returning failure.
     selectedBaud = LOOM_LTE_R5_UART_BAUD;
     SerialAT.end();
     delay(100);
@@ -408,9 +428,9 @@ void Loom_LTE::logBootChecklist(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::bootModemWithRetries(){
-    // Boot is treated as a state machine instead of a fixed delay. This prevents
-    // the one-in-several-boots case where the modem was already awake and the
-    // firmware accidentally sends a new power pulse into a live modem.
+    // Boot is handled in stages so the logs show exactly where startup fails.
+    // In R5 startup sequence, the power pulse is sent first, then AT
+    // detection proves that power, UART, and TinyGSM selection are usable.
 #if defined(TINY_GSM_MODEM_SARAR5)
 #if !LOOM_LTE_R5_COMPAT_POWER_FIRST
     LOG(F("Checking if SARA-R5 is already awake before touching PWR_ON."));
@@ -420,8 +440,8 @@ bool Loom_LTE::bootModemWithRetries(){
             return true;
     }
 #else
-    LOG(F("Using OPEnS-compatible power-first boot path."));
-    LOG(F("INFO: this mirrors the old working Loom sequence before AT probing."));
+    LOG(F("Using OPEnS/Jolteon R5 startup sequence."));
+    LOG(F("INFO: this uses the OPEnS/Jolteon OPEnS/Jolteon R5 startup sequence before AT probing."));
 #endif
 #endif
 
@@ -467,6 +487,8 @@ bool Loom_LTE::bootModemWithRetries(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+// Full manager initialization: boot the modem, read identity, then open a data session.
+// moduleInitialized is true only when the modem reaches a usable LTE data state.
 void Loom_LTE::initialize(){
     // Manager initialization enters here. At the end of this function,
     // moduleInitialized means both boot and the data session succeeded.
@@ -474,10 +496,16 @@ void Loom_LTE::initialize(){
     char output[OUTPUT_SIZE];
     char ip[16];
 
+    // Put the board-level control pins into their released states before boot.
     idlePowerPin();
+
+    // RESET_N is only touched when reset recovery is explicitly enabled.
     idleResetPin();
+
+    // Start up the modem and prove it can answer AT before network setup.
     power_up();
 
+    // If power_up() could not reach AT/TinyGSM readiness, stop before SIM/APN checks.
     if(!powered){
         ERROR(F("LTE shield not detected or modem did not finish booting."));
         ERROR(F("INFO: the modem never reached the basic AT-command-ready state, so this is a boot/power/UART problem before carrier registration."));
@@ -487,9 +515,13 @@ void Loom_LTE::initialize(){
         return;
     }
 
+    // Get the modem identity after TinyGSM initialization has succeeded.
     String modemInfo = modem.getModemInfo();
+
+    // Remove stray CR/LF characters before testing whether the response is usable.
     modemInfo.trim();
 
+    // If no identity text came back, UART is alive but modem initialization is incomplete.
     if(modemInfo.length() == 0){
         ERROR(F("LTE modem info was empty."));
         ERROR(F("INFO: UART is alive, but the modem did not return identity text. This usually means it is not fully initialized yet or the wrong TinyGSM modem profile was selected."));
@@ -499,24 +531,31 @@ void Loom_LTE::initialize(){
         return;
     }
 
+    // Print the modem identity for field logs.
     snprintf(output, OUTPUT_SIZE, "Modem Information: %s", modemInfo.c_str());
     LOG(output);
 
+    // Connect to the LTE network and open the APN/PDP data session.
     moduleInitialized = connect();
 
+    // If we successfully connected to the LTE network print out some information.
     if(moduleInitialized){
         LOG(F("Connected!"));
 
+        // Print APN.
         snprintf(output, OUTPUT_SIZE, "APN: %s", APN);
         LOG(output);
 
+        // Print signal quality as reported by the modem.
         snprintf(output, OUTPUT_SIZE, "Signal State: %i", modem.getSignalQuality());
         LOG(output);
 
+        // Log IP address.
         ipToString(modem.localIP(), ip);
         snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
         LOG(output);
 
+        // verifyConnection() is intentionally left for the main loop or user sketch.
         LOG(F("Module successfully initialized!"));
     }
     else{
@@ -549,15 +588,25 @@ void Loom_LTE::power_up(){
     LOG(F("Powering up LTE modem."));
     TIMER_DISABLE;
 
+    // Enable optional Hypnos rails only when this library owns rail control.
     prepareOptionalPowerRails();
+
+    // Release PWR_ON before applying the OPEnS-compatible power pulse.
     idlePowerPin();
+
+    // Leave RESET_N alone unless reset recovery has been explicitly enabled.
     idleResetPin();
+
+    // Restart the host UART cleanly before the boot sequence.
     SerialAT.end();
     delay(100);
+
+    // Start serial at the configured SARA-R5 baud rate.
     selectedBaud = LOOM_LTE_R5_UART_BAUD;
     SerialAT.begin(selectedBaud);
     delay(250);
 
+    // Power on the LTE board and verify the modem reaches a stable AT state.
     if(!bootModemWithRetries()){
         ERROR(F("Power-up failed: modem never reached a stable AT command state."));
         ERROR(F("INFO: this failure happened before SIM/APN/network checks. If 1.8V V_INT/ref is missing, the modem is not actually on. If 1.8V is present, check UART wiring, level shifting, and TinyGSM modem selection."));
@@ -568,10 +617,12 @@ void Loom_LTE::power_up(){
         return;
     }
 
+    // Mark the modem as powered only after AT and TinyGSM initialization succeed.
     LOG(F("Powering up complete!"));
     powered = true;
     TIMER_ENABLE;
 
+    // Connect to the network if we are powering up after the first initialization pass.
     if(!firstInit && moduleInitialized)
         moduleInitialized = connect();
 
@@ -692,6 +743,8 @@ void Loom_LTE::logNetworkDiagnostics(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+// Register on the cellular network and activate the APN/PDP data session.
+// This stage is only entered after boot has already proven AT/TinyGSM readiness.
 bool Loom_LTE::connect(){
     // Connection is intentionally retried independently from boot. A clean AT
     // boot can still fail later because of SIM, antenna, APN, carrier account,
@@ -728,10 +781,16 @@ bool Loom_LTE::connect(){
         modem.sendAT(GF("+CFUN=1"));
         modem.waitResponse(10000L);
 
+        // Set full modem functionality before registration.
+        modem.sendAT(GF("+CFUN=1"));
+        modem.waitResponse(10000L);
+
+        // Inject the APN profile into PDP context 1.
         LOG(F("Injecting APN profile..."));
         modem.sendAT(GF("+CGDCONT=1,\"IP\",\""), APN, GF("\""));
         modem.waitResponse(10000L);
 
+        // Wait for the modem to register on the cellular network.
         LOG(F("Waiting for network..."));
         if(!modem.waitForNetwork(600000L)){
             WARNING(F("No response from network."));
@@ -749,9 +808,11 @@ bool Loom_LTE::connect(){
             snprintf(output, OUTPUT_SIZE, "Attempting to connect to LTE Network: %s", APN);
             LOG(output);
 
+            // Clear any stale PDP state before opening the data session.
             modem.gprsDisconnect();
             delay(500);
 
+            // Open the APN/PDP data session.
             if(modem.gprsConnect(APN, gprsUser, gprsPass)){
                 LOG(F("Successfully Connected!"));
                 delay(6000);
@@ -804,6 +865,7 @@ bool Loom_LTE::verifyConnection(){
         return false;
     }
 
+    // Connect to TinyGSM's example endpoint to prove socket routing works.
     if(!client.connect("vsh.pp.ua", 80)){
         ERROR(F("Failed to contact TinyGSM example."));
         ERROR(F("INFO: the modem claims it has a data session, but a TCP socket could not be opened. This usually means PDP/DNS/routing/carrier data path trouble."));
@@ -813,13 +875,16 @@ bool Loom_LTE::verifyConnection(){
         return false;
     }
     else{
+        // Request the logo.txt to display.
         client.print("GET /TinyGSM/logo.txt HTTP/1.1\r\n");
         client.print("Host: vsh.pp.ua\r\n");
         client.print("Connection: close\r\n\r\n");
         client.println();
 
+        // Print response data to the serial monitor while the socket remains open.
         uint32_t timeout = millis();
         while(client.connected() && millis() - timeout < 10000L){
+            // Print available data.
             while(client.available() && millis() - timeout < 10000L){
                 char c = client.read();
                 Serial.print(c);
@@ -870,15 +935,18 @@ void Loom_LTE::loadConfigFromJSON(char* json){
         return;
     }
 
+    // Load cellular credentials when present.
     if(!doc["apn"].isNull()){
         copyCredential(APN, doc["apn"] | "", sizeof(APN));
         copyCredential(gprsUser, doc["user"] | "", sizeof(gprsUser));
         copyCredential(gprsPass, doc["pass"] | "", sizeof(gprsPass));
     }
 
+    // Override the LTE PWR_ON pin when the SD config supplies one.
     if(doc.containsKey("pin"))
         powerPin = doc["pin"].as<int>();
 
+    // Override the LTE RESET_N pin when the SD config supplies one.
     if(doc.containsKey("reset_pin"))
         resetPin = doc["reset_pin"].as<int>();
 
