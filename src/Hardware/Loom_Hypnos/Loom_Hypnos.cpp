@@ -370,10 +370,10 @@ void Loom_Hypnos::dateTime_toString(DateTime time, char array[21], bool isLocal)
 
     // Formatted as: YYYY-MM-DDTHH:MM:SSZ
     if (isLocal) {
-        snprintf_P(array, 21, PSTR("%u-%02u-%02uT%u:%u:%u"), time.year(), time.month(), time.day(),
+        snprintf_P(array, 21, PSTR("%04u-%02u-%02uT%02u:%02u:%02u"), time.year(), time.month(), time.day(),
                    time.hour(), time.minute(), time.second());
     } else {
-        snprintf_P(array, 21, PSTR("%u-%02u-%02uT%u:%u:%uZ"), time.year(), time.month(), time.day(),
+        snprintf_P(array, 21, PSTR("%04u-%02u-%02uT%02u:%02u:%02uZ"), time.year(), time.month(), time.day(),
                    time.hour(), time.minute(), time.second());
     }
 }
