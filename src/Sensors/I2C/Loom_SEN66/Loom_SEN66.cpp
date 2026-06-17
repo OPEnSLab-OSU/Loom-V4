@@ -9,6 +9,8 @@ Loom_SEN66::Loom_SEN66(
                         bool useMux,
                         bool readNumVals
                     ) : I2CDevice("SEN66"), manInst(&man), measurePM(measurePM), readNumVals(readNumVals){
+                        module_address = SEN66_I2C_ADDRESS;
+
                         if(!useMux)
                             manInst->registerModule(this);
                     }
@@ -50,7 +52,9 @@ void Loom_SEN66::initialize() {
     if (error) {
         snprintf(output, OUTPUT_SIZE, "Error starting measurement: %u", error);
         ERROR(output);
+        moduleInitialized = false;
     } else {
+        moduleInitialized = true;
         LOG("SEN66 Started. Waiting 5s for fan spin-up...");
         delay(5000); // Initial spin-up delay
     }

@@ -3,6 +3,7 @@
 #include "../../Loom_Manager.h"
 #include "../../Module.h"
 
+#include <array>
 #include <vector>
 #include <tuple>
 #include <algorithm>
@@ -25,91 +26,180 @@
 #include "../../Sensors/I2C/Loom_SEN66/Loom_SEN66.h"
 
 /**
- * Adds Hot Swappable functionality for TCA9548 multiplexer
- * 
- * NOTE: This significantly increases flash size and resulting storage used
- * 
+ * Adds hot swappable functionality for TCA9548 I2C multiplexers.
+ *
+ * By default the multiplexer scans enabled ports and loads matching Loom I2C
+ * sensors automatically. Sensor-specific options can be configured before
+ * manager.initialize() without manually attaching sensors to mux ports.
+ *
+ * NOTE: This significantly increases flash size and resulting storage used.
+ *
  * @author Will Richards
- */ 
+ */
 class Loom_Multiplexer : public Module{
     public:
 
-		/* Loomified generalized calls*/
-		void initialize() override;
-		void measure() override;
-		void package() override;
-		void power_down() override; 
-		void power_up() override;
+        /* Loomified generalized calls */
+        void initialize() override;
+        void measure() override;
+        void package() override;
+        void power_down() override;
+        void power_up() override;
 
         /**
-         * Construct a new Multiplexer
-         * 
+         * Construct a new Multiplexer using the default Loom I2C address list.
+         *
          * @param man Reference to the manager
-         */ 
+         */
         Loom_Multiplexer(Manager& man);
 
-		/**
-         * Construct a new Multiplexer with specified addresses 
-         * 
+        /**
+         * Construct a new Multiplexer with a specified sensor address list.
+         *
          * @param man Reference to the manager
-		 * @param addresses Vector of addresses you want to pass in to known addresses
-         */ 
+         * @param addresses I2C sensor addresses to scan for behind the mux
+         */
         Loom_Multiplexer(Manager& man, const std::vector<byte>& addresses);
 
-		// Destructor removes all new sensor instances
-		~Loom_Multiplexer();
-        
+        // Destructor removes all auto-loaded sensor instances.
+        ~Loom_Multiplexer();
+
+        /**
+         * Set the I2C addresses that the mux should scan for.
+         */
+        void setKnownAddresses(const std::vector<byte>& addresses);
+
+        /**
+         * Enable a mux port for auto-scanning.
+         */
+        void enablePort(uint8_t port);
+
+        /**
+         * Disable a mux port for auto-scanning.
+         */
+        void disablePort(uint8_t port);
+
+        /**
+         * Disable multiple mux ports for auto-scanning.
+         */
+        void disablePorts(const std::vector<uint8_t>& ports);
+
+        /**
+         * Restrict auto-scanning to only these mux ports.
+         */
+        void useOnlyPorts(const std::vector<uint8_t>& ports);
+
+        /**
+         * Set the TSL2591 options used when a TSL2591 is auto-loaded.
+         */
+        void setTSL2591Options(
+            tsl2591Gain_t light_gain = TSL2591_GAIN_MED,
+            tsl2591IntegrationTime_t integration_time = TSL2591_INTEGRATIONTIME_100MS
+        );
+
+        /**
+         * Set the SEN66 options used when a SEN66 is auto-loaded.
+         */
+        void setSEN66Options(
+            bool measurePM = true,
+            bool readNumVals = true
+        );
+
+        /**
+         * Print mux initialization and scan diagnostics directly to Serial.
+         */
+        void setDebug(bool enabled = true);
+
+        /**
+         * Print NACK/no-device lines during debug scans.
+         */
+        void setScanDebug(bool enabled = true);
+
+        /**
+         * Print a non-loading mux scan before manager.initialize().
+         */
+        void debugScan();
+
     private:
         Manager* manInst;                                       // Instance of the manager
-		byte activeMuxAddr;										// The port which we want to try to communicate over
-		const uint8_t numPorts = 8;								// Number of ports on the multiplexer
+        byte activeMuxAddr;                                     // Active TCA9548 address
+        const uint8_t numPorts = 8;                             // Number of ports on the multiplexer
 
-		std::vector<std::tuple<byte, Module*, int>> sensors;			// List of sensors
+        std::vector<std::tuple<byte, Module*, int>> sensors;    // List of auto-loaded sensors
 
-        void selectPin(uint8_t pin);                            // Select which pin of the multiplexer to transmit to
-		void disableChannels();									// Disables all channels on the Multiplexer
-		bool isDeviceConnected(byte addr);						// Check if there is a device at the specified address
+        void selectPin(uint8_t pin);                            // Select which mux port to transmit to
+        void disableChannels();                                 // Disables all channels on the multiplexer
+        bool isDeviceConnected(byte addr);                      // Check if there is a device at the specified address
+        uint8_t probeAddress(byte addr);                        // Return raw Wire.endTransmission status
+        bool isPortEnabled(uint8_t port);                       // Check if a mux port should be scanned
+        bool shouldScanAddress(byte addr);                      // Check if an address should be scanned behind the mux
 
-		void refreshSensors();									// Checks to see if any new sensors were swapped in allows for hot swapping
-		Module* loadSensor(const byte addr);					// Load the correct sensor based on the I2C address
+        void refreshSensors();                                  // Rebuilds the auto-loaded sensor list
+        void clearSensors();                                    // Deletes auto-loaded sensor instances
+        void scanAndLoadSensors();                              // Scans enabled ports and loads matching sensors
+        Module* loadSensor(const byte addr);                    // Load the correct sensor based on the I2C address
 
-		std::vector<byte> known_addresses = {};
+        void debugLog(const char* message);                     // Print a diagnostic line when debug is enabled
+        void debugLogI2CResult(const char* label, byte addr, uint8_t result);
 
-		// Used to optimize searching for sensors:
-		// search addresses in array rather than 0-127 
-		const std::vector<byte> default_addresses = 
-		{
-			0x10, ///< ZXGESTURESENSOR
-			0x11, ///< ZXGESTURESENSOR
-			0x15, ///< T6793
-			0x19, ///< LIS3DH
-			0x1C, ///< MMA8451
-			0x1D, ///< MMA8451
-			0x29, ///< TSL2591
-			0x36, ///< STEMMA
-			0x44, ///< SHT31D
-			0x45, ///< SHT31D
-			0x48, ///< ADS1115
-			0x49, ///< AS726X / AS7265X
-			0x68, ///< K30
-			0x69, ///< MPU6050
-			0x70, ///< MB1232
-			0x74, ///< DFMultiGasSensor
-			0x76, ///< MS5803
-			0x77,  ///< MS5803
-			0x6B  ///< SEN66
-		};
+        std::vector<byte> known_addresses = {};
+        std::array<bool, 8> portEnabled = {
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+        };
 
-		/**
-		 * Possible alternate addresses for the TCA9548
-		 */ 
-		const std::array<byte, 9>  alt_addresses = {
-			0x71,
-			0x72,
-			0x73,
-			0x74,
-			0x75,
-			0x78
-		};
+        tsl2591Gain_t tsl2591Gain = TSL2591_GAIN_MED;
+        tsl2591IntegrationTime_t tsl2591IntegrationTime = TSL2591_INTEGRATIONTIME_100MS;
 
+        bool sen66MeasurePM = true;
+        bool sen66ReadNumVals = true;
+
+        bool debugOutput = false;
+        bool scanDebugOutput = false;
+
+        // Used to optimize searching for sensors:
+        // search addresses in array rather than 0-127.
+        const std::vector<byte> default_addresses =
+        {
+            0x10, ///< ZXGESTURESENSOR
+            0x11, ///< ZXGESTURESENSOR
+            0x15, ///< T6793
+            0x19, ///< LIS3DH
+            0x1C, ///< MMA8451
+            0x1D, ///< MMA8451
+            0x29, ///< TSL2591
+            0x36, ///< STEMMA
+            0x44, ///< SHT31D
+            0x45, ///< SHT31D
+            0x48, ///< ADS1115
+            0x49, ///< AS726X / AS7265X
+            0x68, ///< K30
+            0x69, ///< MPU6050 / SEN55
+            0x6B, ///< SEN66
+            0x70, ///< MB1232
+            0x74, ///< DFMultiGasSensor
+            0x75, ///< DFMultiGasSensor
+            0x76, ///< MS5803
+            0x77  ///< MS5803
+        };
+
+        /**
+         * Possible TCA9548 addresses.
+         */
+        const std::array<byte, 8> alt_addresses = {
+            0x70,
+            0x71,
+            0x72,
+            0x73,
+            0x74,
+            0x75,
+            0x76,
+            0x77
+        };
 };
