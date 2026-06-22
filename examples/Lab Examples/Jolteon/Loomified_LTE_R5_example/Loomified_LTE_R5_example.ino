@@ -1,0 +1,31 @@
+/**
+ * This is an example use case for Loomified LTE
+ *
+ * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
+ */
+#define LOOM_LTE_USE_SARA_R5
+
+#include "arduino_secrets.h"
+
+#include <Loom_Manager.h>
+
+// Loom Modules
+#include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
+
+Manager manager("Device", 1);
+
+#define NETWORK_NAME "hologram"
+#define NETWORK_USER ""
+#define NETWORK_PASS ""
+
+Loom_LTE lte(manager, NETWORK_NAME, NETWORK_USER, NETWORK_PASS, A5, OPENS);
+
+void setup() {
+  manager.beginSerial();
+  manager.initialize();
+}
+
+void loop() {
+  lte.verifyConnection();
+  manager.pause(5000);
+}
