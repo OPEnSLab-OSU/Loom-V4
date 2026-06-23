@@ -117,6 +117,7 @@ void analogFrontendOn() {
 }
 
 void analogFrontendOff() {
+  ads.power_down();
   digitalWrite(VREFEN, LOW);
 }
 
@@ -180,8 +181,8 @@ float readTemperature() {
   long counts = readCounts(THERMISTOR_CHANNEL);
   lastTempCounts = counts;
 
-  // The ads1232_lib output is centered near 2^23 for 0 V differential.
-  // Convert centered counts back to the thermistor divider signal voltage.
+  // The ADS1232 library returns offset-binary counts centered near 2^23
+  // for 0 V differential. Convert centered counts back to thermistor voltage.
   const float gain = 2.0f;
   const float v_ref = 3.01f;
   float volts = (((float)counts / ADC_ZERO_COUNTS) - 1.0f) * v_ref / (2.0f * gain);
@@ -312,11 +313,16 @@ void loop() {
   float weight = 0;
 
   // Removing the effect of temperature on the load cell.
+  float rawWeight = readWeight();
+
   if (CALIBRATION_MODE) {
-    weight = readWeight();
+    weight = rawWeight;
+  }
+  else if (temp >= 0.0f) {
+    weight = rawWeight - ((COEFFICIENT * temp) + BIAS);
   }
   else {
-    weight = readWeight() - ((COEFFICIENT * temp) + BIAS);
+    weight = rawWeight;
   }
 
   analogFrontendOff();
