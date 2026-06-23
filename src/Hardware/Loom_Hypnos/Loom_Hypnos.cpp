@@ -1,9 +1,69 @@
 #include "Loom_Hypnos.h"
 #include "Logger.h"
 
+
+static uint8_t hypnosMonthFromCompileString(const char* month) {
+    if(strncmp(month, "Jan", 3) == 0) return 1;
+    if(strncmp(month, "Feb", 3) == 0) return 2;
+    if(strncmp(month, "Mar", 3) == 0) return 3;
+    if(strncmp(month, "Apr", 3) == 0) return 4;
+    if(strncmp(month, "May", 3) == 0) return 5;
+    if(strncmp(month, "Jun", 3) == 0) return 6;
+    if(strncmp(month, "Jul", 3) == 0) return 7;
+    if(strncmp(month, "Aug", 3) == 0) return 8;
+    if(strncmp(month, "Sep", 3) == 0) return 9;
+    if(strncmp(month, "Oct", 3) == 0) return 10;
+    if(strncmp(month, "Nov", 3) == 0) return 11;
+    if(strncmp(month, "Dec", 3) == 0) return 12;
+    return 1;
+}
+
+static bool hypnosTimezoneUsesDST(TIME_ZONE timezone) {
+    return timezone == AST || timezone == EST || timezone == CST || timezone == MST || timezone == PST || timezone == AKST;
+}
+
+static DateTime hypnosCompileLocalTime(const char* buildDate, const char* buildTime) {
+    const char* dateStr = (buildDate != nullptr && buildDate[0] != '\0') ? buildDate : __DATE__;
+    const char* timeStr = (buildTime != nullptr && buildTime[0] != '\0') ? buildTime : __TIME__;
+
+    char monthStr[4] = {};
+    int day = 1;
+    int year = 2000;
+    int hour = 0;
+    int minute = 0;
+    int second = 0;
+
+    sscanf(dateStr, "%3s %d %d", monthStr, &day, &year);
+    sscanf(timeStr, "%d:%d:%d", &hour, &minute, &second);
+
+    return DateTime(year, hypnosMonthFromCompileString(monthStr), day, hour, minute, second);
+}
+
+static DateTime hypnosCompileTimeUTC(TIME_ZONE timezone, const char* buildDate, const char* buildTime) {
+    DateTime compileLocal = hypnosCompileLocalTime(buildDate, buildTime);
+
+    int offsetHours = (int)timezone;
+    int offsetMinutes = 0;
+
+    if(hypnosTimezoneUsesDST(timezone) && compileLocal.month() >= 3 && compileLocal.month() < 11){
+        offsetHours += 1;
+    }
+
+    if(timezone == TIME_ZONE::ACST){
+        offsetMinutes = 30;
+    }
+
+    // __DATE__ and __TIME__ must be supplied by the sketch before enable().
+    // The fallback macros in this .cpp can be stale because Arduino may cache library builds.
+    // Store the DS3231 in UTC because getLocalTime() applies the timezone later.
+    return compileLocal + TimeSpan(0, -offsetHours, -offsetMinutes, 0);
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time, bool useSD) : Module("Hypnos"), custom_time(use_custom_time), sd_chip_select(version), enableSD(useSD), timezone(zone){
     manInst = &man;
+    memset(sketchCompileDate, '\0', sizeof(sketchCompileDate));
+    memset(sketchCompileTime, '\0', sizeof(sketchCompileTime));
 
     // Set the pins to write mode
     pinMode(5, OUTPUT);                     // 3.3v power rail
@@ -242,6 +302,21 @@ void Loom_Hypnos::wakeup(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::setCompileTime(const char* buildDate, const char* buildTime){
+    memset(sketchCompileDate, '\0', sizeof(sketchCompileDate));
+    memset(sketchCompileTime, '\0', sizeof(sketchCompileTime));
+
+    if(buildDate != nullptr){
+        strncpy(sketchCompileDate, buildDate, sizeof(sketchCompileDate) - 1);
+    }
+
+    if(buildTime != nullptr){
+        strncpy(sketchCompileTime, buildTime, sizeof(sketchCompileTime) - 1);
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::initializeRTC(){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
@@ -253,15 +328,43 @@ void Loom_Hypnos::initializeRTC(){
         return;
     }
 
-    // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't happen with coin cell batt backup
-	if (RTC_DS.lostPower()) {
-		WARNING(F("RTC lost power, let's set the time!"));
+    RTC_initialized = true;
 
-        // If we want to set a custom time
+    bool rtcLostPower = RTC_DS.lostPower();
+
+    // If the coin cell died or the DS3231 lost state, keep the existing manual UTC prompt.
+    // This preserves field recovery behavior instead of silently accepting a reset RTC time.
+    if(rtcLostPower){
+        WARNING(F("RTC lost power, let's set the time!"));
+
         if(Serial){
             set_custom_time();
         }
-	}
+        else{
+            DateTime compileUTC = hypnosCompileTimeUTC(timezone, sketchCompileDate, sketchCompileTime);
+            RTC_DS.adjust(compileUTC);
+            snprintf(output, OUTPUT_SIZE, "Serial unavailable. RTC set from local compile time as UTC: %s", getCurrentTime().text());
+            LOG(output);
+        }
+    }
+    else if(custom_time){
+        DateTime compileLocal = hypnosCompileLocalTime(sketchCompileDate, sketchCompileTime);
+        DateTime compileUTC = hypnosCompileTimeUTC(timezone, sketchCompileDate, sketchCompileTime);
+        DateTime rtcTime = RTC_DS.now();
+
+        snprintf(output, OUTPUT_SIZE, "Compile time local: %s", compileLocal.text());
+        LOG(output);
+
+        if(rtcTime.unixtime() < compileUTC.unixtime()){
+            RTC_DS.adjust(compileUTC);
+            snprintf(output, OUTPUT_SIZE, "RTC set from sketch compile time as UTC: %s", getCurrentTime().text());
+            LOG(output);
+        }
+        else{
+            snprintf(output, OUTPUT_SIZE, "RTC already newer than sketch compile time: %s", rtcTime.text());
+            LOG(output);
+        }
+    }
 
 	// Clear any pending alarms
 	RTC_DS.clearAlarm();
@@ -270,8 +373,13 @@ void Loom_Hypnos::initializeRTC(){
 
     // We successfully started the RTC
     LOG(F("DS3231 Real-Time Clock Initialized Successfully!"));
-    RTC_initialized = true;
-    snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
+
+    DateTime currentUTC = getCurrentTime();
+    DateTime currentLocal = getLocalTime(currentUTC);
+
+    snprintf(output, OUTPUT_SIZE, "Current RTC time UTC: %s", currentUTC.text());
+    LOG(output);
+    snprintf(output, OUTPUT_SIZE, "Current RTC time Local: %s", currentLocal.text());
     LOG(output);
     FUNCTION_END;
 

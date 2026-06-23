@@ -1,9 +1,12 @@
 /*
  * Title: Evaporometer Rev 02
  * By: Evan and Forrest
+ * Fixes by Josh
+ * Hypnos SD run-file version
  */
 
 #include <Loom_Manager.h>
+#include <SPI.h>
 #include <ADS1232_Lib.h>
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Hardware/Loom_Hypnos/SDManager.h>
@@ -19,13 +22,15 @@
 #define VBATPIN A7
 #define SDI_EN
 
+#define DEVICE_INSTANCE 2
+
 #define CHANNEL_LOW 0
 #define CHANNEL_HIGH 1
 
 // Set to 1 if the ADS1232 channel select wiring/polarity is reversed.
-// This version is set to swapped because the logged traces look like the
-// load cell and thermistor paths may be crossed at the ADC input or SEL pin.
-#define SWAP_ADC_CHANNELS 1
+// The current bench traces show the normal channel mapping is correct:
+// thermistor on CHANNEL_HIGH and load cell on CHANNEL_LOW.
+#define SWAP_ADC_CHANNELS 0
 
 #if SWAP_ADC_CHANNELS
   #define LOADCELL_CHANNEL CHANNEL_HIGH
@@ -74,20 +79,24 @@
 // Output to Serial Monitor Graph
 #define DEMO_MODE 0
 
-// Print raw channel diagnostics to Serial without changing the SD columns.
+// Keep the same serial debug output shape as the original V1 sketch:
+// counts, a, volts, resistance, weight, temperature.
 #define ADC_DEBUG_MODE 1
 
-// ADS1232 / analog front-end settling. These are intentionally conservative
-// for debugging because VREF/excitation, the thermistor divider, and channel
-// select settling can all look like channel flipping when they are marginal.
+// ADS1232 / analog front-end settling. These are conservative for debugging
+// because VREF/excitation and channel select settling can look like channel
+// flipping when they are marginal.
 #define VREF_SETTLE_MS 1000
 #define ADC_CHANNEL_SETTLE_MS 250
 #define ADC_DISCARD_READS 10
 
-Manager     manager("Device", 1);
+// Pass the sketch build timestamp into Hypnos before RTC initialization.
+// This avoids stale __DATE__ / __TIME__ values from cached library builds.
+#define SET_RTC_FROM_SKETCH_COMPILE_TIME 1
+
+Manager     manager("Device", DEVICE_INSTANCE);
 ADS1232_Lib ads(PDWN, SCLK, DOUT);
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, true, true);
-SDManager   sd(&manager, 11);
 
 const float resistanceLUT[] = {
   32739.8, 31109.2, 29569.5, 28115.0,
@@ -111,6 +120,7 @@ long lastWeightCounts = 0;
 long lastTempCounts = 0;
 
 void analogFrontendOn() {
+  pinMode(VREFEN, OUTPUT);
   digitalWrite(VREFEN, HIGH);
   ads.power_up();
   manager.pause(VREF_SETTLE_MS);
@@ -118,6 +128,7 @@ void analogFrontendOn() {
 
 void analogFrontendOff() {
   ads.power_down();
+  pinMode(VREFEN, OUTPUT);
   digitalWrite(VREFEN, LOW);
 }
 
@@ -181,31 +192,45 @@ float readTemperature() {
   long counts = readCounts(THERMISTOR_CHANNEL);
   lastTempCounts = counts;
 
+#if ADC_DEBUG_MODE
+  Serial.print("counts: ");
+  Serial.println(counts);
+#endif
+
+  // transform from counts to volts
   // The ADS1232 library returns offset-binary counts centered near 2^23
   // for 0 V differential. Convert centered counts back to thermistor voltage.
   const float gain = 2.0f;
   const float v_ref = 3.01f;
   float volts = (((float)counts / ADC_ZERO_COUNTS) - 1.0f) * v_ref / (2.0f * gain);
 
+#if ADC_DEBUG_MODE
+  Serial.print("a: ");
+  Serial.println(volts);
+  Serial.print("volts: ");
+  Serial.println(volts, 4);
+#endif
+
   // transform from volts to resistance of thermistor
   const float R = 10000.0f;
   float denom = (volts / v_ref) + 0.5f;
 
   if (denom <= 0.0f) {
+#if ADC_DEBUG_MODE
+    Serial.print("resistance: ");
+    Serial.println(-1.0f);
+#endif
     return -1;
   }
 
   // v_sig = (R / (R + R_t) - 0.5) * v_ref
+  // v_sig / v_ref + 0.5 = R / (R + R_t)
   // R / (v_sig / v_ref + 0.5) - R = R_t
   float resistance = (R / denom) - R;
 
 #if ADC_DEBUG_MODE
-  Serial.print("temp_counts: ");
-  Serial.println(counts);
-  Serial.print("temp_volts: ");
-  Serial.println(volts, 6);
-  Serial.print("thermistor_ohms: ");
-  Serial.println(resistance, 2);
+  Serial.print("resistance: ");
+  Serial.println(resistance);
 #endif
 
   // use the lookup table and interpolation to find temperature
@@ -229,10 +254,20 @@ float readVbat(){
   return measuredvbat;
 }
 
+void prepareSDForWrite() {
+  // VREFEN is MOSI on this board, so the ADC front-end control can leave the
+  // SPI bus in GPIO mode. Restore SPI immediately before each SD file open.
+  pinMode(23, OUTPUT);
+  pinMode(24, OUTPUT);
+  pinMode(11, OUTPUT);
+  digitalWrite(8, HIGH);
+  SPI.begin();
+}
+
 /*
  *    Function: log_date
  *    Description: Logs weight and temp to SD card
- *    Logs by default to "Device0.csv"
+ *    Logs to the current Hypnos SD file selected at boot
  *
  */
 void logData(float weight, float temp, float vbat){
@@ -263,7 +298,18 @@ void logData(float weight, float temp, float vbat){
   strcat(date_and_data, ",");
   strcat(date_and_data, buf4);
 
-  sd.writeLineToFile("Device0.csv", date_and_data);
+  prepareSDForWrite();
+
+  const char* logFile = hypnos.getDefaultFilename();
+
+#if ADC_DEBUG_MODE
+  Serial.print("logging_to: ");
+  Serial.println(logFile);
+#endif
+
+  if (!hypnos.getSDManager()->writeLineToFile(logFile, date_and_data)) {
+    Serial.println("log_write_failed");
+  }
 }
 
 void isr_Trigger(){
@@ -281,6 +327,10 @@ void setup() {
   manager.beginSerial();
   Serial.println("Starting Setup");
 
+#if SET_RTC_FROM_SKETCH_COMPILE_TIME
+  hypnos.setCompileTime(__DATE__, __TIME__);
+#endif
+
   if (LOGGING_MODE) {hypnos.enable(true, false);}
 
   manager.initialize();
@@ -294,12 +344,11 @@ void setup() {
   ads.set_offset(0);
   ads.set_scale(1);
 
-  // set SD card write pins
+  // Hypnos owns the SD manager. It selects a new DeviceN.csv file on reboot
+  // and keeps appending to that same file across sleep/wake cycles.
   if (LOGGING_MODE) {
-    pinMode(23, OUTPUT);
-    pinMode(24, OUTPUT);
-    pinMode(11, OUTPUT);
-    sd.begin();
+    Serial.print("Hypnos log file: ");
+    Serial.println(hypnos.getDefaultFilename());
     hypnos.registerInterrupt(isr_Trigger);
   }
 
@@ -328,15 +377,6 @@ void loop() {
   analogFrontendOff();
 
   float vbat = readVbat();
-
-#if ADC_DEBUG_MODE
-  Serial.print("load_channel: ");
-  Serial.println(LOADCELL_CHANNEL);
-  Serial.print("therm_channel: ");
-  Serial.println(THERMISTOR_CHANNEL);
-  Serial.print("weight_counts: ");
-  Serial.println(lastWeightCounts);
-#endif
 
   if (DEMO_MODE) {
     Serial.println(weight);

@@ -215,6 +215,13 @@ class Loom_Hypnos : public Module{
         void set_custom_time();
 
         /**
+         * Supplies the sketch build timestamp to the RTC code. Call this from the .ino
+         * before enable() so __DATE__ and __TIME__ come from the sketch rebuild, not
+         * from a cached library object file.
+         */
+        void setCompileTime(const char* buildDate, const char* buildTime);
+
+        /**
          * Load the configuration for the hypnos from the SD card (Timezeone and sleep interval)
          * @param fileName The file name on the root of the SD card to retrieve the information from
          * @return Return the time span for which the device is intended to sleep for
@@ -292,6 +299,8 @@ class Loom_Hypnos : public Module{
         bool RTC_initialized = false;                                                       // Did the RTC initialize correctly?
 
         bool custom_time = false;                                                           // Set the RTC to a user specified time
+        char sketchCompileDate[12];                                                          // Date supplied by the .ino __DATE__ macro
+        char sketchCompileTime[9];                                                           // Time supplied by the .ino __TIME__ macro
 
         // Map the given pin to an interrupt call back
         // 0th - ISR
