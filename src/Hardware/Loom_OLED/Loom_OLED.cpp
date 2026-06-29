@@ -1,7 +1,10 @@
 #include "Loom_OLED.h"
 #include "Logger.h"
+#include "Loom_WarningGuards.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Adafruit_GFX.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_OLED::Loom_OLED(Manager& man,
@@ -13,17 +16,18 @@ Loom_OLED::Loom_OLED(Manager& man,
                      const uint16_t scroll_duration, 
                      const byte freeze_pin, 
                      const FreezeType freeze_behavior
-                    ) : Module("OLED"), manInst(&man), min_filter_delay(min_filter_delay), version(type), reset_pin(reset_pin), display_format(display_format), scroll_duration(scroll_duration), freeze_behavior(freeze_behavior), freeze_pin(freeze_pin), flattenedDoc(MAX_JSON_SIZE){
+                    ) : Module("OLED"), manInst(&man), featherwingDisplay(), breakoutDisplay(reset_pin), display(nullptr), min_filter_delay(min_filter_delay), version(type), reset_pin(reset_pin), display_format(display_format), scroll_duration(scroll_duration), freeze_pin(freeze_pin), freeze_behavior(freeze_behavior), lastLogTime(0), previous_time(0), flattenedDoc(MAX_JSON_SIZE){
+                        (void)enable_rate_filter;
                         manInst->registerModule(this);
 
                         // Create the correct display module given the OLED version
-                        display = (version == Version::FEATHERWING) ? new Adafruit_SSD1306() : new Adafruit_SSD1306(reset_pin);
+                        display = (version == Version::FEATHERWING) ? &featherwingDisplay : &breakoutDisplay;
                     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_OLED::~Loom_OLED(){
-    delete display;
+    display = nullptr;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -156,7 +160,6 @@ bool Loom_OLED::canWrite(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_OLED::flattenJSONObject(JsonObject json){
 	char keyName[100];
-	memset(keyName, '\0', 100);
 
     // Get the contents array
     JsonArray contents = json["contents"].as<JsonArray>();
@@ -171,10 +174,11 @@ void Loom_OLED::flattenJSONObject(JsonObject json){
     JsonObject data;
     for (auto module_obj : contents) {
 		for (JsonPair kv : module_obj["data"].as<JsonObject>()) {
-			memset(keyName, '\0', 100);
-			strncat(keyName, module_obj["module"].as<const char*>(), 100);
-			strncat(keyName, ".", 100);
-			strncat(keyName, kv.key().c_str(), 100);
+            const char* moduleName = module_obj["module"].as<const char*>();
+            if(moduleName == nullptr){
+                moduleName = "";
+            }
+			snprintf(keyName, sizeof(keyName), "%s.%s", moduleName, kv.key().c_str());
 			LOG(keyName);
 			flatData[keyName] = kv.value();
 		}

@@ -2,10 +2,14 @@
 
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Wire.h>
 
 #include <Adafruit_VCNL4010.h>
 #include <Adafruit_Sensor.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 /**
  * Interface for the VCNL4010 Proximity & Ambient light sensor module.

@@ -1,6 +1,10 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <ArduinoMqttClient.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #include "Module.h"
 #include "../../Connectivity/NetworkComponent.h"
@@ -91,7 +95,7 @@ class MQTTComponent : public Module{
          * @param compName Name for the underlying module
          * @param internet_client The Client object from a internet platform
         */
-        MQTTComponent(const char* compName, NetworkComponent& internet_client) : Module(compName), internetClient(internet_client), mqttClient(internet_client.getClient()){
+        MQTTComponent(const char* compName, NetworkComponent& internet_client) : Module(compName), mqttClient(internet_client.getClient()), internetClient(internet_client){
             /* Clear all connection parameters */
             memset(address, '\0', 100);
             port = 0;

@@ -1,6 +1,6 @@
 /**
  * Author: Chet Udell
- * ENGR 102 Example Code: 
+ * ENGR 102 Example Code:
  * Read the Adafruit STEMMA i2c Soil Moisutre Sensor
  * Read the Analog A0 channel
  * Log everything to SD
@@ -15,6 +15,10 @@
 #include <Loom_Manager.h>
 #include <Logger.h>
 
+// Hypnos is instantiated directly below. Keep this explicit so Logger.h stays a
+// lightweight logging interface and does not pull SD/SPI hardware into sketches
+// that only need serial logging.
+#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Sensors/I2C/Loom_STEMMA/Loom_STEMMA.h>
 #include <Sensors/Loom_Analog/Loom_Analog.h>
 

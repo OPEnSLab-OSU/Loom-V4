@@ -6,7 +6,6 @@
 
 #include <Udp.h>
 #include <vector>
-#include <memory>
 
 // Base ports to send and receive on 
 #define SEND_BASE_UDP_PORT 8000
@@ -28,19 +27,6 @@ class Loom_Max : public Module{
 
     public:
        
-
-        /// Close the socket and delete the UDP object when the unique ptr dissapears
-        struct UDPDeletor {
-            void operator() (UDP* p) {
-                if (p != nullptr) {
-                    p->stop();
-                    delete p;
-                }
-            }
-        };
-
-        using UDPPtr = std::unique_ptr<UDP, UDPDeletor>;
-
         /* Initialize from the manager */
         void initialize() override;
 
@@ -96,8 +82,8 @@ class Loom_Max : public Module{
         Manager* manInst;                       // Instance of the manager
         Loom_WIFI* wifiInst;                    // Instance of the WiFi Manager
 
-        UDPPtr udpSend;                         // Instance of the UDP controller for sending
-        UDPPtr udpRecv;                         // Instance of the UDP controller for recieving
+        WiFiUDP udpSend;                        // Instance of the UDP controller for sending
+        WiFiUDP udpRecv;                        // Instance of the UDP controller for recieving
 
         uint16_t sendPort;                      // Port to send the UDP packets to
         uint16_t recvPort;                      // Port to receive the packets on

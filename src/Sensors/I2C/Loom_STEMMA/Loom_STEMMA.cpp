@@ -24,7 +24,7 @@ void Loom_STEMMA::initialize() {
         moduleInitialized = false;
     }
     else{
-        snprintf(output, OUTPUT_SIZE, "Successfully initialized STEMMA Version: %u", stemma.getVersion());
+        snprintf(output, OUTPUT_SIZE, "Successfully initialized STEMMA Version: %lu", (unsigned long)stemma.getVersion());
         LOG(output);
         
     }

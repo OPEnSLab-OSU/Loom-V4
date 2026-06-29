@@ -1,6 +1,11 @@
 #pragma once
 
+#include "../../../Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Adafruit_ADS1X15.h>
+LOOM_EXTERNAL_INCLUDE_END
+
 #include <map>
 
 #include "../I2CDevice.h"

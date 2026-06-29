@@ -19,7 +19,6 @@ Loom_T6793::Loom_T6793(
 void Loom_T6793::initialize() {
     FUNCTION_START;
     char output[OUTPUT_SIZE];
-    char errorMessage[OUTPUT_SIZE];
 
     /* Initialize wire and start the sensor using the standard I2C interface */
     Wire.begin();
@@ -45,8 +44,6 @@ void Loom_T6793::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_T6793::measure() {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
-    char sensorError[OUTPUT_SIZE];
 
     float CO2_Sample_Sum = 0;
     float CO2_Sample = 0;

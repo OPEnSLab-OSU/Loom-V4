@@ -1,6 +1,11 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <ArduinoJson.h>
+LOOM_EXTERNAL_INCLUDE_END
+
 #include <vector>
 #include <unordered_map>
 

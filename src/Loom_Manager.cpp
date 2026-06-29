@@ -1,6 +1,5 @@
 #include "Loom_Manager.h"
 #include "Logger.h"
-Logger* Logger::instance = nullptr;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Manager::Manager(const char* devName, uint32_t instanceNum) : instanceNumber(instanceNum), doc(MAX_JSON_SIZE) {
@@ -13,7 +12,7 @@ Manager::Manager(const char* devName, uint32_t instanceNum) : instanceNumber(ins
  void Manager::registerModule(Module* module){
     char* location;
     // If there are no duplicates proceed as normal
-    for(int i = 0; i < modules.size(); i++){
+    for(size_t i = 0; i < modules.size(); i++){
         // Find the pointer to the module name
         location = strstr(modules[i].first, module->getModuleName());
         
@@ -45,14 +44,14 @@ DynamicJsonDocument& Manager::getDocument() {return doc;}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::beginSerial(bool waitForSerial){
-    long startMillis = millis();
+    uint32_t startMillis = millis();
 
     Serial.begin(BAUD_RATE);
     // Pause if the Serial is not open and we want to wait
     while(!Serial && waitForSerial){
 
         // If it has been 20 seconds break out of the loop
-        if(millis() >= (startMillis+WAIT_TIME_MS)){
+        if((uint32_t)(millis() - startMillis) >= WAIT_TIME_MS){
             break;
         }
     }
@@ -66,7 +65,7 @@ void Manager::measure() {
     char noInitLog[50];
     if(hasInitialized){
        LOG(F("** Measuring **"));
-       for(int i = 0; i < modules.size(); i++){
+       for(size_t i = 0; i < modules.size(); i++){
             if(modules[i].second->moduleInitialized)
                 modules[i].second->measure();
             else{
@@ -109,7 +108,7 @@ void Manager::package(){
     JsonObject json = get_data_object("Packet");
     json["Number"] = packetNumber;
 
-    for(int i = 0; i < modules.size(); i++){
+    for(size_t i = 0; i < modules.size(); i++){
         if(modules[i].second->moduleInitialized){
             modules[i].second->package();
         } else{
@@ -149,7 +148,7 @@ JsonObject Manager::get_data_object(const char* moduleName){
 void Manager::power_up(){
     FUNCTION_START;
     char noInitLog[50];
-    for(int i = 0; i < modules.size(); i++){
+    for(size_t i = 0; i < modules.size(); i++){
         Watchdog.reset();
         if(modules[i].second->moduleInitialized){
             // If we are about to power up the LTE we should turn off the watchdog
@@ -177,7 +176,7 @@ void Manager::power_up(){
 void Manager::power_down(){
     FUNCTION_START;
     char noInitLog[50];
-    for(int i = 0; i < modules.size(); i++){
+    for(size_t i = 0; i < modules.size(); i++){
         if(modules[i].second->moduleInitialized)
             modules[i].second->power_down();
         else{
@@ -199,7 +198,7 @@ void Manager::display_data(){
     if(!doc.isNull()){
 
         // Display data for modules that support it
-        for(int i = 0; i < modules.size(); i++){
+        for(size_t i = 0; i < modules.size(); i++){
             modules[i].second->display_data();
         }
 
@@ -225,7 +224,7 @@ void Manager::initialize() {
 
     LOG(F("** Initializing Modules **"));
     read_serial_num();
-    for(int i = 0; i < modules.size(); i++){
+    for(size_t i = 0; i < modules.size(); i++){
         modules[i].second->initialize();
     }
     hasInitialized = true;
@@ -239,7 +238,6 @@ void Manager::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::getJSONString(char array[MAX_JSON_SIZE]){
-    size_t jsonSize = measureJson(doc)+1;
     serializeJson(doc, array, MAX_JSON_SIZE);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -269,8 +267,8 @@ void Manager::read_serial_num(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::pause(const uint32_t ms) const {
     TIMER_DISABLE;
-    int waitTime = millis() + ms;
-    while (millis() < waitTime);
+    uint32_t startTime = millis();
+    while ((uint32_t)(millis() - startTime) < ms);
     TIMER_ENABLE;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

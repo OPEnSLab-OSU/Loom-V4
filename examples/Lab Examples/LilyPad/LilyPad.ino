@@ -1,6 +1,6 @@
 /**
  * LilyPad4G.ino
- * 
+ *
  * This project (https://github.com/OPEnSLab-OSU/Lilypad) uses the VEML7700, DS18B20, and SHT31 sensors to log environment data and logs it to both the SD card and also MQTT/MongoDB
  * Required Packages: Altered VEML7700, OneWire, DallasTemperature, Loom4 commit 63b8fd5 or later
  */
@@ -9,7 +9,7 @@
 #define USE_INTERNET
 // COMMENT THE FOLLOWING LINE TO NOT USE RTC INTERRUPT
 #define USE_RTC_INT
-#define INT_MIN 2      // Sets sleep time in minutes when RTC is used
+#define RTC_SLEEP_MINUTES 2  // Sets sleep time in minutes when RTC is used
 #define DEBUG_DELAY 2  // Sets delay time in seconds when rtc interrupt isnt used
 
 #define COLLECTION_NAME "LP1"
@@ -43,7 +43,7 @@ Loom_SHT31 sht(manager);
 // Create lte and mqtt classes
 #ifdef USE_INTERNET
 Loom_LTE lte(manager, NETWORK_APN, NETWORK_USER, NETWORK_PASS);
-Loom_MongoDB mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS, "LilyPad");
+Loom_MongoDB mqtt(manager, lte, SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS, "LilyPad");
 #endif
 
 // Create oneWire/DallasTemperature sensor classes
@@ -91,18 +91,24 @@ void setup() {
 }
 
 void loop() {
+  float tempC = 0;
+  float autoLux = 0;
+  uint16_t rawALS = 0;
+  uint16_t rawWhite = 0;
+
   if(dsb18bInitialized){
     sensors.requestTemperatures();                   // Send the command to get temperatures
-    float tempC = sensors.getTempC(ds18b20Address);  // Extract the temperature in C
+    tempC = sensors.getTempC(ds18b20Address);        // Extract the temperature in C
   }
   else{
     Serial.println("[DS18B20] Sensor Not Initialized");
   }
+
   if(vemlInitialized){
     veml.begin();
-    float autoLux = veml.readLux(VEML_LUX_AUTO);
-    uint16_t rawALS = veml.readALS();
-    uint16_t rawWhite = veml.readWhite();
+    autoLux = veml.readLux(VEML_LUX_AUTO);
+    rawALS = veml.readALS();
+    rawWhite = veml.readWhite();
   }
   else{
     Serial.println("[VEML7700] Sensor Not Initialized");
@@ -120,13 +126,17 @@ void loop() {
   }
   manager.display_data();                              // Print the current JSON packet
   hypnos.logToSD();
-  if(vemlInitialized)
-    veml.end();  // Log the data to the SD card
+  if(vemlInitialized) {
+    // Current upstream Adafruit_VEML7700 exposes sensor shutdown through
+    // enable(false), not the older altered-library end() helper this sketch
+    // originally used. Keep the dependency upstream-compatible and explicit.
+    veml.enable(false);
+  }
   #ifdef USE_INTERNET
   mqtt.publish();  // Publish the collected data to MQTT
   #endif
   #ifdef USE_RTC_INT
-  hypnos.setInterruptDuration(TimeSpan(0, 0, INT_MIN, 0));  // Interrupt
+  hypnos.setInterruptDuration(TimeSpan(0, 0, RTC_SLEEP_MINUTES, 0));  // Interrupt
   hypnos.reattachRTCInterrupt();
   hypnos.sleep();
   #else

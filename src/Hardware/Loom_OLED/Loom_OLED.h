@@ -1,9 +1,12 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
 #include "Loom_Manager.h"
 #include "Module.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Adafruit_SSD1306.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 
 /**
@@ -87,7 +90,9 @@ class Loom_OLED : public Module{
 
         Manager*            manInst;            // Pointer to the manager
 
-        Adafruit_SSD1306*	display = nullptr;	// Underlying OLED controller
+        Adafruit_SSD1306	featherwingDisplay;	// FeatherWing OLED controller
+        Adafruit_SSD1306	breakoutDisplay;	// Breakout OLED controller
+        Adafruit_SSD1306*	display = nullptr;	// Selected OLED controller
         uint16_t            min_filter_delay;   // Time to wait in between updates
 		Version				version;			// What type the OLED is (FeatherWing or breakout)
 		byte				reset_pin;			// The reset pin (only applies to breakout version)

@@ -16,8 +16,8 @@ Manager manager("Device", 1);
 // We want this or we have to use 10k pullups on the I2C line
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 
-// (This one uses a I2C counter on the PCB) Manger Instance, Inches of rainfall per tip
-Loom_TippingBucket bucket(manager, 0.01f);
+// (This one uses a I2C counter on the PCB) Manager Instance, Counter Type, Inches of rainfall per tip
+Loom_TippingBucket bucket(manager, COUNTER_TYPE::I2C, 0.01f);
 
 // (This one uses an interrupt) Manger Instance, Interrupt Pin, Inches of rainfall per tip (WIP)
 //Loom_TippingBucket bucket(manager, A0, 0.01f);

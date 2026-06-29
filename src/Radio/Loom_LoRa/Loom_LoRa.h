@@ -1,8 +1,11 @@
 #pragma once
 
+#include "../../Loom_WarningGuards.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <RH_RF95.h>
 #include <RHReliableDatagram.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #include "../Radio.h"
 #include "../../Loom_Manager.h"

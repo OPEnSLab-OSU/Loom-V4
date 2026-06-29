@@ -1,6 +1,6 @@
 /**
  * STEMMA Example code
- * 
+ *
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 
@@ -8,6 +8,10 @@
 #include <Loom_Manager.h>
 #include <Logger.h>
 
+// Hypnos is instantiated directly below. Keep this explicit so Logger.h stays a
+// lightweight logging interface and does not pull SD/SPI hardware into sketches
+// that only need serial logging.
+#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Sensors/I2C/Loom_STEMMA/Loom_STEMMA.h>
 #include <Sensors/Loom_Analog/Loom_Analog.h>
 
@@ -35,7 +39,7 @@ void setup() {
 
   // Enable the hypnos rails
   hypnos.enable();
-    
+
 
   // Initialize the manager
   manager.initialize();

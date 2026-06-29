@@ -317,6 +317,8 @@ void isr_Trigger(){
 }
 
 void sleep(uint8_t seconds=0, uint8_t minutes = 1) {
+  (void)seconds;
+  (void)minutes;
   analogFrontendOff();
   hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 30));
   hypnos.reattachRTCInterrupt();

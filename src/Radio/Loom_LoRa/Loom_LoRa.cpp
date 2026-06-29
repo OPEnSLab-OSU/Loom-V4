@@ -195,9 +195,10 @@ bool Loom_LoRa::send(const uint8_t destinationAddress, JsonObject json){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::sendBatch(const uint8_t destinationAddress){
     char output[OUTPUT_SIZE];
+    bool sendStatus = false;
     if(moduleInitialized){
         // Check if we are actually ready to publish the batch of data 
-        if(batchSD->shouldPublish()){
+        if(batchSD != nullptr && batchSD->shouldPublish()){
             /* 
                 Send the notification to the other radio to tell it to prepare to expect a batch of data, the packet is formatted as follows:
                 {
@@ -235,10 +236,12 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress){
                         if(send(destinationAddress, manInst->getDocument().as<JsonObject>())){
                             snprintf_P(output, OUTPUT_SIZE, PSTR("Successfully transmitted packet %i of %d"), packetNumber+1, batchSD->getBatchSize());
                             LOG(output);
+                            sendStatus = true;
                         }
                         else{
                             snprintf_P(output, OUTPUT_SIZE, PSTR("Failed to transmit packet %i of %d"), packetNumber+1, batchSD->getBatchSize());
                             ERROR(output);
+                            sendStatus = false;
                         }
 
                         delay(500);
@@ -264,6 +267,7 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress){
         ERROR(F("Module not initialized!"));
         return false;
     }
+    return sendStatus;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -335,7 +339,7 @@ bool Loom_LoRa::receiveBatch(uint maxWaitTime, int* numberOfPackets){
                 }else{
                     snprintf_P(output, OUTPUT_SIZE, PSTR("Received packet!"));
                     LOG(output);
-                    *numberOfPackets--;
+                    (*numberOfPackets)--;
                     return true;
                 }
             }
@@ -467,7 +471,7 @@ bool Loom_LoRa::sendModules(JsonObject json, int numModules, const uint8_t desti
         sendDoc.clear();
 
         // Set the module key to whatever the main one is
-        JsonArray contents = manInst->getDocument()["contents"].as<JsonArray>();
+        JsonArray contents = json["contents"].as<JsonArray>();
         sendDoc.set(contents[i].as<JsonObject>());
 
         snprintf(output, OUTPUT_SIZE, "Fragmented Packet Being Sent (%i/%i)", i+1, numModules);

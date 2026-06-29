@@ -1,12 +1,16 @@
 #pragma once
 
+#include "../../Loom_WarningGuards.h"
+
 
 #include "../Radio.h"
 #include "../../Loom_Manager.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <HardwareSerial.h>
 #include <RH_Serial.h>
 #include <RHReliableDatagram.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 /**
  * Used to communicate with Freewave type radios
@@ -31,7 +35,7 @@ class Loom_Freewave : public Radio{
          */ 
         Loom_Freewave(
             Manager& man,
-            const uint8_t address = -1,
+            const uint8_t address = UINT8_MAX,
             const uint16_t max_message_len = RH_SERIAL_MAX_MESSAGE_LEN,
             const uint8_t retryCount = 3,
             const uint16_t retryTimeout = 200

@@ -2,14 +2,15 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Relay::Loom_Relay(const byte controlPin) : Actuator(ACTUATOR_TYPE::RELAY, 0), pin(controlPin) {
+Loom_Relay::Loom_Relay(const byte controlPin) : Actuator(ACTUATOR_TYPE::RELAY, 0), manInst(nullptr), pin(controlPin) {
     snprintf(moduleName, 100, "%s%u", typeToString(), pin);
     pinMode(controlPin, OUTPUT);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Relay::Loom_Relay(Manager& man, const byte controlPin) : Actuator(ACTUATOR_TYPE::RELAY, 0), pin(controlPin), manInst(&man) {
+Loom_Relay::Loom_Relay(Manager& man, const byte controlPin) : Actuator(ACTUATOR_TYPE::RELAY, 0), manInst(&man), pin(controlPin) {
+    snprintf(moduleName, 100, "%s%u", typeToString(), pin);
     pinMode(controlPin, OUTPUT);
     manInst->registerModule(this);
 }
@@ -36,6 +37,7 @@ void Loom_Relay::package(JsonObject json) {
 void Loom_Relay::setState(bool state){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
+    this->state = state;
     digitalWrite(pin, state ? HIGH : LOW);
     snprintf(output, OUTPUT_SIZE, "Relay pin is set to: %s", (state ? "HIGH" : "LOW"));
     LOG(output);

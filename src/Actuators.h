@@ -1,8 +1,11 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
 #include "Module.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <ArduinoJson.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 enum ACTUATOR_TYPE{
     SERVO,
@@ -43,9 +46,10 @@ class Actuator : public Module{
         virtual void control(JsonArray json) = 0;
 
         void printModuleName(const char* message) override { 
-            char output[50];
-            snprintf(output, 50, "[%s] %s", moduleName, message);
-            Serial.print(output); 
+            Serial.print("[");
+            Serial.print(moduleName);
+            Serial.print("] ");
+            Serial.print(message);
         };
 
         const char* getModuleName() override { return moduleName; };
@@ -64,6 +68,7 @@ class Actuator : public Module{
                 case  NEOPIXEL:
                     return "Neopixel";
             }
+            return "Unknown";
         };
 
         /**

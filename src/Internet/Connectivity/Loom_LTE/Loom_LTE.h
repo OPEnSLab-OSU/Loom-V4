@@ -152,7 +152,12 @@
 
 #include "Loom_Manager.h"
 #include "../NetworkComponent.h"
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <TinyGSM.h>
+LOOM_EXTERNAL_INCLUDE_END
+
 #include <functional>
 
 #include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"

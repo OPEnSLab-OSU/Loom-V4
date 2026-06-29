@@ -1,6 +1,10 @@
 #include "Loom_Multiplexer.h"
 #include "Logger.h"
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Arduino.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Multiplexer::Loom_Multiplexer(Manager& man) : Module("Multiplexer"), manInst(&man), activeMuxAddr(0) {
@@ -328,7 +332,7 @@ void Loom_Multiplexer::clearSensors() {
     snprintf(output, OUTPUT_SIZE, "Clearing %u auto-loaded mux sensor(s)", (unsigned int)sensors.size());
     debugLog(output);
 
-    for(int i = 0; i < sensors.size(); i++){
+    for(size_t i = 0; i < sensors.size(); i++){
         delete std::get<1>(sensors[i]);
     }
 
@@ -431,7 +435,7 @@ void Loom_Multiplexer::measure() {
         debugLog("Mux measure skipped because no sensors are loaded");
     }
 
-    for(int i = 0; i < sensors.size(); i++){
+    for(size_t i = 0; i < sensors.size(); i++){
         snprintf(output, OUTPUT_SIZE, "Measuring mux sensor %s on port %i", std::get<1>(sensors[i])->getModuleName(), std::get<2>(sensors[i]));
         debugLog(output);
 
@@ -460,7 +464,7 @@ void Loom_Multiplexer::package() {
         debugLog("Mux package skipped because no sensors are loaded");
     }
 
-    for(int i = 0; i < sensors.size(); i++){
+    for(size_t i = 0; i < sensors.size(); i++){
         snprintf(output, OUTPUT_SIZE, "Packaging mux sensor %s on port %i", std::get<1>(sensors[i])->getModuleName(), std::get<2>(sensors[i]));
         debugLog(output);
 
@@ -484,7 +488,7 @@ void Loom_Multiplexer::power_up() {
         return;
     }
 
-    for(int i = 0; i < sensors.size(); i++){
+    for(size_t i = 0; i < sensors.size(); i++){
         snprintf(output, OUTPUT_SIZE, "Powering up mux sensor %s on port %i", std::get<1>(sensors[i])->getModuleName(), std::get<2>(sensors[i]));
         debugLog(output);
 
@@ -509,7 +513,7 @@ void Loom_Multiplexer::power_down() {
         return;
     }
 
-    for(int i = 0; i < sensors.size(); i++){
+    for(size_t i = 0; i < sensors.size(); i++){
         snprintf(output, OUTPUT_SIZE, "Powering down mux sensor %s on port %i", std::get<1>(sensors[i])->getModuleName(), std::get<2>(sensors[i]));
         debugLog(output);
 

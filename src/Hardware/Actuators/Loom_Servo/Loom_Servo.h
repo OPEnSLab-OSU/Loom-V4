@@ -1,9 +1,12 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
 #include "Actuators.h"
 #include "Loom_Manager.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Adafruit_PWMServoDriver.h> 
+LOOM_EXTERNAL_INCLUDE_END
 
 #define SERVO_MIN 150   // Minimum pulse width
 #define SERVO_MAX 600   // Maximum pulse width
@@ -35,7 +38,7 @@ class Loom_Servo : public Actuator{
         Adafruit_PWMServoDriver servo; // Instance of the Servo driver
         int instance;                   // Instance number of the servo
 
-        int degrees;                    // The expected current degrees of the servo
+        int degrees = 0;                // The expected current degrees of the servo
 
         
 };

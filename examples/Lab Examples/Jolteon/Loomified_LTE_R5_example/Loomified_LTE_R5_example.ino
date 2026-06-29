@@ -14,10 +14,6 @@
 
 Manager manager("Device", 1);
 
-#define NETWORK_NAME "hologram"
-#define NETWORK_USER ""
-#define NETWORK_PASS ""
-
 Loom_LTE lte(manager, NETWORK_NAME, NETWORK_USER, NETWORK_PASS, A5, OPENS);
 
 void setup() {

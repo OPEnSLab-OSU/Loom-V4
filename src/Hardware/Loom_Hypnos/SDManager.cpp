@@ -1,8 +1,68 @@
 #include "SDManager.h"
 #include "Logger.h"
 
+static void sdCopyBounded(char* dest, size_t destSize, const char* source, size_t maxSourceChars){
+    if(destSize == 0){
+        return;
+    }
+
+    size_t index = 0;
+    if(source != nullptr){
+        while(index < (destSize - 1) && index < maxSourceChars && source[index] != '\0'){
+            dest[index] = source[index];
+            index++;
+        }
+    }
+
+    dest[index] = '\0';
+}
+
+static void sdAppendLiteral(char* dest, size_t destSize, const char* suffix){
+    if(destSize == 0 || suffix == nullptr){
+        return;
+    }
+
+    size_t destIndex = strlen(dest);
+    size_t suffixIndex = 0;
+    while(destIndex < (destSize - 1) && suffix[suffixIndex] != '\0'){
+        dest[destIndex] = suffix[suffixIndex];
+        destIndex++;
+        suffixIndex++;
+    }
+
+    dest[destIndex] = '\0';
+}
+
+static void sdBuildNumberedName(char* dest, size_t destSize, const char* base, int number, const char* suffix){
+    char numberText[12];
+    snprintf(numberText, sizeof(numberText), "%i", number);
+
+    const size_t numberLen = strlen(numberText);
+    const size_t suffixLen = strlen(suffix);
+    size_t maxBaseChars = 0;
+    if(destSize > (numberLen + suffixLen + 1)){
+        maxBaseChars = destSize - numberLen - suffixLen - 1;
+    }
+
+    sdCopyBounded(dest, destSize, base, maxBaseChars);
+    sdAppendLiteral(dest, destSize, numberText);
+    sdAppendLiteral(dest, destSize, suffix);
+}
+
+static void sdBuildBatchName(char* dest, size_t destSize, const char* stem){
+    const char* suffix = "-Batch.txt";
+    const size_t suffixLen = strlen(suffix);
+    size_t maxStemChars = 0;
+    if(destSize > (suffixLen + 1)){
+        maxStemChars = destSize - suffixLen - 1;
+    }
+
+    sdCopyBounded(dest, destSize, stem, maxStemChars);
+    sdAppendLiteral(dest, destSize, suffix);
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-SDManager::SDManager(Manager* man, int sd_chip_select) : manInst(man), Module("SD Manager"), chip_select(sd_chip_select) {
+SDManager::SDManager(Manager* man, int sd_chip_select) : Module("SD Manager"), manInst(man), chip_select(sd_chip_select) {
     strncpy(device_name, manInst->get_device_name(), 100);
     memset(overrideFileName, '\0', 260);
 } // Disables Lora so we can use the SD card on hypnos 
@@ -80,6 +140,7 @@ void SDManager::writeHeaders(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::log(DateTime currentTime){
     char output[MAX_JSON_SIZE + 1];
+    bool logStatus = false;
     
     if(sdInitialized){
         
@@ -161,6 +222,7 @@ bool SDManager::log(DateTime currentTime){
             // Inform the user that we have successfully written to the file
             snprintf_P(output, MAX_JSON_SIZE, PSTR("Successfully logged data to %s"), fileName);
             LOG(output);
+            logStatus = true;
             
         }
         else{
@@ -176,7 +238,7 @@ bool SDManager::log(DateTime currentTime){
         printModuleName("Failed to log! SD card not Initialized!");
     }
      
-    
+    return logStatus;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -225,7 +287,6 @@ bool SDManager::begin(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::updateCurrentFileName(){
-    uint16_t indexDir = 0;
     char f_name[260];
     char* strLocation;
 
@@ -259,27 +320,33 @@ bool SDManager::updateCurrentFileName(){
 
     if(strlen(overrideFileName) > 0){
         // Set all the fileNames with the override name
-        snprintf_P(fileName, 260, PSTR("%s%i.csv"), overrideFileName, getCurrentFileNumber()); 
-        snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), overrideFileName, getCurrentFileNumber()); 
-        snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
-       
+        sdBuildNumberedName(fileName, sizeof(fileName), overrideFileName, getCurrentFileNumber(), ".csv");
+        sdBuildNumberedName(fileNameNoExtension, sizeof(fileNameNoExtension), overrideFileName, getCurrentFileNumber(), "");
+        sdBuildBatchName(batchFileName, sizeof(batchFileName), fileNameNoExtension);
+
     }
     else{
         // Set all the fileNames
-        snprintf_P(fileName, 260, PSTR("%s%i.csv"), device_name, getCurrentFileNumber()); 
-        snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), device_name, getCurrentFileNumber()); 
-        snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+        sdBuildNumberedName(fileName, sizeof(fileName), device_name, getCurrentFileNumber(), ".csv");
+        sdBuildNumberedName(fileNameNoExtension, sizeof(fileNameNoExtension), device_name, getCurrentFileNumber(), "");
+        sdBuildBatchName(batchFileName, sizeof(batchFileName), fileNameNoExtension);
     }
 
     // Close the root file after we have decided what to name the next file
     root.close();
 
-    char output[OUTPUT_SIZE];
-    snprintf_P(output, OUTPUT_SIZE, PSTR("Data will be logged to %s"), fileName);
-    printModuleName(output);
+    printModuleName("Data will be logged to:");
+    printModuleName(fileName);
 
     return true;
 
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+const char* SDManager::getBatchFilename(){
+    sdBuildBatchName(batchFileName, sizeof(batchFileName), fileNameNoExtension);
+    return batchFileName;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -317,7 +384,7 @@ char* SDManager::readFile(const char* fileName){
 void SDManager::logBatch(){
     char f_name[260];
     char jsonString[MAX_JSON_SIZE];
-    snprintf_P(f_name, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+    sdBuildBatchName(f_name, sizeof(f_name), fileNameNoExtension);
     // We want to clear the file after the batch size has been exceeded
     if(current_batch >= batch_size){
         current_batch = 0;

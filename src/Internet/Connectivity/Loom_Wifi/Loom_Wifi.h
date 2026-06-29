@@ -1,8 +1,12 @@
 #pragma once
 
+#include "../../../Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <WiFi101.h>
 #include <WiFiUdp.h>
 #include <FlashStorage.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 
 #include "Loom_Manager.h"

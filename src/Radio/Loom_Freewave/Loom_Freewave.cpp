@@ -9,7 +9,7 @@ Loom_Freewave::Loom_Freewave(
         const uint16_t retryTimeout
     ) : Radio("Freewave"), manInst(&man), serial1(Serial1), driver(serial1)
     {
-        if(address == -1)
+        if(address == UINT8_MAX)
             this->deviceAddress = manInst->get_instance_num();
         else
             this->deviceAddress = address;

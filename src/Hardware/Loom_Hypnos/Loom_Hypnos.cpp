@@ -60,8 +60,7 @@ static DateTime hypnosCompileTimeUTC(TIME_ZONE timezone, const char* buildDate, 
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time, bool useSD) : Module("Hypnos"), custom_time(use_custom_time), sd_chip_select(version), enableSD(useSD), timezone(zone){
-    manInst = &man;
+Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time, bool useSD) : Module("Hypnos"), manInst(&man), sd_chip_select(version), enableSD(useSD), batch_size(0), custom_time(use_custom_time), timezone(zone){
     memset(sketchCompileDate, '\0', sizeof(sketchCompileDate));
     memset(sketchCompileTime, '\0', sizeof(sketchCompileTime));
 
@@ -427,9 +426,15 @@ DateTime Loom_Hypnos::getCurrentTime(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::networkTimeUpdate(){
     FUNCTION_START;
+    bool timeUpdated = false;
     if(networkComponent != nullptr && networkComponent->isConnected()){
         char output[OUTPUT_SIZE];
-        int year, month, day, hour, minute, second = 0;
+        int year = 0;
+        int month = 0;
+        int day = 0;
+        int hour = 0;
+        int minute = 0;
+        int second = 0;
         float tz = timezone;
 
         /* Try twice to set the time if it works break out if not we just og again*/
@@ -441,6 +446,7 @@ bool Loom_Hypnos::networkTimeUpdate(){
                 RTC_DS.adjust(DateTime(year, month, day, hour, minute, second));
                 snprintf(output, OUTPUT_SIZE, "Network time successfully set to: %s", getCurrentTime().text());
                 LOG(output);
+                timeUpdated = true;
                 break;
             }else{
                 ERROR("Failed to get network time! Time has not been set. Retrying...");
@@ -450,6 +456,7 @@ bool Loom_Hypnos::networkTimeUpdate(){
         ERROR("Network component not set in hypnos or component wasn't connected to the internet.");
     }
     FUNCTION_END;
+    return timeUpdated;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -457,10 +464,17 @@ bool Loom_Hypnos::networkTimeUpdate(){
 void Loom_Hypnos::dateTime_toString(DateTime time, char array[21], bool isLocal){
 
     // Formatted as: YYYY-MM-DDTHH:MM:SSZ
+    const unsigned int year = (unsigned int)(time.year() % 10000);
+    const unsigned int month = (unsigned int)(time.month() % 100);
+    const unsigned int day = (unsigned int)(time.day() % 100);
+    const unsigned int hour = (unsigned int)(time.hour() % 100);
+    const unsigned int minute = (unsigned int)(time.minute() % 100);
+    const unsigned int second = (unsigned int)(time.second() % 100);
+
     if(isLocal){
-        snprintf_P(array, 21, PSTR("%u-%02u-%02uT%u:%u:%u"), time.year(), time.month(), time.day(), time.hour(), time.minute(), time.second());
+        snprintf_P(array, 21, PSTR("%04u-%02u-%02uT%02u:%02u:%02u"), year, month, day, hour, minute, second);
     }else{
-        snprintf_P(array, 21, PSTR("%u-%02u-%02uT%u:%u:%uZ"), time.year(), time.month(), time.day(), time.hour(), time.minute(), time.second());
+        snprintf_P(array, 21, PSTR("%04u-%02u-%02uT%02u:%02u:%02uZ"), year, month, day, hour, minute, second);
     }
    
 }
@@ -617,7 +631,6 @@ void Loom_Hypnos::sleep(bool waitForSerial){
 void Loom_Hypnos::pre_sleep(){
     bool disable5 = is5VDisabled(DEVICE_STATE::ENTERING_SLEEP);
     bool disable33 = is3VDisabled(DEVICE_STATE::ENTERING_SLEEP);
-    char output[OUTPUT_SIZE];
     delay(1000);
 
     // Close the serial connection and detach
@@ -750,7 +763,14 @@ void Loom_Hypnos::createTimezoneMap(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::logToSD() {
     FUNCTION_START;
-    sdMan->log(getCurrentTime());
+    bool logStatus = false;
+    if(sdMan != nullptr){
+        logStatus = sdMan->log(getCurrentTime());
+    }
+    else{
+        ERROR(F("Attempted to log to SD without an SD manager."));
+    }
     FUNCTION_END;
+    return logStatus;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -5,7 +5,7 @@
 void Loom_Analog::measure(){
 
     // Read the data from the given analog pin
-    for(int i = 0; i < pinMappings.size(); i++){
+    for(size_t i = 0; i < pinMappings.size(); i++){
 
         /* If we are measuring the Vbat pin we want a little different behavior */
         if(pinMappings[i]->pinNumber == A7){
@@ -29,13 +29,12 @@ void Loom_Analog::package(){
     JsonObject json = manInst->get_data_object(getModuleName());
 
     /* Loop over the list of pins and pull out the data to formulate the JSON entries*/
-    for(int i = 0; i < pinMappings.size(); i ++){
+    for(size_t i = 0; i < pinMappings.size(); i ++){
         memset(output, '\0', 10);
         json[pinMappings[i]->name] = pinMappings[i]->analog;
 
         /* Append MV to the name to differentiate between normal analog and the millivolt representation */
-        strncat(output, pinMappings[i]->name, 10);
-        strncat(output, "_MV", 10);
+        snprintf(output, sizeof(output), "%s_MV", pinMappings[i]->name);
         json[output] = pinMappings[i]->analog_mv;
     }
 }
@@ -70,20 +69,22 @@ float Loom_Analog::analogToMV(int analog){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 float Loom_Analog::getMV(int pin) {
-    for(int i = 0; i < pinMappings.size(); i++){
+    for(size_t i = 0; i < pinMappings.size(); i++){
         if(pinMappings[i]->pinNumber == pin){
             return pinMappings[i]->analog_mv;
         }
     }
+    return 0.0f;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 float Loom_Analog::getAnalog(int pin) {
-    for(int i = 0; i < pinMappings.size(); i++){
+    for(size_t i = 0; i < pinMappings.size(); i++){
         if(pinMappings[i]->pinNumber == pin){
             return pinMappings[i]->analog;
         }
     }
+    return 0.0f;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

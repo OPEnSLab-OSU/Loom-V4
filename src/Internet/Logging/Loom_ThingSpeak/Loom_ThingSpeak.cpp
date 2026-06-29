@@ -96,7 +96,7 @@ void Loom_ThingSpeak::formatMessage(char topic[MAX_TOPIC_LENGTH], char message[M
     }
 
     /* Use the same variable for both loops, first looping over the list of functions with no parameters, also check if we are still less than 8 fields */
-    int i;
+    size_t i;
     int totalAdded = 0; // Track the number of fields that have been added
     for(i = 0; i < functionsNoParam.size() && totalAdded < 8; i++){
         // Set the field number and then call the corresponding function to update 

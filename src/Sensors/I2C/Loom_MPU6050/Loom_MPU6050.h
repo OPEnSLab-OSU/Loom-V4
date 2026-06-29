@@ -1,10 +1,14 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Wire.h>
 #include <MPU6050_tockn.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 /**
  *  MPU6050 Accelerometer / IMU

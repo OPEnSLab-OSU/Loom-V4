@@ -9,7 +9,7 @@ Loom_RemoteManager::Loom_RemoteManager(
                 int broker_port, 
                 const char* broker_user, 
                 const char* broker_pass
-            ) : manInst(&man), MQTTComponent("RemoteManager", internet_client){
+            ) : MQTTComponent("RemoteManager", internet_client), manInst(&man){
                 strncpy(this->address, broker_address, 100);
                 port = broker_port;
                 strncpy(this->username, broker_user, 100);
@@ -19,7 +19,7 @@ Loom_RemoteManager::Loom_RemoteManager(
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_RemoteManager::Loom_RemoteManager(Manager& man, NetworkComponent& internet_client) : manInst(&man), MQTTComponent("RemoteManager", internet_client) {manInst->registerModule(this);}
+Loom_RemoteManager::Loom_RemoteManager(Manager& man, NetworkComponent& internet_client) : MQTTComponent("RemoteManager", internet_client), manInst(&man) {manInst->registerModule(this);}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////

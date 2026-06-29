@@ -1,6 +1,6 @@
 /**
  * Author: Chet Udell
- * ENGR 102 Basic Example Code: 
+ * ENGR 102 Basic Example Code:
  * Read the Analog A0 channel
  * Display Data on Serial Monitor
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
@@ -14,6 +14,10 @@
 #include <Loom_Manager.h>
 #include <Logger.h>
 
+// Hypnos is instantiated directly below. Keep this explicit so Logger.h stays a
+// lightweight logging interface and does not pull SD/SPI hardware into sketches
+// that only need serial logging.
+#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Sensors/Loom_Analog/Loom_Analog.h>
 
 Manager manager("YourName", 1);

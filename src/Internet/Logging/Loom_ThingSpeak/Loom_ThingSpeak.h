@@ -1,6 +1,11 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <ArduinoMqttClient.h>
+LOOM_EXTERNAL_INCLUDE_END
+
 #include <tuple>
 
 #include "Loom_Manager.h"

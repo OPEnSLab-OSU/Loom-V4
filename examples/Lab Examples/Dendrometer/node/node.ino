@@ -55,7 +55,7 @@ Loom_LoRa lora(manager, NODE_NUMBER);
 #elif defined DENDROMETER_WIFI
 #include "credentials/arduino_secrets.h"
 Loom_WIFI wifi(manager, CommunicationMode::CLIENT, SECRET_SSID, SECRET_PASS);
-Loom_MongoDB mqtt(manager, wifi.getClient(), SECRET_BROKER, SECRET_PORT, MQTT_DATABASE, BROKER_USER, BROKER_PASS);
+Loom_MongoDB mqtt(manager, wifi, SECRET_BROKER, SECRET_PORT, MQTT_DATABASE, BROKER_USER, BROKER_PASS);
 Loom_BatchSD batchSD(hypnos, TRANSMIT_INTERVAL);
 #else
 #warning Wireless communication disabled!
@@ -291,7 +291,7 @@ bool checkStableAlignment()
     magnetStatus status;
     bool aligned = true;
 
-    for (int i = 0; i < (CHECK_TIME / 100); i++)
+    for (unsigned int i = 0; i < (CHECK_TIME / 100U); i++)
     {
         // Watchdog.reset();
         status = magnetSensor.getMagnetStatus();

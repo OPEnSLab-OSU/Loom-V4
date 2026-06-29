@@ -1,7 +1,7 @@
 #include "Loom_MMA8451.h"
 #include "Logger.h"
 
-uint8_t Loom_MMA8451::interruptPin;
+int Loom_MMA8451::interruptPin = -1;
 InterruptCallbackFunction Loom_MMA8451::isr;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -12,7 +12,7 @@ Loom_MMA8451::Loom_MMA8451(
                         mma8451_range_t range,
                         int intPin,
                         uint8_t sensitivity
-                    ) : I2CDevice("MMA8451"), manInst(&man), address(addr), range(range), sensitivity(sensitivity){
+                    ) : I2CDevice("MMA8451"), manInst(&man), range(range), address(addr), sensitivity(sensitivity){
                         module_address = addr;
                         interruptPin = intPin;
                         

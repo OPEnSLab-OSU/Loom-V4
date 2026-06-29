@@ -1,7 +1,11 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Wire.h>
 #include <Adafruit_MMA8451.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
@@ -92,7 +96,7 @@ class Loom_MMA8451 : public I2CDevice{
         int address;                            // I2C address
         uint8_t sensitivity = 0x10;             // Sensitivity of detection
 
-        static uint8_t interruptPin;            // Interrupt pin on movement
+        static int interruptPin;                // Interrupt pin on movement
         static InterruptCallbackFunction isr;          // ISR to call when the interrupt is triggered
 
         float			accel[3];		        // Acceleration values for each axis. Units: g

@@ -1,6 +1,10 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Adafruit_MAX31856.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #include "Module.h"
 #include "Loom_Manager.h"

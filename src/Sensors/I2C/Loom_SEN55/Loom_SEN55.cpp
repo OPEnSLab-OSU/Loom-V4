@@ -58,19 +58,26 @@ void Loom_SEN55::measure() {
     if(measurePM){
         LOG(F("Beginning PM measurement, waiting 2 seconds at each increment for stablizing mesurement..."));
         uint16_t readErr = sen5x.startMeasurement();
+        if(readErr){
+            errorToString(readErr, sensorError, OUTPUT_SIZE);
+            snprintf(output, OUTPUT_SIZE, "Failed to start PM measurement: %s", sensorError);
+            ERROR(output);
+            FUNCTION_END;
+            return;
+        }
         float Pm1p0 = 0, Pm2p5 = 0, Pm4p0 = 0, Pm10p0 = 0;
         float numPm0p5 = 0, numPm1p0 = 0, numPm2p5 = 0, numPm4p0 = 0, numPm10p0 = 0;
         float particleSize = 0;
         uint8_t failedReads = 0;
-        for(int i = 0; i < PM_AVERAGE_COUNT; i++){
+        for(uint8_t i = 0; i < PM_AVERAGE_COUNT; i++){
             delay(2000);
 
             bool dataReady = false;
             sen5x.readDataReady(dataReady);
             if(!dataReady && i == 0){
-                uint16_t startTime = millis();
+                uint32_t startTime = millis();
                 LOG(F("No data available on iteration 0, waiting an additional 5 seconds to see if data becomes available"));
-                while(!dataReady && millis() < startTime + 5000){
+                while(!dataReady && ((uint32_t)(millis() - startTime) < 5000)){
                     sen5x.readDataReady(dataReady);
                 }
             }
@@ -124,22 +131,39 @@ void Loom_SEN55::measure() {
                                             ambientHumidity, ambientTemperature, vocIndex,
                                             noxIndex
                                         );
+        if(readErr){
+            errorToString(readErr, sensorError, OUTPUT_SIZE);
+            snprintf(output, OUTPUT_SIZE, "Error occurred when reading measurement: %s", sensorError);
+            ERROR(output);
+        }
 
         readErr = sen5x.startMeasurementWithoutPm();
+        if(readErr){
+            errorToString(readErr, sensorError, OUTPUT_SIZE);
+            snprintf(output, OUTPUT_SIZE, "Failed to switch to non-PM measurement: %s", sensorError);
+            ERROR(output);
+        }
         delay(60);
     }
 
     else {
         LOG("Beginning measurement without PM, waiting 10 seconds for sensor to stabilize...");
         uint16_t readErr = sen5x.startMeasurementWithoutPm();
+        if(readErr){
+            errorToString(readErr, sensorError, OUTPUT_SIZE);
+            snprintf(output, OUTPUT_SIZE, "Failed to start non-PM measurement: %s", sensorError);
+            ERROR(output);
+            FUNCTION_END;
+            return;
+        }
         delay(10000);
 
         uint16_t error = 0;
         // Give the sensor time to prepare for measuring
         bool dataReady = false;
-        uint16_t startTime = millis();
+        uint32_t startTime = millis();
         LOG(F("Waiting for data to be ready... If not ready in 10 seconds we will stop trying"));
-        while(!dataReady && millis() < startTime + 10000){
+        while(!dataReady && ((uint32_t)(millis() - startTime) < 10000)){
             error = sen5x.readDataReady(dataReady);
             if(error){
                 errorToString(error, sensorError, OUTPUT_SIZE);

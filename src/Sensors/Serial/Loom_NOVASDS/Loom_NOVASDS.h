@@ -2,7 +2,11 @@
 
 #include "Module.h"
 #include "Loom_Manager.h"
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <SDS011.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 /**
  * Class for handling the NOVASDS011 Dust Sensor

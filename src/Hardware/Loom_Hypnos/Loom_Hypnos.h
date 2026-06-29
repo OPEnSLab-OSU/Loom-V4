@@ -1,12 +1,18 @@
 #pragma once
 
+#include "../../Loom_WarningGuards.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <OPEnS_RTC.h>
 #include <ArduinoLowPower.h>
+LOOM_EXTERNAL_INCLUDE_END
+
 #include <map>
 #include <tuple>
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include "Arduino.h"
+LOOM_EXTERNAL_INCLUDE_END
 #include "Module.h"
 #include "Internet/Connectivity/NetworkComponent.h"
 

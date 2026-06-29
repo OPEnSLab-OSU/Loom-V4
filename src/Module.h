@@ -1,10 +1,19 @@
 #pragma once
+
+#include "Loom_WarningGuards.h"
+
+/*
+ * Module.h is included by almost every Loom class. Keep it narrow and treat
+ * Arduino core headers as external so their compatibility stubs do not repeat
+ * through the whole library under `--warnings all`.
+ */
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include "Arduino.h"
-#include <Wire.h>
+#include <Adafruit_SleepyDog.h>
+LOOM_EXTERNAL_INCLUDE_END
+
 #include <stdio.h>
 #include <string.h>
-#include <ArduinoJson.h>
-#include <Adafruit_SleepyDog.h>
 
 /* Watchdog Timer Setup */
 #define WATCHDOG_TIMEOUT 8000
@@ -31,14 +40,16 @@
 class Module{
     public:
         Module(const char* modName) { strcpy(moduleName, modName); };
+        virtual ~Module() {};
 
         void setModuleName(const char* modName) { strcpy(moduleName, modName); };
 
         virtual const char* getModuleName() { return moduleName; }; // Return the name of the sensor
-        virtual void printModuleName(const char* message) { 
-            char output[OUTPUT_SIZE];
-            snprintf_P(output, OUTPUT_SIZE, PSTR("[%s] %s"), getModuleName(), message);
-            Serial.println(output);
+        virtual void printModuleName(const char* message) {
+            Serial.print("[");
+            Serial.print(getModuleName());
+            Serial.print("] ");
+            Serial.println(message);
         };
 
         // Generic measure and package calls to unify some interaction with different sensor implementations

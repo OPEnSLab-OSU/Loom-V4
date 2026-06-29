@@ -2,11 +2,11 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Servo::Loom_Servo(int instance_num) : Actuator(ACTUATOR_TYPE::SERVO, instance_num), instance(instance_num) {}
+Loom_Servo::Loom_Servo(int instance_num) : Actuator(ACTUATOR_TYPE::SERVO, instance_num), manInst(nullptr), instance(instance_num) {}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Servo::Loom_Servo(Manager& man, int instance_num) : Actuator(ACTUATOR_TYPE::SERVO, instance_num), instance(instance_num), manInst(&man) {
+Loom_Servo::Loom_Servo(Manager& man, int instance_num) : Actuator(ACTUATOR_TYPE::SERVO, instance_num), manInst(&man), instance(instance_num) {
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

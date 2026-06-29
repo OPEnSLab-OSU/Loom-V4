@@ -4,7 +4,12 @@
 #ifndef _RTCLIB_H_
 #define _RTCLIB_H_
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Arduino.h>
+LOOM_EXTERNAL_INCLUDE_END
+
 class TimeSpan;
 
 // NOTE: Must include the following line to use 

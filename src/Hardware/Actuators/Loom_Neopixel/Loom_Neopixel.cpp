@@ -5,15 +5,11 @@
 Loom_Neopixel::Loom_Neopixel(Manager& man, const bool enableA0, const bool enableA1, const bool enableA2, const neoPixelType colorType) : 
     Actuator(ACTUATOR_TYPE::NEOPIXEL, 0), 
     manInst(&man), 
-    enabledPins{ enableA0, enableA1, enableA2 },
     pixels{ Adafruit_NeoPixel(1, 14, colorType + NEO_KHZ800),
             Adafruit_NeoPixel(1, 15, colorType + NEO_KHZ800),
-            Adafruit_NeoPixel(1, 16, colorType + NEO_KHZ800) }
+            Adafruit_NeoPixel(1, 16, colorType + NEO_KHZ800) },
+    enabledPins{ enableA0, enableA1, enableA2 }
 {
-    this->enabledPins[0] = enableA0;
-    this->enabledPins[1] = enableA1;
-    this->enabledPins[2] = enableA2;
-
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -21,14 +17,12 @@ Loom_Neopixel::Loom_Neopixel(Manager& man, const bool enableA0, const bool enabl
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Neopixel::Loom_Neopixel(const bool enableA0, const bool enableA1, const bool enableA2, const neoPixelType colorType) : 
     Actuator(ACTUATOR_TYPE::NEOPIXEL, 0), 
-    enabledPins{ enableA0, enableA1, enableA2 },
+    manInst(nullptr),
     pixels{ Adafruit_NeoPixel(1, 14, colorType + NEO_KHZ800),
             Adafruit_NeoPixel(1, 15, colorType + NEO_KHZ800),
-            Adafruit_NeoPixel(1, 16, colorType + NEO_KHZ800) }
+            Adafruit_NeoPixel(1, 16, colorType + NEO_KHZ800) },
+    enabledPins{ enableA0, enableA1, enableA2 }
 {
-    this->enabledPins[0] = enableA0;
-    this->enabledPins[1] = enableA1;
-    this->enabledPins[2] = enableA2;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -54,7 +48,7 @@ void Loom_Neopixel::initialize(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Neopixel::package(JsonObject json) {}
+void Loom_Neopixel::package(JsonObject json) { (void)json; }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////

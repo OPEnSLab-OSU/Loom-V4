@@ -1,7 +1,12 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <SensirionI2CSen5x.h>
 #include <Wire.h>
+LOOM_EXTERNAL_INCLUDE_END
+
 #include <bitset>
 
 #include "../I2CDevice.h"

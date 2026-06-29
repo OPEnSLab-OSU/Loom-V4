@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
 #include "../../Loom_Manager.h"
 #include "../../Module.h"
 
@@ -7,7 +8,10 @@
 #include <vector>
 #include <tuple>
 #include <algorithm>
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include "Wire.h"
+LOOM_EXTERNAL_INCLUDE_END
 
 // I2C Sensors Used by Loom
 #include "../../Sensors/I2C/Loom_ADS1115/Loom_ADS1115.h"

@@ -63,28 +63,20 @@ float index_algorithm()
     // Pull the wavelength values from the array and 
     // cast them as float values
     uint16_t* values = as.getUV();
-    uint16_t a = (float)values[0];  // 410
-    uint16_t b = (float)values[1];  // 435
-    uint16_t c = (float)values[2];  // 460
-    uint16_t d = (float)values[3];  // 485
-    uint16_t e = (float)values[4];  // 510
-    uint16_t f = (float)values[5];  // 535
+    float b = (float)values[1];  // 435
+    float c = (float)values[2];  // 460
+    float d = (float)values[3];  // 485
+    float e = (float)values[4];  // 510
+    float f = (float)values[5];  // 535
 
     values = as.getColor();
-    uint16_t g = (float)values[0]; // 560
-    uint16_t h = (float)values[1]; // 585
-    uint16_t i = (float)values[2]; // 645
-    uint16_t j = (float)values[3]; // 705
-    uint16_t k = (float)values[4]; // 900
-    uint16_t l = (float)values[5]; // 940
+    float g = (float)values[0]; // 560
     
     values = as.getNIR();
-    uint16_t r = (float)values[0]; // 610
-    uint16_t s = (float)values[1]; // 680
-    uint16_t t = (float)values[2]; // 730
-    uint16_t u = (float)values[3]; // 760
-    uint16_t v = (float)values[4]; // 810
-    uint16_t w = (float)values[5]; // 860
+    float s = (float)values[1]; // 680
+    float u = (float)values[3]; // 760
+    float v = (float)values[4]; // 810
+    float w = (float)values[5]; // 860
 
   float index;  // This is the variable that holds the indicator index value
 
@@ -239,6 +231,7 @@ void loop(){
     // Add Values to the JSON Package so that they will be logged to SD Card
     manager.addData("ENDVI", "ENDVI", endvi);
     manager.addData("EVI", "EVI", evi);
+    manager.addData("PSND", "PSND", psnd);
     manager.addData("Threshold", "Threshold", threshold);
 
     // Calculate normalized ENDVI

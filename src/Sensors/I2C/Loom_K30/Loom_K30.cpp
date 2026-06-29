@@ -2,7 +2,7 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_K30::Loom_K30(Manager& man, bool useMux, int addr, bool warmUp, int valMult) : I2CDevice("K30"), manInst(&man), valMult(valMult), warmUp(warmUp), addr(addr){
+Loom_K30::Loom_K30(Manager& man, bool useMux, int addr, bool warmUp, int valMult) : I2CDevice("K30"), manInst(&man), addr(addr), CO2Levels(0), valMult(valMult), warmUp(warmUp){
     module_address = addr;
 
     if(!useMux)

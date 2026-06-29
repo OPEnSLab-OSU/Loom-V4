@@ -1,14 +1,18 @@
 #pragma once
+#include "Loom_WarningGuards.h"
 #include <map>
 #include <vector>
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include "Arduino.h"
+LOOM_EXTERNAL_INCLUDE_END
 
 #include "Module.h"
 #include "Loom_Manager.h"
 
-
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <SDI12.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #define RESPONSE_SIZE 50
 

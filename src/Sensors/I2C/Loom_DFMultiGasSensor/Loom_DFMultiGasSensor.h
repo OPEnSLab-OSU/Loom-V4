@@ -1,6 +1,11 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <DFRobot_MultiGasSensor.h>
+LOOM_EXTERNAL_INCLUDE_END
+
 #include <unordered_map>
 #include <string.h>
 

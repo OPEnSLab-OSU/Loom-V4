@@ -1,7 +1,12 @@
 //Code by JeeLabs http://news.jeelabs.org/code/
 // Released to the public domain! Enjoy!
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Wire.h>
+LOOM_EXTERNAL_INCLUDE_END
+
 #include "OPEnS_RTC.h"
 #ifdef __AVR__
  #include <avr/pgmspace.h>
@@ -19,7 +24,9 @@
 #define WIRE Wire
 
 #if (ARDUINO >= 100)
+LOOM_EXTERNAL_INCLUDE_BEGIN
  #include <Arduino.h> // capital A so it is error prone on case-sensitive filesystems
+LOOM_EXTERNAL_INCLUDE_END
  // Macro to deal with the difference in I2C write functions from old and new Arduino versions.
  #define _I2C_WRITE write
  #define _I2C_READ  read
@@ -153,7 +160,7 @@ DateTime::DateTime (const char* date, const char* time) {
 		yOff = conv2d(date + 9);
 		// Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec 
 		switch (date[0]) {
-				case 'J': m = date[1] == 'a' ? 1 : m = date[2] == 'n' ? 6 : 7; break;
+				case 'J': m = (date[1] == 'a') ? 1 : ((date[2] == 'n') ? 6 : 7); break;
 				case 'F': m = 2; break;
 				case 'A': m = date[2] == 'r' ? 4 : 8; break;
 				case 'M': m = date[2] == 'r' ? 3 : 5; break;
@@ -178,7 +185,7 @@ DateTime::DateTime (const __FlashStringHelper* date, const __FlashStringHelper* 
 		yOff = conv2d(buff + 9);
 		// Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec
 		switch (buff[0]) {
-				case 'J': m = buff[1] == 'a' ? 1 : m = buff[2] == 'n' ? 6 : 7; break;
+				case 'J': m = (buff[1] == 'a') ? 1 : ((buff[2] == 'n') ? 6 : 7); break;
 				case 'F': m = 2; break;
 				case 'A': m = buff[2] == 'r' ? 4 : 8; break;
 				case 'M': m = buff[2] == 'r' ? 3 : 5; break;
@@ -1008,7 +1015,7 @@ void RTC_DS3231::armAlarm(byte alarmNumber, bool armed) {
 				value &= ~mask;
 		}
 		// Make sure device is configured for alarm interrupts
-		value = 0x1F & value | 0x04;
+		value = (0x1F & value) | 0x04;
 
 		Wire.beginTransmission(DS3231_ADDRESS);
 		Wire.write(DS3231_CONTROL);
@@ -1096,6 +1103,7 @@ DateTime RTC_DS3231::getAlarm(byte alarmNumber) {
 		/* Here's the alarm mask that determines whether
 		the alarm ignores seconds, minutes, hours, weekday, and date.*/
 		mask = (seconds>>7) | (0x02 & (minutes>>6)) | (0x03 & (hours>>5)) | (0xC0 & daydate);
+		(void)mask;
 		
 		// Convert time to binary
 		seconds = bcd2bin(0x7F & seconds);

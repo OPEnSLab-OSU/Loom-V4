@@ -54,7 +54,7 @@ void Loom_TippingBucket::measure() {
         hourlyTips = 0;
 
         /* Loop over the last hour to accumlate the number of tips that occured within the last hour and we want to subtract the current value minus the last to get the difference and add that*/
-        for(int i = 0; i < tips.size(); i++){
+        for(size_t i = 0; i < tips.size(); i++){
             hourlyTips += tips[i];
         }
     }
@@ -70,9 +70,10 @@ void Loom_TippingBucket::package() {
     json["Tips"] = tipCount;
     json["Total_Rainfall(in)"] = tipsToInches(tipCount);
 
-    if(hypnosInst != nullptr)
+    if(hypnosInst != nullptr){
         json["Hourly_Tips"] = hourlyTips;
         json["Hourly_Rainfall(in)"] = tipsToInches(hourlyTips);
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

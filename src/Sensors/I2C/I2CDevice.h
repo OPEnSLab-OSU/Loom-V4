@@ -1,7 +1,12 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
 #include "Module.h"
 #include "Logger.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
+#include <Wire.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 class I2CDevice : public Module{
     public:

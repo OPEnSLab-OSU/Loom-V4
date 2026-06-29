@@ -1,7 +1,12 @@
 #pragma once
 
+#include "../../Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <SPI.h>
 #include <SdFat.h>
+LOOM_EXTERNAL_INCLUDE_END
+
 #include <OPEnS_RTC.h>
 
 #include "../../Module.h"
@@ -75,10 +80,7 @@ class SDManager : public Module{
         /**
          * Get the current batch file name
          */ 
-        const char* getBatchFilename(){
-            snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
-            return batchFileName;
-        };
+        const char* getBatchFilename();
 
         /**
          * Has the SD card been initialized previously
@@ -105,7 +107,8 @@ class SDManager : public Module{
          * Log to a different name other than one matching the device name
          */ 
         void setLogName(const char* name) { 
-            strncpy(overrideFileName, name, 100);
+            strncpy(overrideFileName, name, sizeof(overrideFileName) - 1);
+            overrideFileName[sizeof(overrideFileName) - 1] = '\0';
         };
         
 

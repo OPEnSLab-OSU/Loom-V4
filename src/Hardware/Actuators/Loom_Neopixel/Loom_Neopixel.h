@@ -1,9 +1,12 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
 #include "../../../Loom_Manager.h"
 #include "../../../Actuators.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Adafruit_NeoPixel.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 
 /**

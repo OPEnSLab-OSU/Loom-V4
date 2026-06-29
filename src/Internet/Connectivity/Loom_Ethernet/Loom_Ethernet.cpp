@@ -1,5 +1,6 @@
 #include "Loom_Ethernet.h"
 #include "Logger.h"
+#include "OPEnS_RTC.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Ethernet::Loom_Ethernet(Manager& man, uint8_t mac[6], IPAddress ip) : NetworkComponent("Ethernet"), manInst(&man){
@@ -65,6 +66,7 @@ bool Loom_Ethernet::connect(){
             ip = Ethernet.localIP();
         }
     }
+    return moduleInitialized;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -97,6 +99,7 @@ void Loom_Ethernet::loadConfigFromJSON(char* json){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Ethernet::getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz){
+    (void)tz;
     byte packetBuffer[NTP_PACKET_SIZE];     // Buffer to read in packet
     const unsigned long seventyYears = 2208988800UL; // Unix time start
 
@@ -129,7 +132,7 @@ bool Loom_Ethernet::getNetworkTime(int* year, int* month, int* day, int* hour, i
         *day = currentTime.day();
         *hour = currentTime.hour();
         *minute = currentTime.minute();
-        *second = currentTime.minute();
+        *second = currentTime.second();
 
         return true;
     }

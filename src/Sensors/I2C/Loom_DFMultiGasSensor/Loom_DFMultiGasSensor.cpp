@@ -12,12 +12,11 @@ Loom_DFMultiGasSensor::Loom_DFMultiGasSensor(
                             bool useMux
                     ) : I2CDevice("DFR_MultiGasSensor"), 
                         manInst(&man), 
+                        gasSensor(&Wire, address),
                         retryLimit(initializationRetyLimit),
-                        gasSensor(&Wire, address) 
+                        powersDown(sensorPowersDown)
                     {
                         module_address = address;
-
-                        powersDown = sensorPowersDown;
 
                         // Register the module with the manager
                         if(!useMux)
@@ -116,7 +115,6 @@ void Loom_DFMultiGasSensor::package() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_DFMultiGasSensor::power_up() {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
 
     
     if(powersDown) {
@@ -146,7 +144,6 @@ void Loom_DFMultiGasSensor::power_up() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_DFMultiGasSensor::attemptConnectionToSensor() {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
 
     /* Attempt a set number of times to initialize the sensor */
     for(uint8_t retryCount = 0; retryCount < retryLimit; retryCount++){
@@ -186,13 +183,13 @@ void Loom_DFMultiGasSensor::configureSensorProperties(DFRobot_GAS::eMethod_t aqu
         LOG(F("Setting Acquire Mode to..."));
         gasSensor.changeAcquireMode(gasSensor.PASSIVITY);
         delay(1000);
-        LOGF("Acquire Mode set to %hs", aquireMode == gasSensor.PASSIVITY ? "PASSIVE" : "INITIATIVE");
+        LOGF("Acquire Mode set to %s", aquireMode == gasSensor.PASSIVITY ? "PASSIVE" : "INITIATIVE");
 
         // Set temperature compensation
         LOG(F("Setting temp compensation..."));
         gasSensor.setTempCompensation(gasSensor.ON);
         delay(1000);
-        LOGF("Temp compensation set to %hs", gasCompMode == gasSensor.OFF ? "OFF" : "ON");
+        LOGF("Temp compensation set to %s", gasCompMode == gasSensor.OFF ? "OFF" : "ON");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

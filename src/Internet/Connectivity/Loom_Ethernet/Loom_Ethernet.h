@@ -1,8 +1,12 @@
 #pragma once
 
+#include "../../../Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Ethernet.h>
 #include <EthernetClient.h>
 #include <EthernetUdp.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #include "Loom_Manager.h"
 #include "../NetworkComponent.h"

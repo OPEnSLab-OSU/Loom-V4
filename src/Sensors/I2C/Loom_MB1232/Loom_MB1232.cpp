@@ -78,7 +78,6 @@ void Loom_MB1232::measure() {
             // The low byte will not be less than 20.
             byte high = Wire.read();
             byte low  = Wire.read();
-            byte tmp  = Wire.read();
 
             range = (high * 256) + low;
         } else {
