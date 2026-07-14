@@ -1,5 +1,6 @@
 #include "Loom_LTE.h"
 #include "Logger.h"
+#include <math.h>
 
 /*
  * SARA-R5 startup sequence
@@ -970,14 +971,38 @@ Client* Loom_LTE::getClient() { return (Client*)&client; }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) {
-    if(modem.getNetworkTime(year, month, day, hour, minute, second, tz)){
-        DateTime time = DateTime(*year, *month, *day, *hour, *minute, *second) + TimeSpan(0, ((int)(*tz)) * (-1), 0, 0);
+    const float configuredOffset = (tz != nullptr) ? *tz : 0.0f;
+    float modemOffset = configuredOffset;
+
+    if(modem.getNetworkTime(year, month, day, hour, minute, second, &modemOffset)){
+        float normalizedOffset = modemOffset;
+
+        if(tz != nullptr){
+            const float directDifference = fabsf(modemOffset - configuredOffset);
+            const float reversedDifference = fabsf((-modemOffset) - configuredOffset);
+
+            if(reversedDifference < directDifference){
+                normalizedOffset = -modemOffset;
+            }
+
+            if(fabsf(normalizedOffset - configuredOffset) <= 1.01f){
+                normalizedOffset = configuredOffset;
+            }
+        }
+
+        const int32_t offsetSeconds = (int32_t)(normalizedOffset * 3600.0f);
+        DateTime time = DateTime(*year, *month, *day, *hour, *minute, *second) - TimeSpan(offsetSeconds);
+
         *year = time.year();
         *month = time.month();
         *day = time.day();
         *hour = time.hour();
         *minute = time.minute();
         *second = time.second();
+
+        if(tz != nullptr){
+            *tz = normalizedOffset;
+        }
         return true;
     }
     return false;

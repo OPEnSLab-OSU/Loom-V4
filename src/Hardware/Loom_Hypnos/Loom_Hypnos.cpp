@@ -250,7 +250,6 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
         }
         else{
             attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
-            attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
             LOG(F("Interrupt successfully attached!"));
         }
         // Add the interrupt to the list of pin to interrupts
@@ -272,25 +271,28 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
     FUNCTION_START;
-    if(std::get<2>(pinToInterrupt[interruptPin]) != SLEEP){
 
-        // If we haven't previously registered the interrupt we need to do this before we can reattach to an interrupt that doesn't exist
-        if(pinToInterrupt.count(interruptPin) <= 0){
-            ERROR(F("Failed to reattach interrupt! Interrupt has not previously been registered..."));
-            FUNCTION_END;
-            return false;
-        }
+    auto interruptEntry = pinToInterrupt.find(interruptPin);
+    if(interruptEntry == pinToInterrupt.end()){
+        ERROR(F("Failed to reattach interrupt! Interrupt has not previously been registered..."));
+        FUNCTION_END;
+        return false;
+    }
 
-        attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
-        attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
+    InterruptCallbackFunction callback = std::get<0>(interruptEntry->second);
+    int triggerState = std::get<1>(interruptEntry->second);
+    HypnosInterruptType interruptType = std::get<2>(interruptEntry->second);
+
+    if(interruptType == SLEEP){
+        LowPower.attachInterruptWakeup(interruptPin, callback, triggerState);
     }
     else{
-        LowPower.attachInterruptWakeup(interruptPin, std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
+        attachInterrupt(digitalPinToInterrupt(interruptPin), callback, triggerState);
     }
+
     LOG(F("Interrupt successfully reattached!"));
     FUNCTION_END;
     return true;
-
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -365,9 +367,10 @@ void Loom_Hypnos::initializeRTC(){
         }
     }
 
-	// Clear any pending alarms
-	RTC_DS.clearAlarm();
-
+    // Clear stale flags and keep the unused second alarm disabled.
+    RTC_DS.clearAlarm(1);
+    RTC_DS.clearAlarm(2);
+    RTC_DS.armAlarm(2, false);
     RTC_DS.writeSqwPinMode(DS3231_OFF);
 
     // We successfully started the RTC
@@ -402,7 +405,7 @@ DateTime Loom_Hypnos::getLocalTime(DateTime time){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::isDaylightSavings(){
     // Timezones that observe daylight savings
-    if(timezone == AST || timezone == EST || timezone == CST || timezone == AST || timezone == PST || timezone == AKST){
+    if(timezone == AST || timezone == EST || timezone == CST || timezone == MST || timezone == PST || timezone == AKST){
         int currMonth = getCurrentTime().month();
 
         // If we are in the months where daylight savings is in affect
@@ -435,7 +438,13 @@ bool Loom_Hypnos::networkTimeUpdate(){
         int hour = 0;
         int minute = 0;
         int second = 0;
-        float tz = timezone;
+        float tz = (float)timezone;
+        if(timezone == TIME_ZONE::ACST){
+            tz += 0.5f;
+        }
+        else if(isDaylightSavings()){
+            tz += 1.0f;
+        }
 
         /* Try twice to set the time if it works break out if not we just og again*/
         for(int i = 0; i < 2; i++){
@@ -566,6 +575,11 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
 
+    // Clear the latched interrupt flags before programming the next alarm.
+    RTC_DS.clearAlarm(1);
+    RTC_DS.clearAlarm(2);
+    RTC_DS.armAlarm(2, false);
+
     // The time in the future that the alarm will be set for
     DateTime future(RTC_DS.now() + duration);
     RTC_DS.setAlarm(future);
@@ -671,8 +685,10 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
         LOG(F("Device has awoken from sleep!"));
         Watchdog.reset();
 
-        // Clear any pending RTC alarms
-        RTC_DS.clearAlarm();
+        // Clear the wake flag and leave the unused second alarm disabled.
+        RTC_DS.clearAlarm(1);
+        RTC_DS.clearAlarm(2);
+        RTC_DS.armAlarm(2, false);
         Watchdog.reset();
 
         // Re-init the modules that need it

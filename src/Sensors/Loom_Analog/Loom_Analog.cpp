@@ -1,5 +1,12 @@
 #include "Loom_Analog.h"
 
+namespace {
+    constexpr uint8_t BATTERY_SAMPLE_COUNT = 8;
+    constexpr float ADC_REFERENCE_VOLTAGE = 3.3f;
+    constexpr float ADC_MAX_READING = 4095.0f;
+    constexpr float BATTERY_DIVIDER_SCALE = 2.0f;
+}
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Analog::measure(){
@@ -9,8 +16,9 @@ void Loom_Analog::measure(){
 
         /* If we are measuring the Vbat pin we want a little different behavior */
         if(pinMappings[i]->pinNumber == A7){
-            pinMappings[i]->analog = getBatteryVoltage();
-            pinMappings[i]->analog_mv = getBatteryVoltage() * 1000;
+            const float batteryVoltage = getBatteryVoltage();
+            pinMappings[i]->analog = batteryVoltage;
+            pinMappings[i]->analog_mv = batteryVoltage * 1000.0f;
         }
 
         /* If its a normal pin then just read the value and update the previous values */
@@ -42,11 +50,19 @@ void Loom_Analog::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 float Loom_Analog::getBatteryVoltage(){
-    float pin_reading = analogRead(A7);
-    pin_reading *= 2;
-    pin_reading *= 3.3;
-    pin_reading /= 4096;
-    return pin_reading;
+    analogReadResolution(12);
+    pinMode(A7, INPUT);
+
+    analogRead(A7);
+
+    uint32_t readingSum = 0;
+    for(uint8_t i = 0; i < BATTERY_SAMPLE_COUNT; i++){
+        readingSum += analogRead(A7);
+        delayMicroseconds(50);
+    }
+
+    const float averageReading = (float)readingSum / (float)BATTERY_SAMPLE_COUNT;
+    return averageReading * BATTERY_DIVIDER_SCALE * ADC_REFERENCE_VOLTAGE / ADC_MAX_READING;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

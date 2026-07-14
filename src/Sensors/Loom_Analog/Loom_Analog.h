@@ -47,15 +47,13 @@ class Loom_Analog : public Module{
          * @param additionalPins Variable length argument allowing you to supply multiple pins
          */ 
         template<typename T, typename... Args>
-        Loom_Analog(Manager& man, T firstPin , Args... additionalPins) : Module("Analog"){
-           get_variadic_parameters(firstPin, additionalPins...);
-           pinMappings.push_back(new AnalogMapping(A7, "Vbat", getBatteryVoltage(), getBatteryVoltage() * 1000));
-           manInst = &man;
-
-           // Set 12-bit analog read resolution
+        Loom_Analog(Manager& man, T firstPin, Args... additionalPins) : Module("Analog"), manInst(&man){
            analogReadResolution(12);
+           get_variadic_parameters(firstPin, additionalPins...);
 
-           // Register the module with the manager
+           const float batteryVoltage = getBatteryVoltage();
+           pinMappings.push_back(new AnalogMapping(A7, "Vbat", batteryVoltage, batteryVoltage * 1000.0f));
+
            manInst->registerModule(this);
         };
 
@@ -65,15 +63,13 @@ class Loom_Analog : public Module{
          * @param firstPin First analog pin we want to read from
          */ 
         template<typename T>
-        Loom_Analog(Manager& man, T firstPin) : Module("Analog"){
-           pinMappings.push_back(new AnalogMapping(firstPin, pinNumberToName(firstPin), 0, 0));
-           pinMappings.push_back(new AnalogMapping(A7, "Vbat", getBatteryVoltage(), getBatteryVoltage() * 1000));
-           manInst = &man;
-
-           // Set 12-bit analog read resolution
+        Loom_Analog(Manager& man, T firstPin) : Module("Analog"), manInst(&man){
            analogReadResolution(12);
+           pinMappings.push_back(new AnalogMapping(firstPin, pinNumberToName(firstPin), 0, 0));
 
-           // Register the module with the manager
+           const float batteryVoltage = getBatteryVoltage();
+           pinMappings.push_back(new AnalogMapping(A7, "Vbat", batteryVoltage, batteryVoltage * 1000.0f));
+
            manInst->registerModule(this);
         };
 
@@ -81,14 +77,12 @@ class Loom_Analog : public Module{
          * Templated constructor that only reads the battery voltage
          * @param man Reference to the manager
          */ 
-        Loom_Analog(Manager& man) : Module("Analog"){
-           manInst = &man;
-           pinMappings.push_back(new AnalogMapping(A7, "Vbat", getBatteryVoltage(), getBatteryVoltage() * 1000));
-
-           // Set 12-bit analog read resolution
+        Loom_Analog(Manager& man) : Module("Analog"), manInst(&man){
            analogReadResolution(12);
 
-           // Register the module with the manager
+           const float batteryVoltage = getBatteryVoltage();
+           pinMappings.push_back(new AnalogMapping(A7, "Vbat", batteryVoltage, batteryVoltage * 1000.0f));
+
            manInst->registerModule(this);
         };
 

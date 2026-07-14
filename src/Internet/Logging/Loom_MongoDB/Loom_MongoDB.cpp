@@ -78,10 +78,14 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
 
-    if(Loom_Analog::getBatteryVoltage() < 3.4){
-        WARNING(F("Module not initialized! Battery doesn't have enough power."));
+    const float batteryVoltage = Loom_Analog::getBatteryVoltage();
+    if(batteryVoltage < 3.4f){
+        const uint16_t batteryMillivolts = (uint16_t)(batteryVoltage * 1000.0f + 0.5f);
+        snprintf(output, OUTPUT_SIZE, "Battery voltage %u.%03uV is below the 3.40V transmission threshold.",
+                 (unsigned int)(batteryMillivolts / 1000), (unsigned int)(batteryMillivolts % 1000));
+        WARNING(output);
         FUNCTION_END;
-        return false;    
+        return false;
     }
     
     char line[MAX_JSON_SIZE];
