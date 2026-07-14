@@ -2,6 +2,24 @@
 #include "Logger.h"
 
 
+static void hypnosClearPendingExternalInterrupt(int interruptPin) {
+#if defined(ARDUINO_ARCH_SAMD)
+#if ARDUINO_SAMD_VARIANT_COMPLIANCE >= 10606
+    EExt_Interrupts externalInterrupt = g_APinDescription[interruptPin].ulExtInt;
+#else
+    EExt_Interrupts externalInterrupt = digitalPinToInterrupt(interruptPin);
+#endif
+
+    if(externalInterrupt != NOT_AN_INTERRUPT && externalInterrupt != EXTERNAL_INT_NMI){
+        EIC->INTFLAG.reg = (1ul << externalInterrupt);
+        NVIC_ClearPendingIRQ(EIC_IRQn);
+    }
+#else
+    (void)interruptPin;
+#endif
+}
+
+
 static uint8_t hypnosMonthFromCompileString(const char* month) {
     if(strncmp(month, "Jan", 3) == 0) return 1;
     if(strncmp(month, "Feb", 3) == 0) return 2;
@@ -245,6 +263,7 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
 
          // If the interrupt we registered is for sleep we should set the interrupt to wake the device from sleep
         if(interruptType == SLEEP){
+            hypnosClearPendingExternalInterrupt(interruptPin);
             LowPower.attachInterruptWakeup(interruptPin, isrFunc, triggerState);
             LOG(F("Interrupt successfully attached!"));
         }
@@ -284,6 +303,7 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
     HypnosInterruptType interruptType = std::get<2>(interruptEntry->second);
 
     if(interruptType == SLEEP){
+        hypnosClearPendingExternalInterrupt(interruptPin);
         LowPower.attachInterruptWakeup(interruptPin, callback, triggerState);
     }
     else{
@@ -575,14 +595,16 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
 
-    // Clear the latched interrupt flags before programming the next alarm.
+    // Disable both alarm outputs while replacing Alarm 1.
+    RTC_DS.armAlarm(1, false);
+    RTC_DS.armAlarm(2, false);
     RTC_DS.clearAlarm(1);
     RTC_DS.clearAlarm(2);
-    RTC_DS.armAlarm(2, false);
 
-    // The time in the future that the alarm will be set for
+    // Program the future alarm, then clear any match flag that was pending during replacement.
     DateTime future(RTC_DS.now() + duration);
     RTC_DS.setAlarm(future);
+    RTC_DS.clearAlarm(1);
 
     // Print the time that the next interrupt is set to trigger
     snprintf(output, OUTPUT_SIZE, PSTR("Current Time (Local): %s"), getLocalTime(RTC_DS.now()).text());
@@ -651,8 +673,8 @@ void Loom_Hypnos::pre_sleep(){
     Serial.end();
     USBDevice.detach();
 
-    // Reattach the interrupt to the RTC interrupt pin
-    attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
+    // Reattach the registered wake interrupt after clearing any stale SAMD EIC event.
+    reattachRTCInterrupt(pinToInterrupt.begin()->first);
 
     // Disable the power rails
     disable(disable33, disable5);
