@@ -767,7 +767,15 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
         return TimeSpan(0, 0, 20, 0);
     }
 
-    DeserializationError deserialError = deserializeJson(doc, fileRead);
+    // Skip an optional UTF-8 BOM. Some desktop editors add this when saving JSON files.
+    char* jsonStart = fileRead;
+    if((uint8_t)jsonStart[0] == 0xEF &&
+       (uint8_t)jsonStart[1] == 0xBB &&
+       (uint8_t)jsonStart[2] == 0xBF){
+        jsonStart += 3;
+    }
+
+    DeserializationError deserialError = deserializeJson(doc, jsonStart);
     free(fileRead);
 
     if(deserialError != DeserializationError::Ok){
@@ -798,27 +806,42 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
         }
     }
 
-    int days = 0;
-    int hours = 0;
-    int minutes = 0;
-    int seconds = 0;
-    bool intervalFound = false;
+    // Preserve the original Smart Rock top-level layout first:
+    // {"days":0,"hours":0,"minutes":1,"seconds":5}
+    // Also accept the newer nested layout:
+    // {"SleepInterval":{"days":0,"hours":0,"minutes":1,"seconds":5}}
+    JsonObject intervalJson = json;
+    const char* intervalLayout = "top-level";
+    bool intervalFound = json.containsKey("days") || json.containsKey("hours") ||
+                         json.containsKey("minutes") || json.containsKey("seconds");
 
-    if(!json["SleepInterval"].isNull()){
-        days = json["SleepInterval"]["days"].as<int>();
-        hours = json["SleepInterval"]["hours"].as<int>();
-        minutes = json["SleepInterval"]["minutes"].as<int>();
-        seconds = json["SleepInterval"]["seconds"].as<int>();
-        intervalFound = true;
+    if(!intervalFound){
+        if(json["SleepInterval"].is<JsonObject>()){
+            intervalJson = json["SleepInterval"].as<JsonObject>();
+            intervalLayout = "SleepInterval";
+            intervalFound = true;
+        }
+        else if(json["sleepInterval"].is<JsonObject>()){
+            intervalJson = json["sleepInterval"].as<JsonObject>();
+            intervalLayout = "sleepInterval";
+            intervalFound = true;
+        }
+        else if(json["sleep_interval"].is<JsonObject>()){
+            intervalJson = json["sleep_interval"].as<JsonObject>();
+            intervalLayout = "sleep_interval";
+            intervalFound = true;
+        }
     }
-    else if(!json["days"].isNull() || !json["hours"].isNull() ||
-            !json["minutes"].isNull() || !json["seconds"].isNull()){
-        days = json["days"].as<int>();
-        hours = json["hours"].as<int>();
-        minutes = json["minutes"].as<int>();
-        seconds = json["seconds"].as<int>();
-        intervalFound = true;
-    }
+
+    const int days = intervalFound ? intervalJson["days"].as<int>() : 0;
+    const int hours = intervalFound ? intervalJson["hours"].as<int>() : 0;
+    const int minutes = intervalFound ? intervalJson["minutes"].as<int>() : 0;
+    const int seconds = intervalFound ? intervalJson["seconds"].as<int>() : 0;
+
+    snprintf(output, OUTPUT_SIZE,
+             "Sampling interval layout: %s; days=%d hours=%d minutes=%d seconds=%d",
+             intervalFound ? intervalLayout : "missing", days, hours, minutes, seconds);
+    LOG(output);
 
     TimeSpan interval(days, hours, minutes, seconds);
     if(!intervalFound || interval.totalseconds() <= 0){

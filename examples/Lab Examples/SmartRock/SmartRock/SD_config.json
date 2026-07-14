@@ -1,9 +1,6 @@
 {
-  "timezone": "PST",
-  "SleepInterval": {
-    "days": 0,
-    "hours": 0,
-    "minutes": 1,
-    "seconds": 5
-  }
+  "days": 0,
+  "hours": 0,
+  "minutes": 1,
+  "seconds": 5
 }
