@@ -303,6 +303,15 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
     HypnosInterruptType interruptType = std::get<2>(interruptEntry->second);
 
     if(interruptType == SLEEP){
+        // A LOW RTC line means the alarm already expired while the device was awake. Attaching a
+        // level interrupt here would invoke the callback immediately and can create duplicate
+        // resample events. The sleep overrun path clears the alarm and delivers one callback.
+        if(interruptPin == 12 && digitalRead(interruptPin) == LOW){
+            LOG(F("RTC alarm is already active; deferring callback to the sleep overrun handler."));
+            FUNCTION_END;
+            return true;
+        }
+
         hypnosClearPendingExternalInterrupt(interruptPin);
         LowPower.attachInterruptWakeup(interruptPin, callback, triggerState);
     }
@@ -646,12 +655,25 @@ void Loom_Hypnos::sleep(bool waitForSerial){
         LowPower.sleep();                                       // Go to sleep and hang
         Watchdog.enable(WATCHDOG_TIMEOUT);
     }
-    // If it has we want to trigger a resample which requires powering the sensors back up
+    // If the alarm expired while the device was still sampling, restore the awake state and
+    // deliver one synthetic RTC wake callback so flag-based sketches request another sample.
     else{
         WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");
-        reattachRTCInterrupt();
+
+        RTC_DS.armAlarm(1, false);
+        RTC_DS.clearAlarm(1);
+        hypnosClearPendingExternalInterrupt(12);
+
         if(shouldPowerUp){
             manInst->power_up();
+        }
+
+        auto rtcInterrupt = pinToInterrupt.find(12);
+        if(rtcInterrupt != pinToInterrupt.end()){
+            InterruptCallbackFunction callback = std::get<0>(rtcInterrupt->second);
+            if(callback != nullptr){
+                callback();
+            }
         }
     }
     Watchdog.reset();
@@ -729,42 +751,87 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
     FUNCTION_START;
-    // Doc to store the JSON data from the SD card in
     StaticJsonDocument<OUTPUT_SIZE> doc;
     char output[OUTPUT_SIZE];
+
+    if(sdMan == nullptr){
+        ERROR(F("Attempted to read Hypnos configuration without an SD manager, defaulting sampling interval to 20 minutes."));
+        FUNCTION_END;
+        return TimeSpan(0, 0, 20, 0);
+    }
+
     char* fileRead = sdMan->readFile(fileName);
+    if(fileRead == nullptr){
+        ERROR(F("Failed to read Hypnos configuration from SD, defaulting sampling interval to 20 minutes."));
+        FUNCTION_END;
+        return TimeSpan(0, 0, 20, 0);
+    }
+
     DeserializationError deserialError = deserializeJson(doc, fileRead);
     free(fileRead);
 
-    // Create json object to easily pull data from
-    JsonObject json = doc.as<JsonObject>();
-
     if(deserialError != DeserializationError::Ok){
-        snprintf(output, OUTPUT_SIZE, "There was an error reading the config from SD: %s, defaulting sampling interval to 20 minutes.", deserialError.c_str());
+        snprintf(output, OUTPUT_SIZE,
+                 "There was an error reading the config from SD: %s, defaulting sampling interval to 20 minutes.",
+                 deserialError.c_str());
         ERROR(output);
+        FUNCTION_END;
         return TimeSpan(0, 0, 20, 0);
     }
-    else{
-        LOG(F("Config successfully loaded from SD!"));
-        if(!json["timezone"].isNull()){
-            const char* timezoneStr = json["timezone"].as<const char*>();
-            snprintf(output, OUTPUT_SIZE, "Selected timezone: %s, UTC offset: %i", timezoneStr, (int)timezoneMap[(const char*)timezoneStr]);
-            LOG(output);
-            timezone = timezoneMap[(const char*)timezoneStr];
-        }
 
-        // If the sleep interval key is not supplied we want to set some default
-        if(!json["SleepInterval"].isNull()){
-            // Return the interval as set in the json
-            return TimeSpan(json["SleepInterval"]["days"].as<int>(), json["SleepInterval"]["hours"].as<int>(), json["SleepInterval"]["minutes"].as<int>(), json["SleepInterval"]["seconds"].as<int>());
+    JsonObject json = doc.as<JsonObject>();
+    LOG(F("Config successfully loaded from SD!"));
+
+    if(!json["timezone"].isNull()){
+        const char* timezoneStr = json["timezone"].as<const char*>();
+        auto timezoneEntry = timezoneMap.find(timezoneStr);
+        if(timezoneEntry != timezoneMap.end()){
+            timezone = timezoneEntry->second;
+            snprintf(output, OUTPUT_SIZE, "Selected timezone: %s, UTC offset: %i",
+                     timezoneStr, (int)timezone);
+            LOG(output);
         }
         else{
-            snprintf(output, OUTPUT_SIZE, "There was an error reading the sampling interval from SD, defaulting sampling interval to 20 minutes.");
-            ERROR(output);
-            return TimeSpan(0, 0, 20, 0);
+            snprintf(output, OUTPUT_SIZE, "Unknown timezone '%s'; retaining configured timezone.",
+                     timezoneStr);
+            WARNING(output);
         }
     }
+
+    int days = 0;
+    int hours = 0;
+    int minutes = 0;
+    int seconds = 0;
+    bool intervalFound = false;
+
+    if(!json["SleepInterval"].isNull()){
+        days = json["SleepInterval"]["days"].as<int>();
+        hours = json["SleepInterval"]["hours"].as<int>();
+        minutes = json["SleepInterval"]["minutes"].as<int>();
+        seconds = json["SleepInterval"]["seconds"].as<int>();
+        intervalFound = true;
+    }
+    else if(!json["days"].isNull() || !json["hours"].isNull() ||
+            !json["minutes"].isNull() || !json["seconds"].isNull()){
+        days = json["days"].as<int>();
+        hours = json["hours"].as<int>();
+        minutes = json["minutes"].as<int>();
+        seconds = json["seconds"].as<int>();
+        intervalFound = true;
+    }
+
+    TimeSpan interval(days, hours, minutes, seconds);
+    if(!intervalFound || interval.totalseconds() <= 0){
+        ERROR(F("Sampling interval is missing or zero, defaulting sampling interval to 20 minutes."));
+        FUNCTION_END;
+        return TimeSpan(0, 0, 20, 0);
+    }
+
+    snprintf(output, OUTPUT_SIZE, "Sampling interval loaded from SD: %ld seconds.",
+             (long)interval.totalseconds());
+    LOG(output);
     FUNCTION_END;
+    return interval;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
