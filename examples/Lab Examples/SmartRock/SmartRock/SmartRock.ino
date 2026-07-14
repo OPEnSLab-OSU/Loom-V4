@@ -1,70 +1,139 @@
 /**
  * In lab use case example for the SmartRock project
- * 
- * This project uses a hypnos, an ADS1115 and a MS5803
- * 
+ *
+ * This project uses a Hypnos, ADS1115, MS5803, VCNL4010, and battery monitor.
+ *
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
+
 #include <Loom_Manager.h>
 
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Sensors/I2C/Loom_ADS1115/Loom_ADS1115.h>
 #include <Sensors/I2C/Loom_MS5803/Loom_MS5803.h>
+#include <Sensors/Loom_Analog/Loom_Analog.h>
 
-Manager manager("Device", 1);
+#include <Wire.h>
+#include "Adafruit_VCNL4010.h"
 
-// Create a new Hypnos object
-Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_2, TIME_ZONE::PST);
-
-// Sensors to use
+Manager manager("Data", 1);
+Loom_Analog analog(manager);
+Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 Loom_ADS1115 ads(manager);
 Loom_MS5803 ms(manager, 119);
+Adafruit_VCNL4010 vcnl;
 
 TimeSpan sleepInterval;
+uint32_t wakeCycle = 0;
 
-// Called when the interrupt is triggered 
-void isrTrigger(){
-  hypnos.wakeup();
-}
+void isrTrigger();
+bool takeData(float A0Offset, float A1Offset, float ecSlope, float ecIntercept,
+              float turbiditySlope, float turbidityIntercept, bool troubleshootingMode);
 
 void setup() {
-
-  // Wait 20 seconds for the serial console to open
   manager.beginSerial();
 
-  // Enable the hypnos rails
   hypnos.enable();
   manager.initialize();
 
   sleepInterval = hypnos.getConfigFromSD("SD_config.json");
-  // Register the ISR and attach to the interrupt
+
+  Serial.print(F("Sleep interval loaded from SD: "));
+  Serial.print(sleepInterval.totalseconds());
+  Serial.println(F(" seconds"));
+
   hypnos.registerInterrupt(isrTrigger);
+
+  if (!vcnl.begin()) {
+    Serial.println(F("VCNL4010 Not Found"));
+  } else {
+    Serial.println(F("VCNL4010 Initialized"));
+  }
 }
 
 void loop() {
+  const float A0Offset = -280.0f;
+  const float A1Offset = 0.0f;
+  const float ecSlope = 1.0f;
+  const float ecIntercept = 0.0f;
+  const float turbiditySlope = 0.0f;
+  const float turbidityIntercept = 0.0f;
+  const bool troubleshootingMode = true;
 
-  // Measure and package the data
+  wakeCycle++;
+
+  if (troubleshootingMode) {
+    Serial.println();
+    Serial.print(F("Wake cycle: "));
+    Serial.println(wakeCycle);
+    Serial.println(F("Begin Taking Data"));
+  }
+
+  const bool sdLogged = takeData(
+      A0Offset,
+      A1Offset,
+      ecSlope,
+      ecIntercept,
+      turbiditySlope,
+      turbidityIntercept,
+      troubleshootingMode);
+
+  if (troubleshootingMode) {
+    Serial.print(F("SD log result: "));
+    Serial.println(sdLogged ? F("PASS") : F("FAIL"));
+    Serial.print(F("Setting alarm after data collection for "));
+    Serial.print(sleepInterval.totalseconds());
+    Serial.println(F(" seconds"));
+  }
+
+  hypnos.setInterruptDuration(sleepInterval);
+  hypnos.reattachRTCInterrupt();
+
+  if (troubleshootingMode) {
+    Serial.println(F("Going to Sleep"));
+  }
+
+  hypnos.sleep(false);
+}
+
+void isrTrigger() {
+  hypnos.wakeup();
+}
+
+bool takeData(float A0Offset, float A1Offset, float ecSlope, float ecIntercept,
+              float turbiditySlope, float turbidityIntercept, bool troubleshootingMode) {
   manager.measure();
   manager.package();
-  
-  // Add labeled columns for turbidity and conductivity
-  // This can change between SmartRock revisions, ensure your pins are correct before field usage
-  manager.addData("Analog Values", "Conductivity", ads.getAnalog(1));
-  manager.addData("Analog Values", "Turbidity", ads.getAnalog(2));
 
-  // Print the current JSON packet
-  manager.display_data();            
+  if (troubleshootingMode) {
+    Serial.println(F("Measured Data"));
+  }
 
-  // Log the data to the SD card              
-  hypnos.logToSD();
+  const float A0 = ads.getAnalog(1) - A0Offset;
+  const float A1 = ads.getAnalog(2) - A1Offset;
+  const float conductivity = A1 != 0.0f
+      ? ((A0 / A1) * ecSlope + ecIntercept)
+      : 0.0f;
+  const float proximity = static_cast<float>(vcnl.readProximity());
+  const float turbidity = proximity * turbiditySlope + turbidityIntercept;
 
-  // Start the sleep interval after measurement and SD logging complete. This keeps a slow SD write
-  // from expiring the RTC alarm before the device reaches standby.
-  hypnos.setInterruptDuration(sleepInterval);
+  if (troubleshootingMode) {
+    Serial.println(F("EC and Turbidity Values Calculated"));
+  }
 
-  // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
-  hypnos.reattachRTCInterrupt();
-  
-  // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
-  hypnos.sleep(false);
+  manager.addData("MS5803", "Pressure", ms.getPressure());
+  manager.addData("MS5803", "Temperature", ms.getTemperature());
+  manager.addData("vcnl4010", "Ambient Light", vcnl.readAmbient());
+  manager.addData("vcnl4010", "Proximity", proximity);
+  manager.addData("Analog Values", "A0_adjusted", A0);
+  manager.addData("Analog Values", "A1_adjusted", A1);
+  manager.addData("Analog Values", "Conductivity", conductivity);
+  manager.addData("Analog Values", "Turbidity", turbidity);
+
+  if (troubleshootingMode) {
+    Serial.println(F("Data Added to Packet"));
+  }
+
+  manager.display_data();
+  return hypnos.logToSD();
 }
