@@ -35,7 +35,7 @@ Loom_MS5803 ms_air(manager, 118); // 118(0x76) if CSB=HIGH on WC PCB
 Loom_TippingBucket bucket(manager, COUNTER_TYPE::I2C, 0.01f);
 
 Loom_LTE lte(manager, "hologram", "", "");
-Loom_MongoDB mqtt(manager, lte.getClient());
+Loom_MongoDB mqtt(manager, lte);
 
 /* Calculate the water height based on the difference of pressures*/
 float calculateWaterHeight(){
@@ -100,3 +100,4 @@ void loop() {
   hypnos.sleep();
   
 }
+

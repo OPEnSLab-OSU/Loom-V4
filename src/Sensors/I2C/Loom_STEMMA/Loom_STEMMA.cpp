@@ -20,8 +20,8 @@ void Loom_STEMMA::initialize() {
         LOG(F("Failed to initialize STEMMA! Check connections and try again..."));
         moduleInitialized = false;
     } else {
-        snprintf(output, OUTPUT_SIZE, "Successfully initialized STEMMA Version: %u",
-                 stemma.getVersion());
+        snprintf(output, OUTPUT_SIZE, "Successfully initialized STEMMA Version: %lu",
+                 static_cast<unsigned long>(stemma.getVersion()));
         LOG(output);
     }
     FUNCTION_END;

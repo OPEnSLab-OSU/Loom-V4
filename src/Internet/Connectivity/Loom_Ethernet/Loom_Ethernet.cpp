@@ -1,3 +1,4 @@
+
 #include "Loom_Ethernet.h"
 #include "Logger.h"
 #include <RTClib.h>
@@ -67,6 +68,7 @@ bool Loom_Ethernet::connect() {
             ip = Ethernet.localIP();
         }
     }
+    return moduleInitialized;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -134,7 +136,7 @@ bool Loom_Ethernet::getNetworkTime(int *year, int *month, int *day, int *hour, i
         *day = currentTime.day();
         *hour = currentTime.hour();
         *minute = currentTime.minute();
-        *second = currentTime.minute();
+        *second = currentTime.second();
 
         return true;
     }

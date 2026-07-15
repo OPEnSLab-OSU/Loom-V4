@@ -46,7 +46,8 @@ class SDManager : public Module {
     /**
      * Read the contents of a given file on the SD card and return them as a string
      *
-     * YOU MUST FREE THIS BLOCK OF MEMORY AS IT IS 10kb
+     * The returned buffer is sized to the file and must be freed by the caller.
+     * Files larger than the implementation safety limit return nullptr.
      *
      * @param fileName Name of the file to read from
      */
@@ -75,10 +76,7 @@ class SDManager : public Module {
     /**
      * Get the current batch file name
      */
-    const char *getBatchFilename() {
-        snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
-        return batchFileName;
-    };
+    const char *getBatchFilename();
 
     /**
      * Has the SD card been initialized previously
@@ -104,7 +102,10 @@ class SDManager : public Module {
     /**
      * Log to a different name other than one matching the device name
      */
-    void setLogName(const char *name) { strncpy(overrideFileName, name, 100); };
+    void setLogName(const char *name) {
+        strncpy(overrideFileName, name ? name : "", sizeof(overrideFileName) - 1);
+        overrideFileName[sizeof(overrideFileName) - 1] = '\0';
+    };
 
     /* Get whatever number we are currently appending to the SD fileNames*/
     int getCurrentFileNumber() { return file_count; };

@@ -61,7 +61,7 @@ void Loom_TippingBucket::measure() {
         /* Loop over the last hour to accumlate the number of tips that occured within the last hour
          * and we want to subtract the current value minus the last to get the difference and add
          * that*/
-        for (int i = 0; i < tips.size(); i++) {
+        for (size_t i = 0; i < tips.size(); i++) {
             hourlyTips += tips[i];
         }
     }

@@ -9,6 +9,7 @@
 //  Updated October 7, 2025 - Elliot Zimmer
 
 
+// Cumulative WeatherChimes 2025 sketch.
 #include <Loom_Manager.h>
 #include <Logger.h>
 

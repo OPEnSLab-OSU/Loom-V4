@@ -63,7 +63,7 @@ float index_algorithm()
     // Pull the wavelength values from the array and 
     // cast them as float values
     uint16_t* values = as.getUV();
-    uint16_t a = (float)values[0];  // 410
+    // uint16_t a = (float)values[0];  // 410
     uint16_t b = (float)values[1];  // 435
     uint16_t c = (float)values[2];  // 460
     uint16_t d = (float)values[3];  // 485
@@ -72,16 +72,16 @@ float index_algorithm()
 
     values = as.getColor();
     uint16_t g = (float)values[0]; // 560
-    uint16_t h = (float)values[1]; // 585
-    uint16_t i = (float)values[2]; // 645
-    uint16_t j = (float)values[3]; // 705
-    uint16_t k = (float)values[4]; // 900
-    uint16_t l = (float)values[5]; // 940
+    // uint16_t h = (float)values[1]; // 585
+    // uint16_t i = (float)values[2]; // 645
+    // uint16_t j = (float)values[3]; // 705
+    // uint16_t k = (float)values[4]; // 900
+    // uint16_t l = (float)values[5]; // 940
     
     values = as.getNIR();
-    uint16_t r = (float)values[0]; // 610
+    // uint16_t r = (float)values[0]; // 610
     uint16_t s = (float)values[1]; // 680
-    uint16_t t = (float)values[2]; // 730
+    // uint16_t t = (float)values[2]; // 730
     uint16_t u = (float)values[3]; // 760
     uint16_t v = (float)values[4]; // 810
     uint16_t w = (float)values[5]; // 860
@@ -127,7 +127,7 @@ void calibrate()
 {  
   for(int z=0; z<16; z++) // Loop to take calibration samples
   {
-    LOG("Calibration: " + String(z) + " / 16");
+    LOGF("Calibration: %d / 16", z);
     // Collect, package and dispaly data
     manager.measure();
     manager.package();
@@ -135,7 +135,7 @@ void calibrate()
 
     ndviCal[z] = index_algorithm();  // Store indicator index values in an array
 
-    LOG(ndviCal[z]);   // print out the calculated indicator index values
+    LOGF("%.6f", ndviCal[z]);   // print out the calculated indicator index values
    
   } // for loop 
 
@@ -178,50 +178,50 @@ void loop(){
     LOG("+++++ START +++++");
     SLOG("UV");
     uint16_t* values = as.getUV();
-    uint16_t a = (float)values[0]; SLOG(a);     // 410
-    uint16_t b = (float)values[1]; SLOG(b);     // 435
-    uint16_t c = (float)values[2]; SLOG(c);     // 460
-    uint16_t d = (float)values[3]; SLOG(d);     // 485
-    uint16_t e = (float)values[4]; SLOG(e);     // 510
-    uint16_t f = (float)values[5]; SLOG(f);     // 535
+    uint16_t a = (float)values[0]; SLOGF("%u", (unsigned int)a);     // 410
+    uint16_t b = (float)values[1]; SLOGF("%u", (unsigned int)b);     // 435
+    uint16_t c = (float)values[2]; SLOGF("%u", (unsigned int)c);     // 460
+    uint16_t d = (float)values[3]; SLOGF("%u", (unsigned int)d);     // 485
+    uint16_t e = (float)values[4]; SLOGF("%u", (unsigned int)e);     // 510
+    uint16_t f = (float)values[5]; SLOGF("%u", (unsigned int)f);     // 535
 
     SLOG("\nColor");
     values = as.getColor();
-    uint16_t g = (float)values[0];  SLOG(g);    // 560
-    uint16_t h = (float)values[1];  SLOG(h);    // 585
-    uint16_t i = (float)values[2];  SLOG(i);    // 645
-    uint16_t j = (float)values[3];  SLOG(j);    // 705
-    uint16_t k = (float)values[4];  SLOG(k);    // 900
-    uint16_t l = (float)values[5];  SLOG(l);    // 940
+    uint16_t g = (float)values[0];  SLOGF("%u", (unsigned int)g);    // 560
+    uint16_t h = (float)values[1];  SLOGF("%u", (unsigned int)h);    // 585
+    uint16_t i = (float)values[2];  SLOGF("%u", (unsigned int)i);    // 645
+    uint16_t j = (float)values[3];  SLOGF("%u", (unsigned int)j);    // 705
+    uint16_t k = (float)values[4];  SLOGF("%u", (unsigned int)k);    // 900
+    uint16_t l = (float)values[5];  SLOGF("%u", (unsigned int)l);    // 940
         
     SLOG("\nNIR");
     values = as.getNIR();
-    uint16_t r = (float)values[0];  SLOG(r);    // 610
-    uint16_t s = (float)values[1];  SLOG(s);    // 680
-    uint16_t t = (float)values[2];  SLOG(t);    // 730
-    uint16_t u = (float)values[3];  SLOG(u);    // 760
-    uint16_t v = (float)values[4];  SLOG(v);    // 810
-    uint16_t w = (float)values[5];  SLOG(w);    // 860
+    uint16_t r = (float)values[0];  SLOGF("%u", (unsigned int)r);    // 610
+    uint16_t s = (float)values[1];  SLOGF("%u", (unsigned int)s);    // 680
+    uint16_t t = (float)values[2];  SLOGF("%u", (unsigned int)t);    // 730
+    uint16_t u = (float)values[3];  SLOGF("%u", (unsigned int)u);    // 760
+    uint16_t v = (float)values[4];  SLOGF("%u", (unsigned int)v);    // 810
+    uint16_t w = (float)values[5];  SLOGF("%u", (unsigned int)w);    // 860
 
     // Sum up the total of all wavelengths
     float total = a + b + c + d + e + f + g + h + i + j + k + l + r + s + t + u + v + w;
     LOG("++++++++++++++++\n");
     LOG("++++++++++++++++\bTotals");
-    float a_w = a/total; LOG(a_w);
-    float b_w = b/total; LOG(b_w);
-    float c_w = c/total; LOG(c_w);
-    float d_w = d/total; LOG(d_w);
-    float e_w = b/total; LOG(e_w);
-    float f_w = b/total; LOG(f_w);
-    float g_w = g/total; LOG(g_w);
-    float j_w = j/total; LOG(j_w); 
-    float k_w = k/total; LOG(k_w);
-    float r_w = r/total; LOG(r_w);
-    float s_w = s/total; LOG(s_w);
-    float t_w = t/total; LOG(t_w);
-    float u_w = u/total; LOG(u_w);
-    float v_w = v/total; LOG(v_w);
-    float w_w = w/total; LOG(w_w);
+    float a_w = a/total; LOGF("%.6f", a_w);
+    float b_w = b/total; LOGF("%.6f", b_w);
+    float c_w = c/total; LOGF("%.6f", c_w);
+    float d_w = d/total; LOGF("%.6f", d_w);
+    float e_w = b/total; LOGF("%.6f", e_w);
+    float f_w = b/total; LOGF("%.6f", f_w);
+    float g_w = g/total; LOGF("%.6f", g_w);
+    float j_w = j/total; LOGF("%.6f", j_w);
+    float k_w = k/total; LOGF("%.6f", k_w);
+    float r_w = r/total; LOGF("%.6f", r_w);
+    float s_w = s/total; LOGF("%.6f", s_w);
+    float t_w = t/total; LOGF("%.6f", t_w);
+    float u_w = u/total; LOGF("%.6f", u_w);
+    float v_w = v/total; LOGF("%.6f", v_w);
+    float w_w = w/total; LOGF("%.6f", w_w);
 
     // calculate the indicator index Value
     float endvi = index_algorithm(); 
@@ -229,9 +229,9 @@ void loop(){
     // Calculate some other indices that are not used
 
     // PSND
-    float ps = v-f;
-    float nd2 = v+f;
-    float psnd = ps/nd2;
+    // float ps = v-f;
+    // float nd2 = v+f;
+    // float psnd = ps/nd2;
 
     // EVI   
     float evi = ((2.5*(v-s))/(v+6*s-7.5*b+1));
@@ -259,9 +259,9 @@ void loop(){
     hypnos.logToSD();
 
     LOG("++++++++++++++++");
-    LOG("Total=" + String(total));
-    LOG("EDVI=" + String(endvi));
-    LOG("Threshold=" + String(threshold));
+    LOGF("Total=%.6f", total);
+    LOGF("EDVI=%.6f", endvi);
+    LOGF("Threshold=%.6f", threshold);
 
     if(threshold < endvi){
         LOG("++++++++++++++++++++++++++++++++++++++");

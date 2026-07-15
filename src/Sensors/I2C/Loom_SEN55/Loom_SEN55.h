@@ -24,8 +24,9 @@ class Loom_SEN55 : public I2CDevice {
     // Manager controlled functions
     void measure() override;
     void initialize() override;
-    void power_up() override {};
+    void power_up() override;
     void power_down() override {};
+    bool retryPowerUpWhenUninitialized() const override { return true; }
     void package() override;
 
   public:

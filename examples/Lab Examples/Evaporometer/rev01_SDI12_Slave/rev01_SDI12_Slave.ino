@@ -94,9 +94,11 @@ void pollSensor(float* measurementValues) {
     measurementValues[0] = temperature;
     measurementValues[1] = weight;
     measurementValues[2] = corrected;
+    measurementValues[3] = vbat;
+
+    ads.power_down();
 
     Serial.println(weight);
-    //measurementValues[3] = vbat;
 }
 
 // --------------------------------------------------------------------
@@ -125,8 +127,8 @@ void parseSdi12Cmd(String command, String* dValues, float* measurementValues) {
             case 'I':
                 responseStr = "14EVAPRMTR000001.0001"; break;
             case 'M':
-                // 000 seconds until data, 05 values to follow
-                responseStr = "0053";
+                // 005 seconds until data, 04 values to follow
+                responseStr = "0054";
                 state = INITIATE_MEASUREMENT;
                 break;
             case 'D': {
@@ -154,7 +156,7 @@ void parseSdi12Cmd(String command, String* dValues, float* measurementValues) {
 void formatOutputSDI(float* measurementValues, String* dValues, unsigned int maxChar) {
     dValues[0] = "";
     int j = 0;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 4; i++) {
         String valStr = String(measurementValues[i], 2);
         if (valStr.charAt(0) != '-') { valStr = "+" + valStr; }
         if (dValues[j].length() + valStr.length() < maxChar) {

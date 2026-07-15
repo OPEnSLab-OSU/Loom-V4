@@ -21,13 +21,10 @@
 #include <Sensors/I2C/Loom_ADS1115/Loom_ADS1115.h>
 #include <Sensors/I2C/Loom_MS5803/Loom_MS5803.h>
 #include <Sensors/Loom_Analog/Loom_Analog.h>
-#include <Sensors/I2C/Loom_VCNL/Loom_VCNL.h>
+#include <Sensors/I2C/Loom_VCNL4010/Loom_VCNL4010.h>
 
 //------------------------------------------------------------
 #include <Wire.h>
-#include "Adafruit_VCNL4010.h"
-
-//Adafruit_VCNL4010 vcnl;
 //------------------------------------------------------------
 
 Manager manager("Data", 1);
@@ -38,11 +35,18 @@ Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
   // Sensors to use
 Loom_ADS1115 ads(manager);
 Loom_MS5803 ms(manager, 119);
-Loom_VCNL(manager, 13, false);
+Loom_VCNL4010 vcnl(manager, 0x13, false);
 
 Loom_Analog analog(manager);
+struct EC_calibration {
+  float intercept;
+  float slope;
+};
+
 EC_calibration calib;
 TimeSpan sleepInterval;
+
+EC_calibration getCalibrationValsFromSD(const char* fileName);
 
   // Called when the interrupt is triggered 
 void isrTrigger(){
@@ -66,17 +70,9 @@ void setup() {
   manager.initialize();
 
     // Gets sleep interval from SD card
-  sleepInterval = hypnos.getSleepIntervalFromSD("SD_config.json");
+  sleepInterval = hypnos.getConfigFromSD("SD_config.json");
     // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);
-
-//------------------------------------------------------------
-  if (! vcnl.begin()){
-    Serial.println("Sensor not found :(");
-    while (1);
-  }
-  Serial.println("Found VCNL4010");
-//------------------------------------------------------------
 
 }
 
@@ -153,6 +149,12 @@ void take_data(float m, float b, int count, int interval){
           // Pause for specified interval between data points
         manager.pause(interval);
     }
+}
+
+EC_calibration getCalibrationValsFromSD(const char* fileName){
+    (void) fileName;
+    EC_calibration defaults = {0.0f, 1.0f};
+    return defaults;
 }
 
   // calculaute_EC calculates the EC in uS/cm, can be set to remove outliars

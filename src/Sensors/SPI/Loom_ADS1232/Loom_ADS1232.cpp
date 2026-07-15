@@ -2,7 +2,7 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_ADS1232::Loom_ADS1232(Manager &man, int num_samples, long offset, float scale)
-    : Module("ADS1232"), manInst(&man), inst(ADS1232_Lib(A2, A1, A0)) {
+    : Module("ADS1232"), manInst(&man), inst(A2, A1, A0) {
     // Set offset, scale, and number of samples
     this->offset = offset;
     this->scale = scale;
@@ -22,7 +22,7 @@ void Loom_ADS1232::initialize() { calibrate(); }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ADS1232::power_up() {
     // Turn on pins for SPI communication
-    inst.power_up();
+    moduleInitialized = inst.power_up();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -35,9 +35,12 @@ void Loom_ADS1232::power_down() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ADS1232::measure() {
-    if (!inst.is_ready())
-        inst.power_up();
+    if (!inst.is_powered() && !inst.power_up()) {
+        moduleInitialized = false;
+        return;
+    }
     weight = inst.units_read(num_samples);
+    moduleInitialized = inst.last_read_valid();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

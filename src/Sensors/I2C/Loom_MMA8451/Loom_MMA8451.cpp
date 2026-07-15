@@ -1,13 +1,13 @@
 #include "Loom_MMA8451.h"
 #include "Logger.h"
 
-uint8_t Loom_MMA8451::interruptPin;
+int Loom_MMA8451::interruptPin = -1;
 InterruptCallbackFunction Loom_MMA8451::isr;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MMA8451::Loom_MMA8451(Manager &man, int addr, bool useMux, mma8451_range_t range, int intPin,
                            uint8_t sensitivity)
-    : I2CDevice("MMA8451"), manInst(&man), address(addr), range(range), sensitivity(sensitivity) {
+    : I2CDevice("MMA8451"), manInst(&man), range(range), address(addr), sensitivity(sensitivity) {
     module_address = addr;
     interruptPin = intPin;
 
@@ -30,12 +30,7 @@ void Loom_MMA8451::initialize() {
         mma.setRange(range);
     }
 
-    // If we actually set an interrupt pin we want to enable the functionality
-    // INT PIN cannot be negative 1 WARNS that this will always be true.
-    /*
-      Loom_MMA8451.cpp:41:21: warning: comparison is always true due to limited range of data type
-      [-Wtype-limits] if(interruptPin != -1){
-    */
+    // If an interrupt pin was configured, enable the interrupt functionality.
     if (interruptPin != -1) {
         pinMode(interruptPin, INPUT_PULLUP);
 

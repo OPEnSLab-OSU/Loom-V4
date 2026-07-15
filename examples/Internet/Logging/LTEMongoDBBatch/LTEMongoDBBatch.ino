@@ -16,7 +16,7 @@ Manager manager("Device", 1);
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 
 Loom_LTE lte(manager, NETWORK_NAME, NETWORK_USER, NETWORK_PASS);
-Loom_MongoDB mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS, PROJECT);
+Loom_MongoDB mqtt(manager, lte, SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS, PROJECT);
 
 // Enables batch logging with a batch size of 15
 Loom_BatchSD batchSD(hypnos, 15);
@@ -50,7 +50,7 @@ void loop() {
   hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 10));
 
   // Measure data from connected sensors
-  manager.measure()
+  manager.measure();
     
   // Package data
   manager.package();
@@ -72,3 +72,4 @@ void loop() {
   // Wait 5 seconds
   hypnos.sleep();
 }
+

@@ -257,13 +257,13 @@ void loop()
     TimeSpan totalTime = loopEnd - loopStart;
     long timeSpent = totalTime.totalseconds();
     long timeToSleep = TOTAL_PERIOD_SEC - timeSpent;
-    if (timeToSleep < 0) {
-        timeToSleep = 0; // clamp to zero if we overran
+    if (timeToSleep <= 0) {
+        Serial.println("Measurement overran the configured period; sampling again without sleeping.");
+        return;
     }
 
     Serial.println("Sleeping...");
-    delay(timeToSleep * 1000);
-    // // Sleep Setup
+    // Sleep Setup
     hypnos.setInterruptDuration(TimeSpan(0, 0, 0, timeToSleep));
     hypnos.reattachRTCInterrupt();
 

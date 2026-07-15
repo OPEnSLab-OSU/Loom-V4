@@ -1,10 +1,77 @@
 #include "SDManager.h"
 #include "Logger.h"
 
+namespace {
+constexpr size_t MAX_SD_READ_BYTES = 4999;
+
+bool appendText(char *destination, size_t destinationSize, const char *source) {
+    if (destination == nullptr || destinationSize == 0 || source == nullptr)
+        return false;
+
+    const size_t used = strnlen(destination, destinationSize);
+    if (used >= destinationSize)
+        return false;
+
+    const size_t available = destinationSize - used - 1;
+    const size_t sourceLength = strlen(source);
+    const size_t copyLength = sourceLength < available ? sourceLength : available;
+    memcpy(destination + used, source, copyLength);
+    destination[used + copyLength] = '\0';
+    return copyLength == sourceLength;
+}
+
+void copyBounded(char *destination, size_t destinationSize, const char *source,
+                 size_t maxSourceCharacters) {
+    if (destinationSize == 0)
+        return;
+
+    size_t index = 0;
+    if (source != nullptr) {
+        while (index < destinationSize - 1 && index < maxSourceCharacters && source[index] != '\0') {
+            destination[index] = source[index];
+            ++index;
+        }
+    }
+    destination[index] = '\0';
+}
+
+void appendLiteral(char *destination, size_t destinationSize, const char *suffix) {
+    if (destinationSize == 0 || suffix == nullptr)
+        return;
+
+    size_t destinationIndex = strlen(destination);
+    size_t suffixIndex = 0;
+    while (destinationIndex < destinationSize - 1 && suffix[suffixIndex] != '\0')
+        destination[destinationIndex++] = suffix[suffixIndex++];
+    destination[destinationIndex] = '\0';
+}
+
+void buildNumberedName(char *destination, size_t destinationSize, const char *base, int number,
+                       const char *suffix) {
+    char numberText[12];
+    snprintf(numberText, sizeof(numberText), "%i", number);
+
+    const size_t reserved = strlen(numberText) + strlen(suffix) + 1;
+    const size_t maxBaseCharacters = destinationSize > reserved ? destinationSize - reserved : 0;
+    copyBounded(destination, destinationSize, base, maxBaseCharacters);
+    appendLiteral(destination, destinationSize, numberText);
+    appendLiteral(destination, destinationSize, suffix);
+}
+
+void buildBatchName(char *destination, size_t destinationSize, const char *stem) {
+    const char suffix[] = "-Batch.txt";
+    const size_t reserved = sizeof(suffix);
+    const size_t maxStemCharacters = destinationSize > reserved ? destinationSize - reserved : 0;
+    copyBounded(destination, destinationSize, stem, maxStemCharacters);
+    appendLiteral(destination, destinationSize, suffix);
+}
+} // namespace
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 SDManager::SDManager(Manager *man, int sd_chip_select)
-    : manInst(man), Module("SD Manager"), chip_select(sd_chip_select) {
-    strncpy(device_name, manInst->get_device_name(), 100);
+    : Module("SD Manager"), manInst(man), chip_select(sd_chip_select) {
+    strncpy(device_name, manInst->get_device_name(), sizeof(device_name) - 1);
+    device_name[sizeof(device_name) - 1] = '\0';
     memset(overrideFileName, '\0', 260);
 } // Disables Lora so we can use the SD card on hypnos
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -49,13 +116,13 @@ void SDManager::writeHeaders() {
     memset(header2, '\0', 512);
 
     JsonObject document = manInst->getDocument().as<JsonObject>();
-    strncat(header1, "ID,,", 512);
-    strncat(header2, "name,instance,", 512);
+    appendText(header1, sizeof(header1), "ID,,");
+    appendText(header2, sizeof(header2), "name,instance,");
 
     // If there is a key that contains timestamp data when need to include that separately
     if (document.containsKey("timestamp")) {
-        strncat(header1, "timestamp,,", 512);
-        strncat(header2, "time_utc,time_local,", 512);
+        appendText(header1, sizeof(header1), "timestamp,,");
+        appendText(header2, sizeof(header2), "time_utc,time_local,");
     }
 
     // Get the contents containing the reset of the sensor data
@@ -64,13 +131,13 @@ void SDManager::writeHeaders() {
     // Loop over each
     for (JsonVariant v : contentsArray) {
         // Get the module name
-        strncat(header1, v.as<JsonObject>()["module"].as<const char *>(), 512);
+        appendText(header1, sizeof(header1), v.as<JsonObject>()["module"].as<const char *>());
 
         // Get all JSON keys
         for (JsonPair keyValue : v.as<JsonObject>()["data"].as<JsonObject>()) {
-            strncat(header2, keyValue.key().c_str(), 512);
-            strncat(header2, ",", 512);
-            strncat(header1, ",", 512);
+            appendText(header2, sizeof(header2), keyValue.key().c_str());
+            appendText(header2, sizeof(header2), ",");
+            appendText(header1, sizeof(header1), ",");
         }
     }
 
@@ -82,6 +149,7 @@ void SDManager::writeHeaders() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::log(DateTime currentTime) {
     char output[MAX_JSON_SIZE + 1];
+    bool logged = false;
 
     if (sdInitialized) {
 
@@ -135,10 +203,10 @@ bool SDManager::log(DateTime currentTime) {
                 }
 
                 // Format the time stamp in the CSV file
-                strncat(output, utcArr, MAX_JSON_SIZE);
-                strncat(output, ",", MAX_JSON_SIZE);
-                strncat(output, localArr, MAX_JSON_SIZE);
-                strncat(output, ",", MAX_JSON_SIZE);
+                appendText(output, sizeof(output), utcArr);
+                appendText(output, sizeof(output), ",");
+                appendText(output, sizeof(output), localArr);
+                appendText(output, sizeof(output), ",");
             }
 
             // Get the contents containing the reset of the sensor data
@@ -149,8 +217,8 @@ bool SDManager::log(DateTime currentTime) {
 
                 // Get all JSON keys
                 for (JsonPair keyValue : v.as<JsonObject>()["data"].as<JsonObject>()) {
-                    strncat(output, keyValue.value().as<String>().c_str(), MAX_JSON_SIZE);
-                    strncat(output, ",", MAX_JSON_SIZE);
+                    appendText(output, sizeof(output), keyValue.value().as<String>().c_str());
+                    appendText(output, sizeof(output), ",");
                 }
             }
 
@@ -167,24 +235,27 @@ bool SDManager::log(DateTime currentTime) {
             // Inform the user that we have successfully written to the file
             snprintf_P(output, MAX_JSON_SIZE, PSTR("Successfully logged data to %s"), fileName);
             LOG(output);
+            logged = true;
 
         } else {
             printModuleName("Failed to open log file!");
         }
 
         // If we want to log batch data do so
-        if (batch_size > 0)
+        if (logged && batch_size > 0)
             logBatch();
 
     } else {
         printModuleName("Failed to log! SD card not Initialized!");
     }
+    return logged;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::begin() {
 
+    pinMode(8, OUTPUT);
     digitalWrite(8, HIGH); // Disable LoRa
 
     printModuleName("Initializing SD Card...");
@@ -206,6 +277,7 @@ bool SDManager::begin() {
      4MHz
    */
     if (!sd.begin(chip_select, SD_SCK_MHZ(4))) {
+        sdInitialized = false;
         printModuleName("Failed to Initialize SD Card! SD Card functionality will be disabled, is "
                         "there an SD card inserted into the device?");
         return false;
@@ -221,6 +293,7 @@ bool SDManager::begin() {
     if (!sdInitialized) {
         // Try to open the root of the file system so we can get the files on the device
         if (!root.open("/", O_RDONLY)) {
+            sdInitialized = false;
             printModuleName("ERROR");
             ERROR(F("Failed to open root file system on SD Card!"));
             printModuleName("After ERROR");
@@ -239,7 +312,7 @@ bool SDManager::begin() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::updateCurrentFileName() {
-    uint16_t indexDir = 0;
+    // uint16_t indexDir = 0; // Reserved for directory-index tracking.
     char f_name[260];
     char *strLocation;
 
@@ -272,53 +345,69 @@ bool SDManager::updateCurrentFileName() {
 
     if (strlen(overrideFileName) > 0) {
         // Set all the fileNames with the override name
-        snprintf_P(fileName, 260, PSTR("%s%i.csv"), overrideFileName, getCurrentFileNumber());
-        snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), overrideFileName,
-                   getCurrentFileNumber());
-        snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+        buildNumberedName(fileName, sizeof(fileName), overrideFileName, getCurrentFileNumber(),
+                          ".csv");
+        buildNumberedName(fileNameNoExtension, sizeof(fileNameNoExtension), overrideFileName,
+                          getCurrentFileNumber(), "");
+        buildBatchName(batchFileName, sizeof(batchFileName), fileNameNoExtension);
 
     } else {
         // Set all the fileNames
-        snprintf_P(fileName, 260, PSTR("%s%i.csv"), device_name, getCurrentFileNumber());
-        snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), device_name, getCurrentFileNumber());
-        snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+        buildNumberedName(fileName, sizeof(fileName), device_name, getCurrentFileNumber(), ".csv");
+        buildNumberedName(fileNameNoExtension, sizeof(fileNameNoExtension), device_name,
+                          getCurrentFileNumber(), "");
+        buildBatchName(batchFileName, sizeof(batchFileName), fileNameNoExtension);
     }
 
     // Close the root file after we have decided what to name the next file
     root.close();
 
-    char output[OUTPUT_SIZE];
-    snprintf_P(output, OUTPUT_SIZE, PSTR("Data will be logged to %s"), fileName);
-    printModuleName(output);
+    printModuleName("Data will be logged to:");
+    printModuleName(fileName);
 
     return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+const char *SDManager::getBatchFilename() {
+    buildBatchName(batchFileName, sizeof(batchFileName), fileNameNoExtension);
+    return batchFileName;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 char *SDManager::readFile(const char *fileName) {
-    // Clear contents
-    char *fileContents = (char *)malloc(5000);
-    memset(fileContents, '\0', 5000);
-
-    long index = 0;
-    if (sdInitialized) {
-        myFile = sd.open(fileName);
-
-        if (myFile) {
-            // read from the file until there's nothing else in it:
-            while (myFile.available()) {
-                fileContents[index] = (char)(myFile.read());
-                index++;
-            }
-            fileContents[index] = '\0';
-            myFile.close();
-        } else {
-            printModuleName("Failed to open file!");
-        }
-    } else {
+    if (!sdInitialized) {
         printModuleName("Failed to read! SD card not Initialized!");
+        return nullptr;
     }
+
+    myFile = sd.open(fileName);
+    if (!myFile) {
+        printModuleName("Failed to open file!");
+        return nullptr;
+    }
+
+    const size_t fileSize = myFile.size();
+    if (fileSize > MAX_SD_READ_BYTES) {
+        printModuleName("File is too large to read safely into memory!");
+        myFile.close();
+        return nullptr;
+    }
+
+    char *fileContents = static_cast<char *>(malloc(fileSize + 1));
+    if (fileContents == nullptr) {
+        printModuleName("Failed to allocate memory for file contents!");
+        myFile.close();
+        return nullptr;
+    }
+
+    size_t index = 0;
+    while (myFile.available() && index < fileSize)
+        fileContents[index++] = static_cast<char>(myFile.read());
+    fileContents[index] = '\0';
+    myFile.close();
     return fileContents;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -327,7 +416,7 @@ char *SDManager::readFile(const char *fileName) {
 void SDManager::logBatch() {
     char f_name[260];
     char jsonString[MAX_JSON_SIZE];
-    snprintf_P(f_name, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+    buildBatchName(f_name, sizeof(f_name), fileNameNoExtension);
     // We want to clear the file after the batch size has been exceeded
     if (current_batch >= batch_size) {
         current_batch = 0;

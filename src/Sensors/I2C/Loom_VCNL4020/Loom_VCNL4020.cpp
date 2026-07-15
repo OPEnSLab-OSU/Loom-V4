@@ -7,7 +7,7 @@ Loom_VCNL4020::Loom_VCNL4020(Manager &man, int address, bool useMux, vcnl4020_am
                              vcnl4020_averaging ambAvg, uint8_t proxLED, vcnl4020_proxrate proxRate,
                              vcnl4020_proxfreq proxFreq)
     : I2CDevice("VCNL4020"), managerInstance(&man), vcnl(), ambRate(ambRate), ambAvg(ambAvg),
-      proxLED(proxLED), proxRate(proxRate), proxFreq(proxFreq) {
+      proxRate(proxRate), proxLED(proxLED), proxFreq(proxFreq) {
     module_address = address;
 
     if (!useMux) {

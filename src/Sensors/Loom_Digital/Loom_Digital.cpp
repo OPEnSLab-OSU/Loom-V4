@@ -7,7 +7,7 @@ void Loom_Digital::measure() {
     pinToData.clear();
 
     // Read the data from the given analog pin
-    for (int i = 0; i < digitalPins.size(); i++) {
+    for (size_t i = 0; i < digitalPins.size(); i++) {
         pinToData.insert(std::pair<int, int>(digitalPins[i], digitalRead(digitalPins[i])));
     }
 }

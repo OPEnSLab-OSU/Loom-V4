@@ -1,4 +1,6 @@
 #pragma once
+
+
 #include "Arduino.h"
 #include <Adafruit_SleepyDog.h>
 #include <ArduinoJson.h>
@@ -20,6 +22,12 @@
 #define WD_TIMER_RESET
 #endif
 
+#ifndef TIMER_ENABLE
+#define TIMER_ENABLE WD_TIMER_ENABLE
+#define TIMER_DISABLE WD_TIMER_DISABLE
+#define TIMER_RESET WD_TIMER_RESET
+#endif
+
 #define OUTPUT_SIZE 256
 #define MAX_JSON_SIZE 2000
 
@@ -31,6 +39,7 @@
 class Module {
   public:
     Module(const char *modName) { strcpy(moduleName, modName); };
+    virtual ~Module() = default;
 
     void setModuleName(const char *modName) { strcpy(moduleName, modName); };
 
@@ -48,6 +57,7 @@ class Module {
     virtual void package() = 0;    // Package collected data into JSON document
     virtual void power_up() = 0;   // Power the sensor up and come out of sleep
     virtual void power_down() = 0; // Power the sensor down to prepare for sleep
+    virtual bool retryPowerUpWhenUninitialized() const { return false; }
 
     // Not required overrides
     virtual void display_data() {}; // Called by the manager to allow OLED to display data at the

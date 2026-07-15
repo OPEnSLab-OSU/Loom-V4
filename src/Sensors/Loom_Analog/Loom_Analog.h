@@ -6,6 +6,27 @@
 #include "Loom_Manager.h"
 #include "Module.h"
 
+// Project-wide build flags may override these defaults. The LOOM_ prefix
+// avoids collisions with common sketch macros such as VREF and VBATPIN.
+#ifndef LOOM_ANALOG_BATTERY_PIN
+#define LOOM_ANALOG_BATTERY_PIN A7
+#endif
+#ifndef LOOM_ANALOG_ADC_RESOLUTION_BITS
+#define LOOM_ANALOG_ADC_RESOLUTION_BITS 12
+#endif
+#ifndef LOOM_ANALOG_ADC_REFERENCE_VOLTAGE
+#define LOOM_ANALOG_ADC_REFERENCE_VOLTAGE 3.3f
+#endif
+#ifndef LOOM_ANALOG_BATTERY_DIVIDER_SCALE
+#define LOOM_ANALOG_BATTERY_DIVIDER_SCALE 2.0f
+#endif
+#ifndef LOOM_ANALOG_BATTERY_SAMPLE_COUNT
+#define LOOM_ANALOG_BATTERY_SAMPLE_COUNT 8
+#endif
+#ifndef LOOM_ANALOG_ADC_MAX_READING
+#define LOOM_ANALOG_ADC_MAX_READING ((1UL << LOOM_ANALOG_ADC_RESOLUTION_BITS) - 1UL)
+#endif
+
 /* Contain all the information regarding the analog pin that we want to use*/
 struct AnalogMapping {
     int pinNumber;
@@ -45,14 +66,13 @@ class Loom_Analog : public Module {
      * @param additionalPins Variable length argument allowing you to supply multiple pins
      */
     template <typename T, typename... Args>
-    Loom_Analog(Manager &man, T firstPin, Args... additionalPins) : Module("Analog") {
+    Loom_Analog(Manager &man, T firstPin, Args... additionalPins)
+        : Module("Analog"), manInst(&man) {
+        analogReadResolution(adcResolutionBits);
         get_variadic_parameters(firstPin, additionalPins...);
+        const float batteryVoltage = readBatteryVoltage();
         pinMappings.push_back(
-            new AnalogMapping(A7, "Vbat", getBatteryVoltage(), getBatteryVoltage() * 1000));
-        manInst = &man;
-
-        // Set 12-bit analog read resolution
-        analogReadResolution(12);
+            new AnalogMapping(batteryPin, "Vbat", batteryVoltage, batteryVoltage * 1000.0f));
 
         // Register the module with the manager
         manInst->registerModule(this);
@@ -63,14 +83,13 @@ class Loom_Analog : public Module {
      * @param man Reference to the manager
      * @param firstPin First analog pin we want to read from
      */
-    template <typename T> Loom_Analog(Manager &man, T firstPin) : Module("Analog") {
+    template <typename T>
+    Loom_Analog(Manager &man, T firstPin) : Module("Analog"), manInst(&man) {
+        analogReadResolution(adcResolutionBits);
         pinMappings.push_back(new AnalogMapping(firstPin, pinNumberToName(firstPin), 0, 0));
+        const float batteryVoltage = readBatteryVoltage();
         pinMappings.push_back(
-            new AnalogMapping(A7, "Vbat", getBatteryVoltage(), getBatteryVoltage() * 1000));
-        manInst = &man;
-
-        // Set 12-bit analog read resolution
-        analogReadResolution(12);
+            new AnalogMapping(batteryPin, "Vbat", batteryVoltage, batteryVoltage * 1000.0f));
 
         // Register the module with the manager
         manInst->registerModule(this);
@@ -80,13 +99,11 @@ class Loom_Analog : public Module {
      * Templated constructor that only reads the battery voltage
      * @param man Reference to the manager
      */
-    Loom_Analog(Manager &man) : Module("Analog") {
-        manInst = &man;
+    Loom_Analog(Manager &man) : Module("Analog"), manInst(&man) {
+        analogReadResolution(adcResolutionBits);
+        const float batteryVoltage = readBatteryVoltage();
         pinMappings.push_back(
-            new AnalogMapping(A7, "Vbat", getBatteryVoltage(), getBatteryVoltage() * 1000));
-
-        // Set 12-bit analog read resolution
-        analogReadResolution(12);
+            new AnalogMapping(batteryPin, "Vbat", batteryVoltage, batteryVoltage * 1000.0f));
 
         // Register the module with the manager
         manInst->registerModule(this);
@@ -95,7 +112,13 @@ class Loom_Analog : public Module {
     /**
      * Get the current voltage of the battery
      */
-    static float getBatteryVoltage();
+    static float getBatteryVoltage(
+        int batteryPin = LOOM_ANALOG_BATTERY_PIN,
+        uint8_t resolutionBits = LOOM_ANALOG_ADC_RESOLUTION_BITS,
+        float referenceVoltage = LOOM_ANALOG_ADC_REFERENCE_VOLTAGE,
+        float dividerScale = LOOM_ANALOG_BATTERY_DIVIDER_SCALE,
+        uint8_t sampleCount = LOOM_ANALOG_BATTERY_SAMPLE_COUNT,
+        uint32_t maxReading = LOOM_ANALOG_ADC_MAX_READING);
 
     /**
      * Get the Millivolts of a specified pin
@@ -127,8 +150,15 @@ class Loom_Analog : public Module {
     };
 
     float analogToMV(int analog);   // Convert the analog voltage to mV
+    float readBatteryVoltage() const;
     char *pinNumberToName(int pin); // Convert the given to a name with the style "A0"
 
     Manager *manInst;                         // Instance of the manager
     std::vector<AnalogMapping *> pinMappings; // Contains a struct for each pin we are monitoring
+    int batteryPin = LOOM_ANALOG_BATTERY_PIN;
+    uint8_t adcResolutionBits = LOOM_ANALOG_ADC_RESOLUTION_BITS;
+    float adcReferenceVoltage = LOOM_ANALOG_ADC_REFERENCE_VOLTAGE;
+    float batteryDividerScale = LOOM_ANALOG_BATTERY_DIVIDER_SCALE;
+    uint8_t batterySampleCount = LOOM_ANALOG_BATTERY_SAMPLE_COUNT;
+    uint32_t adcMaxReading = LOOM_ANALOG_ADC_MAX_READING;
 };

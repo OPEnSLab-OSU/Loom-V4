@@ -75,9 +75,15 @@ bool Loom_MongoDB::publish() {
 bool Loom_MongoDB::publishMetadata(char *metadata) {
     FUNCTION_START;
 
+    if (metadata == nullptr) {
+        ERROR(F("Cannot publish null metadata."));
+        FUNCTION_END;
+        return false;
+    }
+
     if (moduleInitialized) {
 
-        char jsonString[MAX_JSON_SIZE];
+        // char jsonString[MAX_JSON_SIZE]; // Metadata is already supplied as the method argument.
         // TIMER_DISABLE;
 
         if (strlen(projectServer) > 0)
@@ -98,11 +104,9 @@ bool Loom_MongoDB::publishMetadata(char *metadata) {
         }
 
         LOG(F("Attempting to publish metadata!"));
-        /* Attempt to publish the data to the given topic */
-        if (!publishMessage(topic, metadata)) {
-            FUNCTION_END;
-            return false;
-        }
+        const bool published = publishMessage(topic, metadata);
+        FUNCTION_END;
+        return published;
     } else {
         WARNING(F("Module not initialized! If using credentials from SD make sure they are loaded "
                   "first."));
@@ -110,8 +114,7 @@ bool Loom_MongoDB::publishMetadata(char *metadata) {
         return false;
     }
     FUNCTION_END;
-    // TIMER_ENABLE;
-    return true;
+    return false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -120,8 +123,11 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
     FUNCTION_START;
     char output[OUTPUT_SIZE];
 
-    if (Loom_Analog::getBatteryVoltage() < 3.4) {
-        WARNING(F("Module not initialized! Battery doesn't have enough power."));
+    const float batteryVoltage = Loom_Analog::getBatteryVoltage();
+    if (batteryVoltage < 3.4f) {
+        const uint16_t mv = (uint16_t)(batteryVoltage * 1000.0f + 0.5f);
+        WARNINGF("Battery voltage %u.%03uV is below the 3.40V transmission threshold.",
+                 (unsigned int)(mv / 1000), (unsigned int)(mv % 1000));
         FUNCTION_END;
         return false;
     }
@@ -137,8 +143,8 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
                 // Formulate a topic to publish on with the format
                 // "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg.
                 // WeatherChimes/Chimes/Chime1
-                snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name,
-                           manInst->get_device_name(), manInst->get_instance_num());
+                snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s/%s%i"), projectServer,
+                           database_name, manInst->get_device_name(), manInst->get_instance_num());
             else
                 // Formulate a topic to publish on with the format
                 // "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
@@ -159,8 +165,10 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
             while (fileOutput.available()) {
                 c = fileOutput.read();
 
-                // \r Marks the end of a line, at this point we want to publish that whole packet
-                if (c == '\r') {
+                // Accept CRLF, CR-only, and LF-only batch files.
+                if (c == '\r' || c == '\n') {
+                    if (index == 0)
+                        continue;
 
                     // Track the packet number we are currently publishing
                     snprintf_P(output, OUTPUT_SIZE, PSTR("Publishing Packet %i of %i"),
@@ -184,10 +192,28 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
                 }
 
                 // If not just add the packet to the line array
-                else {
-                    line[index] = c;
-                    index++;
+                else if (index < MAX_JSON_SIZE - 1) {
+                    line[index++] = c;
+                } else {
+                    ERROR(F("Batch packet exceeds MAX_JSON_SIZE and was skipped."));
+                    allDataSuccess = false;
+                    index = 0;
+                    while (fileOutput.available()) {
+                        c = fileOutput.read();
+                        if (c == '\r' || c == '\n')
+                            break;
+                    }
                 }
+            }
+
+            // Publish a final LF-less line instead of silently dropping it.
+            if (index > 0) {
+                line[index] = '\0';
+                if (!publishMessage(topic, line)) {
+                    WARNINGF("Failed to publish packet #%i", packetNumber + 1);
+                    allDataSuccess = false;
+                }
+                packetNumber++;
             }
             fileOutput.close();
 

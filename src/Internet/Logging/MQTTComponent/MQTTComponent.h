@@ -95,13 +95,14 @@ class MQTTComponent : public Module {
      * @param internet_client The Client object from a internet platform
      */
     MQTTComponent(const char *compName, NetworkComponent &internet_client)
-        : Module(compName), internetClient(internet_client),
-          mqttClient(internet_client.getClient()) {
+        : Module(compName), mqttClient(internet_client.getClient()),
+          internetClient(internet_client) {
         /* Clear all connection parameters */
         memset(address, '\0', 100);
         port = 0;
         memset(username, '\0', 100);
         memset(password, '\0', 100);
+        mqttClient.setTxPayloadSize(MAX_JSON_SIZE);
     };
 
     /* Publishes the current sample to the remote broker */

@@ -17,7 +17,7 @@ class Loom_TSL2591 : public I2CDevice {
     void measure() override;
     void initialize() override;
     void power_up() override;
-    void power_down() override {};
+    void power_down() override;
     void package() override;
 
   public:
@@ -32,6 +32,12 @@ class Loom_TSL2591 : public I2CDevice {
     Loom_TSL2591(Manager &man, int address = 0x29, bool useMux = false,
                  tsl2591Gain_t light_gain = TSL2591_GAIN_MED,
                  tsl2591IntegrationTime_t integration_time = TSL2591_INTEGRATIONTIME_100MS);
+
+    /** Enable the sensor for an explicit measurement window. */
+    void wake_up() { power_up(); }
+
+    /** Disable the sensor between explicit measurement windows. */
+    void sleep() { power_down(); }
 
     /**
      * Get recorded visible light

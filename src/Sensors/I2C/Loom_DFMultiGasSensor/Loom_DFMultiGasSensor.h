@@ -36,6 +36,8 @@ class Loom_DFMultiGasSensor : public I2CDevice {
                           uint8_t initializationRetyLimit = 10, bool sensorPowersDown = false,
                           bool useMux = false);
 
+    bool retryPowerUpWhenUninitialized() const override { return true; }
+
     /**
      * Get gas type that is currently being recorded
      */
@@ -67,10 +69,9 @@ class Loom_DFMultiGasSensor : public I2CDevice {
                               DFRobot_GAS::eSwitch_t gasCompMode = DFRobot_GAS::eSwitch_t::ON);
 
     // --- Sensor Readings
-    // Strinified reading of the current gas type
-    const char *currentGasType = "";
+    // Local storage avoids retaining a pointer into a temporary Arduino String.
+    char currentGasType[24] = "";
     float currentConcentration = 0.0f;
     float currentTemperature = 0.0f;
 };
 
-uint8_t findGasBoard(void);

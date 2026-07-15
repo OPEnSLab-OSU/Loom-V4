@@ -1,32 +1,35 @@
+// Wisp multiplexer batch logging example.
 #include <Loom_Manager.h>
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 
-#include <Sensors/Loom_Analog/Loom_Analog.h>
+#include <Hardware/Loom_Multiplexer/Loom_Multiplexer.h>
+
 #include <Sensors/I2C/Loom_SEN55/Loom_SEN55.h>
 #include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h>
 #include <Sensors/I2C/Loom_T6793/Loom_T6793.h>
 #include <Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h>
 
 
-//#include <Sensors/Analog/ACS712/Loom_ACS712.h>
-
 #include <Logger.h>
 #include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
 #include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
 #include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h>
 
-Manager manager("Wisp_brd_v0p4_", 1); //change
+Manager manager("Wisp_brd_mux_", 1); //change
 
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, true);
 
-Loom_Analog analog(manager);
+#define DFROBOT_ADDR 0x74 
+#define T6793_ADDR 0x15
+
+std::vector<byte> wisp_addresses = {DFROBOT_ADDR, T6793_ADDR};
+
+// Reads the battery voltage
+Loom_Multiplexer mux(manager, wisp_addresses);
 
 //Main Air Quality, Temperature, Humidity Sensing, CO2, Gravity
 Loom_SEN55 SEN55(manager);
 Loom_SHT31 sht(manager);
-
-Loom_T6793 T6793(manager);
-Loom_MultiGasSensor gasSensor(manager, 0x74);
 
 uint32_t deviceStatus;
 

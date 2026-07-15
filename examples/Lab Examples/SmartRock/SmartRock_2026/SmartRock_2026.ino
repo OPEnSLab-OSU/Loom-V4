@@ -8,6 +8,7 @@
 
 // Includede Libraries, Mostly OPEnS LOOM 
 
+// SmartRock 2026 deployment sketch.
 #include <Loom_Manager.h>
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Sensors/I2C/Loom_ADS1115/Loom_ADS1115.h>
@@ -50,6 +51,7 @@ void setup() {
 
     // Wait 20 seconds for the serial console to open
   manager.beginSerial();
+  hypnos.setCompileTime(__DATE__, __TIME__);
 
     // Enable the hypnos rails
   hypnos.enable();

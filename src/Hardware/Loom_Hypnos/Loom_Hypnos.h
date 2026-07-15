@@ -209,6 +209,9 @@ class Loom_Hypnos : public Module {
      */
     void set_custom_time();
 
+    /** Supply sketch-level __DATE__/__TIME__ before enable(). */
+    void setCompileTime(const char *buildDate, const char *buildTime);
+
     /**
      * Load the configuration for the hypnos from the SD card (Timezeone and sleep interval)
      * @param fileName The file name on the root of the SD card to retrieve the information from
@@ -260,7 +263,8 @@ class Loom_Hypnos : public Module {
      * @param mv Whether you want millivolts returned with volts. (default = false)
      * @param num_samples Number of samples if you want to get an average. (default = 1)
      */
-    bool checkVoltage(float vmin = 0.0, int analogPin = A7, float scale = 2.0f, bool mv = false,
+    bool checkVoltage(float vmin = 0.0f, int analogPin = LOOM_ANALOG_BATTERY_PIN,
+                      float scale = LOOM_ANALOG_BATTERY_DIVIDER_SCALE, bool mv = false,
                       int num_samples = 1);
 
   private:
@@ -299,6 +303,8 @@ class Loom_Hypnos : public Module {
     bool RTC_initialized = false; // Did the RTC initialize correctly?
 
     bool custom_time = false; // Set the RTC to a user specified time
+    char sketchCompileDate[12] = {};
+    char sketchCompileTime[9] = {};
 
     /* Voltage check bitmaps 0-7 LSB-first */
     static constexpr uint8_t VF_CHECKED = (1u << 0);    // 00000001 | 0x01
@@ -324,6 +330,7 @@ class Loom_Hypnos : public Module {
     // 1st - Interrupt Trigger
     // 2nd - Interrupt Type (SLEEP or OTHER)
     std::map<int, std::tuple<InterruptCallbackFunction, int, HypnosInterruptType>> pinToInterrupt;
+    int sleepInterruptPin = -1;
 
     void initializeRTC(); // Initialize RTC
 
@@ -339,6 +346,7 @@ class Loom_Hypnos : public Module {
     DateTime localTime; // Local time
 
     DateTime alarmTime; // Time the alarm has been set for
+    bool alarmScheduled = false;
 
     /* Sleep functionality */
     void pre_sleep(); // Called just before the hypnos enters sleep, this disconnects the power

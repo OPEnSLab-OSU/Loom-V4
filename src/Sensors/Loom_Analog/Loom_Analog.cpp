@@ -4,12 +4,13 @@
 void Loom_Analog::measure() {
 
     // Read the data from the given analog pin
-    for (int i = 0; i < pinMappings.size(); i++) {
+    for (size_t i = 0; i < pinMappings.size(); i++) {
 
         /* If we are measuring the Vbat pin we want a little different behavior */
-        if (pinMappings[i]->pinNumber == A7) {
-            pinMappings[i]->analog = getBatteryVoltage();
-            pinMappings[i]->analog_mv = getBatteryVoltage() * 1000;
+        if (pinMappings[i]->pinNumber == batteryPin) {
+            const float batteryVoltage = readBatteryVoltage();
+            pinMappings[i]->analog = batteryVoltage;
+            pinMappings[i]->analog_mv = batteryVoltage * 1000.0f;
         }
 
         /* If its a normal pin then just read the value and update the previous values */
@@ -28,26 +29,44 @@ void Loom_Analog::package() {
     JsonObject json = manInst->get_data_object(getModuleName());
 
     /* Loop over the list of pins and pull out the data to formulate the JSON entries*/
-    for (int i = 0; i < pinMappings.size(); i++) {
+    for (size_t i = 0; i < pinMappings.size(); i++) {
         memset(output, '\0', 10);
         json[pinMappings[i]->name] = pinMappings[i]->analog;
 
         /* Append MV to the name to differentiate between normal analog and the millivolt
          * representation */
-        strncat(output, pinMappings[i]->name, 10);
-        strncat(output, "_MV", 10);
+        snprintf(output, sizeof(output), "%s_MV", pinMappings[i]->name);
         json[output] = pinMappings[i]->analog_mv;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-float Loom_Analog::getBatteryVoltage() {
-    float pin_reading = analogRead(A7);
-    pin_reading *= 2;
-    pin_reading *= 3.3;
-    pin_reading /= 4096;
-    return pin_reading;
+float Loom_Analog::getBatteryVoltage(int batteryPin, uint8_t resolutionBits,
+                                     float referenceVoltage, float dividerScale,
+                                     uint8_t sampleCount, uint32_t maxReading) {
+    if (sampleCount == 0 || maxReading == 0) {
+        return 0.0f;
+    }
+
+    analogReadResolution(resolutionBits);
+    pinMode(batteryPin, INPUT);
+    (void)analogRead(batteryPin);
+
+    uint32_t readingSum = 0;
+    for (uint8_t i = 0; i < sampleCount; ++i) {
+        readingSum += analogRead(batteryPin);
+        delayMicroseconds(50);
+    }
+
+    const float averageReading = static_cast<float>(readingSum) / sampleCount;
+    return averageReading * dividerScale * referenceVoltage / maxReading;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+float Loom_Analog::readBatteryVoltage() const {
+    return getBatteryVoltage(batteryPin, adcResolutionBits, adcReferenceVoltage,
+                             batteryDividerScale, batterySampleCount, adcMaxReading);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -62,28 +81,32 @@ char *Loom_Analog::pinNumberToName(int pin) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 float Loom_Analog::analogToMV(int analog) {
-    float analogRes = 4095.0;
-    float voltage = (analog * 3.3) / analogRes;
-    return voltage * 1000;
+    if (adcMaxReading == 0) {
+        return 0.0f;
+    }
+    const float voltage = (analog * adcReferenceVoltage) / adcMaxReading;
+    return voltage * 1000.0f;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 float Loom_Analog::getMV(int pin) {
-    for (int i = 0; i < pinMappings.size(); i++) {
+    for (size_t i = 0; i < pinMappings.size(); i++) {
         if (pinMappings[i]->pinNumber == pin) {
             return pinMappings[i]->analog_mv;
         }
     }
+    return 0.0f;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 float Loom_Analog::getAnalog(int pin) {
-    for (int i = 0; i < pinMappings.size(); i++) {
+    for (size_t i = 0; i < pinMappings.size(); i++) {
         if (pinMappings[i]->pinNumber == pin) {
             return pinMappings[i]->analog;
         }
     }
+    return 0.0f;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

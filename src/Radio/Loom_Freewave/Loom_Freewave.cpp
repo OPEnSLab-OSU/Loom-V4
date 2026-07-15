@@ -4,10 +4,11 @@
 Loom_Freewave::Loom_Freewave(Manager &man, const uint8_t address, const uint16_t max_message_len,
                              const uint8_t retryCount, const uint16_t retryTimeout)
     : Radio("Freewave"), manInst(&man), serial1(Serial1), driver(serial1) {
-    if (address == -1)
+    if (address == UINT8_MAX) {
         this->deviceAddress = manInst->get_instance_num();
-    else
+    } else {
         this->deviceAddress = address;
+    }
 
     manager = new RHReliableDatagram(driver, this->deviceAddress);
     this->retryCount = retryCount;

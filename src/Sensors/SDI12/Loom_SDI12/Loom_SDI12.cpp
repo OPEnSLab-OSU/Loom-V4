@@ -28,7 +28,7 @@ void Loom_SDI12::initialize() {
     inUseAddresses = scanAddressSpace();
 
     // Request the sensor data from all connected devices to pull the sensor name
-    for (int i = 0; i < inUseAddresses.size(); i++) {
+    for (size_t i = 0; i < inUseAddresses.size(); i++) {
         char *response = (char *)malloc(sizeof(char) * RESPONSE_SIZE);
         memset(response, '\0', RESPONSE_SIZE);
         requestSensorInfo(response, inUseAddresses[i]);
@@ -49,7 +49,7 @@ void Loom_SDI12::measure() {
     delay(30);
 
     // Populate the variables that will be used to package data
-    for (int i = 0; i < inUseAddresses.size(); i++) {
+    for (size_t i = 0; i < inUseAddresses.size(); i++) {
         getData(inUseAddresses[i]);
     }
 }
@@ -58,10 +58,10 @@ void Loom_SDI12::measure() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::package() {
 
-    for (int i = 0; i < inUseAddresses.size(); i++) {
+    for (size_t i = 0; i < inUseAddresses.size(); i++) {
         if (strstr(getSensorInfo(inUseAddresses[i]), "GS3") != NULL) {
             if (strlen(sensorNames[i]) <= 0) {
-                snprintf(sensorNames[i], 100, "GS3_%i", i);
+                snprintf(sensorNames[i], 100, "GS3_%u", static_cast<unsigned int>(i));
             }
             JsonObject json = manInst->get_data_object(sensorNames[i]);
             json["Temperature"] = sensorData[0];
@@ -69,7 +69,7 @@ void Loom_SDI12::package() {
             json["Conductivity"] = sensorData[2];
         } else if (strstr(getSensorInfo(inUseAddresses[i]), "TER") != NULL) {
             if (strlen(sensorNames[i]) <= 0) {
-                snprintf(sensorNames[i], 100, "TER_%i", i);
+                snprintf(sensorNames[i], 100, "TER_%u", static_cast<unsigned int>(i));
             }
             JsonObject json = manInst->get_data_object(sensorNames[i]);
             json["Temperature"] = sensorData[0];
@@ -124,7 +124,7 @@ std::vector<char> Loom_SDI12::scanAddressSpace() {
     if (activeSensors.size() > 0) {
         // Print the module name followed by the message saying please wait
         LOG(F("== We found the following active Addresses =="));
-        for (int i = 0; i < activeSensors.size(); i++) {
+        for (size_t i = 0; i < activeSensors.size(); i++) {
             snprintf(output, OUTPUT_SIZE, "    Address: %c", activeSensors[i]);
             LOG(output);
         }
@@ -198,7 +198,7 @@ void Loom_SDI12::readResponse(char response[RESPONSE_SIZE]) {
     // Replace the carriage return with a null-byte
     char *pch = strstr(response, "\r");
     if (pch != NULL) {
-        response[pch - response] == '\0';
+        response[pch - response] = '\0';
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -211,8 +211,8 @@ void Loom_SDI12::requestSensorInfo(char response[RESPONSE_SIZE], char addr) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::getData(char addr) {
-    char buf[20];
-    char *p;
+    // char buf[20]; // Reserved for the former manual response parser.
+    // char *p;      // The first token only advances strtok state; it is not otherwise needed.
     char response[RESPONSE_SIZE];
 
     // Request a measurement from the sensor at the given address
@@ -245,7 +245,7 @@ void Loom_SDI12::getData(char addr) {
         // If the sensor is a copy the used values an
         if (strstr(getSensorInfo(addr), "GS3") != NULL) {
             // Read out the results and parse out each of the data readings and pares them to floats
-            p = strtok(response, "+");
+            strtok(response, "+");
 
             sensorData[1] = (atof(strtok(NULL, "+")));
             sensorData[0] = (atof(strtok(NULL, "+")));
@@ -255,7 +255,7 @@ void Loom_SDI12::getData(char addr) {
         // Teros
         else if (strstr(getSensorInfo(addr), "TER") != NULL) {
             // Read out the results and parse out each of the data readings and pares them to floats
-            p = strtok(response, "+");
+            strtok(response, "+");
 
             sensorData[1] = (atof(strtok(NULL, "+")));
             sensorData[0] = (atof(strtok(NULL, "+")));

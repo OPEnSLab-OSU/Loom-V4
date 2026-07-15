@@ -261,7 +261,7 @@ bool checkStableAlignment()
     magnetStatus status;
     bool aligned = true;
 
-    for (int i = 0; i < (CHECK_TIME / 100); i++)
+    for (unsigned int i = 0; i < (CHECK_TIME / 100); i++)
     {
         // Watchdog.reset();
         status = magnetSensor.getMagnetStatus();

@@ -1,0 +1,975 @@
+diff --git a/a/src/Actuators.h b/b/src/Actuators.h
+index 4c31640..e8abd45 100644
+--- a/a/src/Actuators.h
++++ b/b/src/Actuators.h
+@@ -1,8 +1,11 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
+ #include "Module.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <ArduinoJson.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ enum ACTUATOR_TYPE { SERVO, STEPPER, RELAY, NEOPIXEL };
+ 
+diff --git a/a/src/Hardware/Actuators/Loom_Neopixel/Loom_Neopixel.h b/b/src/Hardware/Actuators/Loom_Neopixel/Loom_Neopixel.h
+index c22c4ba..a9eb375 100644
+--- a/a/src/Hardware/Actuators/Loom_Neopixel/Loom_Neopixel.h
++++ b/b/src/Hardware/Actuators/Loom_Neopixel/Loom_Neopixel.h
+@@ -1,9 +1,12 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
+ #include "../../../Actuators.h"
+ #include "../../../Loom_Manager.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Adafruit_NeoPixel.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ /**
+  *  Neopixel LED Strip Controller
+diff --git a/a/src/Hardware/Actuators/Loom_Servo/Loom_Servo.h b/b/src/Hardware/Actuators/Loom_Servo/Loom_Servo.h
+index 0df8dc1..d107b03 100644
+--- a/a/src/Hardware/Actuators/Loom_Servo/Loom_Servo.h
++++ b/b/src/Hardware/Actuators/Loom_Servo/Loom_Servo.h
+@@ -1,9 +1,12 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
+ #include "Actuators.h"
+ #include "Loom_Manager.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Adafruit_PWMServoDriver.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #define SERVO_MIN 150 // Minimum pulse width
+ #define SERVO_MAX 600 // Maximum pulse width
+diff --git a/a/src/Hardware/Actuators/Loom_Stepper/Loom_Stepper.h b/b/src/Hardware/Actuators/Loom_Stepper/Loom_Stepper.h
+index e9ea664..f3f9946 100644
+--- a/a/src/Hardware/Actuators/Loom_Stepper/Loom_Stepper.h
++++ b/b/src/Hardware/Actuators/Loom_Stepper/Loom_Stepper.h
+@@ -1,10 +1,13 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
+ #include "Actuators.h"
+ #include "Loom_Manager.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Adafruit_MotorShield.h>
+ #include <Adafruit_PWMServoDriver.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #define SERVO_MIN 150 // Minimum pulse width
+ #define SERVO_MAX 600 // Maximum pulse width
+diff --git a/a/src/Hardware/Loom_Hypnos/Loom_Hypnos.h b/b/src/Hardware/Loom_Hypnos/Loom_Hypnos.h
+index 911a314..1974c02 100644
+--- a/a/src/Hardware/Loom_Hypnos/Loom_Hypnos.h
++++ b/b/src/Hardware/Loom_Hypnos/Loom_Hypnos.h
+@@ -1,11 +1,16 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <ArduinoLowPower.h>
+ #include <RTClib.h>
++LOOM_EXTERNAL_INCLUDE_END
+ #include <map>
+ #include <tuple>
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include "Arduino.h"
++LOOM_EXTERNAL_INCLUDE_END
+ #include "Internet/Connectivity/NetworkComponent.h"
+ #include "Module.h"
+ 
+diff --git a/a/src/Hardware/Loom_Hypnos/SDManager.h b/b/src/Hardware/Loom_Hypnos/SDManager.h
+index 6678e16..52a3a26 100644
+--- a/a/src/Hardware/Loom_Hypnos/SDManager.h
++++ b/b/src/Hardware/Loom_Hypnos/SDManager.h
+@@ -1,8 +1,11 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <RTClib.h>
+ #include <SPI.h>
+ #include <SdFat.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "../../Loom_Manager.h"
+ #include "../../Module.h"
+diff --git a/a/src/Hardware/Loom_Multiplexer/Loom_Multiplexer.cpp b/b/src/Hardware/Loom_Multiplexer/Loom_Multiplexer.cpp
+index 6fe78e0..db2108e 100644
+--- a/a/src/Hardware/Loom_Multiplexer/Loom_Multiplexer.cpp
++++ b/b/src/Hardware/Loom_Multiplexer/Loom_Multiplexer.cpp
+@@ -1,7 +1,10 @@
++#include "Loom_WarningGuards.h"
+ 
+ #include "Loom_Multiplexer.h"
+ #include "Logger.h"
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Arduino.h>
++LOOM_EXTERNAL_INCLUDE_END
+ //////////////////////////////////////////////////////////////////////////////////////////////////////
+ Loom_Multiplexer::Loom_Multiplexer(Manager& man) : Module("Multiplexer"), manInst(&man), activeMuxAddr(0) {
+     moduleInitialized = false;
+diff --git a/a/src/Hardware/Loom_Multiplexer/Loom_Multiplexer.h b/b/src/Hardware/Loom_Multiplexer/Loom_Multiplexer.h
+index c1d3c65..c1ae6af 100644
+--- a/a/src/Hardware/Loom_Multiplexer/Loom_Multiplexer.h
++++ b/b/src/Hardware/Loom_Multiplexer/Loom_Multiplexer.h
+@@ -1,5 +1,6 @@
+ #pragma once
+ 
++#include "Loom_WarningGuards.h"
+ 
+ #include "../../Loom_Manager.h"
+ #include "../../Module.h"
+@@ -8,7 +9,9 @@
+ #include <vector>
+ #include <tuple>
+ #include <algorithm>
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include "Wire.h"
++LOOM_EXTERNAL_INCLUDE_END
+ // I2C Sensors Used by Loom
+ #include "../../Sensors/I2C/Loom_ADS1115/Loom_ADS1115.h"
+ #include "../../Sensors/I2C/Loom_MPU6050/Loom_MPU6050.h"
+diff --git a/a/src/Hardware/Loom_OLED/Loom_OLED.cpp b/b/src/Hardware/Loom_OLED/Loom_OLED.cpp
+index 1edd348..9887df8 100644
+--- a/a/src/Hardware/Loom_OLED/Loom_OLED.cpp
++++ b/b/src/Hardware/Loom_OLED/Loom_OLED.cpp
+@@ -1,8 +1,11 @@
++#include "Loom_WarningGuards.h"
+ 
+ #include "Loom_OLED.h"
+ #include "Logger.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Adafruit_GFX.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ //////////////////////////////////////////////////////////////////////////////////////////////////////
+ Loom_OLED::Loom_OLED(Manager &man, const bool enable_rate_filter, const uint16_t min_filter_delay,
+diff --git a/a/src/Hardware/Loom_OLED/Loom_OLED.h b/b/src/Hardware/Loom_OLED/Loom_OLED.h
+index fff7416..73362d2 100644
+--- a/a/src/Hardware/Loom_OLED/Loom_OLED.h
++++ b/b/src/Hardware/Loom_OLED/Loom_OLED.h
+@@ -1,9 +1,12 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
+ #include "Loom_Manager.h"
+ #include "Module.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Adafruit_SSD1306.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ /**
+  * Class for driving the OLED display
+diff --git a/a/src/Hardware/Loom_TippingBucket/Loom_TippingBucket.h b/b/src/Hardware/Loom_TippingBucket/Loom_TippingBucket.h
+index 9699c15..31b82ae 100644
+--- a/a/src/Hardware/Loom_TippingBucket/Loom_TippingBucket.h
++++ b/b/src/Hardware/Loom_TippingBucket/Loom_TippingBucket.h
+@@ -1,5 +1,8 @@
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Wire.h>
++LOOM_EXTERNAL_INCLUDE_END
+ #include <deque>
+ 
+ #include "../Loom_Hypnos/Loom_Hypnos.h"
+diff --git a/a/src/Internet/Communication/Loom_Max/Loom_Max.h b/b/src/Internet/Communication/Loom_Max/Loom_Max.h
+index f38d478..285f5ab 100644
+--- a/a/src/Internet/Communication/Loom_Max/Loom_Max.h
++++ b/b/src/Internet/Communication/Loom_Max/Loom_Max.h
+@@ -1,10 +1,13 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
+ #include "../../Connectivity/Loom_Wifi/Loom_Wifi.h"
+ #include "Actuators.h"
+ #include "Module.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Udp.h>
++LOOM_EXTERNAL_INCLUDE_END
+ #include <vector>
+ 
+ // Base ports to send and receive on
+diff --git a/a/src/Internet/Connectivity/Loom_Ethernet/Loom_Ethernet.cpp b/b/src/Internet/Connectivity/Loom_Ethernet/Loom_Ethernet.cpp
+index 8edf7a1..509f0a4 100644
+--- a/a/src/Internet/Connectivity/Loom_Ethernet/Loom_Ethernet.cpp
++++ b/b/src/Internet/Connectivity/Loom_Ethernet/Loom_Ethernet.cpp
+@@ -1,7 +1,10 @@
++#include "Loom_WarningGuards.h"
+ 
+ #include "Loom_Ethernet.h"
+ #include "Logger.h"
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <RTClib.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ //////////////////////////////////////////////////////////////////////////////////////////////////////
+ Loom_Ethernet::Loom_Ethernet(Manager &man, uint8_t mac[6], IPAddress ip)
+diff --git a/a/src/Internet/Connectivity/Loom_Ethernet/Loom_Ethernet.h b/b/src/Internet/Connectivity/Loom_Ethernet/Loom_Ethernet.h
+index 391864b..5477410 100644
+--- a/a/src/Internet/Connectivity/Loom_Ethernet/Loom_Ethernet.h
++++ b/b/src/Internet/Connectivity/Loom_Ethernet/Loom_Ethernet.h
+@@ -1,8 +1,11 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Ethernet.h>
+ #include <EthernetClient.h>
+ #include <EthernetUdp.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "../NetworkComponent.h"
+ #include "Loom_Manager.h"
+diff --git a/a/src/Internet/Connectivity/Loom_LTE/Loom_LTE.h b/b/src/Internet/Connectivity/Loom_LTE/Loom_LTE.h
+index 014e3af..28c7efa 100644
+--- a/a/src/Internet/Connectivity/Loom_LTE/Loom_LTE.h
++++ b/b/src/Internet/Connectivity/Loom_LTE/Loom_LTE.h
+@@ -1,4 +1,5 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
+ /*
+  * Loom LTE modem selection and board configuration
+diff --git a/a/src/Internet/Connectivity/Loom_LTE/Loom_LTE_SaraR4.cpp b/b/src/Internet/Connectivity/Loom_LTE/Loom_LTE_SaraR4.cpp
+index 096e990..20a6b89 100644
+--- a/a/src/Internet/Connectivity/Loom_LTE/Loom_LTE_SaraR4.cpp
++++ b/b/src/Internet/Connectivity/Loom_LTE/Loom_LTE_SaraR4.cpp
+@@ -1,5 +1,8 @@
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <TinyGsmClientSaraR4.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "Loom_LTE_TinyGsmAdapter.h"
+ 
+diff --git a/a/src/Internet/Connectivity/Loom_LTE/Loom_LTE_SaraR5.cpp b/b/src/Internet/Connectivity/Loom_LTE/Loom_LTE_SaraR5.cpp
+index 25ee7a7..b47cbcd 100644
+--- a/a/src/Internet/Connectivity/Loom_LTE/Loom_LTE_SaraR5.cpp
++++ b/b/src/Internet/Connectivity/Loom_LTE/Loom_LTE_SaraR5.cpp
+@@ -1,5 +1,8 @@
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <TinyGsmClientSaraR5.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "Loom_LTE_TinyGsmAdapter.h"
+ 
+diff --git a/a/src/Internet/Connectivity/Loom_Wifi/Loom_Wifi.cpp b/b/src/Internet/Connectivity/Loom_Wifi/Loom_Wifi.cpp
+index 03f5db9..63fc314 100644
+--- a/a/src/Internet/Connectivity/Loom_Wifi/Loom_Wifi.cpp
++++ b/b/src/Internet/Connectivity/Loom_Wifi/Loom_Wifi.cpp
+@@ -1,7 +1,10 @@
++#include "Loom_WarningGuards.h"
+ 
+ #include "Loom_Wifi.h"
+ #include "Logger.h"
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <RTClib.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ // Reserve a section of memory called WiFi config
+ FlashStorage(WiFiConfig, WifiInfo);
+diff --git a/a/src/Internet/Connectivity/Loom_Wifi/Loom_Wifi.h b/b/src/Internet/Connectivity/Loom_Wifi/Loom_Wifi.h
+index 24269a2..ab2f5bf 100644
+--- a/a/src/Internet/Connectivity/Loom_Wifi/Loom_Wifi.h
++++ b/b/src/Internet/Connectivity/Loom_Wifi/Loom_Wifi.h
+@@ -1,8 +1,11 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <FlashStorage.h>
+ #include <WiFi101.h>
+ #include <WiFiUdp.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
+ #include "../NetworkComponent.h"
+diff --git a/a/src/Internet/Connectivity/NetworkComponent.h b/b/src/Internet/Connectivity/NetworkComponent.h
+index d14c63a..d880fda 100644
+--- a/a/src/Internet/Connectivity/NetworkComponent.h
++++ b/b/src/Internet/Connectivity/NetworkComponent.h
+@@ -1,7 +1,10 @@
+ #pragma once
+ 
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Client.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "Module.h"
+ 
+diff --git a/a/src/Internet/Logging/Loom_MongoDB/Loom_MongoDB.h b/b/src/Internet/Logging/Loom_MongoDB/Loom_MongoDB.h
+index 26090db..44c3614 100644
+--- a/a/src/Internet/Logging/Loom_MongoDB/Loom_MongoDB.h
++++ b/b/src/Internet/Logging/Loom_MongoDB/Loom_MongoDB.h
+@@ -1,6 +1,9 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <ArduinoMqttClient.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "../../Connectivity/NetworkComponent.h"
+ #include "../MQTTComponent/MQTTComponent.h"
+diff --git a/a/src/Internet/Logging/Loom_ThingSpeak/Loom_ThingSpeak.h b/b/src/Internet/Logging/Loom_ThingSpeak/Loom_ThingSpeak.h
+index e9aed73..8bdc35d 100644
+--- a/a/src/Internet/Logging/Loom_ThingSpeak/Loom_ThingSpeak.h
++++ b/b/src/Internet/Logging/Loom_ThingSpeak/Loom_ThingSpeak.h
+@@ -1,6 +1,9 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <ArduinoMqttClient.h>
++LOOM_EXTERNAL_INCLUDE_END
+ #include <tuple>
+ 
+ #include "Loom_Manager.h"
+diff --git a/a/src/Internet/Logging/MQTTComponent/MQTTComponent.h b/b/src/Internet/Logging/MQTTComponent/MQTTComponent.h
+index 981a342..b2c5b2b 100644
+--- a/a/src/Internet/Logging/MQTTComponent/MQTTComponent.h
++++ b/b/src/Internet/Logging/MQTTComponent/MQTTComponent.h
+@@ -1,6 +1,9 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <ArduinoMqttClient.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "../../Connectivity/NetworkComponent.h"
+ #include "Module.h"
+diff --git a/a/src/Logger.h b/b/src/Logger.h
+index 4399d30..32b2bf5 100644
+--- a/a/src/Logger.h
++++ b/b/src/Logger.h
+@@ -1,7 +1,10 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
+ #include "Hardware/Loom_Hypnos/Loom_Hypnos.h"
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <MemoryFree.h>
++LOOM_EXTERNAL_INCLUDE_END
+ #include <cstdint>
+ #include <cstdio>
+ #include <cstring>
+diff --git a/a/src/Loom_Manager.h b/b/src/Loom_Manager.h
+index e1347ae..fa9eb05 100644
+--- a/a/src/Loom_Manager.h
++++ b/b/src/Loom_Manager.h
+@@ -1,6 +1,9 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <ArduinoJson.h>
++LOOM_EXTERNAL_INCLUDE_END
+ #include <unordered_map>
+ #include <vector>
+ 
+diff --git a/b/src/Loom_WarningGuards.h b/b/src/Loom_WarningGuards.h
+new file mode 100644
+index 0000000..4194ff4
+--- /dev/null
++++ b/b/src/Loom_WarningGuards.h
+@@ -0,0 +1,36 @@
++#pragma once
++
++/*
++ * Warning scope for third-party and Arduino core headers.
++ *
++ * Why this exists:
++ * - The compile audit runs with `--warnings all`.
++ * - Several vendor/core headers intentionally contain no-op compatibility
++ *   hooks or documentation text that GCC reports repeatedly from every Loom
++ *   translation unit that includes them.
++ * - The repeated examples are `SERCOM.h`/`SPI.h` unused-parameter stubs and
++ *   RadioHead comment text. Those are not Loom defects, but they bury Loom
++ *   warnings in hundreds of duplicate lines.
++ *
++ * Portability:
++ * - This is not tied to SAMD21 or any board macro. It only scopes compiler
++ *   diagnostics for GCC-compatible Arduino toolchains.
++ * - On non-GCC-compatible compilers the macros expand to nothing, so the
++ *   includes keep their normal behavior.
++ *
++ * Usage rule:
++ * - Wrap only external includes.
++ * - Do not wrap Loom headers, user sketches, or function bodies. Loom code
++ *   should still be compiled with the full warning set.
++ */
++#if defined(__GNUC__)
++    #define LOOM_EXTERNAL_INCLUDE_BEGIN \
++        _Pragma("GCC diagnostic push") \
++        _Pragma("GCC diagnostic ignored \"-Wunused-parameter\"") \
++        _Pragma("GCC diagnostic ignored \"-Wcomment\"")
++    #define LOOM_EXTERNAL_INCLUDE_END \
++        _Pragma("GCC diagnostic pop")
++#else
++    #define LOOM_EXTERNAL_INCLUDE_BEGIN
++    #define LOOM_EXTERNAL_INCLUDE_END
++#endif
+diff --git a/a/src/Module.h b/b/src/Module.h
+index 026a91f..82b6fd7 100644
+--- a/a/src/Module.h
++++ b/b/src/Module.h
+@@ -1,10 +1,13 @@
+ #pragma once
+ 
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include "Arduino.h"
+ #include <Adafruit_SleepyDog.h>
+ #include <ArduinoJson.h>
+ #include <Wire.h>
++LOOM_EXTERNAL_INCLUDE_END
+ #include <stdio.h>
+ #include <string.h>
+ 
+diff --git a/a/src/Radio/Loom_Freewave/Loom_Freewave.h b/b/src/Radio/Loom_Freewave/Loom_Freewave.h
+index 4973b48..706a682 100644
+--- a/a/src/Radio/Loom_Freewave/Loom_Freewave.h
++++ b/b/src/Radio/Loom_Freewave/Loom_Freewave.h
+@@ -1,11 +1,14 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
+ #include "../../Loom_Manager.h"
+ #include "../Radio.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <HardwareSerial.h>
+ #include <RHReliableDatagram.h>
+ #include <RH_Serial.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ /**
+  * Used to communicate with Freewave type radios
+diff --git a/a/src/Radio/Loom_LoRa/Loom_LoRa.cpp b/b/src/Radio/Loom_LoRa/Loom_LoRa.cpp
+index a0432c8..07322fc 100644
+--- a/a/src/Radio/Loom_LoRa/Loom_LoRa.cpp
++++ b/b/src/Radio/Loom_LoRa/Loom_LoRa.cpp
+@@ -1,7 +1,10 @@
++#include "Loom_WarningGuards.h"
+ 
+ #include "Loom_LoRa.h"
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include "ArduinoJson.hpp"
+ #include "FatLib/ArduinoFiles.h"
++LOOM_EXTERNAL_INCLUDE_END
+ #include "Logger.h"
+ #include "Module.h"
+ #include <cstdint>
+diff --git a/a/src/Radio/Loom_LoRa/Loom_LoRa.h b/b/src/Radio/Loom_LoRa/Loom_LoRa.h
+index c125fc5..4cadfa2 100644
+--- a/a/src/Radio/Loom_LoRa/Loom_LoRa.h
++++ b/b/src/Radio/Loom_LoRa/Loom_LoRa.h
+@@ -1,13 +1,20 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include "ArduinoJson.hpp"
+ #include "ArduinoJson/Object/JsonObject.hpp"
++LOOM_EXTERNAL_INCLUDE_END
+ #include "Hardware/Loom_BatchSD/Loom_BatchSD.h"
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <ArduinoJson.h>
++LOOM_EXTERNAL_INCLUDE_END
+ #include <Logger.h>
+ #include <Module.h>
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <RHReliableDatagram.h>
+ #include <RH_RF95.h>
++LOOM_EXTERNAL_INCLUDE_END
+ #include <cstdint>
+ #include <cstdio>
+ #include <cstring>
+diff --git a/a/src/Radio/Radio.h b/b/src/Radio/Radio.h
+index 120ff9d..4420147 100644
+--- a/a/src/Radio/Radio.h
++++ b/b/src/Radio/Radio.h
+@@ -1,9 +1,12 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
+ #include "../Module.h"
+ #include "Logger.h"
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <ArduinoJson.h>
+ #include <SPI.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ /**
+  * Slightly abstracted Radio class to allow for all radio modules to inherit from one spot
+diff --git a/a/src/Sensors/I2C/EZO/EZOSensor.h b/b/src/Sensors/I2C/EZO/EZOSensor.h
+index 547f723..3818d1f 100644
+--- a/a/src/Sensors/I2C/EZO/EZOSensor.h
++++ b/b/src/Sensors/I2C/EZO/EZOSensor.h
+@@ -1,6 +1,9 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Wire.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "../I2CDevice.h"
+ #include "Logger.h"
+diff --git a/a/src/Sensors/I2C/Loom_ADS1115/Loom_ADS1115.h b/b/src/Sensors/I2C/Loom_ADS1115/Loom_ADS1115.h
+index cb5e88b..250213c 100644
+--- a/a/src/Sensors/I2C/Loom_ADS1115/Loom_ADS1115.h
++++ b/b/src/Sensors/I2C/Loom_ADS1115/Loom_ADS1115.h
+@@ -1,6 +1,9 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Adafruit_ADS1X15.h>
++LOOM_EXTERNAL_INCLUDE_END
+ #include <map>
+ 
+ #include "../I2CDevice.h"
+diff --git a/a/src/Sensors/I2C/Loom_AS7262/Loom_AS7262.h b/b/src/Sensors/I2C/Loom_AS7262/Loom_AS7262.h
+index 7a90ed5..3632b40 100644
+--- a/a/src/Sensors/I2C/Loom_AS7262/Loom_AS7262.h
++++ b/b/src/Sensors/I2C/Loom_AS7262/Loom_AS7262.h
+@@ -1,7 +1,10 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <AS726X.h>
+ #include <Wire.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "../I2CDevice.h"
+ #include "Loom_Manager.h"
+diff --git a/a/src/Sensors/I2C/Loom_AS7263/Loom_AS7263.h b/b/src/Sensors/I2C/Loom_AS7263/Loom_AS7263.h
+index 4479810..54fb4d9 100644
+--- a/a/src/Sensors/I2C/Loom_AS7263/Loom_AS7263.h
++++ b/b/src/Sensors/I2C/Loom_AS7263/Loom_AS7263.h
+@@ -1,7 +1,10 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <AS726X.h>
+ #include <Wire.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "../I2CDevice.h"
+ #include "Loom_Manager.h"
+diff --git a/a/src/Sensors/I2C/Loom_AS7265X/Loom_AS7265X.h b/b/src/Sensors/I2C/Loom_AS7265X/Loom_AS7265X.h
+index f021701..ffc9f90 100644
+--- a/a/src/Sensors/I2C/Loom_AS7265X/Loom_AS7265X.h
++++ b/b/src/Sensors/I2C/Loom_AS7265X/Loom_AS7265X.h
+@@ -1,7 +1,10 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <SparkFun_AS7265X.h>
+ #include <Wire.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "../I2CDevice.h"
+ #include "Loom_Manager.h"
+diff --git a/a/src/Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.cpp b/b/src/Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.cpp
+index 7b11f4b..7923281 100644
+--- a/a/src/Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.cpp
++++ b/b/src/Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.cpp
+@@ -1,7 +1,10 @@
++#include "Loom_WarningGuards.h"
+ 
+ #include "Loom_DFMultiGasSensor.h"
+ #include "Logger.h"
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include "Wire.h"
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ //////////////////////////////////////////////////////////////////////////////////////////////////////
+ Loom_DFMultiGasSensor::Loom_DFMultiGasSensor(Manager &man, uint8_t address,
+diff --git a/a/src/Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h b/b/src/Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h
+index 98d30cf..046638c 100644
+--- a/a/src/Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h
++++ b/b/src/Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h
+@@ -1,6 +1,9 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <DFRobot_MultiGasSensor.h>
++LOOM_EXTERNAL_INCLUDE_END
+ #include <string.h>
+ #include <unordered_map>
+ 
+diff --git a/a/src/Sensors/I2C/Loom_DFRobotO2/Loom_DFRobotO2.h b/b/src/Sensors/I2C/Loom_DFRobotO2/Loom_DFRobotO2.h
+index 582044c..b372b24 100644
+--- a/a/src/Sensors/I2C/Loom_DFRobotO2/Loom_DFRobotO2.h
++++ b/b/src/Sensors/I2C/Loom_DFRobotO2/Loom_DFRobotO2.h
+@@ -1,10 +1,13 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
+ #include "../I2CDevice.h"
+ #include "Loom_Manager.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <DFRobot_OxygenSensor.h>
+ #include <Wire.h>
++LOOM_EXTERNAL_INCLUDE_END
+ /**
+  *  DFRobot Oxygen Sensor
+  *
+diff --git a/a/src/Sensors/I2C/Loom_K30/Loom_K30.h b/b/src/Sensors/I2C/Loom_K30/Loom_K30.h
+index 36ca329..4db6f78 100644
+--- a/a/src/Sensors/I2C/Loom_K30/Loom_K30.h
++++ b/b/src/Sensors/I2C/Loom_K30/Loom_K30.h
+@@ -1,7 +1,10 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Arduino.h>
+ #include <Wire.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "../I2CDevice.h"
+ #include "Loom_Manager.h"
+diff --git a/a/src/Sensors/I2C/Loom_MB1232/Loom_MB1232.h b/b/src/Sensors/I2C/Loom_MB1232/Loom_MB1232.h
+index d3c0b6f..3d6b93d 100644
+--- a/a/src/Sensors/I2C/Loom_MB1232/Loom_MB1232.h
++++ b/b/src/Sensors/I2C/Loom_MB1232/Loom_MB1232.h
+@@ -1,6 +1,9 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Wire.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "../I2CDevice.h"
+ #include "Loom_Manager.h"
+diff --git a/a/src/Sensors/I2C/Loom_MMA8451/Loom_MMA8451.h b/b/src/Sensors/I2C/Loom_MMA8451/Loom_MMA8451.h
+index 9d58e30..3146710 100644
+--- a/a/src/Sensors/I2C/Loom_MMA8451/Loom_MMA8451.h
++++ b/b/src/Sensors/I2C/Loom_MMA8451/Loom_MMA8451.h
+@@ -1,7 +1,10 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Adafruit_MMA8451.h>
+ #include <Wire.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "../I2CDevice.h"
+ #include "Loom_Manager.h"
+diff --git a/a/src/Sensors/I2C/Loom_MPU6050/Loom_MPU6050.h b/b/src/Sensors/I2C/Loom_MPU6050/Loom_MPU6050.h
+index fbe905c..7b6f17d 100644
+--- a/a/src/Sensors/I2C/Loom_MPU6050/Loom_MPU6050.h
++++ b/b/src/Sensors/I2C/Loom_MPU6050/Loom_MPU6050.h
+@@ -1,10 +1,13 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
+ #include "../I2CDevice.h"
+ #include "Loom_Manager.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <MPU6050_tockn.h>
+ #include <Wire.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ /**
+  *  MPU6050 Accelerometer / IMU
+diff --git a/a/src/Sensors/I2C/Loom_MS5803/Loom_MS5803.h b/b/src/Sensors/I2C/Loom_MS5803/Loom_MS5803.h
+index f050d58..51ee764 100644
+--- a/a/src/Sensors/I2C/Loom_MS5803/Loom_MS5803.h
++++ b/b/src/Sensors/I2C/Loom_MS5803/Loom_MS5803.h
+@@ -1,10 +1,15 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
+ #include "../I2CDevice.h"
+ #include "Loom_Manager.h"
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Wire.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <MS5803_02.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ /**
+  * Interface for the MS5803 Atmospheric Pressure / Temperature sensor module.
+diff --git a/a/src/Sensors/I2C/Loom_SEN55/Loom_SEN55.h b/b/src/Sensors/I2C/Loom_SEN55/Loom_SEN55.h
+index 04663a6..e8107ec 100644
+--- a/a/src/Sensors/I2C/Loom_SEN55/Loom_SEN55.h
++++ b/b/src/Sensors/I2C/Loom_SEN55/Loom_SEN55.h
+@@ -1,7 +1,10 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <SensirionI2CSen5x.h>
+ #include <Wire.h>
++LOOM_EXTERNAL_INCLUDE_END
+ #include <bitset>
+ 
+ #include "../I2CDevice.h"
+diff --git a/a/src/Sensors/I2C/Loom_SEN66/Loom_SEN66.h b/b/src/Sensors/I2C/Loom_SEN66/Loom_SEN66.h
+index a46b3bf..6be24d4 100644
+--- a/a/src/Sensors/I2C/Loom_SEN66/Loom_SEN66.h
++++ b/b/src/Sensors/I2C/Loom_SEN66/Loom_SEN66.h
+@@ -1,8 +1,11 @@
+ #pragma once
+ 
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include "SensirionI2cSen66.h"
+ #include <Wire.h>
++LOOM_EXTERNAL_INCLUDE_END
+ #include <bitset>
+ 
+ #include "../I2CDevice.h"
+diff --git a/a/src/Sensors/I2C/Loom_SHT31/Loom_SHT31.h b/b/src/Sensors/I2C/Loom_SHT31/Loom_SHT31.h
+index 5b7bf8d..e63d301 100644
+--- a/a/src/Sensors/I2C/Loom_SHT31/Loom_SHT31.h
++++ b/b/src/Sensors/I2C/Loom_SHT31/Loom_SHT31.h
+@@ -1,6 +1,9 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Adafruit_SHT31.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "../I2CDevice.h"
+ #include "Loom_Manager.h"
+diff --git a/a/src/Sensors/I2C/Loom_STEMMA/Loom_STEMMA.h b/b/src/Sensors/I2C/Loom_STEMMA/Loom_STEMMA.h
+index a39a245..c43e1c6 100644
+--- a/a/src/Sensors/I2C/Loom_STEMMA/Loom_STEMMA.h
++++ b/b/src/Sensors/I2C/Loom_STEMMA/Loom_STEMMA.h
+@@ -1,6 +1,9 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Adafruit_seesaw.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "../I2CDevice.h"
+ #include "Loom_Manager.h"
+diff --git a/a/src/Sensors/I2C/Loom_T6793/Loom_T6793.h b/b/src/Sensors/I2C/Loom_T6793/Loom_T6793.h
+index 905240e..f5c0755 100644
+--- a/a/src/Sensors/I2C/Loom_T6793/Loom_T6793.h
++++ b/b/src/Sensors/I2C/Loom_T6793/Loom_T6793.h
+@@ -1,6 +1,9 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Wire.h>
++LOOM_EXTERNAL_INCLUDE_END
+ #include <bitset>
+ 
+ #include "../I2CDevice.h"
+diff --git a/a/src/Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h b/b/src/Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h
+index 0868143..204977a 100644
+--- a/a/src/Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h
++++ b/b/src/Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h
+@@ -1,7 +1,10 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Adafruit_Sensor.h>
+ #include <Adafruit_TSL2591.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "../I2CDevice.h"
+ #include "Loom_Manager.h"
+diff --git a/a/src/Sensors/I2C/Loom_VCNL4010/Loom_VCNL4010.h b/b/src/Sensors/I2C/Loom_VCNL4010/Loom_VCNL4010.h
+index 333d751..ca57f52 100644
+--- a/a/src/Sensors/I2C/Loom_VCNL4010/Loom_VCNL4010.h
++++ b/b/src/Sensors/I2C/Loom_VCNL4010/Loom_VCNL4010.h
+@@ -1,11 +1,16 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
+ #include "../I2CDevice.h"
+ #include "Loom_Manager.h"
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Wire.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Adafruit_Sensor.h>
+ #include <Adafruit_VCNL4010.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ /**
+  * Interface for the VCNL4010 Proximity & Ambient light sensor module.
+diff --git a/a/src/Sensors/I2C/Loom_VCNL4020/Loom_VCNL4020.h b/b/src/Sensors/I2C/Loom_VCNL4020/Loom_VCNL4020.h
+index 0fa7de2..821f055 100644
+--- a/a/src/Sensors/I2C/Loom_VCNL4020/Loom_VCNL4020.h
++++ b/b/src/Sensors/I2C/Loom_VCNL4020/Loom_VCNL4020.h
+@@ -1,11 +1,16 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
+ #include "../I2CDevice.h"
+ #include "Loom_Manager.h"
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Wire.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Adafruit_Sensor.h>
+ #include <Adafruit_VCNL4020.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ /**
+  * Loom integration for VCNL4020 Proximity and Ambient Light sensor module.
+diff --git a/a/src/Sensors/I2C/Loom_VEML6075/Loom_VEML6075.h b/b/src/Sensors/I2C/Loom_VEML6075/Loom_VEML6075.h
+index 4fb3758..5c750a2 100644
+--- a/a/src/Sensors/I2C/Loom_VEML6075/Loom_VEML6075.h
++++ b/b/src/Sensors/I2C/Loom_VEML6075/Loom_VEML6075.h
+@@ -1,11 +1,16 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
+ #include "../I2CDevice.h"
+ #include "Loom_Manager.h"
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Wire.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Adafruit_Sensor.h>
+ #include <Adafruit_VEML6075.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ /**
+  * Interface for the VEML6075 ultraviolet light sensor module.
+diff --git a/a/src/Sensors/I2C/Loom_ZXGesture/Loom_ZXGesture.h b/b/src/Sensors/I2C/Loom_ZXGesture/Loom_ZXGesture.h
+index 621b48f..012492a 100644
+--- a/a/src/Sensors/I2C/Loom_ZXGesture/Loom_ZXGesture.h
++++ b/b/src/Sensors/I2C/Loom_ZXGesture/Loom_ZXGesture.h
+@@ -1,6 +1,9 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <ZX_Sensor.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "../I2CDevice.h"
+ #include "Loom_Manager.h"
+diff --git a/a/src/Sensors/SDI12/Loom_SDI12/Loom_SDI12.h b/b/src/Sensors/SDI12/Loom_SDI12/Loom_SDI12.h
+index b42964d..9f0860a 100644
+--- a/a/src/Sensors/SDI12/Loom_SDI12/Loom_SDI12.h
++++ b/b/src/Sensors/SDI12/Loom_SDI12/Loom_SDI12.h
+@@ -1,15 +1,20 @@
+ #pragma once
+ 
++#include "Loom_WarningGuards.h"
+ 
+ #include <map>
+ #include <vector>
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include "Arduino.h"
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "Loom_Manager.h"
+ #include "Module.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <SDI12.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #define RESPONSE_SIZE 50
+ 
+diff --git a/a/src/Sensors/SPI/Loom_ADS1232/ADS1232_Lib_Fixed.h b/b/src/Sensors/SPI/Loom_ADS1232/ADS1232_Lib_Fixed.h
+index d6cf1c9..f84fc0a 100644
+--- a/a/src/Sensors/SPI/Loom_ADS1232/ADS1232_Lib_Fixed.h
++++ b/b/src/Sensors/SPI/Loom_ADS1232/ADS1232_Lib_Fixed.h
+@@ -1,6 +1,9 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Arduino.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ /**
+  * Minimal ADS1232 driver with bounded ready waits and correct 24-bit retrieval.
+diff --git a/a/src/Sensors/SPI/Loom_MAX318XX/Loom_MAX31856.h b/b/src/Sensors/SPI/Loom_MAX318XX/Loom_MAX31856.h
+index 8e40222..2afda5c 100644
+--- a/a/src/Sensors/SPI/Loom_MAX318XX/Loom_MAX31856.h
++++ b/b/src/Sensors/SPI/Loom_MAX318XX/Loom_MAX31856.h
+@@ -1,6 +1,9 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Adafruit_MAX31856.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "Loom_Manager.h"
+ #include "Module.h"
+diff --git a/a/src/Sensors/SPI/Loom_MAX318XX/Loom_MAX31865.h b/b/src/Sensors/SPI/Loom_MAX318XX/Loom_MAX31865.h
+index b0f885e..fc53e76 100644
+--- a/a/src/Sensors/SPI/Loom_MAX318XX/Loom_MAX31865.h
++++ b/b/src/Sensors/SPI/Loom_MAX318XX/Loom_MAX31865.h
+@@ -1,6 +1,9 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <Adafruit_MAX31865.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ #include "Loom_Manager.h"
+ #include "Module.h"
+diff --git a/a/src/Sensors/Serial/Loom_NOVASDS/Loom_NOVASDS.h b/b/src/Sensors/Serial/Loom_NOVASDS/Loom_NOVASDS.h
+index 67ed776..def13ca 100644
+--- a/a/src/Sensors/Serial/Loom_NOVASDS/Loom_NOVASDS.h
++++ b/b/src/Sensors/Serial/Loom_NOVASDS/Loom_NOVASDS.h
+@@ -1,8 +1,11 @@
+ #pragma once
++#include "Loom_WarningGuards.h"
+ 
+ #include "Loom_Manager.h"
+ #include "Module.h"
++LOOM_EXTERNAL_INCLUDE_BEGIN
+ #include <SDS011.h>
++LOOM_EXTERNAL_INCLUDE_END
+ 
+ /**
+  * Class for handling the NOVASDS011 Dust Sensor

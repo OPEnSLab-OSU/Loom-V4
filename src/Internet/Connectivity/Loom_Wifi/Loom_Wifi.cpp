@@ -1,3 +1,4 @@
+
 #include "Loom_Wifi.h"
 #include "Logger.h"
 #include <RTClib.h>
@@ -8,20 +9,25 @@ FlashStorage(WiFiConfig, WifiInfo);
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_WIFI::Loom_WIFI(Manager &man, CommunicationMode mode, const char *name, const char *password,
                      int connectionRetries)
-    : NetworkComponent("WiFi"), manInst(&man), mode(mode), connectionRetries(connectionRetries) {
+    : NetworkComponent("WiFi"), manInst(&man), connectionRetries(connectionRetries), mode(mode) {
     if (mode == CommunicationMode::AP && strlen(name) <= 0) {
-        snprintf(wifi_name, 100, "%s%i", manInst->get_device_name(), manInst->get_instance_num());
+        snprintf(wifi_name, sizeof(wifi_name), "%.*s%lu", 88, manInst->get_device_name(),
+                 static_cast<unsigned long>(manInst->get_instance_num()));
     } else {
-        strncpy(wifi_name, name, 100);
+        strncpy(wifi_name, name, sizeof(wifi_name) - 1);
+        wifi_name[sizeof(wifi_name) - 1] = '\0';
     }
 
-    strncpy(wifi_password, password, 100);
+    strncpy(wifi_password, password, sizeof(wifi_password) - 1);
+    wifi_password[sizeof(wifi_password) - 1] = '\0';
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_WIFI::Loom_WIFI(Manager &man) : NetworkComponent("WiFi"), manInst(&man), connectionRetries(5) {
+Loom_WIFI::Loom_WIFI(Manager &man)
+    : NetworkComponent("WiFi"), manInst(&man), connectionRetries(5),
+      mode(CommunicationMode::CLIENT) {
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -119,8 +125,10 @@ void Loom_WIFI::power_up() {
 
             // Read the data in if we have set it before
             if (info.is_valid != false) {
-                strncpy(wifi_name, info.name, 100);
-                strncpy(wifi_password, info.password, 100);
+                strncpy(wifi_name, info.name, sizeof(wifi_name) - 1);
+                wifi_name[sizeof(wifi_name) - 1] = '\0';
+                strncpy(wifi_password, info.password, sizeof(wifi_password) - 1);
+                wifi_password[sizeof(wifi_password) - 1] = '\0';
             }
         }
 
@@ -163,8 +171,9 @@ void Loom_WIFI::connect_to_network() {
                 if (usingMax) {
                     LOG(F("Starting access point as backup!"));
                     mode = CommunicationMode::AP;
-                    snprintf(wifi_name, 100, "%s%i", manInst->get_device_name(),
-                             manInst->get_instance_num());
+                    snprintf(wifi_name, sizeof(wifi_name), "%.*s%lu", 88,
+                             manInst->get_device_name(),
+                             static_cast<unsigned long>(manInst->get_instance_num()));
                     start_ap();
                 }
 
@@ -192,8 +201,9 @@ void Loom_WIFI::connect_to_network() {
                 if (usingMax) {
                     LOG(F("Starting access point as backup!"));
                     mode = CommunicationMode::AP;
-                    snprintf(wifi_name, 100, "%s%i", manInst->get_device_name(),
-                             manInst->get_instance_num());
+                    snprintf(wifi_name, sizeof(wifi_name), "%.*s%lu", 88,
+                             manInst->get_device_name(),
+                             static_cast<unsigned long>(manInst->get_instance_num()));
                     start_ap();
                 }
                 // TIMER_ENABLE;
@@ -294,6 +304,7 @@ bool Loom_WIFI::verifyConnection() {
         }
     }
     FUNCTION_END;
+    return false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -315,8 +326,10 @@ void Loom_WIFI::loadConfigFromJSON(char *json) {
 
     // Only update the wifi creds if the data was not NULL
     if (!doc["SSID"].isNull()) {
-        strncpy(wifi_name, doc["SSID"].as<const char *>(), 100);
-        strncpy(wifi_password, doc["password"].as<const char *>(), 100);
+        strncpy(wifi_name, doc["SSID"].as<const char *>(), sizeof(wifi_name) - 1);
+        wifi_name[sizeof(wifi_name) - 1] = '\0';
+        strncpy(wifi_password, doc["password"].as<const char *>(), sizeof(wifi_password) - 1);
+        wifi_password[sizeof(wifi_password) - 1] = '\0';
     }
 
     free(json);
@@ -331,8 +344,10 @@ void Loom_WIFI::storeNewWiFiCreds(const char *name, const char *password) {
     LOG(F("Writing new WiFi credentials to flash..."));
     WifiInfo info;
     info.is_valid = true;
-    strncpy(info.name, name, 100);
-    strncpy(info.password, password, 100);
+    strncpy(info.name, name, sizeof(info.name) - 1);
+    info.name[sizeof(info.name) - 1] = '\0';
+    strncpy(info.password, password, sizeof(info.password) - 1);
+    info.password[sizeof(info.password) - 1] = '\0';
     WiFiConfig.write(info);
     LOG(F("Information written to flash!"));
 

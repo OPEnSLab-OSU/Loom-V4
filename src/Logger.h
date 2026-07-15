@@ -8,10 +8,14 @@
 
 // To acquire a function call summary, just add INSTRUMENT() to the top of the
 // relevant function.
-#define INSTRUMENT() FunctionInstrumentor _instrumentor##__LINE__(__FILE__, __func__, __LINE__);
+#define LOOM_LOGGER_JOIN_IMPL(a, b) a##b
+#define LOOM_LOGGER_JOIN(a, b) LOOM_LOGGER_JOIN_IMPL(a, b)
+#define INSTRUMENT()                                                                          \
+    FunctionInstrumentor LOOM_LOGGER_JOIN(_loomInstrumentor_, __LINE__)(__FILE__, __func__,   \
+                                                                          __LINE__);
 
 // DEPRECATED - use INSTRUMENT
-#define FUNCTION_START FunctionInstrumentor _instrumentor##__LINE__(__FILE__, __func__, __LINE__);
+#define FUNCTION_START INSTRUMENT()
 // DEPRECATED - use INSTRUMENT
 #define FUNCTION_END
 
@@ -45,7 +49,7 @@ struct LogContext {
     } while (false)
 
 #define LOGF(msg, ...) GENERIC_LOGF(false, "DEBUG", msg, ##__VA_ARGS__)
-#define SLOGF(msg, ...) GENERIC_LOGF(false, "DEBUG", msg, ##__VA_ARGS__)
+#define SLOGF(msg, ...) GENERIC_LOGF(true, "DEBUG", msg, ##__VA_ARGS__)
 #define WARNINGF(msg, ...) GENERIC_LOGF(false, "WARNING", msg, ##__VA_ARGS__)
 #define ERRORF(msg, ...) GENERIC_LOGF(false, "ERROR", msg, ##__VA_ARGS__)
 

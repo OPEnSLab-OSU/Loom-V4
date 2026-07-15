@@ -1,3 +1,4 @@
+
 #include "Loom_LoRa.h"
 #include "ArduinoJson.hpp"
 #include "FatLib/ArduinoFiles.h"
@@ -290,6 +291,8 @@ bool Loom_LoRa::receive(uint timeout, uint8_t *fromAddress, bool shouldProxy) {
         FragReceiveStatus status = receiveFrag(timeout, shouldProxy, fromAddress);
 
         switch (status) {
+        case FragReceiveStatus::Incomplete:
+            break;
         case FragReceiveStatus::Complete:
             return true;
         case FragReceiveStatus::Error:
@@ -470,6 +473,7 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
     }
 
     fileOutput.close();
+    return status;
 }
 
 bool Loom_LoRa::receiveBatch(uint timeout, int *numberOfPackets) {

@@ -26,10 +26,10 @@ Loom_WIFI wifi(manager, CommunicationMode::CLIENT, SECRET_SSID, SECRET_PASS);
 //Loom_LTE lte(manager, NETWORK_NAME, NETWORK_USER, NETWORK_PASS);
 
 // WiFi
-Loom_ThingSpeak thingspeak(manager, wifi.getClient(), CHANNEL_ID, CLIENT_ID, BROKER_USER, BROKER_PASS);
+Loom_ThingSpeak thingspeak(manager, wifi, CHANNEL_ID, CLIENT_ID, BROKER_USER, BROKER_PASS);
 
 // LTE
-//Loom_ThingSpeak mqtt(manager, lte.getClient(), CHANNEL_ID, CLIENT_ID, BROKER_USER, BROKER_PASS);
+//Loom_ThingSpeak mqtt(manager, lte, CHANNEL_ID, CLIENT_ID, BROKER_USER, BROKER_PASS);
 
 float exampleNoParam() {
     return 45.6;
@@ -67,3 +67,4 @@ void loop() {
 
     manager.pause(5000);
 }
+

@@ -32,7 +32,7 @@ class Loom_Digital : public Module {
         manInst = &man;
 
         // Set pin mode on digital pins
-        for (int i = 0; i < digitalPins.size(); i++) {
+        for (size_t i = 0; i < digitalPins.size(); i++) {
             pinMode(digitalPins[i], pinState);
         }
 
@@ -49,7 +49,7 @@ class Loom_Digital : public Module {
         digitalPins.push_back(firstPin);
         manInst = &man;
 
-        for (int i = 0; i < digitalPins.size(); i++) {
+        for (size_t i = 0; i < digitalPins.size(); i++) {
             pinMode(digitalPins[i], pinState);
         }
 
