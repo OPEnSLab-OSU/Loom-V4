@@ -776,9 +776,9 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
     }
 
     DeserializationError deserialError = deserializeJson(doc, jsonStart);
-    free(fileRead);
 
     if(deserialError != DeserializationError::Ok){
+        free(fileRead);
         snprintf(output, OUTPUT_SIZE,
                  "There was an error reading the config from SD: %s, defaulting sampling interval to 20 minutes.",
                  deserialError.c_str());
@@ -844,6 +844,10 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
     LOG(output);
 
     TimeSpan interval(days, hours, minutes, seconds);
+    // deserializeJson() used the mutable SD buffer in zero-copy mode, so the
+    // buffer must remain alive until every JSON key and value has been read.
+    free(fileRead);
+
     if(!intervalFound || interval.totalseconds() <= 0){
         ERROR(F("Sampling interval is missing or zero, defaulting sampling interval to 20 minutes."));
         FUNCTION_END;
