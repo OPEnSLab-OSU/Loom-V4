@@ -1,18 +1,11 @@
 #pragma once
-
-#include "Loom_WarningGuards.h"
-
-LOOM_EXTERNAL_INCLUDE_BEGIN
 #include "SensirionI2cSen66.h"
 #include <Wire.h>
-LOOM_EXTERNAL_INCLUDE_END
-
 #include <bitset>
 
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
 
-#define PM_AVERAGE_COUNT 10     // Number of times to read the pm values then average them over
 #define SEN66_I2C_ADDRESS 0x6B  // Standard I2C address for SEN66
 
 /**
@@ -29,8 +22,9 @@ class Loom_SEN66 : public I2CDevice{
        // Manager controlled functions
         void measure() override;
         void initialize() override;
-        void power_up() override {};
+        void power_up() override;
         void power_down() override {};
+        bool retryPowerUpWhenUninitialized() const override { return true; }
         void package() override;
 
     public:
@@ -105,6 +99,7 @@ class Loom_SEN66 : public I2CDevice{
         void resetValuesForMeasure();
 
     private:
+        static constexpr uint8_t SAMPLE_COUNT = 10;
         Manager* manInst;                       // Instance of the manager
         SensirionI2cSen66 sen66;                // Instance of the SEN66 driver object
 

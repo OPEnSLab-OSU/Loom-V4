@@ -200,8 +200,17 @@ void Loom_LTE::powerBoardOn(){
     pulseControlPin(powerPin, LOOM_LTE_R5_PWR_PULSE_MS, F("LTE PWR_ON"));
     delay(LOOM_LTE_R5_POST_PWR_SETTLE_MS);
 #else
-    const uint32_t powerPulseMs = (lteBoardVersion == OPENS) ? 1000UL : 3000UL;
-    pulseControlPin(powerPin, powerPulseMs, F("LTE PWR_ON"));
+    // Preserve the proven 4.9 SARA-R4 board sequences exactly.
+    pinMode(powerPin, OUTPUT);
+    if(lteBoardVersion == OPENS){
+        digitalWrite(powerPin, HIGH);
+        delay(5000);
+    }
+    else{
+        digitalWrite(powerPin, LOW);
+        delay(3000);
+    }
+    pinMode(powerPin, INPUT);
 #endif
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -253,7 +262,12 @@ bool Loom_LTE::selectWorkingBaud(uint32_t timeoutMs){
     // AT command. Keep that primary rate in Loom_LTE_Config.h so board startup
     // does not require editing this file.
     // Restore the configured primary baud before returning failure.
-    selectedBaud = LOOM_LTE_R5_UART_BAUD;
+#if defined(TINY_GSM_MODEM_SARAR5)
+    const uint32_t primaryBaud = LOOM_LTE_R5_UART_BAUD;
+#else
+    const uint32_t primaryBaud = 9600UL;
+#endif
+    selectedBaud = primaryBaud;
     SerialAT.end();
     delay(100);
     SerialAT.begin(selectedBaud);
@@ -285,7 +299,7 @@ bool Loom_LTE::selectWorkingBaud(uint32_t timeoutMs){
 
     for(uint8_t i = 0; i < (sizeof(supportedBauds) / sizeof(supportedBauds[0])); i++){
         // Skip the configured primary baud because it was already tested first.
-        if(supportedBauds[i] == LOOM_LTE_R5_UART_BAUD)
+        if(supportedBauds[i] == primaryBaud)
             continue;
 
         // Try the next supported one-shot autobaud rate.
@@ -310,7 +324,7 @@ bool Loom_LTE::selectWorkingBaud(uint32_t timeoutMs){
     }
 
     // Restore the configured primary baud before returning failure.
-    selectedBaud = LOOM_LTE_R5_UART_BAUD;
+    selectedBaud = primaryBaud;
     SerialAT.end();
     delay(100);
     SerialAT.begin(selectedBaud);
@@ -372,9 +386,6 @@ void Loom_LTE::applyR5NetworkHints(){
     // functionality, and optionally skip broad carrier search when a numeric
     // operator code is configured.
 #if defined(TINY_GSM_MODEM_SARAR5)
-    modem.sendAT(GF("+CFUN=1"));
-    modem.waitResponse(10000L);
-
     modem.sendAT(GF("+CMEE=2"));
     modem.waitResponse(5000L);
 
@@ -459,7 +470,15 @@ bool Loom_LTE::bootModemWithRetries(){
         snprintf(output, OUTPUT_SIZE, "LTE modem boot attempt %u / 3", attempt);
         LOG(output);
 
-        powerBoardOn();
+        // PWR_ON is a stateful hardware control, not an idempotent reset. Pulse
+        // it once, then retry UART/TinyGSM initialization without risking a
+        // second pulse switching an already-running modem back off.
+        if(attempt == 1){
+            powerBoardOn();
+        }
+        else{
+            LOG(F("Retrying modem initialization without another PWR_ON pulse."));
+        }
 
         if(selectWorkingBaud(LOOM_LTE_R5_BOOT_AT_TIMEOUT_MS)){
             LOG(F("Modem answered AT."));
@@ -496,11 +515,11 @@ bool Loom_LTE::bootModemWithRetries(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-// Full manager initialization: boot the modem, read identity, then open a data session.
-// moduleInitialized is true only when the modem reaches a usable LTE data state.
+// Full manager initialization: boot the modem, read identity, then try to open a data session.
+// moduleInitialized tracks modem/AT readiness so a failed data session can be retried later.
 void Loom_LTE::initialize(){
     // Manager initialization enters here. At the end of this function,
-    // moduleInitialized means both boot and the data session succeeded.
+    // moduleInitialized means the modem booted and TinyGSM can issue AT commands.
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     char ip[16];
@@ -545,10 +564,11 @@ void Loom_LTE::initialize(){
     LOG(output);
 
     // Connect to the LTE network and open the APN/PDP data session.
-    moduleInitialized = connect();
+    moduleInitialized = true;
+    const bool connected = connect();
 
     // If we successfully connected to the LTE network print out some information.
-    if(moduleInitialized){
+    if(connected){
         LOG(F("Connected!"));
 
         // Print APN.
@@ -594,6 +614,14 @@ void Loom_LTE::power_up(){
         }
     }
 
+    if(powered){
+        moduleInitialized = true;
+        if(!firstInit)
+            (void)connect();
+        FUNCTION_END;
+        return;
+    }
+
     LOG(F("Powering up LTE modem."));
     TIMER_DISABLE;
 
@@ -610,8 +638,12 @@ void Loom_LTE::power_up(){
     SerialAT.end();
     delay(100);
 
-    // Start serial at the configured SARA-R5 baud rate.
+    // Preserve the 4.9 R4 UART while allowing the R5 build to select 115200.
+#if defined(TINY_GSM_MODEM_SARAR5)
     selectedBaud = LOOM_LTE_R5_UART_BAUD;
+#else
+    selectedBaud = 9600UL;
+#endif
     SerialAT.begin(selectedBaud);
     delay(250);
 
@@ -629,11 +661,12 @@ void Loom_LTE::power_up(){
     // Mark the modem as powered only after AT and TinyGSM initialization succeed.
     LOG(F("Powering up complete!"));
     powered = true;
+    moduleInitialized = true;
     TIMER_ENABLE;
 
     // Connect to the network if we are powering up after the first initialization pass.
-    if(!firstInit && moduleInitialized)
-        moduleInitialized = connect();
+    if(!firstInit)
+        (void)connect();
 
     FUNCTION_END;
 }
@@ -642,7 +675,7 @@ void Loom_LTE::power_up(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::power_down(){
     FUNCTION_START;
-    if(moduleInitialized && powerUp){
+    if(powered && powerUp){
         LOG(F("Powering down LTE modem."));
         TIMER_DISABLE;
         modem.poweroff();
@@ -787,10 +820,6 @@ bool Loom_LTE::connect(){
         snprintf(output, OUTPUT_SIZE, "LTE connect attempt %u / %u", attempt, maxAttempts);
         LOG(output);
 
-        modem.sendAT(GF("+CFUN=1"));
-        modem.waitResponse(10000L);
-
-        // Set full modem functionality before registration.
         modem.sendAT(GF("+CFUN=1"));
         modem.waitResponse(10000L);
 

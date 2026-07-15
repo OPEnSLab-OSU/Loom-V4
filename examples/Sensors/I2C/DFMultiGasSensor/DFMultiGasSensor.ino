@@ -8,8 +8,8 @@
 // If the sensor is freezing on init try disconnecting the power and re-connecting it
 Manager manager("Device", 1);
 
-// MANAGER, I2C ADDRESS, INIT RETRY LIMIT, USE MUX
-Loom_DFMultiGasSensor gas(manager, 0x77, 10, false);
+// MANAGER, I2C ADDRESS, INIT RETRY LIMIT, SENSOR POWER-CYCLES, USE MUX
+Loom_DFMultiGasSensor gas(manager, 0x77, 10, false, false);
 
 void setup() {
   manager.beginSerial();

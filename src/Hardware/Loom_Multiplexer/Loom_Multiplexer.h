@@ -1,6 +1,4 @@
 #pragma once
-
-#include "Loom_WarningGuards.h"
 #include "../../Loom_Manager.h"
 #include "../../Module.h"
 
@@ -8,11 +6,7 @@
 #include <vector>
 #include <tuple>
 #include <algorithm>
-
-LOOM_EXTERNAL_INCLUDE_BEGIN
 #include "Wire.h"
-LOOM_EXTERNAL_INCLUDE_END
-
 // I2C Sensors Used by Loom
 #include "../../Sensors/I2C/Loom_ADS1115/Loom_ADS1115.h"
 #include "../../Sensors/I2C/Loom_MPU6050/Loom_MPU6050.h"
@@ -124,6 +118,9 @@ class Loom_Multiplexer : public Module{
          */
         void debugScan();
 
+        /** Re-scan enabled ports and rebuild the auto-loaded sensor list. */
+        void refreshSensors();
+
     private:
         Manager* manInst;                                       // Instance of the manager
         byte activeMuxAddr;                                     // Active TCA9548 address
@@ -131,14 +128,14 @@ class Loom_Multiplexer : public Module{
 
         std::vector<std::tuple<byte, Module*, int>> sensors;    // List of auto-loaded sensors
 
-        void selectPin(uint8_t pin);                            // Select which mux port to transmit to
-        void disableChannels();                                 // Disables all channels on the multiplexer
+        bool selectPin(uint8_t pin);                            // Select which mux port to transmit to
+        bool disableChannels();                                 // Disables all channels on the multiplexer
         bool isDeviceConnected(byte addr);                      // Check if there is a device at the specified address
         uint8_t probeAddress(byte addr);                        // Return raw Wire.endTransmission status
+        bool probeMultiplexer(byte addr);                       // Verify TCA9548 control-register behavior
         bool isPortEnabled(uint8_t port);                       // Check if a mux port should be scanned
         bool shouldScanAddress(byte addr);                      // Check if an address should be scanned behind the mux
 
-        void refreshSensors();                                  // Rebuilds the auto-loaded sensor list
         void clearSensors();                                    // Deletes auto-loaded sensor instances
         void scanAndLoadSensors();                              // Scans enabled ports and loads matching sensors
         Module* loadSensor(const byte addr);                    // Load the correct sensor based on the I2C address
@@ -174,7 +171,6 @@ class Loom_Multiplexer : public Module{
             0x10, ///< ZXGESTURESENSOR
             0x11, ///< ZXGESTURESENSOR
             0x15, ///< T6793
-            0x19, ///< LIS3DH
             0x1C, ///< MMA8451
             0x1D, ///< MMA8451
             0x29, ///< TSL2591
@@ -182,8 +178,6 @@ class Loom_Multiplexer : public Module{
             0x44, ///< SHT31D
             0x45, ///< SHT31D
             0x48, ///< ADS1115
-            0x49, ///< AS726X / AS7265X
-            0x68, ///< K30
             0x69, ///< MPU6050 / SEN55
             0x6B, ///< SEN66
             0x70, ///< MB1232

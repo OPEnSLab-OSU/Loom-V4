@@ -1,3 +1,4 @@
+// Wisp multiplexer batch logging example.
 #include <Loom_Manager.h>
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 

@@ -1,16 +1,15 @@
 #include "Loom_Hypnos.h"
 #include "Logger.h"
 
-
-static void hypnosClearPendingExternalInterrupt(int interruptPin) {
+namespace {
+void clearPendingExternalInterrupt(int interruptPin) {
 #if defined(ARDUINO_ARCH_SAMD)
 #if ARDUINO_SAMD_VARIANT_COMPLIANCE >= 10606
     EExt_Interrupts externalInterrupt = g_APinDescription[interruptPin].ulExtInt;
 #else
     EExt_Interrupts externalInterrupt = digitalPinToInterrupt(interruptPin);
 #endif
-
-    if(externalInterrupt != NOT_AN_INTERRUPT && externalInterrupt != EXTERNAL_INT_NMI){
+    if (externalInterrupt != NOT_AN_INTERRUPT && externalInterrupt != EXTERNAL_INT_NMI) {
         EIC->INTFLAG.reg = (1ul << externalInterrupt);
         NVIC_ClearPendingIRQ(EIC_IRQn);
     }
@@ -19,76 +18,54 @@ static void hypnosClearPendingExternalInterrupt(int interruptPin) {
 #endif
 }
 
-
-static uint8_t hypnosMonthFromCompileString(const char* month) {
-    if(strncmp(month, "Jan", 3) == 0) return 1;
-    if(strncmp(month, "Feb", 3) == 0) return 2;
-    if(strncmp(month, "Mar", 3) == 0) return 3;
-    if(strncmp(month, "Apr", 3) == 0) return 4;
-    if(strncmp(month, "May", 3) == 0) return 5;
-    if(strncmp(month, "Jun", 3) == 0) return 6;
-    if(strncmp(month, "Jul", 3) == 0) return 7;
-    if(strncmp(month, "Aug", 3) == 0) return 8;
-    if(strncmp(month, "Sep", 3) == 0) return 9;
-    if(strncmp(month, "Oct", 3) == 0) return 10;
-    if(strncmp(month, "Nov", 3) == 0) return 11;
-    if(strncmp(month, "Dec", 3) == 0) return 12;
+uint8_t compileMonth(const char *month) {
+    static const char *months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+    for (uint8_t i = 0; i < 12; ++i)
+        if (strncmp(month, months[i], 3) == 0)
+            return i + 1;
     return 1;
 }
 
-static bool hypnosTimezoneUsesDST(TIME_ZONE timezone) {
-    return timezone == AST || timezone == EST || timezone == CST || timezone == MST || timezone == PST || timezone == AKST;
+DateTime compileLocalTime(const char *buildDate, const char *buildTime) {
+    const char *date = buildDate && buildDate[0] ? buildDate : __DATE__;
+    const char *time = buildTime && buildTime[0] ? buildTime : __TIME__;
+    char month[4] = {};
+    int day = 1, year = 2000, hour = 0, minute = 0, second = 0;
+    sscanf(date, "%3s %d %d", month, &day, &year);
+    sscanf(time, "%d:%d:%d", &hour, &minute, &second);
+    return DateTime(year, compileMonth(month), day, hour, minute, second);
 }
 
-static DateTime hypnosCompileLocalTime(const char* buildDate, const char* buildTime) {
-    const char* dateStr = (buildDate != nullptr && buildDate[0] != '\0') ? buildDate : __DATE__;
-    const char* timeStr = (buildTime != nullptr && buildTime[0] != '\0') ? buildTime : __TIME__;
-
-    char monthStr[4] = {};
-    int day = 1;
-    int year = 2000;
-    int hour = 0;
-    int minute = 0;
-    int second = 0;
-
-    sscanf(dateStr, "%3s %d %d", monthStr, &day, &year);
-    sscanf(timeStr, "%d:%d:%d", &hour, &minute, &second);
-
-    return DateTime(year, hypnosMonthFromCompileString(monthStr), day, hour, minute, second);
+bool timezoneUsesDST(TIME_ZONE zone) {
+    return zone == AST || zone == EST || zone == CST || zone == MST || zone == PST ||
+           zone == AKST;
 }
 
-static DateTime hypnosCompileTimeUTC(TIME_ZONE timezone, const char* buildDate, const char* buildTime) {
-    DateTime compileLocal = hypnosCompileLocalTime(buildDate, buildTime);
-
-    int offsetHours = (int)timezone;
-    int offsetMinutes = 0;
-
-    if(hypnosTimezoneUsesDST(timezone) && compileLocal.month() >= 3 && compileLocal.month() < 11){
-        offsetHours += 1;
-    }
-
-    if(timezone == TIME_ZONE::ACST){
-        offsetMinutes = 30;
-    }
-
-    // __DATE__ and __TIME__ must be supplied by the sketch before enable().
-    // The fallback macros in this .cpp can be stale because Arduino may cache library builds.
-    // Store the DS3231 in UTC because getLocalTime() applies the timezone later.
-    return compileLocal + TimeSpan(0, -offsetHours, -offsetMinutes, 0);
+DateTime compileUtcTime(TIME_ZONE zone, const char *buildDate, const char *buildTime) {
+    DateTime local = compileLocalTime(buildDate, buildTime);
+    int hours = static_cast<int>(zone);
+    int minutes = zone == ACST ? 30 : 0;
+    if (timezoneUsesDST(zone) && local.month() >= 3 && local.month() < 11)
+        hours++;
+    return local + TimeSpan(0, -hours, -minutes, 0);
 }
+} // namespace
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time, bool useSD) : Module("Hypnos"), manInst(&man), sd_chip_select(version), enableSD(useSD), batch_size(0), custom_time(use_custom_time), timezone(zone){
-    memset(sketchCompileDate, '\0', sizeof(sketchCompileDate));
-    memset(sketchCompileTime, '\0', sizeof(sketchCompileTime));
+Loom_Hypnos::Loom_Hypnos(Manager &man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time,
+                         bool useSD)
+    : Module("Hypnos"), custom_time(use_custom_time), sd_chip_select(version), enableSD(useSD),
+      timezone(zone) {
+    manInst = &man;
 
     // Set the pins to write mode
-    pinMode(5, OUTPUT);                     // 3.3v power rail
-    pinMode(6, OUTPUT);                     // 5v power rail
-    pinMode(LED_BUILTIN, OUTPUT);           // Status LED
+    pinMode(5, OUTPUT);           // 3.3v power rail
+    pinMode(6, OUTPUT);           // 5v power rail
+    pinMode(LED_BUILTIN, OUTPUT); // Status LED
 
     // Create the SD Manager if we want to use SD
-    if(useSD){
+    if (useSD) {
         sdMan = new SDManager(manInst, sd_chip_select);
         Logger::getInstance()->setHypnos(this);
     }
@@ -98,19 +75,19 @@ Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, b
 
     // Add the Hypnos to the module register
     manInst->registerModule(this);
-    manInst->useHypnos();   // Enable the use of the hypnos
+    manInst->useHypnos(); // Enable the use of the hypnos
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Hypnos::~Loom_Hypnos(){
-    if(sdMan != nullptr)
+Loom_Hypnos::~Loom_Hypnos() {
+    if (sdMan != nullptr)
         delete sdMan;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::package(){
+void Loom_Hypnos::package() {
     JsonObject json = manInst->getDocument().createNestedObject("timestamp");
     char timeStr[21];
     char localStr[21];
@@ -129,14 +106,14 @@ void Loom_Hypnos::package(){
 /* Power Rail Control Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::enable(bool enable33, bool enable5){
+void Loom_Hypnos::enable(bool enable33, bool enable5) {
 
     // Enable the 3.3v and 5v rails on the Hypnos
     digitalWrite(5, (enable33) ? LOW : HIGH);
     digitalWrite(6, (enable5) ? HIGH : LOW);
     digitalWrite(LED_BUILTIN, HIGH);
 
-    if(enableSD){
+    if (enableSD) {
         // Enable SPI pins
         pinMode(23, OUTPUT);
         pinMode(24, OUTPUT);
@@ -146,7 +123,7 @@ void Loom_Hypnos::enable(bool enable33, bool enable5){
     }
 
     // If the RTC hasn't already been initialized then do so now
-    if(!RTC_initialized)
+    if (!RTC_initialized)
         initializeRTC();
 
     manInst->setEnableState(true);
@@ -154,13 +131,13 @@ void Loom_Hypnos::enable(bool enable33, bool enable5){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::disable(bool disable33, bool disable5){
+void Loom_Hypnos::disable(bool disable33, bool disable5) {
     // Disable the 3.3v and 5v rails on the Hypnos
     digitalWrite(5, (disable33) ? HIGH : LOW);
     digitalWrite(6, (disable5) ? LOW : HIGH);
     digitalWrite(LED_BUILTIN, LOW);
 
-    if(enableSD){
+    if (enableSD) {
         // Disable SPI pins/SD chip select to save power
         pinMode(23, INPUT);
         pinMode(24, INPUT);
@@ -172,36 +149,33 @@ void Loom_Hypnos::disable(bool disable33, bool disable5){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_Hypnos::is3VDisabled(DEVICE_STATE deviceState){
-   
-    switch (deviceState)
-    {
-        case ENTERING_SLEEP:
-            switch (sleepModePowerConfig)
-            {
-                case PR_3V_ON_5V_ON:
-                    return false;
-                case PR_3V_ON_5V_OFF:
-                    return false;
-                case PR_3V_OFF_5V_ON:
-                    return true;
-                case PR_3V_OFF_5V_OFF:
-                    return true;
-            }
-            break;
-        case EXITING_SLEEP:
-            switch (wakeModePowerConfig)
-                {
-                    case PR_3V_ON_5V_ON:
-                        return false;
-                    case PR_3V_ON_5V_OFF:
-                        return false;
-                    case PR_3V_OFF_5V_ON:
-                        return true;
-                    case PR_3V_OFF_5V_OFF:
-                        return true;
-                }
-            break;
+bool Loom_Hypnos::is3VDisabled(DEVICE_STATE deviceState) {
+
+    switch (deviceState) {
+    case ENTERING_SLEEP:
+        switch (sleepModePowerConfig) {
+        case PR_3V_ON_5V_ON:
+            return false;
+        case PR_3V_ON_5V_OFF:
+            return false;
+        case PR_3V_OFF_5V_ON:
+            return true;
+        case PR_3V_OFF_5V_OFF:
+            return true;
+        }
+        break;
+    case EXITING_SLEEP:
+        switch (wakeModePowerConfig) {
+        case PR_3V_ON_5V_ON:
+            return false;
+        case PR_3V_ON_5V_OFF:
+            return false;
+        case PR_3V_OFF_5V_ON:
+            return true;
+        case PR_3V_OFF_5V_OFF:
+            return true;
+        }
+        break;
     }
 
     // We should never make it here but enable the rail if we do
@@ -210,35 +184,32 @@ bool Loom_Hypnos::is3VDisabled(DEVICE_STATE deviceState){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_Hypnos::is5VDisabled(DEVICE_STATE deviceState){
-    switch (deviceState)
-    {
-        case ENTERING_SLEEP:
-            switch (sleepModePowerConfig)
-            {
-                case PR_3V_ON_5V_ON:
-                    return false;
-                case PR_3V_OFF_5V_ON:
-                    return false;
-                case PR_3V_ON_5V_OFF:
-                    return true;
-                case PR_3V_OFF_5V_OFF:
-                    return true;
-            }
-            break;
-        case EXITING_SLEEP:
-            switch (wakeModePowerConfig)
-                {
-                    case PR_3V_ON_5V_ON:
-                        return false;
-                    case PR_3V_OFF_5V_ON:
-                        return false;
-                    case PR_3V_ON_5V_OFF:
-                        return true;
-                    case PR_3V_OFF_5V_OFF:
-                        return true;
-                }
-            break;
+bool Loom_Hypnos::is5VDisabled(DEVICE_STATE deviceState) {
+    switch (deviceState) {
+    case ENTERING_SLEEP:
+        switch (sleepModePowerConfig) {
+        case PR_3V_ON_5V_ON:
+            return false;
+        case PR_3V_OFF_5V_ON:
+            return false;
+        case PR_3V_ON_5V_OFF:
+            return true;
+        case PR_3V_OFF_5V_OFF:
+            return true;
+        }
+        break;
+    case EXITING_SLEEP:
+        switch (wakeModePowerConfig) {
+        case PR_3V_ON_5V_ON:
+            return false;
+        case PR_3V_OFF_5V_ON:
+            return false;
+        case PR_3V_ON_5V_OFF:
+            return true;
+        case PR_3V_OFF_5V_OFF:
+            return true;
+        }
+        break;
     }
 
     // We should never make it here but enable the rail if we do
@@ -249,36 +220,39 @@ bool Loom_Hypnos::is5VDisabled(DEVICE_STATE deviceState){
 /* Interrupt Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin, HypnosInterruptType interruptType, int triggerState){
+bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin,
+                                    HypnosInterruptType interruptType, int triggerState) {
     FUNCTION_START;
-    pinMode(interruptPin, INPUT_PULLUP);  //  Set interrupt pin input mode
+    pinMode(interruptPin, INPUT_PULLUP); //  Set interrupt pin input mode
     LOG(F("Registering interrupt..."));
 
-    // If the RTC hasn't already been initialized then do so now if we are trying to schedule an RTC interrupt
-    if(!RTC_initialized && interruptPin == 12)
+    // If the RTC hasn't already been initialized then do so now if we are trying to schedule an RTC
+    // interrupt
+    if (!RTC_initialized && interruptPin == 12)
         initializeRTC();
 
     // Make sure a callback function was supplied
-    if(isrFunc != nullptr){
+    if (isrFunc != nullptr) {
 
-         // If the interrupt we registered is for sleep we should set the interrupt to wake the device from sleep
-        if(interruptType == SLEEP){
-            hypnosClearPendingExternalInterrupt(interruptPin);
+        // If the interrupt we registered is for sleep we should set the interrupt to wake the
+        // device from sleep
+        if (interruptType == SLEEP) {
+            sleepInterruptPin = interruptPin;
             LowPower.attachInterruptWakeup(interruptPin, isrFunc, triggerState);
             LOG(F("Interrupt successfully attached!"));
-        }
-        else{
+        } else {
             attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
             LOG(F("Interrupt successfully attached!"));
         }
         // Add the interrupt to the list of pin to interrupts
-        pinToInterrupt.insert(std::make_pair(interruptPin, std::make_tuple(isrFunc, triggerState, interruptType)));
+        // Assignment intentionally replaces an older registration for this pin.
+        pinToInterrupt[interruptPin] = std::make_tuple(isrFunc, triggerState, interruptType);
         FUNCTION_END;
         return true;
-    }
-    else{
+    } else {
         detachInterrupt(digitalPinToInterrupt(interruptPin));
-        ERROR(F("Failed to attach interrupt! Interrupt callback evaluated to a null pointer, it is possible you forgot to supply a callback function"));
+        ERROR(F("Failed to attach interrupt! Interrupt callback evaluated to a null pointer, it is "
+                "possible you forgot to supply a callback function"));
         FUNCTION_END;
         return false;
     }
@@ -288,37 +262,24 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
+bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin) {
     FUNCTION_START;
-
-    auto interruptEntry = pinToInterrupt.find(interruptPin);
-    if(interruptEntry == pinToInterrupt.end()){
+    auto registered = pinToInterrupt.find(interruptPin);
+    if (registered == pinToInterrupt.end()) {
         ERROR(F("Failed to reattach interrupt! Interrupt has not previously been registered..."));
         FUNCTION_END;
         return false;
     }
 
-    InterruptCallbackFunction callback = std::get<0>(interruptEntry->second);
-    int triggerState = std::get<1>(interruptEntry->second);
-    HypnosInterruptType interruptType = std::get<2>(interruptEntry->second);
+    clearPendingExternalInterrupt(interruptPin);
+    if (std::get<2>(registered->second) != SLEEP) {
 
-    if(interruptType == SLEEP){
-        // A LOW RTC line means the alarm already expired while the device was awake. Attaching a
-        // level interrupt here would invoke the callback immediately and can create duplicate
-        // resample events. The sleep overrun path clears the alarm and delivers one callback.
-        if(interruptPin == 12 && digitalRead(interruptPin) == LOW){
-            LOG(F("RTC alarm is already active; deferring callback to the sleep overrun handler."));
-            FUNCTION_END;
-            return true;
-        }
-
-        hypnosClearPendingExternalInterrupt(interruptPin);
-        LowPower.attachInterruptWakeup(interruptPin, callback, triggerState);
+        attachInterrupt(digitalPinToInterrupt(interruptPin),
+                        std::get<0>(registered->second), std::get<1>(registered->second));
+    } else {
+        LowPower.attachInterruptWakeup(interruptPin, std::get<0>(registered->second),
+                                       std::get<1>(registered->second));
     }
-    else{
-        attachInterrupt(digitalPinToInterrupt(interruptPin), callback, triggerState);
-    }
-
     LOG(F("Interrupt successfully reattached!"));
     FUNCTION_END;
     return true;
@@ -326,115 +287,91 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::wakeup(){
-    detachInterrupt(pinToInterrupt.begin()->first);     // Detach the interrupt so it doesn't trigger again
+void Loom_Hypnos::wakeup() {
+    if (sleepInterruptPin >= 0)
+        detachInterrupt(digitalPinToInterrupt(sleepInterruptPin));
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Loom_Hypnos::setCompileTime(const char *buildDate, const char *buildTime) {
+    strncpy(sketchCompileDate, buildDate ? buildDate : "", sizeof(sketchCompileDate) - 1);
+    strncpy(sketchCompileTime, buildTime ? buildTime : "", sizeof(sketchCompileTime) - 1);
+    sketchCompileDate[sizeof(sketchCompileDate) - 1] = '\0';
+    sketchCompileTime[sizeof(sketchCompileTime) - 1] = '\0';
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::setCompileTime(const char* buildDate, const char* buildTime){
-    memset(sketchCompileDate, '\0', sizeof(sketchCompileDate));
-    memset(sketchCompileTime, '\0', sizeof(sketchCompileTime));
-
-    if(buildDate != nullptr){
-        strncpy(sketchCompileDate, buildDate, sizeof(sketchCompileDate) - 1);
-    }
-
-    if(buildTime != nullptr){
-        strncpy(sketchCompileTime, buildTime, sizeof(sketchCompileTime) - 1);
-    }
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::initializeRTC(){
+void Loom_Hypnos::initializeRTC() {
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     LOG("Initializing DS3231....");
 
     // If the RTC failed to start inform the user and hang
-    if(!RTC_DS.begin()){
-        ERROR(F("Couldn't start RTC! Check your connections... Execution will now hang as this is likely a fatal error"));
+    if (!RTC_DS.begin()) {
+        ERROR(F("Couldn't start RTC! Check your connections... Execution will now hang as this is "
+                "likely a fatal error"));
         return;
     }
 
-    RTC_initialized = true;
-
-    bool rtcLostPower = RTC_DS.lostPower();
-
-    // If the coin cell died or the DS3231 lost state, keep the existing manual UTC prompt.
-    // This preserves field recovery behavior instead of silently accepting a reset RTC time.
-    if(rtcLostPower){
+    // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't
+    // happen with coin cell batt backup
+    const DateTime compileUTC = compileUtcTime(timezone, sketchCompileDate, sketchCompileTime);
+    if (RTC_DS.lostPower()) {
         WARNING(F("RTC lost power, let's set the time!"));
 
-        if(Serial){
+        if (sketchCompileDate[0] != '\0') {
+            RTC_DS.adjust(compileUTC);
+        } else if (custom_time && Serial) {
             set_custom_time();
-        }
-        else{
-            DateTime compileUTC = hypnosCompileTimeUTC(timezone, sketchCompileDate, sketchCompileTime);
+        } else {
             RTC_DS.adjust(compileUTC);
-            snprintf(output, OUTPUT_SIZE, "Serial unavailable. RTC set from local compile time as UTC: %s", getCurrentTime().text());
-            LOG(output);
+            if (sketchCompileDate[0] == '\0')
+                WARNING(F("RTC used the library compile timestamp; call setCompileTime(__DATE__, "
+                          "__TIME__) before enable() to avoid cached timestamps."));
         }
-    }
-    else if(custom_time){
-        DateTime compileLocal = hypnosCompileLocalTime(sketchCompileDate, sketchCompileTime);
-        DateTime compileUTC = hypnosCompileTimeUTC(timezone, sketchCompileDate, sketchCompileTime);
-        DateTime rtcTime = RTC_DS.now();
-
-        snprintf(output, OUTPUT_SIZE, "Compile time local: %s", compileLocal.text());
-        LOG(output);
-
-        if(rtcTime.unixtime() < compileUTC.unixtime()){
-            RTC_DS.adjust(compileUTC);
-            snprintf(output, OUTPUT_SIZE, "RTC set from sketch compile time as UTC: %s", getCurrentTime().text());
-            LOG(output);
-        }
-        else{
-            snprintf(output, OUTPUT_SIZE, "RTC already newer than sketch compile time: %s", rtcTime.text());
-            LOG(output);
-        }
+    } else if (sketchCompileDate[0] != '\0' &&
+               RTC_DS.now().unixtime() < compileUTC.unixtime()) {
+        RTC_DS.adjust(compileUTC);
     }
 
-    // Clear stale flags and keep the unused second alarm disabled.
+    // Clear any pending alarms
     RTC_DS.clearAlarm(1);
     RTC_DS.clearAlarm(2);
-    RTC_DS.armAlarm(2, false);
+
     RTC_DS.writeSqwPinMode(DS3231_OFF);
 
     // We successfully started the RTC
     LOG(F("DS3231 Real-Time Clock Initialized Successfully!"));
-
-    DateTime currentUTC = getCurrentTime();
-    DateTime currentLocal = getLocalTime(currentUTC);
-
-    snprintf(output, OUTPUT_SIZE, "Current RTC time UTC: %s", currentUTC.text());
-    LOG(output);
-    snprintf(output, OUTPUT_SIZE, "Current RTC time Local: %s", currentLocal.text());
+    RTC_initialized = true;
+    DateTime t = getCurrentTime();
+    char tbuf[21];
+    dateTime_toString(t, tbuf);
+    snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", tbuf);
     LOG(output);
     FUNCTION_END;
-
-
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-DateTime Loom_Hypnos::getLocalTime(DateTime time){
+DateTime Loom_Hypnos::getLocalTime(DateTime time) {
     // Add 30 minutes from this zone
-    if(timezone == TIME_ZONE::ACST)
+    if (timezone == TIME_ZONE::ACST)
         return time + TimeSpan(0, timezone, 30, 0);
-    if(isDaylightSavings()){
-        return time + TimeSpan(0, (timezone)+1, 0, 0);
-    }else{
+    if (isDaylightSavings()) {
+        return time + TimeSpan(0, (timezone) + 1, 0, 0);
+    } else {
         return time + TimeSpan(0, (timezone), 0, 0);
     }
 }
-/////////////////////////////////////// ///////////////////////////////////////////////////////////////
+///////////////////////////////////////
+//////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_Hypnos::isDaylightSavings(){
+bool Loom_Hypnos::isDaylightSavings() {
     // Timezones that observe daylight savings
-    if(timezone == AST || timezone == EST || timezone == CST || timezone == MST || timezone == PST || timezone == AKST){
+    if (timezone == AST || timezone == EST || timezone == CST || timezone == MST ||
+        timezone == PST || timezone == AKST) {
         int currMonth = getCurrentTime().month();
 
         // If we are in the months where daylight savings is in affect
@@ -445,182 +382,186 @@ bool Loom_Hypnos::isDaylightSavings(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-DateTime Loom_Hypnos::getCurrentTime(){
-    if(RTC_initialized)
+DateTime Loom_Hypnos::getCurrentTime() {
+    if (RTC_initialized)
         return RTC_DS.now();
-    else{
-        LOG(F("Attempted to pull time when RTC was not previously initialized! Returned default datetime"));
+    else {
+        LOG(F("Attempted to pull time when RTC was not previously initialized! Returned default "
+              "datetime"));
         return DateTime();
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_Hypnos::networkTimeUpdate(){
+bool Loom_Hypnos::networkTimeUpdate() {
     FUNCTION_START;
-    bool timeUpdated = false;
-    if(networkComponent != nullptr && networkComponent->isConnected()){
+    bool updated = false;
+    if (networkComponent != nullptr && networkComponent->isConnected()) {
         char output[OUTPUT_SIZE];
-        int year = 0;
-        int month = 0;
-        int day = 0;
-        int hour = 0;
-        int minute = 0;
-        int second = 0;
-        float tz = (float)timezone;
-        if(timezone == TIME_ZONE::ACST){
-            tz += 0.5f;
-        }
-        else if(isDaylightSavings()){
-            tz += 1.0f;
-        }
+        int year, month, day, hour, minute, second = 0;
+        float tz = timezone;
 
         /* Try twice to set the time if it works break out if not we just og again*/
-        for(int i = 0; i < 2; i++){
+        for (int i = 0; i < 2; i++) {
             LOG("Attempting to set RTC time to the current network time...");
 
             // Attempt to retrieve the current time from our network component
-            if(networkComponent->getNetworkTime(&year, &month, &day, &hour, &minute, &second, &tz)){
+            if (networkComponent->getNetworkTime(&year, &month, &day, &hour, &minute, &second,
+                                                 &tz)) {
                 RTC_DS.adjust(DateTime(year, month, day, hour, minute, second));
-                snprintf(output, OUTPUT_SIZE, "Network time successfully set to: %s", getCurrentTime().text());
+                DateTime t = getCurrentTime();
+                char tbuf[21];
+                dateTime_toString(t, tbuf);
+                snprintf(output, OUTPUT_SIZE, "Network time successfully set to: %s", tbuf);
                 LOG(output);
-                timeUpdated = true;
+                updated = true;
                 break;
-            }else{
+            } else {
                 ERROR("Failed to get network time! Time has not been set. Retrying...");
             }
         }
-    }else{
+    } else {
         ERROR("Network component not set in hypnos or component wasn't connected to the internet.");
     }
     FUNCTION_END;
-    return timeUpdated;
+    return updated;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::dateTime_toString(DateTime time, char array[21], bool isLocal){
+void Loom_Hypnos::dateTime_toString(DateTime time, char array[21], bool isLocal) {
 
     // Formatted as: YYYY-MM-DDTHH:MM:SSZ
-    const unsigned int year = (unsigned int)(time.year() % 10000);
-    const unsigned int month = (unsigned int)(time.month() % 100);
-    const unsigned int day = (unsigned int)(time.day() % 100);
-    const unsigned int hour = (unsigned int)(time.hour() % 100);
-    const unsigned int minute = (unsigned int)(time.minute() % 100);
-    const unsigned int second = (unsigned int)(time.second() % 100);
-
-    if(isLocal){
-        snprintf_P(array, 21, PSTR("%04u-%02u-%02uT%02u:%02u:%02u"), year, month, day, hour, minute, second);
-    }else{
-        snprintf_P(array, 21, PSTR("%04u-%02u-%02uT%02u:%02u:%02uZ"), year, month, day, hour, minute, second);
+    if (isLocal) {
+        snprintf_P(array, 21, PSTR("%u-%02u-%02uT%u:%u:%u"), time.year(), time.month(), time.day(),
+                   time.hour(), time.minute(), time.second());
+    } else {
+        snprintf_P(array, 21, PSTR("%u-%02u-%02uT%u:%u:%uZ"), time.year(), time.month(), time.day(),
+                   time.hour(), time.minute(), time.second());
     }
-   
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::set_custom_time(){
+void Loom_Hypnos::set_custom_time() {
     FUNCTION_START;
 
-   	// initialized variable for user input
-	String computer_year = "";
-	String computer_month = "";
-	String computer_day = "";
-	String computer_hour = "";
-	String computer_min = "";
-	String computer_sec = "";
+    // initialized variable for user input
+    String computer_year = "";
+    String computer_month = "";
+    String computer_day = "";
+    String computer_hour = "";
+    String computer_min = "";
+    String computer_sec = "";
     char output[OUTPUT_SIZE];
 
-	// Let the user know that they should enter local time
-	LOG(F("Please use UTC time, not local!"));
+    // Let the user know that they should enter local time
+    LOG(F("Please use UTC time, not local!"));
 
-	// Entering the year
-	LOG(F("Enter the Year (Four digits, e.g. 2020)"));
+    // Entering the year
+    LOG(F("Enter the Year (Four digits, e.g. 2020)"));
 
-	while(computer_year == ""){
-		computer_year = Serial.readStringUntil('\n');
-	}
+    while (computer_year == "") {
+        computer_year = Serial.readStringUntil('\n');
+    }
 
     snprintf(output, OUTPUT_SIZE, "Year Entered: %s", computer_year.c_str());
-	LOG(output);
+    LOG(output);
 
-	// Entering the month
-	LOG(F("Enter the Month (1 ~ 12)"));
+    // Entering the month
+    LOG(F("Enter the Month (1 ~ 12)"));
 
-	while(computer_month == ""){
-		computer_month = Serial.readStringUntil('\n');
-	}
+    while (computer_month == "") {
+        computer_month = Serial.readStringUntil('\n');
+    }
     snprintf(output, OUTPUT_SIZE, "Month Entered: %s", computer_month.c_str());
-	LOG(output);
+    LOG(output);
 
-	// Entering the day
-	LOG(F("Enter the Day (1 ~ 31)"));
+    // Entering the day
+    LOG(F("Enter the Day (1 ~ 31)"));
 
-	while(computer_day  == ""){
-		computer_day = Serial.readStringUntil('\n');
-	}
+    while (computer_day == "") {
+        computer_day = Serial.readStringUntil('\n');
+    }
     snprintf(output, OUTPUT_SIZE, "Day Entered: %s", computer_day.c_str());
-	LOG(output);
+    LOG(output);
 
+    // Entering the hour
+    LOG(F("Enter the Hour (0 ~ 23)"));
 
-	// Entering the hour
-	LOG(F("Enter the Hour (0 ~ 23)"));
-
-	while(computer_hour == ""){
-		computer_hour = Serial.readStringUntil('\n');
-	}
+    while (computer_hour == "") {
+        computer_hour = Serial.readStringUntil('\n');
+    }
 
     snprintf(output, OUTPUT_SIZE, "Hour Entered: %s", computer_hour.c_str());
-	LOG(output);
+    LOG(output);
 
-	// Entering the minute
-	LOG(F("Enter the Minute (0 ~ 59)"));
+    // Entering the minute
+    LOG(F("Enter the Minute (0 ~ 59)"));
 
-	while(computer_min == ""){
-		computer_min = Serial.readStringUntil('\n');
-	}
+    while (computer_min == "") {
+        computer_min = Serial.readStringUntil('\n');
+    }
     snprintf(output, OUTPUT_SIZE, "Minute Entered: %s", computer_min.c_str());
-	LOG(output);
+    LOG(output);
 
-	// Entering the second
-	LOG(F("Enter the Second (0 ~ 59)"));
-	while(computer_sec == ""){
-		computer_sec = Serial.readStringUntil('\n');
-	}
+    // Entering the second
+    LOG(F("Enter the Second (0 ~ 59)"));
+    while (computer_sec == "") {
+        computer_sec = Serial.readStringUntil('\n');
+    }
 
     // Set the RTC to the custom time
-    RTC_DS.adjust(DateTime(computer_year.toInt(), computer_month.toInt(), computer_day.toInt(), computer_hour.toInt(), computer_min.toInt(), computer_sec.toInt()));
+    RTC_DS.adjust(DateTime(computer_year.toInt(), computer_month.toInt(), computer_day.toInt(),
+                           computer_hour.toInt(), computer_min.toInt(), computer_sec.toInt()));
     RTC_initialized = true;
 
     // Output
-    snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
-	LOG(output);
+    DateTime t = getCurrentTime();
+    char tbuf[21];
+    dateTime_toString(t, tbuf);
+    snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", tbuf);
+    LOG(output);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
+void Loom_Hypnos::setInterruptDuration(const TimeSpan duration) {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
 
-    // Disable both alarm outputs while replacing Alarm 1.
-    RTC_DS.armAlarm(1, false);
-    RTC_DS.armAlarm(2, false);
-    RTC_DS.clearAlarm(1);
-    RTC_DS.clearAlarm(2);
+    if (!RTC_initialized) {
+        ERROR(F("Cannot set an RTC alarm before the RTC is initialized."));
+        alarmScheduled = false;
+        FUNCTION_END;
+        return;
+    }
 
-    // Program the future alarm, then clear any match flag that was pending during replacement.
-    DateTime future(RTC_DS.now() + duration);
-    RTC_DS.setAlarm(future);
-    RTC_DS.clearAlarm(1);
+    if (duration.totalseconds() <= 0) {
+        ERROR(F("RTC alarm duration must be greater than zero."));
+        alarmScheduled = false;
+        FUNCTION_END;
+        return;
+    }
+
+    // The time in the future that the alarm will be set for
+    alarmTime = RTC_DS.now() + duration;
+    alarmScheduled = RTC_DS.setAlarm1(alarmTime, DS3231_A1_Date);
+    if (!alarmScheduled) {
+        ERROR(F("Failed to set RTC alarm 1."));
+        FUNCTION_END;
+        return;
+    }
 
     // Print the time that the next interrupt is set to trigger
-    snprintf(output, OUTPUT_SIZE, PSTR("Current Time (Local): %s"), getLocalTime(RTC_DS.now()).text());
-    LOG(output);
-
-    snprintf(output, OUTPUT_SIZE, PSTR("Next Interrupt Alarm Set For: %s"), getLocalTime(future).text());
-    LOG(output);
+    DateTime t = getLocalTime(RTC_DS.now());
+    char tbuf[21];
+    dateTime_toString(t, tbuf);
+    LOGF("Current Time (Local): %s", tbuf, true);
+    t = getLocalTime(alarmTime);
+    dateTime_toString(t, tbuf);
+    LOGF("Next interrupt alarm set for: %s", tbuf, true);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -628,65 +569,68 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 /* Sleep Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::sleep(bool waitForSerial){
-    // Try to power down the active modules
+void Loom_Hypnos::sleep(bool waitForSerial) {
 
-    // If the alarm set time is less than the current time we missed our next alarm so we need to set a new one, we need to check if we have powered on already so we dont use the RTC that isn't enabled
+    if (sleepInterruptPin < 0) {
+        ERROR(F("Sleep aborted because no SLEEP interrupt is registered."));
+        return;
+    }
+
+    // If the alarm set time is less than the current time we missed our next alarm so we need to
+    // set a new one, we need to check if we have powered on already so we dont use the RTC that
+    // isn't enabled
     bool hasAlarmTriggered = false;
 
     // Try to power down the active modules
-    if(shouldPowerUp){
+    if (shouldPowerUp) {
         manInst->power_down();
 
-        // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
-        uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
-        uint32_t currentTime = RTC_DS.now().unixtime();
-        hasAlarmTriggered = alarmedTime <= currentTime;
-        
+        // Compare against the exact DateTime captured when the alarm was set.
+        // Reconstructing getAlarm1() with the current month breaks across month/year boundaries.
+        DateTime now = RTC_DS.now();
+        hasAlarmTriggered = alarmScheduled && alarmTime.unixtime() <= now.unixtime();
+
         // 50ms delay allows this last message to be sent before the bus disconnects
         LOG("Entering Standby Sleep...");
         delay(50);
     }
 
     // If it hasn't we should preform our sleep as before
-    if(!hasAlarmTriggered){
-        pre_sleep();                                            // Pre-sleep cleanup
+    if (!hasAlarmTriggered) {
+        pre_sleep(); // Pre-sleep cleanup
         shouldPowerUp = true;
-        LowPower.sleep();                                       // Go to sleep and hang
-        Watchdog.enable(WATCHDOG_TIMEOUT);
+        LowPower.sleep(); // Go to sleep and hang
+        WD_TIMER_ENABLE;
     }
-    // If the alarm expired while the device was still sampling, restore the awake state and
-    // deliver one synthetic RTC wake callback so flag-based sketches request another sample.
-    else{
-        WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");
-
-        RTC_DS.armAlarm(1, false);
-        RTC_DS.clearAlarm(1);
-        hypnosClearPendingExternalInterrupt(12);
-
-        if(shouldPowerUp){
+    // If it has we want to trigger a resample which requires powering the sensors back up
+    else {
+        WARNING("Alarm triggered during sample, specified sample duration was too short! "
+                "Resampling...");
+            RTC_DS.clearAlarm(1);
+            alarmScheduled = false;
+        if (sleepInterruptPin >= 0)
+            clearPendingExternalInterrupt(sleepInterruptPin);
+        if (shouldPowerUp) {
             manInst->power_up();
         }
-
-        auto rtcInterrupt = pinToInterrupt.find(12);
-        if(rtcInterrupt != pinToInterrupt.end()){
-            InterruptCallbackFunction callback = std::get<0>(rtcInterrupt->second);
-            if(callback != nullptr){
+        auto registered = pinToInterrupt.find(sleepInterruptPin);
+        if (registered != pinToInterrupt.end()) {
+            InterruptCallbackFunction callback = std::get<0>(registered->second);
+            if (callback != nullptr)
                 callback();
-            }
         }
     }
-    Watchdog.reset();
+    WD_TIMER_RESET;
 
     // If the alarm hadn't triggered last time we want to wake up like normal
-    if(!hasAlarmTriggered)
-        post_sleep(waitForSerial);         // Wake up
-   
+    if (!hasAlarmTriggered) {
+        post_sleep(waitForSerial); // Wake up
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::pre_sleep(){
+void Loom_Hypnos::pre_sleep() {
     bool disable5 = is5VDisabled(DEVICE_STATE::ENTERING_SLEEP);
     bool disable33 = is3VDisabled(DEVICE_STATE::ENTERING_SLEEP);
     delay(1000);
@@ -695,8 +639,10 @@ void Loom_Hypnos::pre_sleep(){
     Serial.end();
     USBDevice.detach();
 
-    // Reattach the registered wake interrupt after clearing any stale SAMD EIC event.
-    reattachRTCInterrupt(pinToInterrupt.begin()->first);
+    if (sleepInterruptPin >= 0)
+        reattachRTCInterrupt(sleepInterruptPin);
+    else
+        WARNING(F("Entering sleep without a registered SLEEP interrupt."));
 
     // Disable the power rails
     disable(disable33, disable5);
@@ -704,132 +650,119 @@ void Loom_Hypnos::pre_sleep(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::post_sleep(bool waitForSerial){
+void Loom_Hypnos::post_sleep(bool waitForSerial) {
     // Enable the Watchdog timer when waking up
-    TIMER_ENABLE;
-    Watchdog.reset();
-    
-    if(shouldPowerUp){
+    WD_TIMER_ENABLE;
+    WD_TIMER_RESET;
+
+    if (shouldPowerUp) {
         USBDevice.attach();
-        Watchdog.reset();
+        WD_TIMER_RESET;
         Serial.begin(115200);
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
         // Check if they are not disabled to see if they should be enabled
         bool enable5 = !is5VDisabled(DEVICE_STATE::EXITING_SLEEP);
-        Watchdog.reset();
+        WD_TIMER_RESET;
         bool enable33 = !is3VDisabled(DEVICE_STATE::EXITING_SLEEP);
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
         enable(enable33, enable5); // Checks if the 3.3v or 5v are disabled and re-enables them
-        Watchdog.reset();
+        WD_TIMER_RESET;
         delay(1000);
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
         LOG(F("Device has awoken from sleep!"));
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
-        // Clear the wake flag and leave the unused second alarm disabled.
+        // Clear any pending RTC alarms
         RTC_DS.clearAlarm(1);
         RTC_DS.clearAlarm(2);
-        RTC_DS.armAlarm(2, false);
-        Watchdog.reset();
+        alarmScheduled = false;
+        WD_TIMER_RESET;
 
         // Re-init the modules that need it
         manInst->power_up();
 
-        // We want to wait for the user to re-open the serial monitor before continuing to see readouts
-        if(waitForSerial){
-            TIMER_DISABLE;
-            while(!Serial);
-            TIMER_ENABLE;
-        }        
+        // We want to wait for the user to re-open the serial monitor before continuing to see
+        // readouts
+        if (waitForSerial) {
+            WD_TIMER_DISABLE;
+            while (!Serial)
+                ;
+            WD_TIMER_ENABLE;
+        }
+    } else {
+        WD_TIMER_DISABLE;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
+TimeSpan Loom_Hypnos::getConfigFromSD(const char *fileName) {
     FUNCTION_START;
     StaticJsonDocument<OUTPUT_SIZE> doc;
     char output[OUTPUT_SIZE];
 
-    if(sdMan == nullptr){
-        ERROR(F("Attempted to read Hypnos configuration without an SD manager, defaulting sampling interval to 20 minutes."));
+    const TimeSpan fallback(0, 0, 20, 0);
+    if (sdMan == nullptr) {
+        ERROR(F("Attempted to read Hypnos configuration without an SD manager; using 20 minutes."));
         FUNCTION_END;
-        return TimeSpan(0, 0, 20, 0);
+        return fallback;
     }
 
-    char* fileRead = sdMan->readFile(fileName);
-    if(fileRead == nullptr){
-        ERROR(F("Failed to read Hypnos configuration from SD, defaulting sampling interval to 20 minutes."));
+    char *fileRead = sdMan->readFile(fileName);
+    if (fileRead == nullptr) {
+        ERROR(F("Failed to read Hypnos configuration from SD; using 20 minutes."));
         FUNCTION_END;
-        return TimeSpan(0, 0, 20, 0);
+        return fallback;
     }
 
-    // Skip an optional UTF-8 BOM. Some desktop editors add this when saving JSON files.
-    char* jsonStart = fileRead;
-    if((uint8_t)jsonStart[0] == 0xEF &&
-       (uint8_t)jsonStart[1] == 0xBB &&
-       (uint8_t)jsonStart[2] == 0xBF){
+    char *jsonStart = fileRead;
+    const size_t fileLength = strlen(fileRead);
+    if (fileLength >= 3 && (uint8_t)fileRead[0] == 0xEF &&
+        (uint8_t)fileRead[1] == 0xBB && (uint8_t)fileRead[2] == 0xBF)
         jsonStart += 3;
-    }
 
+    // Mutable input enables zero-copy parsing, so fileRead remains alive until
+    // all configuration values have been copied out below.
     DeserializationError deserialError = deserializeJson(doc, jsonStart);
 
-    if(deserialError != DeserializationError::Ok){
+    if (deserialError != DeserializationError::Ok) {
         free(fileRead);
         snprintf(output, OUTPUT_SIZE,
-                 "There was an error reading the config from SD: %s, defaulting sampling interval to 20 minutes.",
+                 "There was an error reading the config from SD: %s; using 20 minutes.",
                  deserialError.c_str());
         ERROR(output);
         FUNCTION_END;
-        return TimeSpan(0, 0, 20, 0);
+        return fallback;
     }
 
     JsonObject json = doc.as<JsonObject>();
     LOG(F("Config successfully loaded from SD!"));
 
-    if(!json["timezone"].isNull()){
-        const char* timezoneStr = json["timezone"].as<const char*>();
-        auto timezoneEntry = timezoneMap.find(timezoneStr);
-        if(timezoneEntry != timezoneMap.end()){
-            timezone = timezoneEntry->second;
-            snprintf(output, OUTPUT_SIZE, "Selected timezone: %s, UTC offset: %i",
-                     timezoneStr, (int)timezone);
-            LOG(output);
-        }
-        else{
-            snprintf(output, OUTPUT_SIZE, "Unknown timezone '%s'; retaining configured timezone.",
-                     timezoneStr);
-            WARNING(output);
+    if (!json["timezone"].isNull()) {
+        const char *timezoneStr = json["timezone"].as<const char *>();
+        auto entry = timezoneMap.find(timezoneStr);
+        if (entry != timezoneMap.end()) {
+            timezone = entry->second;
+            LOGF("Selected timezone: %s, UTC offset: %i", timezoneStr, (int)timezone);
+        } else {
+            WARNINGF("Unknown timezone '%s'; retaining configured timezone.", timezoneStr);
         }
     }
 
-    // Preserve the original Smart Rock top-level layout first:
-    // {"days":0,"hours":0,"minutes":1,"seconds":5}
-    // Also accept the newer nested layout:
-    // {"SleepInterval":{"days":0,"hours":0,"minutes":1,"seconds":5}}
     JsonObject intervalJson = json;
-    const char* intervalLayout = "top-level";
     bool intervalFound = json.containsKey("days") || json.containsKey("hours") ||
                          json.containsKey("minutes") || json.containsKey("seconds");
-
-    if(!intervalFound){
-        if(json["SleepInterval"].is<JsonObject>()){
-            intervalJson = json["SleepInterval"].as<JsonObject>();
-            intervalLayout = "SleepInterval";
-            intervalFound = true;
-        }
-        else if(json["sleepInterval"].is<JsonObject>()){
-            intervalJson = json["sleepInterval"].as<JsonObject>();
-            intervalLayout = "sleepInterval";
-            intervalFound = true;
-        }
-        else if(json["sleep_interval"].is<JsonObject>()){
-            intervalJson = json["sleep_interval"].as<JsonObject>();
-            intervalLayout = "sleep_interval";
-            intervalFound = true;
+    if (!intervalFound) {
+        const char *keys[] = {"SleepInterval", "sleepInterval", "sleep_interval"};
+        for (const char *key : keys) {
+            if (json[key].is<JsonObject>()) {
+                intervalJson = json[key].as<JsonObject>();
+                intervalFound = true;
+                break;
+            }
         }
     }
 
@@ -837,33 +770,23 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char* fileName){
     const int hours = intervalFound ? intervalJson["hours"].as<int>() : 0;
     const int minutes = intervalFound ? intervalJson["minutes"].as<int>() : 0;
     const int seconds = intervalFound ? intervalJson["seconds"].as<int>() : 0;
-
-    snprintf(output, OUTPUT_SIZE,
-             "Sampling interval layout: %s; days=%d hours=%d minutes=%d seconds=%d",
-             intervalFound ? intervalLayout : "missing", days, hours, minutes, seconds);
-    LOG(output);
-
-    TimeSpan interval(days, hours, minutes, seconds);
-    // deserializeJson() used the mutable SD buffer in zero-copy mode, so the
-    // buffer must remain alive until every JSON key and value has been read.
+    const TimeSpan interval(days, hours, minutes, seconds);
     free(fileRead);
 
-    if(!intervalFound || interval.totalseconds() <= 0){
-        ERROR(F("Sampling interval is missing or zero, defaulting sampling interval to 20 minutes."));
+    if (!intervalFound || interval.totalseconds() <= 0) {
+        ERROR(F("Sampling interval is missing or zero; using 20 minutes."));
         FUNCTION_END;
-        return TimeSpan(0, 0, 20, 0);
+        return fallback;
     }
 
-    snprintf(output, OUTPUT_SIZE, "Sampling interval loaded from SD: %ld seconds.",
-             (long)interval.totalseconds());
-    LOG(output);
+    LOGF("Sampling interval loaded from SD: %ld seconds.", (long)interval.totalseconds());
     FUNCTION_END;
     return interval;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::createTimezoneMap(){
+void Loom_Hypnos::createTimezoneMap() {
     timezoneMap.insert(std::make_pair("WAT", TIME_ZONE::WAT));
     timezoneMap.insert(std::make_pair("AT", TIME_ZONE::AT));
     timezoneMap.insert(std::make_pair("AST", TIME_ZONE::AST));
@@ -895,14 +818,82 @@ void Loom_Hypnos::createTimezoneMap(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::logToSD() {
     FUNCTION_START;
-    bool logStatus = false;
-    if(sdMan != nullptr){
-        logStatus = sdMan->log(getCurrentTime());
+    if (sdMan == nullptr) {
+        ERROR(F("Cannot log to SD because Hypnos SD support is disabled."));
+        FUNCTION_END;
+        return false;
     }
-    else{
-        ERROR(F("Attempted to log to SD without an SD manager."));
-    }
+    bool logged = sdMan->log(getCurrentTime());
     FUNCTION_END;
-    return logStatus;
+    return logged;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/* Voltage Checks */
+
+bool Loom_Hypnos::checkVoltage(float vmin, int analogPin, float scale, bool mv, int num_samples) {
+    INSTRUMENT();
+    if (num_samples <= 0) {
+        ERROR(F("Voltage check requires at least one sample."));
+        voltage_flags = 0;
+        return false;
+    }
+    analogReadResolution(LOOM_ANALOG_ADC_RESOLUTION_BITS);
+
+    float voltage_sum = 0.0f;
+
+    // Multiple samples for the average voltage
+    for (int i = 0; i < num_samples; i++) {
+        float voltage = 0.0f;
+
+        if (analogPin == LOOM_ANALOG_BATTERY_PIN) {
+            voltage = Loom_Analog::getBatteryVoltage(
+                analogPin, LOOM_ANALOG_ADC_RESOLUTION_BITS,
+                LOOM_ANALOG_ADC_REFERENCE_VOLTAGE, scale,
+                LOOM_ANALOG_BATTERY_SAMPLE_COUNT, LOOM_ANALOG_ADC_MAX_READING);
+        } else {
+            float pin_reading = analogRead(analogPin);
+            pin_reading *= scale;
+            pin_reading *= LOOM_ANALOG_ADC_REFERENCE_VOLTAGE;
+            pin_reading /= LOOM_ANALOG_ADC_MAX_READING;
+            voltage = pin_reading;
+        }
+
+        voltage_sum += voltage;
+    }
+
+    float voltage = voltage_sum / num_samples;
+    LOGF("Average Voltage: %.2fV", voltage);
+
+    const float comparedVoltage = mv ? voltage * 1000.0f : voltage;
+    if (comparedVoltage < vmin) {
+        LOGF("Voltage lower than vmin!");
+    }
+
+    uint8_t new_flags = VF_CHECKED;
+
+    if (voltage < V_CRITICAL) {
+        new_flags |= VF_CRITICAL;
+        LOGF("WARNING: Critical voltage (%.2fV < %.2fV) - device will NOT function properly!",
+             voltage, V_CRITICAL);
+    } else if (voltage < V_DEGRADED) {
+        new_flags |= VF_DEGRADED;
+        LOGF("WARNING: Degraded voltage (%.2fV < %.2fV) - device may not function properly!",
+             voltage, V_DEGRADED);
+    } else if (voltage < V_ACCEPTABLE) {
+        new_flags |= VF_DEGRADED;
+        LOGF("WARNING: Voltage is below the acceptable operating range.");
+    } else if (voltage < V_LTE_MIN) {
+        new_flags |= VF_ACCEPTABLE;
+        LOGF("WARNING: Voltage acceptable for normal operation but may experience issues "
+             "transmitting.");
+    } else if (voltage < V_OPTIMAL) {
+        new_flags |= VF_LTE_READY;
+        LOGF("Voltage acceptable for LTE transmission but remains suboptimal.");
+    } else {
+        new_flags |= VF_OPTIMAL;
+        LOGF("Voltage is optimal");
+    }
+
+    voltage_flags = new_flags;
+    return comparedVoltage >= vmin;
+}

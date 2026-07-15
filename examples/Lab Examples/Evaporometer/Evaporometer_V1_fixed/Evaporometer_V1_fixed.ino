@@ -7,7 +7,7 @@
 
 #include <Loom_Manager.h>
 #include <SPI.h>
-#include <ADS1232_Lib.h>
+#include <Sensors/SPI/Loom_ADS1232/ADS1232_Lib_Fixed.h>
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Hardware/Loom_Hypnos/SDManager.h>
 #include <algorithm>
@@ -95,7 +95,7 @@
 #define SET_RTC_FROM_SKETCH_COMPILE_TIME 1
 
 Manager     manager("Device", DEVICE_INSTANCE);
-ADS1232_Lib ads(PDWN, SCLK, DOUT);
+ADS1232_Lib_Fixed ads(PDWN, SCLK, DOUT);
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, true, true);
 
 const float resistanceLUT[] = {
@@ -119,11 +119,13 @@ const int LUT_SIZE = sizeof(resistanceLUT) / sizeof(resistanceLUT[0]);
 long lastWeightCounts = 0;
 long lastTempCounts = 0;
 
-void analogFrontendOn() {
+bool analogFrontendOn() {
   pinMode(VREFEN, OUTPUT);
   digitalWrite(VREFEN, HIGH);
-  ads.power_up();
+  const bool ready = ads.power_up();
   manager.pause(VREF_SETTLE_MS);
+  if (!ready) Serial.println("ads1232_ready_timeout");
+  return ready;
 }
 
 void analogFrontendOff() {
@@ -141,7 +143,10 @@ long readCounts(uint8_t channel) {
   // Flush stale data after channel select. The first conversion after a mux
   // or excitation change can belong to the old channel or still be settling.
   ads.raw_read(ADC_DISCARD_READS);
-  return ads.raw_read(NUM_ADC_READS);
+  if (!ads.last_read_valid()) return 0;
+  long counts = ads.raw_read(NUM_ADC_READS);
+  if (!ads.last_read_valid()) Serial.println("ads1232_read_timeout");
+  return counts;
 }
 
 float readWeight(uint8_t use_raw_counts = 0) {
@@ -156,7 +161,7 @@ float readWeight(uint8_t use_raw_counts = 0) {
 }
 
 void printWeight() {
-  analogFrontendOn();
+  if (!analogFrontendOn()) return;
   float weight = readWeight();
   analogFrontendOff();
 
@@ -238,7 +243,7 @@ float readTemperature() {
 }
 
 void printTemperature() {
-  analogFrontendOn();
+  if (!analogFrontendOn()) return;
   float temp = readTemperature();
   analogFrontendOff();
 
@@ -260,6 +265,7 @@ void prepareSDForWrite() {
   pinMode(23, OUTPUT);
   pinMode(24, OUTPUT);
   pinMode(11, OUTPUT);
+  pinMode(8, OUTPUT);
   digitalWrite(8, HIGH);
   SPI.begin();
 }
@@ -316,11 +322,9 @@ void isr_Trigger(){
   hypnos.wakeup();
 }
 
-void sleep(uint8_t seconds=0, uint8_t minutes = 1) {
-  (void)seconds;
-  (void)minutes;
+void sleep(uint8_t seconds = 30, uint8_t minutes = 0) {
   analogFrontendOff();
-  hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 30));
+  hypnos.setInterruptDuration(TimeSpan(0, 0, minutes, seconds));
   hypnos.reattachRTCInterrupt();
   hypnos.sleep();
 }
@@ -358,7 +362,11 @@ void setup() {
 }
 
 void loop() {
-  analogFrontendOn();
+  if (!analogFrontendOn()) {
+    analogFrontendOff();
+    manager.pause(1000);
+    return;
+  }
 
   float temp = readTemperature();
   float weight = 0;

@@ -1,251 +1,248 @@
 #pragma once
 
-#include <queue>
+#include "Hardware/Loom_Hypnos/Loom_Hypnos.h"
 #include <MemoryFree.h>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
 
-#include "Module.h"
+// To acquire a function call summary, just add INSTRUMENT() to the top of the
+// relevant function.
+#define LOOM_LOGGER_JOIN_IMPL(a, b) a##b
+#define LOOM_LOGGER_JOIN(a, b) LOOM_LOGGER_JOIN_IMPL(a, b)
+#define INSTRUMENT()                                                                          \
+    FunctionInstrumentor LOOM_LOGGER_JOIN(_loomInstrumentor_, __LINE__)(__FILE__, __func__,   \
+                                                                          __LINE__);
 
-/*
- * Keep Logger.h free of Hypnos/SDManager headers. The logging macros are used
- * broadly; including Hypnos here would pull SD/SPI and related vendor headers
- * into nearly every translation unit.
- */
-class Loom_Hypnos;
-class SDManager;
+// DEPRECATED - use INSTRUMENT
+#define FUNCTION_START INSTRUMENT()
+// DEPRECATED - use INSTRUMENT
+#define FUNCTION_END
 
-#define FUNCTION_START Logger::getInstance()->startFunction(__FILE__, __func__, __LINE__, freeMemory())     // Marks the start of a function
-#define FUNCTION_END Logger::getInstance()->endFunction(freeMemory())                                       // Marks the end of a function
+struct LogContext {
+    const char *file;
+    const char *func;
+    unsigned long lineNum;
+    bool silent;
+    const char *level; // must have static lifetime
+};
 
-#define SLOG(msg) Logger::getInstance()->debugLog(msg, true, __FILE__, __func__, __LINE__)                  // Log a message without printing to the serial
-#define LOG(msg) Logger::getInstance()->debugLog(msg, false, __FILE__, __func__, __LINE__)                  // Log a generic message
-#define LOG_LONG(msg) Logger::getInstance()->logLong(msg, false)                                            // Log a long message
-#define ERROR(msg) Logger::getInstance()->errorLog(msg, false, __FILE__, __func__, __LINE__)                // Log an error message
-#define WARNING(msg) Logger::getInstance()->warningLog(msg, false, __FILE__, __func__, __LINE__)            // Log a warning message
+#define GENERIC_LOG(silent, level, msg)                                                            \
+    do {                                                                                           \
+        LogContext log{__FILE__, __func__, __LINE__, silent, level};                               \
+        Logger::getInstance()->genericLog(log, msg);                                               \
+    } while (false)
 
-#define LOGF(msg, ...) { \
-    char buf[OUTPUT_SIZE]; \
-    snprintf_P(buf, sizeof(buf), PSTR(msg), __VA_ARGS__); \
-    LOG(buf); \
-}
+#define LOG(msg) GENERIC_LOG(false, "DEBUG", msg)
+#define SLOG(msg) GENERIC_LOG(true, "DEBUG", msg)
+#define WARNING(msg) GENERIC_LOG(false, "WARNING", msg)
+#define ERROR(msg) GENERIC_LOG(false, "ERROR", msg)
 
-#define ERRORF(msg, ...) { \
-    char buf[OUTPUT_SIZE]; \
-    snprintf_P(buf, sizeof(buf), PSTR(msg), __VA_ARGS__); \
-    ERROR(buf); \
-}
+#define LOG_LONG(msg) Logger::getInstance()->logLong(msg, false)
 
-#define WARNINGF(msg, ...) { \
-    char buf[OUTPUT_SIZE]; \
-    snprintf_P(buf, sizeof(buf), PSTR(msg), __VA_ARGS__); \
-    WARNING(buf); \
-}
+#define GENERIC_LOGF(silent, level, msg, ...)                                                      \
+    do {                                                                                           \
+        LogContext log{__FILE__, __func__, __LINE__, silent, level};                               \
+        char buf[OUTPUT_SIZE];                                                                     \
+        snprintf_P(buf, sizeof(buf), PSTR(msg), ##__VA_ARGS__);                                    \
+        Logger::getInstance()->genericLog(log, buf);                                               \
+    } while (false)
 
-#define ENABLE_SD_LOGGING Logger::getInstance()->enableSD()                                                 // Enable SD logging of debug information
-#define ENABLE_FUNC_SUMMARIES Logger::getInstance()->enableSummaries()                                      // Enable logging of function mem usage summaries
+#define LOGF(msg, ...) GENERIC_LOGF(false, "DEBUG", msg, ##__VA_ARGS__)
+#define SLOGF(msg, ...) GENERIC_LOGF(true, "DEBUG", msg, ##__VA_ARGS__)
+#define WARNINGF(msg, ...) GENERIC_LOGF(false, "WARNING", msg, ##__VA_ARGS__)
+#define ERRORF(msg, ...) GENERIC_LOGF(false, "ERROR", msg, ##__VA_ARGS__)
+
+#define ENABLE_SD_LOGGING Logger::getInstance()->enableSD()
+#define ENABLE_FUNC_SUMMARIES Logger::getInstance()->enableSummaries()
 
 /**
- * Arduino Logger class that allows for standardized log outputs as well as function memory usage summaries to find memory leaks that may lead to unexpected crashing
+ * Arduino Logger class that allows for standardized log outputs as well as
+ * function memory usage summaries to find memory leaks that may lead to
+ * unexpected crashing
  *
  * @author Will Richards
  */
 class Logger {
-    private:
+  private:
+    friend class FunctionInstrumentor;
 
-        /**
-         * Function Info - Contains important information of the run state of the function
-         * fileName - Name of the file that we are in
-         * funcName - Name of the function that we are in
-         * lineNumber - The current line number of the function
-         * netMemoryUsage - The amount of memory that was allocated or deallocated in that function alone (bytes)
-         * time - The time the function took to return (ms)
-         * indentCount - This is allows for better formatting in the funcSummaries output
-         */
-        struct functionInfo {
-            char fileName[260];
-            char funcName[260];
-            unsigned long lineNumber;
-            int netMemoryUsage;
-            unsigned long time;
-            int indentCount;
-        };
+    unsigned int stackDepth = 0;
 
-        // Function call list
-        std::queue<functionInfo*> callStack;
-        int indentNum = 0;
+    // Whether or not to use the SD card or log function summaries
+    bool enableFunctionSummaries = false;
+    bool enableSDLogging = false;
 
-        // Whether or not to use the SD card or log function summaries
-        bool enableFunctionSummaries = false;
-        bool enableSDLogging = false;
+    static Logger *instance;
+    SDManager *sdInst = nullptr;
+    Loom_Hypnos *hypnosInst = nullptr;
 
-        static Logger* instance;
-        SDManager* sdInst = nullptr;
-        Loom_Hypnos* hypnosInst = nullptr;
+    Logger(){};
 
-        /**
-         * Generic Log Function prints to Serial and Logs to SD
-         *
-         * @param message The message we want to log
-         * @param silent Whether or not the message gets print to the serial monitor
-         */
-        void log(const char* message, bool silent);
+    /**
+     * Generic log function - prints to Serial and logs to SD
+     *
+     * @param message The message we want to log
+     * @param silent Whether to print to the serial monitor
+     */
+    void log(char *message, bool silent) {
+        char filePath[100];
 
-        /**
-         * Truncate the __FILE__ output to just show the name instead of the whole path
-         * @param fileName String to truncate
-         *
-         * @return Pointer to a malloced char*
-         */
-        void truncateFileName(const char* fileName, char array[260]);
+        // If we want to actually print to serial
+        if (!silent)
+            Serial.println(message);
 
-        Logger() {};
+        // Log as long as we have given it a SD card instance
+        if (sdInst != nullptr && enableSDLogging && sdInst->hasSDInitialized()) {
+            snprintf_P(filePath, 100, PSTR("/debug/output_%i.log"), sdInst->getCurrentFileNumber());
+            sdInst->writeLineToFile(filePath, message);
+        }
+    }
 
-    public:
-        // Deleting copy constructor.
-        Logger(const Logger &obj) = delete;
+  public:
+    // Deleting copy constructor.
+    Logger(const Logger &obj) = delete;
 
-        /* Get an instance of the logger object */
-        static Logger* getInstance();
+    /* Get an instance of the logger object */
+    static Logger *getInstance() {
+        if (instance == nullptr)
+            instance = new Logger();
 
-        /**
-         * Set the instance of the SD Manager
-         * @param manager Pointer to the SD manager to allow us to utilize SD logging functionality
-         */
-        void setSDManager(SDManager* manager);
+        return instance;
+    };
 
-        /**
-         * Set the instance of the Hypnos, this should be used if you want the current timestamp added to the front of the logger output
-         * @param hypnos Pointer to the hypnos object this also sets the sdInst
-         */
-        void setHypnos(Loom_Hypnos* hypnos);
+    /**
+     * Set the instance of the SD Manager
+     * @param manager Pointer to the SD manager to allow us to utilize SD logging functionality
+     */
+    void setSDManager(SDManager *manager) { sdInst = manager; };
 
-        /**
-         * Logs a Debug Message to the SD card and the serial monitor
-         * @param message Message to log
-         * @param silent If set to silent it will not appear in the serial monitor
-         * @param lineNumber The current line number this log is on
-         */
-        void debugLog(const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber) {
-            genericLog("DEBUG", message, silent, file, func, lineNumber);
-        };
+    /**
+     * Set the instance of the Hypnos, this should be used if you want the current timestamp added
+     * to the front of the logger output
+     * @param hypnos Pointer to the hypnos object this also sets the sdInst
+     */
+    void setHypnos(Loom_Hypnos *hypnos) {
+        hypnosInst = hypnos;
+        sdInst = hypnos->getSDManager();
+    };
 
-        void debugLog(const String& message, bool silent, const char* file, const char* func, unsigned long lineNumber) {
-            genericLog("DEBUG", message.c_str(), silent, file, func, lineNumber);
-        };
+    void genericLog(LogContext log, const __FlashStringHelper *msg) {
+        char buf[OUTPUT_SIZE];
+        memcpy_P(buf, msg, OUTPUT_SIZE);
+        genericLog(log, buf);
+    }
 
-        void debugLog(short message, bool silent, const char* file, const char* func, unsigned long lineNumber) {
-            char buff[16];
-            snprintf_P(buff, sizeof(buff), PSTR("%d"), message);
-            genericLog("DEBUG", buff, silent, file, func, lineNumber);
-        };
+    void genericLog(LogContext log, const char *msg) {
+        char logMessage[OUTPUT_SIZE];
+        char fileName[260] = {};
+        truncateFileName(fileName, log.file);
 
-        void debugLog(unsigned short message, bool silent, const char* file, const char* func, unsigned long lineNumber) {
-            char buff[16];
-            snprintf_P(buff, sizeof(buff), PSTR("%u"), message);
-            genericLog("DEBUG", buff, silent, file, func, lineNumber);
-        };
+        if (hypnosInst != nullptr && hypnosInst->isRTCInitialized()) {
+            DateTime t = hypnosInst->getCurrentTime();
+            char tbuf[21];
+            hypnosInst->dateTime_toString(t, tbuf);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s] [%s:%s:%u] %s"), tbuf, log.level,
+                       fileName, log.func, log.lineNum, msg);
+        } else {
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s:%s:%u] %s"), log.level, fileName,
+                       log.func, log.lineNum, msg);
+        }
 
-        void debugLog(int message, bool silent, const char* file, const char* func, unsigned long lineNumber) {
-            char buff[16];
-            snprintf_P(buff, sizeof(buff), PSTR("%d"), message);
-            genericLog("DEBUG", buff, silent, file, func, lineNumber);
-        };
+        this->log(logMessage, log.silent);
+    }
 
-        void debugLog(unsigned int message, bool silent, const char* file, const char* func, unsigned long lineNumber) {
-            char buff[16];
-            snprintf_P(buff, sizeof(buff), PSTR("%u"), message);
-            genericLog("DEBUG", buff, silent, file, func, lineNumber);
-        };
+    /*
+     * Directly log a message
+     */
+    void logLong(char *message, bool silent) { log(message, silent); };
 
-        void debugLog(long message, bool silent, const char* file, const char* func, unsigned long lineNumber) {
-            char buff[24];
-            snprintf_P(buff, sizeof(buff), PSTR("%ld"), message);
-            genericLog("DEBUG", buff, silent, file, func, lineNumber);
-        };
+    /* Enable function summaries to view memory usage */
+    void enableSummaries() { enableFunctionSummaries = true; };
 
-        void debugLog(unsigned long message, bool silent, const char* file, const char* func, unsigned long lineNumber) {
-            char buff[24];
-            snprintf_P(buff, sizeof(buff), PSTR("%lu"), message);
-            genericLog("DEBUG", buff, silent, file, func, lineNumber);
-        };
+    /* Save flash write by not logging everything to SD */
+    void enableSD() { enableSDLogging = true; };
 
-        void debugLog(float message, bool silent, const char* file, const char* func, unsigned long lineNumber) {
-            String buff(message, 6);
-            genericLog("DEBUG", buff.c_str(), silent, file, func, lineNumber);
-        };
+    bool shouldLogSummaries() {
+        return enableFunctionSummaries && sdInst != nullptr && enableSDLogging;
+    }
 
-        void debugLog(double message, bool silent, const char* file, const char* func, unsigned long lineNumber) {
-            String buff(message, 6);
-            genericLog("DEBUG", buff.c_str(), silent, file, func, lineNumber);
-        };
+    /**
+     * Truncate the __FILE__ output to just show the name instead of the whole path
+     * Expects dst to be at least as large as src
+     */
+    static void truncateFileName(char *dst, const char *src) {
+        const char *name = strrchr(src, '\\');
 
-        /**
-         * Logs an Error Message to the SD card and the serial monitor
-         * @param message Message to log
-         * @param silent If set to silent it will not appear in the serial monitor
-         * @param lineNumber The current line number this log is on
-         */
-        void errorLog(const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber) {
-            genericLog("ERROR", message, silent, file, func, lineNumber);
-        };
+        if (name == nullptr) {
+            name = strrchr(src, '/');
+        }
 
-        /**
-         * Logs a Warning Message to the SD card and the serial monitor
-         * @param message Message to log
-         * @param silent If set to silent it will not appear in the serial monitor
-         * @param lineNumber The current line number this log is on
-         */
-        void warningLog(const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber) {
-            genericLog("WARNING", message, silent, file, func, lineNumber);
-        };
+        // If we found a separator, skip it. Otherwise, use the full string.
+        if (name != nullptr) {
+            name += 1;
+        } else {
+            name = src;
+        }
 
-        /**
-         * Logs a Debug Message stored in flash to the SD card and the serial monitor
-         */
-        void debugLog(const __FlashStringHelper* message, bool silent, const char* file, const char* func, unsigned long lineNumber);
+        memcpy(dst, name, strlen(name));
+    }
+};
 
-        /**
-         * Logs a Warning Message stored in flash to the SD card and the serial monitor
-         */
-        void warningLog(const __FlashStringHelper* message, bool silent, const char* file, const char* func, unsigned long lineNumber);
+// Offset to correct for the difference in the size of the FunctionInstrumentor
+// constructor and destructor stack frames.
+const int CONSTRUCTOR_SIZE_DIFFERENCE = 320;
 
-        /**
-         * Logs an Error Message stored in flash to the SD card and the serial monitor
-         */
-        void errorLog(const __FlashStringHelper* message, bool silent, const char* file, const char* func, unsigned long lineNumber);
+class FunctionInstrumentor {
+  public:
+    // delete all other constructors
+    FunctionInstrumentor(const FunctionInstrumentor &) = delete;
+    FunctionInstrumentor &operator=(const FunctionInstrumentor &) = delete;
 
-        /**
-         * Generic logging function to cut down on redundant code in each log function
-         * @param level Strings representing different log levels eg. DEBUG, WARNING, ERROR
-         * @param message The actual message we want to log
-         * @param silent Whether or not we want to actually print the data to the Serial monitor or just log it to the SD card
-         * @param file Name of the file in which the log was called
-         * @param func Name of the function in which the log was called
-         * @param lineNumber The line number that the log was called on
-         */
-        void genericLog(const char* level, const char* message, bool silent, const char* file, const char* func, unsigned long lineNumber);
+    FunctionInstrumentor(const char *file, const char *func, int lineNum) {
+        int freemem = freeMemory() + CONSTRUCTOR_SIZE_DIFFERENCE;
 
-        /*
-            Log an entire char* instead of fixing it to an array you must construct your message before passing it into this function
-         */
-        void logLong(const char* message, bool silent);
+        Logger *logger = Logger::getInstance();
 
-        /**
-         * Marks the start of a new function
-         * @param file File name that the function is in
-         * @param func Function name that this call is in
-         * @param num Current line number in the file of which this call is located
-         */
-        void startFunction(const char* file, const char* func, unsigned long num, int freeMemory);
+        logger->stackDepth++;
 
-        /**
-         * Marks the end of a function, logs summary to SD card
-         * @param freeMemory The amount of available memory on the device
-         */
-        void endFunction(int freeMemory);
+        if (!logger->shouldLogSummaries())
+            return;
 
-        /* Enable function summaries to view memory usage */
-        void enableSummaries();
+        char fileName[300] = {};
+        Logger::truncateFileName(fileName, file);
 
-        /* Save flash write by not logging everything to SD */
-        void enableSD();
+        char logfileName[100];
+        snprintf_P(logfileName, sizeof(logfileName), PSTR("/debug/funcSummaries_%i.log"),
+                   logger->sdInst->getCurrentFileNumber());
+
+        char output[300] = {};
+        snprintf_P(output, sizeof(output), PSTR("start,%d,%s,%s,%d,%d,%lu"), logger->stackDepth - 1,
+                   fileName, func, lineNum, freemem, millis());
+        bool worked = logger->sdInst->writeLineToFile(logfileName, output);
+        if (!worked)
+            WARNINGF("Could not write instrumentation to file!");
+    }
+
+    ~FunctionInstrumentor() {
+        int freemem = freeMemory();
+
+        Logger *logger = Logger::getInstance();
+
+        logger->stackDepth--;
+
+        if (!logger->shouldLogSummaries())
+            return;
+
+        char logfileName[100];
+        snprintf_P(logfileName, sizeof(logfileName), PSTR("/debug/funcSummaries_%i.log"),
+                   logger->sdInst->getCurrentFileNumber());
+
+        char output[300];
+        snprintf_P(output, sizeof(output), PSTR("end,%d, , , ,%d,%lu"), logger->stackDepth, freemem,
+                   millis());
+        bool worked = logger->sdInst->writeLineToFile(logfileName, output);
+        if (!worked)
+            WARNINGF("Could not write instrumentation to file!");
+    }
 };

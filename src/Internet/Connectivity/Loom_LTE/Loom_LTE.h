@@ -3,9 +3,9 @@
 /*
  * Loom LTE modem selection and board configuration
  *
- * Loom_LTE_Config.h is the project-level configuration file for R4/R5 selection,
- * R5 startup timing, UART baud, optional reset recovery, optional rail control,
- * and optional carrier locking.
+ * Loom_LTE_Config.h supplies library-wide defaults. R4/R5 selection must be
+ * made there or through a project-wide compiler flag so the sketch and the
+ * separately compiled Loom_LTE.cpp see the same configuration.
  *
  * Arduino compiles library .cpp files separately from the .ino, so sketch-local
  * defines do not reliably reach Loom_LTE.cpp. Including Loom_LTE_Config.h here
@@ -25,11 +25,12 @@
  * TinyGSM modem profile
  *
  * TinyGSM needs exactly one modem profile selected before TinyGSM.h is included.
- * The Loom-facing defines are translated here so examples can use:
+ * The Loom-facing defines are translated here. Select the profile in
+ * Loom_LTE_Config.h or with a project-wide build flag, for example:
  *
  *     #define LOOM_LTE_USE_SARA_R5
  *
- * instead of editing TinyGSM internals or this library header per project.
+ * Do not place it only in the .ino: Arduino compiles Loom_LTE.cpp separately.
  */
 #if defined(LOOM_LTE_USE_SARA_R5)
     #undef TINY_GSM_MODEM_UBLOX
@@ -152,12 +153,7 @@
 
 #include "Loom_Manager.h"
 #include "../NetworkComponent.h"
-#include "Loom_WarningGuards.h"
-
-LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <TinyGSM.h>
-LOOM_EXTERNAL_INCLUDE_END
-
 #include <functional>
 
 #include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
@@ -231,6 +227,7 @@ class Loom_LTE : public NetworkComponent{
          * Request modem power-down when the module is initialized and active.
          */
         void power_down() override;
+        bool retryPowerUpWhenUninitialized() const override { return true; }
 
         /**
          * Add LTE signal quality to the Loom data package.
@@ -352,7 +349,11 @@ class Loom_LTE : public NetworkComponent{
 
         int powerPin = A5;
         int resetPin = -1;
+#if defined(TINY_GSM_MODEM_SARAR5)
         uint32_t selectedBaud = LOOM_LTE_R5_UART_BAUD;
+#else
+        uint32_t selectedBaud = 9600UL;
+#endif
 
         TinyGsm modem;
         TinyGsmClient client;

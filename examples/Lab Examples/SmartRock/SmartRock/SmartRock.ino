@@ -46,8 +46,10 @@ void take_data(float, float, float, float, float, float, bool);
 // Setup runs once, initializes the Hypnos rails and VCNL4010, and reads SD_config.json to get the sleep interval
 void setup() {
 
-    // Wait 20 seconds for the serial console to open
+  // Wait 20 seconds for the serial console to open
   manager.beginSerial();
+
+  hypnos.setCompileTime(__DATE__, __TIME__);
 
     // Enable the hypnos rails
   hypnos.enable();

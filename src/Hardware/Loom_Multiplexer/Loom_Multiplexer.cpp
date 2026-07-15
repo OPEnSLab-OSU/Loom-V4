@@ -1,11 +1,6 @@
 #include "Loom_Multiplexer.h"
 #include "Logger.h"
-#include "Loom_WarningGuards.h"
-
-LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Arduino.h>
-LOOM_EXTERNAL_INCLUDE_END
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Multiplexer::Loom_Multiplexer(Manager& man) : Module("Multiplexer"), manInst(&man), activeMuxAddr(0) {
     moduleInitialized = false;
@@ -174,7 +169,7 @@ void Loom_Multiplexer::debugScan() {
         uint8_t result = probeAddress(muxAddr);
         debugLogI2CResult("Mux address probe", muxAddr, result);
 
-        if(result == 0){
+        if(result == 0 && probeMultiplexer(muxAddr)){
             foundMuxAddr = muxAddr;
             break;
         }
@@ -208,7 +203,10 @@ void Loom_Multiplexer::debugScan() {
 
         snprintf(output, OUTPUT_SIZE, "Debug scan selecting mux port %i", port);
         debugLog(output);
-        selectPin(port);
+        if(!selectPin(port)){
+            ERRORF("Failed to select mux port %i; skipping it.", port);
+            continue;
+        }
         delay(50);
 
         bool foundOnPort = false;
@@ -255,6 +253,11 @@ void Loom_Multiplexer::initialize() {
 
     debugLog("Mux initialize entered");
 
+    // Do not retain an old address or sensor list if a later re-scan fails.
+    clearSensors();
+    activeMuxAddr = 0;
+    moduleInitialized = false;
+
     if(known_addresses.size() <= 0){
         known_addresses = default_addresses;
         snprintf(output, OUTPUT_SIZE, "Known address list was empty, using default list of %u", (unsigned int)known_addresses.size());
@@ -272,7 +275,7 @@ void Loom_Multiplexer::initialize() {
         uint8_t result = probeAddress(muxAddr);
         debugLogI2CResult("Mux address probe", muxAddr, result);
 
-        if(result == 0){
+        if(result == 0 && probeMultiplexer(muxAddr)){
             snprintf(output, OUTPUT_SIZE, "Multiplexer found at address 0x%02X", muxAddr);
             LOG(output);
             debugLog(output);
@@ -280,7 +283,6 @@ void Loom_Multiplexer::initialize() {
             activeMuxAddr = muxAddr;
             moduleInitialized = true;
 
-            clearSensors();
             scanAndLoadSensors();
 
             snprintf(output, OUTPUT_SIZE, "Mux initialization loaded %u sensor(s)", (unsigned int)sensors.size());
@@ -363,7 +365,10 @@ void Loom_Multiplexer::scanAndLoadSensors() {
         snprintf(output, OUTPUT_SIZE, "Scanning mux port %i", port);
         debugLog(output);
 
-        selectPin(port);
+        if(!selectPin(port)){
+            ERRORF("Failed to select mux port %i; skipping it.", port);
+            continue;
+        }
         delay(50);
 
         bool foundOnPort = false;
@@ -390,8 +395,6 @@ void Loom_Multiplexer::scanAndLoadSensors() {
                     continue;
                 }
 
-                sensors.push_back(std::make_tuple(addr, sensor, port));
-
                 snprintf(output, OUTPUT_SIZE, "%s_%i", sensor->getModuleName(), port);
                 sensor->setModuleName(output);
 
@@ -399,6 +402,17 @@ void Loom_Multiplexer::scanAndLoadSensors() {
                 debugLog(output);
 
                 sensor->initialize();
+
+                if(!sensor->moduleInitialized){
+                    snprintf(output, OUTPUT_SIZE,
+                             "Sensor %s failed initialization and will not be loaded",
+                             sensor->getModuleName());
+                    ERROR(output);
+                    delete sensor;
+                    continue;
+                }
+
+                sensors.push_back(std::make_tuple(addr, sensor, port));
 
                 snprintf(output, OUTPUT_SIZE, "Loaded sensor %s on port %i", sensor->getModuleName(), port);
                 LOG(output);
@@ -436,10 +450,13 @@ void Loom_Multiplexer::measure() {
     }
 
     for(size_t i = 0; i < sensors.size(); i++){
+        if(!std::get<1>(sensors[i])->moduleInitialized)
+            continue;
         snprintf(output, OUTPUT_SIZE, "Measuring mux sensor %s on port %i", std::get<1>(sensors[i])->getModuleName(), std::get<2>(sensors[i]));
         debugLog(output);
 
-        selectPin(std::get<2>(sensors[i]));
+        if(!selectPin(std::get<2>(sensors[i])))
+            continue;
         delay(50);
         std::get<1>(sensors[i])->measure();
     }
@@ -465,10 +482,13 @@ void Loom_Multiplexer::package() {
     }
 
     for(size_t i = 0; i < sensors.size(); i++){
+        if(!std::get<1>(sensors[i])->moduleInitialized)
+            continue;
         snprintf(output, OUTPUT_SIZE, "Packaging mux sensor %s on port %i", std::get<1>(sensors[i])->getModuleName(), std::get<2>(sensors[i]));
         debugLog(output);
 
-        selectPin(std::get<2>(sensors[i]));
+        if(!selectPin(std::get<2>(sensors[i])))
+            continue;
         std::get<1>(sensors[i])->package();
     }
 
@@ -489,10 +509,14 @@ void Loom_Multiplexer::power_up() {
     }
 
     for(size_t i = 0; i < sensors.size(); i++){
+        if(!std::get<1>(sensors[i])->moduleInitialized &&
+           !std::get<1>(sensors[i])->retryPowerUpWhenUninitialized())
+            continue;
         snprintf(output, OUTPUT_SIZE, "Powering up mux sensor %s on port %i", std::get<1>(sensors[i])->getModuleName(), std::get<2>(sensors[i]));
         debugLog(output);
 
-        selectPin(std::get<2>(sensors[i]));
+        if(!selectPin(std::get<2>(sensors[i])))
+            continue;
         delay(50);
         std::get<1>(sensors[i])->power_up();
     }
@@ -514,10 +538,13 @@ void Loom_Multiplexer::power_down() {
     }
 
     for(size_t i = 0; i < sensors.size(); i++){
+        if(!std::get<1>(sensors[i])->moduleInitialized)
+            continue;
         snprintf(output, OUTPUT_SIZE, "Powering down mux sensor %s on port %i", std::get<1>(sensors[i])->getModuleName(), std::get<2>(sensors[i]));
         debugLog(output);
 
-        selectPin(std::get<2>(sensors[i]));
+        if(!selectPin(std::get<2>(sensors[i])))
+            continue;
         delay(50);
         std::get<1>(sensors[i])->power_down();
     }
@@ -528,7 +555,7 @@ void Loom_Multiplexer::power_down() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Multiplexer::selectPin(uint8_t pin) {
+bool Loom_Multiplexer::selectPin(uint8_t pin) {
     FUNCTION_START;
     char output[OUTPUT_SIZE];
 
@@ -536,13 +563,13 @@ void Loom_Multiplexer::selectPin(uint8_t pin) {
         snprintf(output, OUTPUT_SIZE, "Cannot select mux port %u because it is out of range", pin);
         debugLog(output);
         FUNCTION_END;
-        return;
+        return false;
     }
 
     if(activeMuxAddr == 0){
         debugLog("Cannot select mux port because no mux address is active");
         FUNCTION_END;
-        return;
+        return false;
     }
 
     Wire.beginTransmission(activeMuxAddr);
@@ -555,18 +582,19 @@ void Loom_Multiplexer::selectPin(uint8_t pin) {
     }
 
     FUNCTION_END;
+    return result == 0;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Multiplexer::disableChannels() {
+bool Loom_Multiplexer::disableChannels() {
     FUNCTION_START;
     char output[OUTPUT_SIZE];
 
     if(activeMuxAddr == 0){
         debugLog("Cannot disable mux channels because no mux address is active");
         FUNCTION_END;
-        return;
+        return false;
     }
 
     Wire.beginTransmission(activeMuxAddr);
@@ -579,6 +607,7 @@ void Loom_Multiplexer::disableChannels() {
     }
 
     FUNCTION_END;
+    return result == 0;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -597,6 +626,36 @@ bool Loom_Multiplexer::isDeviceConnected(byte addr) {
 uint8_t Loom_Multiplexer::probeAddress(byte addr) {
     Wire.beginTransmission(addr);
     return Wire.endTransmission();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Multiplexer::probeMultiplexer(byte addr) {
+    // A plain ACK is insufficient because Loom sensors also use 0x70-0x77.
+    // A TCA9548 reads back its channel-control mask directly.
+    if(Wire.requestFrom((int)addr, 1) != 1)
+        return false;
+    const uint8_t originalMask = Wire.read();
+
+    const uint8_t testMasks[] = {0x00, 0x01};
+    bool verified = true;
+    for(uint8_t mask : testMasks){
+        Wire.beginTransmission(addr);
+        Wire.write(mask);
+        if(Wire.endTransmission() != 0 || Wire.requestFrom((int)addr, 1) != 1 ||
+           Wire.read() != mask){
+            verified = false;
+            break;
+        }
+    }
+
+    // Restore whichever channel mask was active before the probe.
+    Wire.beginTransmission(addr);
+    Wire.write(originalMask);
+    if(Wire.endTransmission() != 0)
+        verified = false;
+
+    return verified;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -668,11 +727,12 @@ Module* Loom_Multiplexer::loadSensor(const byte addr) {
         // case 0x68: return new Loom_K30(*manInst, true, 0x68, true);
 
         // MMA8451
+        case 0x1C: return new Loom_MMA8451(*manInst, 0x1C, true);
         case 0x1D: return new Loom_MMA8451(*manInst, 0x1D, true);
 
         // Loom_DFMultiGasSensor
-        case 0x74: return new Loom_DFMultiGasSensor(*manInst, 0x74, 10, false, true);
-        case 0x75: return new Loom_DFMultiGasSensor(*manInst, 0x75, 10, false, true);
+        case 0x74: return new Loom_DFMultiGasSensor(*manInst, 0x74, 10, true, true);
+        case 0x75: return new Loom_DFMultiGasSensor(*manInst, 0x75, 10, true, true);
 
         // Loom_T6793
         case 0x15: return new Loom_T6793(*manInst, 0x15, 10, true);
@@ -681,7 +741,7 @@ Module* Loom_Multiplexer::loadSensor(const byte addr) {
         // case 0x69: return new Loom_MPU6050(*manInst, true);
 
         // SEN55
-        case 0x69: return new Loom_SEN55(*manInst, 0x69, true);
+        case 0x69: return new Loom_SEN55(*manInst, true, true, true);
 
         // SEN66
         case 0x6B: return new Loom_SEN66(*manInst, sen66MeasurePM, true, sen66ReadNumVals);

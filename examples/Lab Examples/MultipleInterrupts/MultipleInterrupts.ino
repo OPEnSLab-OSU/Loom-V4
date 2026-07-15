@@ -6,7 +6,6 @@
 
 #include <Loom_Manager.h>
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
-#include <Hardware/Loom_TippingBucket/Loom_TippingBucket.h>
 
 // Pin to have the secondary interrupt triggered from
 #define INT_PIN A0
@@ -23,7 +22,6 @@ Manager manager("Device", 0);
 
 // Create a new Hypnos object
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, true);
-Loom_TippingBucket bucket(manager, COUNTER_TYPE::MANUAL);
 
 // Called when wake up interrupt is triggered
 void wakeTrigger(){
@@ -47,7 +45,6 @@ void setup() {
 
   // Enable the hypnos rails
   hypnos.enable();
-  bucket.setHypnosInstance(hypnos);
 
   // Initialize all in-use modules
   manager.initialize();

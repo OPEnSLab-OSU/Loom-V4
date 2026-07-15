@@ -26,7 +26,7 @@ void setup() {
 void loop() {
 
   // Wait 5 seconds for a message
-  if(loRa.receive(5000)){
+  if(loRa.receive(5000, true)){
 
     // If a message was received display the JSON document and transmit it over MQTT
     manager.display_data();

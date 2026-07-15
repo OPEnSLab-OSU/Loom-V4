@@ -1,7 +1,7 @@
 /**
  * Author: Chet Udell
- * ENGR 102 Example Code:
- * Read the Adafruit STEMMA i2c Soil Moisutre Sensor,
+ * ENGR 102 Example Code: 
+ * Read the Adafruit STEMMA i2c Soil Moisutre Sensor, 
  * Log everything to SD,
  * Turn on LED if soil is too dry and needs to be watered
  * Threshold value determined by a global variable
@@ -17,10 +17,6 @@
 #include <Loom_Manager.h>
 #include <Logger.h>
 
-// Hypnos is instantiated directly below. Keep this explicit so Logger.h stays a
-// lightweight logging interface and does not pull SD/SPI hardware into sketches
-// that only need serial logging.
-#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Sensors/I2C/Loom_STEMMA/Loom_STEMMA.h>
 
 int threshold = 1000; // Define the threshold for what sensor value is too dry
@@ -68,7 +64,7 @@ void loop() {
 
   // Turn on LED if soil too dry
   if(stemma.getCapacitive() < threshold) // Is the soil moisture sensor value LESS THAN the threshold "global variable" we declared above?
-    digitalWrite(LED_BUILTIN, HIGH);  // If True: turn the LED on
+    digitalWrite(LED_BUILTIN, HIGH);  // If True: turn the LED on 
   else
     digitalWrite(LED_BUILTIN, LOW);  // If False: turn the LED off
 

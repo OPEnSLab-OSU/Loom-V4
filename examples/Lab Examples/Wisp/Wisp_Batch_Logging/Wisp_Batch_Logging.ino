@@ -1,3 +1,4 @@
+// Wisp direct-sensor batch logging example.
 #include <Loom_Manager.h>
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 
@@ -26,7 +27,7 @@ Loom_SEN55 SEN55(manager);
 Loom_SHT31 sht(manager);
 
 Loom_T6793 T6793(manager);
-Loom_DFMultiGasSensor gasSensor(manager, 0x74);
+Loom_MultiGasSensor gasSensor(manager, 0x74);
 
 uint32_t deviceStatus;
 

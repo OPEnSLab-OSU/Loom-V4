@@ -53,6 +53,8 @@ void Loom_SEN66::initialize() {
         snprintf(output, OUTPUT_SIZE, "Error starting measurement: %u", error);
         ERROR(output);
         moduleInitialized = false;
+        FUNCTION_END;
+        return;
     } else {
         moduleInitialized = true;
         LOG("SEN66 Started. Waiting 5s for fan spin-up...");
@@ -61,6 +63,14 @@ void Loom_SEN66::initialize() {
 
 
     FUNCTION_END;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_SEN66::power_up() {
+    // Hypnos normally removes both sensor rails during sleep. Re-run the full
+    // startup sequence so continuous measurement is actually restarted.
+    initialize();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -90,13 +100,14 @@ void Loom_SEN66::measure() {
 
 
     int validSamples = 0;
+    int validNumberSamples = 0;
     uint16_t error = 0;
    
     LOG(F("Reading SEN66 data..."));
 
 
-    // We try to read PM_AVERAGE_COUNT samples
-    for(int i = 0; i < PM_AVERAGE_COUNT; i++){
+    // The sensor publishes a new sample once per second.
+    for(uint8_t i = 0; i < SAMPLE_COUNT; i++){
        
         // Wait 1 second for next data point (Sensor updates @ 1Hz)
         delay(1000);
@@ -104,7 +115,12 @@ void Loom_SEN66::measure() {
 
         uint8_t padding;
         bool dataReady = false;
-        sen66.getDataReady(padding, dataReady); // Check if new data is ready
+        error = sen66.getDataReady(padding, dataReady);
+        if (error) {
+            snprintf(output, OUTPUT_SIZE, "Data-ready check failed: %u", error);
+            ERROR(output);
+            continue;
+        }
 
 
         if(dataReady){
@@ -135,6 +151,11 @@ void Loom_SEN66::measure() {
                             accNumPm2p5 += tmpNumPm2p5;
                             accNumPm4p0 += tmpNumPm4p0;
                             accNumPm10p0 += tmpNumPm10p0;
+                            validNumberSamples++;
+                        } else {
+                            snprintf(output, OUTPUT_SIZE,
+                                     "Number concentration read failed: %u", error);
+                            ERROR(output);
                         }
                 }
                 validSamples++;
@@ -165,12 +186,14 @@ void Loom_SEN66::measure() {
         co2 = (uint16_t)(accCo2 / validSamples);
 
 
-        if(readNumVals){
-            numConcentrationPm0p5 = accNumPm0p5 / validSamples;
-            numConcentrationPm1p0 = accNumPm1p0 / validSamples;
-            numConcentrationPm2p5 = accNumPm2p5 / validSamples;
-            numConcentrationPm4p0 = accNumPm4p0 / validSamples;
-            numConcentrationPm10p0 = accNumPm10p0 / validSamples;
+        if(readNumVals && validNumberSamples > 0){
+            numConcentrationPm0p5 = accNumPm0p5 / validNumberSamples;
+            numConcentrationPm1p0 = accNumPm1p0 / validNumberSamples;
+            numConcentrationPm2p5 = accNumPm2p5 / validNumberSamples;
+            numConcentrationPm4p0 = accNumPm4p0 / validNumberSamples;
+            numConcentrationPm10p0 = accNumPm10p0 / validNumberSamples;
+        } else if (readNumVals) {
+            ERROR("No valid number-concentration samples collected.");
         }
     } else {
         ERROR("No valid samples collected. Outputting 0s.");

@@ -33,6 +33,7 @@ void setup() {
 
   // Wait 20 seconds for the serial console to open
   manager.beginSerial();
+  hypnos.setCompileTime(__DATE__, __TIME__);
 
   // Enable the hypnos rails
   hypnos.enable();
