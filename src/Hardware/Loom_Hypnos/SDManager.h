@@ -103,8 +103,16 @@ class SDManager : public Module {
      * Log to a different name other than one matching the device name
      */
     void setLogName(const char *name) {
-        strncpy(overrideFileName, name ? name : "", sizeof(overrideFileName) - 1);
-        overrideFileName[sizeof(overrideFileName) - 1] = '\0';
+        char requestedName[sizeof(overrideFileName)];
+        strncpy(requestedName, name ? name : "", sizeof(requestedName) - 1);
+        requestedName[sizeof(requestedName) - 1] = '\0';
+
+        // Selecting a genuinely different base name should create a new session
+        // file. Repeating the same setting must not rotate the file on wake.
+        if (strcmp(overrideFileName, requestedName) != 0) {
+            strcpy(overrideFileName, requestedName);
+            logFileSelected = false;
+        }
     };
 
     /* Get whatever number we are currently appending to the SD fileNames*/
@@ -133,7 +141,8 @@ class SDManager : public Module {
     int current_batch = 0; // Current count of the batch
     int file_count = 0;    // What file number are we logging to
 
-    bool sdInitialized = false; // If the SD card actually initialized
+    bool sdInitialized = false;  // Whether the card is reachable for the current operation
+    bool logFileSelected = false; // Whether this MCU boot session already chose its CSV filename
     char
         *headers[2]; // Contains the main and sub headers that are added to the top of the CSV files
 

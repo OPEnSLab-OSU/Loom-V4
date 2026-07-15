@@ -63,6 +63,7 @@ Comparison used for this changelog: Git tag `v4.9` through branch `4.9-joshfixes
 - Corrected timezone/DST handling, network-time result propagation, and zero-padded ISO timestamps.
 - Expanded SD sleep configuration parsing to accept root or nested `SleepInterval`, `sleepInterval`, and `sleep_interval` objects, tolerate a UTF-8 BOM, validate timezone values, and use a safe fallback for missing/invalid configuration.
 - Hardened SD filenames, CSV rows, and batch filenames against overflow. SD initialization, logging, and file-open results now report actual success.
+- Separated current SD-card reachability from session filename selection so a transient card initialization failure during wake resumes the same CSV instead of advancing to a new numbered file.
 - Reworked `readFile()` to reject oversized files, allocate only the required buffer, null-terminate it, and return `nullptr` safely on failures.
 - Retained and corrected `Loom_Hypnos::checkVoltage()`: configurable Loom analog settings are used, threshold classifications have no gaps, and voltage flags are updated consistently.
 - Kept SD at 4 MHz for cross-card and shared-bus stability.

@@ -255,6 +255,12 @@ bool SDManager::log(DateTime currentTime) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::begin() {
 
+    // Card reachability can be lost for one wake while the selected log file
+    // must persist for the whole MCU boot session. Keeping these states
+    // separate prevents a transient SD initialization failure from advancing
+    // to a new numbered CSV on the following wake.
+    const bool recoveringExistingLog = logFileSelected && !sdInitialized;
+
     pinMode(8, OUTPUT);
     digitalWrite(8, HIGH); // Disable LoRa
 
@@ -289,8 +295,10 @@ bool SDManager::begin() {
         printModuleName("Successfully initialized SD Card!");
     }
 
-    // Only should be run on the first initialize not when it wakes up from sleep
-    if (!sdInitialized) {
+    // Choose a numbered log file only once per MCU boot, or after setLogName()
+    // explicitly changes the requested base name. A normal wake or recovery
+    // from a temporary sd.begin() failure resumes the existing file.
+    if (!logFileSelected) {
         // Try to open the root of the file system so we can get the files on the device
         if (!root.open("/", O_RDONLY)) {
             sdInitialized = false;
@@ -299,12 +307,20 @@ bool SDManager::begin() {
             printModuleName("After ERROR");
             return false;
         }
-        updateCurrentFileName();
+        if (!updateCurrentFileName()) {
+            sdInitialized = false;
+            root.close();
+            return false;
+        }
+        logFileSelected = true;
     }
 
-    // Once the SD card has initialized the first round through we don't want to update the file
-    // name
     sdInitialized = true;
+
+    if (recoveringExistingLog) {
+        printModuleName("SD card recovered; resuming data log:");
+        printModuleName(fileName);
+    }
 
     return true;
 }
