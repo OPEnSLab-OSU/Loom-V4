@@ -407,7 +407,20 @@ DateTime Loom_Hypnos::getCurrentTime() {
 bool Loom_Hypnos::networkTimeUpdate() {
     FUNCTION_START;
     bool updated = false;
-    if (networkComponent != nullptr && networkComponent->isConnected()) {
+    if (networkComponent == nullptr) {
+        ERROR("Network component not set in Hypnos; RTC time was not updated.");
+        FUNCTION_END;
+        return false;
+    }
+
+    // Batch deployments intentionally leave LTE disconnected between upload
+    // windows. That is a normal power-saving state, not a network-time error.
+    if (!networkComponent->isConnected()) {
+        FUNCTION_END;
+        return false;
+    }
+
+    {
         char output[OUTPUT_SIZE];
         int year = 0;
         int month = 0;
@@ -436,8 +449,6 @@ bool Loom_Hypnos::networkTimeUpdate() {
                 ERROR("Failed to get network time! Time has not been set. Retrying...");
             }
         }
-    } else {
-        ERROR("Network component not set in hypnos or component wasn't connected to the internet.");
     }
     FUNCTION_END;
     return updated;

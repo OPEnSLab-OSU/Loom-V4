@@ -223,8 +223,8 @@ class Loom_LTE : public NetworkComponent{
         void package() override;
 
         /**
-         * Read network time from the modem and convert the modem-reported local
-         * time back to UTC using the supplied timezone offset.
+         * Read UTC network time from the modem while preserving the timezone
+         * supplied by Hypnos for its separate local-time packaging.
          */
         bool getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) override;
 

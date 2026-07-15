@@ -1,6 +1,5 @@
 #include "Loom_LTE.h"
 #include "Logger.h"
-#include <math.h>
 
 /*
  * SARA-R5 startup sequence
@@ -997,40 +996,20 @@ Client* Loom_LTE::getClient() { return modem->getClient(); }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) {
-    const float configuredOffset = (tz != nullptr) ? *tz : 0.0f;
-    float modemOffset = configuredOffset;
+    // TinyGSM overwrites tz with the modem's CCLK suffix. On the SARA-R410,
+    // the returned date/time fields are already UTC; applying that suffix here
+    // shifts UTC a second time (for example, 23:28 becomes 07:28 the next day
+    // in PST). Hypnos owns UTC-to-local conversion, so preserve its configured
+    // timezone and pass the modem clock fields through unchanged.
+    const float configuredTimezone = (tz != nullptr) ? *tz : 0.0f;
+    float modemTimezone = configuredTimezone;
+    const bool updated = modem->getNetworkTime(
+        year, month, day, hour, minute, second, &modemTimezone
+    );
 
-    if(modem->getNetworkTime(year, month, day, hour, minute, second, &modemOffset)){
-        float normalizedOffset = modemOffset;
+    if(tz != nullptr)
+        *tz = configuredTimezone;
 
-        if(tz != nullptr){
-            const float directDifference = fabsf(modemOffset - configuredOffset);
-            const float reversedDifference = fabsf((-modemOffset) - configuredOffset);
-
-            if(reversedDifference < directDifference){
-                normalizedOffset = -modemOffset;
-            }
-
-            if(fabsf(normalizedOffset - configuredOffset) <= 1.01f){
-                normalizedOffset = configuredOffset;
-            }
-        }
-
-        const int32_t offsetSeconds = (int32_t)(normalizedOffset * 3600.0f);
-        DateTime time = DateTime(*year, *month, *day, *hour, *minute, *second) - TimeSpan(offsetSeconds);
-
-        *year = time.year();
-        *month = time.month();
-        *day = time.day();
-        *hour = time.hour();
-        *minute = time.minute();
-        *second = time.second();
-
-        if(tz != nullptr){
-            *tz = normalizedOffset;
-        }
-        return true;
-    }
-    return false;
+    return updated;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
