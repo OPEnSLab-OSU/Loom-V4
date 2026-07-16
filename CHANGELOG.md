@@ -2,6 +2,14 @@
 
 GET NEW PACKAGE DEPENDENCIES HERE (too big for github): https://drive.google.com/file/d/1-3h9KJZLhEqDoYGxGSycEwhwRnLGpojW/view?usp=sharing
 
+Updated libraries in the zip (you cannot get all of these off Arduino library manager!):
+- ArduinoMqttClient
+- SDS011-master (fixes a build warning present in every sketch)
+- ADS1232_Library (fixed and brought up another student's work)
+- SparkFun_LTE_Shield_Arduino_Library-master (SARA R5 support, custom edit)
+- TinyGSM (adds SARA_R5 profile)
+
+You may also want to update the DS3231 library.
 
 Loom 4.9.1 is a bug-fix and hardware-support release built directly on Loom 4.9. It preserves the 4.9 APIs and packaged field names while correcting sleep, SD, multiplexer, LTE, networking, sensor, and example failures found during field deployment and the full example compile audit.
 
