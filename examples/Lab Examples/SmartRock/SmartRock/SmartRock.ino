@@ -31,6 +31,7 @@ Loom_ADS1115 ads(manager);
 // This Smart Rock uses the MS5803 at I2C address 0x76.
 Loom_MS5803 ms(manager, 0x76);
 Adafruit_VCNL4010 vcnl; //VCNL4010 is not yet a Loom sensor module, so we are using the Adafruit library
+bool vcnlInitialized = false;
 //============================================================
 
 // Smart Rock Specific Function Declares
@@ -68,10 +69,12 @@ void setup() {
   hypnos.registerInterrupt(isrTrigger);
 
   //VCNL4010 Initialization indicator      
-  if (! vcnl.begin()){
+  if (!vcnl.begin()){
     Serial.println("VCNL4010 Not Found");
+    vcnlInitialized = false;
   } else{
     Serial.println("VCNL4010 Initialized");
+    vcnlInitialized = true;
   }
 
 
@@ -83,8 +86,6 @@ void loop() {
 
   // Set constants, these should be changed to match the intended use
 
-  // Set the RTC interrupt alarm to wake the device after the set sleep interval
-  hypnos.setInterruptDuration(sleepInterval);
   // Experimentally determined EC and Turbidity calibration coefficients
   // These are different for each Smart Rock, insert the proper values from calibration
   
@@ -110,7 +111,7 @@ void loop() {
     // Troubleshooting print 7
   if(troubleshooting_mode==1){Serial.println("Setting Alarm");}
 
-    // Set the RTC interrupt alarm to wake the device after the set sleep interval
+  // Set the RTC interrupt alarm to wake the device after the set sleep interval
   hypnos.setInterruptDuration(sleepInterval);
 
     // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
@@ -156,7 +157,14 @@ void take_data(float A0_off, float A1_off, float ECm, float ECb, float Tm, float
     // This equation converts the measured conductance into EC in uS/cm
   float EC = ((A0/A1) * ECm + ECb); // ECm and ECb are the passed in slope and y-intercept from the beginning of void loop()
     // This equation converts the measured infrared backscatter (proximity) into Turbidity in NTU
-  float Turb = ((vcnl.readProximity()) * Tm + Tb); // Tm and Tb are the passed in slope and y-intercept from the beginning of void loop()
+  float Turb = 0;
+  uint16_t ambientLight = 0;
+  uint16_t proximity = 0;
+  if (vcnlInitialized) {
+    ambientLight = vcnl.readAmbient();
+    proximity = vcnl.readProximity();
+    Turb = (proximity * Tm + Tb); // Tm and Tb are the passed in slope and y-intercept from the beginning of void loop()
+  }
     // Troubleshooting print 4
   if(troubleshooting_mode==1){Serial.println("EC and Turbidity Values Calculated");}
  //===========================
@@ -164,12 +172,16 @@ void take_data(float A0_off, float A1_off, float ECm, float ECb, float Tm, float
     // Adds data under "Sensor Values" to the JSON packet
   manager.addData("MS5803", "Pressure", ms.getPressure());          // MS5803 Pressure
   manager.addData("MS5803", "Temperature", ms.getTemperature());    // MS5803 Temperature
-  manager.addData("vcnl4010","Ambient Light", vcnl.readAmbient());  // VCNL4010 Light
-  manager.addData("vcnl4010","Proximity", vcnl.readProximity());    // VCNL4010 Proximity
+  if (vcnlInitialized) {
+    manager.addData("vcnl4010", "Ambient Light", ambientLight);  // VCNL4010 Light
+    manager.addData("vcnl4010", "Proximity", proximity);        // VCNL4010 Proximity
+  }
   manager.addData("Analog Values","A0_adjusted", A0); // Current Measurement A0 minus offset
   manager.addData("Analog Values","A1_adjusted", A1); // Voltage Measurement A1 minus offset
   manager.addData("Analog Values","Conductivity", EC);              // Calibrated EC in uS/cm
-  manager.addData("Analog Values","Turbidity", Turb);              //Calibrated Turbidity
+  if (vcnlInitialized) {
+    manager.addData("Analog Values", "Turbidity", Turb);             // Calibrated Turbidity
+  }
 
     // Troubleshooting print 5
   if(troubleshooting_mode==1){Serial.println("Data Added to Packet");}

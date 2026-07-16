@@ -86,20 +86,20 @@ void setup() {
 // Runs this loop indefinitely, sleeps for the interval set in SD_config.json between each iteration
 void loop() {
 
-// Set constants, these should be changed to match the intended use
+  // Set constants, these should be changed to match the intended use
 
-    // Experimentally determined EC and Turbidity calibration coefficients
-    // These are different for each Smart Rock, insert the proper values from calibration
+  // Experimentally determined EC and Turbidity calibration coefficients
+  // These are different for each Smart Rock, insert the proper values from calibration
   float EC_slope = 0.00;      // EC calibration slope 
   float EC_intercept = 0.00;  // EC calibration y-intercept 
   float Turbidity_slope = .18688;      // Turbidity calibration slope
   float Turbidity_intercept = -549.82;  // Turbidity calibration y-intercept
   
-    // Troubleshooting mode enables extra status prints in the serial Monitor
+  // Troubleshooting mode enables extra status prints in the serial Monitor
   bool troubleshooting_mode = 1; // 1 == on, 0 == off
-//============================================================
+  //============================================================
 
-// This is the wakeup cycle, everything outside of this scope happens while the device is "asleep"
+  // This is the wakeup cycle, everything outside of this scope happens while the device is "asleep"
 
     // Troubleshooting print 1
   if(troubleshooting_mode==1){Serial.println("Woke Up!");}
@@ -158,7 +158,7 @@ void take_data(float ECm, float ECb, float Tm, float Tb, bool troubleshooting_mo
     // This equation converts the measured infrared backscatter (proximity) into Turbidity in NTU
   Turb = ((vcnl.readProximity()) * Tm + Tb); // Tm and Tb are the passed in slope and y-intercept from the beginning of void loop()
   } else {
-    Serial.println("VCNL NOT INIALIZED");
+    Serial.println("VCNL NOT INITIALIZED");
   }
 
     // Troubleshooting print 4
@@ -173,7 +173,7 @@ void take_data(float ECm, float ECb, float Tm, float Tb, bool troubleshooting_mo
   manager.addData("vcnl4010","Ambient Light", vcnl.readAmbient());  // VCNL4010 Light
   manager.addData("vcnl4010","Proximity", vcnl.readProximity());    // VCNL4010 Proximity
   } else {
-    Serial.println("VCNL NOT INIALIZED");
+    Serial.println("VCNL NOT INITIALIZED");
   }
 
 

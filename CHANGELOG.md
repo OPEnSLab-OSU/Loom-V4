@@ -67,30 +67,15 @@ All paths below are relative to the Loom repository root. “Implementation” i
 
 ## Hypnos, RTC, sleep, and SD
 
-<<<<<<< HEAD
-- **Review anchors — `src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp`:** line 222 — `registerInterrupt()`; line 264 — `reattachRTCInterrupt()`; line 315 — `initializeRTC()`; line 407 — `networkTimeUpdate()`; line 564 — `setInterruptDuration()`; line 623 — `sleep()`; line 704 — `post_sleep()`; line 753 — `getConfigFromSD()`.
+- **Review anchors — `src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp`:** line 222 — `registerInterrupt()`; line 264 — `reattachRTCInterrupt()`; line 331 — `initializeRTC()`; line 423 — `networkTimeUpdate()`; line 580 — `setInterruptDuration()`; line 657 — `sleep()`; line 728 — `pre_sleep()`; line 757 — `post_sleep()`; line 806 — `getConfigFromSD()`.
 - **Review anchors — `src/Hardware/Loom_Hypnos/SDManager.cpp`:** line 150 — `log()`; line 256 — `begin()`; line 330 — `updateCurrentFileName()`; line 432 — `logBatch()`.
-- **`src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.h` — RTC interrupts and sleep:** track the real pin/callback pair, avoid duplicate handlers, clear stale DS3231/EIC/NVIC state, detach the correct wake interrupt, and avoid reattaching while the active-low RTC line is asserted.
-- **`src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.h` — alarm scheduling:** retain the exact scheduled `DateTime`, fix month/year boundary and overrun comparisons, reject zero-length alarms, and abort sleep cleanly when no wake interrupt is registered.
+- **`src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.h` — RTC interrupts and sleep:** track the real pin/callback pair, avoid duplicate handlers, clear stale DS3231/EIC/NVIC state, detach the correct wake interrupt, recover a prematurely asserted RTC line, and refuse standby when the wake handler cannot be attached.
+- **`src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.h` — alarm scheduling:** retain the exact scheduled `DateTime`, verify the Alarm 1 register readback, fix month/year boundary and overrun comparisons, reject zero-length alarms, and abort sleep cleanly when no valid alarm or wake interrupt is registered.
 - **`src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.h` — time initialization and packaging:** add `setCompileTime(__DATE__, __TIME__)`, correct RTC lost-power recovery, timezone/DST conversion, network-time status propagation, and zero-padded UTC/local ISO timestamps.
-- **`src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.h` — configuration and voltage:** accept root or nested `SleepInterval`, `sleepInterval`, and `sleep_interval` objects, tolerate a UTF-8 BOM, validate timezone values, retain safe fallbacks, and keep `checkVoltage()` classifications/flags consistent with configurable Loom analog settings.
+- **`src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.h` — configuration and voltage:** accept root or nested `SleepInterval`, `sleepInterval`, and `sleep_interval` objects, report the parsed day/hour/minute/second components, tolerate a UTF-8 BOM, validate timezone values, retain safe fallbacks, and keep `checkVoltage()` classifications/flags consistent with configurable Loom analog settings.
 - **`src/Hardware/Loom_Hypnos/SDManager.cpp`, `src/Hardware/Loom_Hypnos/SDManager.h` — logging safety:** bound header, row, numbered filename, and batch filename construction; report SD initialization/open/logging results accurately; and keep the SD bus at 4 MHz for shared-bus/card stability.
 - **`src/Hardware/Loom_Hypnos/SDManager.cpp`, `src/Hardware/Loom_Hypnos/SDManager.h` — file continuity:** separate card reachability from the one-time session filename selection so a transient wake-time SD failure resumes the existing CSV instead of selecting another numbered file.
 - **`src/Hardware/Loom_Hypnos/SDManager.cpp`, `src/Hardware/Loom_Hypnos/SDManager.h` — file reads:** reject oversized files, allocate only the required buffer, null-terminate it, and return `nullptr` safely after allocation/open/read failures.
-=======
-- Corrected RTC interrupt registration and reattachment so Hypnos tracks the real pin/callback pair, avoids duplicate handlers, clears stale DS3231 and SAMD state, and detaches the correct wake interrupt.
-- Prevented an asserted DS3231 active-low interrupt from immediately retriggering when a replacement alarm is attached.
-- Retained the exact scheduled alarm `DateTime`, fixing month/year boundary comparisons and alarm-overrun detection.
-- Rejected zero-length alarms and sleep attempts without a registered wake interrupt.
-- Added `setCompileTime(__DATE__, __TIME__)` so sketches can supply their own build timestamp, for quicker testing when needing to supply hypnos with current time.
-- Corrected timezone/DST handling, network-time result propagation, and zero-padded ISO timestamps.
-- Expanded SD sleep configuration parsing to accept root or nested `SleepInterval`, `sleepInterval`, and `sleep_interval` objects, tolerate a UTF-8 BOM, validate timezone values, and use a safe fallback for missing/invalid configuration.
-- Hardened SD filenames, CSV rows, and batch filenames against overflow. SD initialization, logging, and file-open results now report actual success.
-- Separated current SD-card reachability from session filename selection so a transient card initialization failure during wake resumes the same CSV instead of advancing to a new numbered file.
-- Reworked `readFile()` to reject oversized files, allocate only the required buffer, null-terminate it, and return `nullptr` safely on failures.
-- Retained and corrected `Loom_Hypnos::checkVoltage()`: configurable Loom analog settings are used, threshold classifications have no gaps, and voltage flags are updated consistently.
-- Kept SD at 4 MHz for cross-card and shared-bus stability.
->>>>>>> b7a14e62a6f509db1e2ad3d6dfd157a25f4b98c9
 
 ## I2C multiplexer and sensors
 
