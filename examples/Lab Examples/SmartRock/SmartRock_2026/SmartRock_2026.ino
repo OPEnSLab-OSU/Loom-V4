@@ -55,6 +55,14 @@ void setup() {
 
     // Enable the hypnos rails
   hypnos.enable();
+
+    // Allow the switched sensor rail to stabilize before probing the ADS1115.
+  delay(1500);
+
+    // SmartRock uses the standard I2C bus at 100 kHz.
+  Wire.begin();
+  Wire.setClock(100000);
+
   manager.initialize();
 
     // Gets sleep interval from SD card
