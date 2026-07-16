@@ -19,6 +19,8 @@ void setup() {
   // Start the serial interface
   manager.beginSerial();
 
+  hypnos.enable();
+
   // Initialize the manager
   manager.initialize();
 }
