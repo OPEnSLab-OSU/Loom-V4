@@ -2,6 +2,14 @@
 
 GET NEW PACKAGE DEPENDENCIES HERE (too big for github): https://drive.google.com/file/d/1-3h9KJZLhEqDoYGxGSycEwhwRnLGpojW/view?usp=sharing
 
+Updated libraries in the zip (you cannot get all of these off Arduino library manager!):
+- ArduinoMqttClient
+- SDS011-master (fixes a build warning present in every sketch)
+- ADS1232_Library (fixed and brought up another student's work)
+- SparkFun_LTE_Shield_Arduino_Library-master (SARA R5 support, custom edit)
+- TinyGSM (adds SARA_R5 profile)
+
+You may also want to update the DS3231 library.
 
 Loom 4.9.1 is a bug-fix and hardware-support release built directly on Loom 4.9. It preserves the 4.9 APIs and packaged field names while correcting sleep, SD, multiplexer, LTE, networking, sensor, and example failures found during field deployment and the full example compile audit.
 
@@ -59,6 +67,7 @@ All paths below are relative to the Loom repository root. “Implementation” i
 
 ## Hypnos, RTC, sleep, and SD
 
+<<<<<<< HEAD
 - **Review anchors — `src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp`:** line 222 — `registerInterrupt()`; line 264 — `reattachRTCInterrupt()`; line 315 — `initializeRTC()`; line 407 — `networkTimeUpdate()`; line 564 — `setInterruptDuration()`; line 623 — `sleep()`; line 704 — `post_sleep()`; line 753 — `getConfigFromSD()`.
 - **Review anchors — `src/Hardware/Loom_Hypnos/SDManager.cpp`:** line 150 — `log()`; line 256 — `begin()`; line 330 — `updateCurrentFileName()`; line 432 — `logBatch()`.
 - **`src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.h` — RTC interrupts and sleep:** track the real pin/callback pair, avoid duplicate handlers, clear stale DS3231/EIC/NVIC state, detach the correct wake interrupt, and avoid reattaching while the active-low RTC line is asserted.
@@ -68,6 +77,20 @@ All paths below are relative to the Loom repository root. “Implementation” i
 - **`src/Hardware/Loom_Hypnos/SDManager.cpp`, `src/Hardware/Loom_Hypnos/SDManager.h` — logging safety:** bound header, row, numbered filename, and batch filename construction; report SD initialization/open/logging results accurately; and keep the SD bus at 4 MHz for shared-bus/card stability.
 - **`src/Hardware/Loom_Hypnos/SDManager.cpp`, `src/Hardware/Loom_Hypnos/SDManager.h` — file continuity:** separate card reachability from the one-time session filename selection so a transient wake-time SD failure resumes the existing CSV instead of selecting another numbered file.
 - **`src/Hardware/Loom_Hypnos/SDManager.cpp`, `src/Hardware/Loom_Hypnos/SDManager.h` — file reads:** reject oversized files, allocate only the required buffer, null-terminate it, and return `nullptr` safely after allocation/open/read failures.
+=======
+- Corrected RTC interrupt registration and reattachment so Hypnos tracks the real pin/callback pair, avoids duplicate handlers, clears stale DS3231 and SAMD state, and detaches the correct wake interrupt.
+- Prevented an asserted DS3231 active-low interrupt from immediately retriggering when a replacement alarm is attached.
+- Retained the exact scheduled alarm `DateTime`, fixing month/year boundary comparisons and alarm-overrun detection.
+- Rejected zero-length alarms and sleep attempts without a registered wake interrupt.
+- Added `setCompileTime(__DATE__, __TIME__)` so sketches can supply their own build timestamp, for quicker testing when needing to supply hypnos with current time.
+- Corrected timezone/DST handling, network-time result propagation, and zero-padded ISO timestamps.
+- Expanded SD sleep configuration parsing to accept root or nested `SleepInterval`, `sleepInterval`, and `sleep_interval` objects, tolerate a UTF-8 BOM, validate timezone values, and use a safe fallback for missing/invalid configuration.
+- Hardened SD filenames, CSV rows, and batch filenames against overflow. SD initialization, logging, and file-open results now report actual success.
+- Separated current SD-card reachability from session filename selection so a transient card initialization failure during wake resumes the same CSV instead of advancing to a new numbered file.
+- Reworked `readFile()` to reject oversized files, allocate only the required buffer, null-terminate it, and return `nullptr` safely on failures.
+- Retained and corrected `Loom_Hypnos::checkVoltage()`: configurable Loom analog settings are used, threshold classifications have no gaps, and voltage flags are updated consistently.
+- Kept SD at 4 MHz for cross-card and shared-bus stability.
+>>>>>>> b7a14e62a6f509db1e2ad3d6dfd157a25f4b98c9
 
 ## I2C multiplexer and sensors
 
@@ -146,5 +169,7 @@ All paths below are relative to the Loom repository root. “Implementation” i
 - **Passed:** Hypnos analog voltage sampling on hardware.
 - **Passed:** DS3231 first alarm, alarm clearing/replacement, and repeated Hypnos standby wake behavior on hardware.
 - **Passed:** SARA-R4 AT initialization, network registration, PDP/IP acquisition, and outbound HTTP reachability on hardware.
+- **Passed:** Smartrock flash and wake/log cycle, checking that it's not randomly making new files as we introduced that last night pre-4.9 bringup.
+- **Passed:** Wisp V2 Deploy sketch has correct timestamps.
 - **Compile coverage:** the audit harness discovers the complete example tree and the 4.9.1 fixes address the Loom-owned failures found during the 123-sketch run.
 - **Still recommended:** a multi-day LoRa/LTE/MongoDB soak test, a complete Wisp V2 SEN66/DF-gas mux sleep test, final SmartRock EC-board wake validation, and final Jolteon SARA-R5 end-to-end validation.
