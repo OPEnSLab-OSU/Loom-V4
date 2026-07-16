@@ -149,5 +149,7 @@ Comparison used for this changelog: Git tag `v4.9` through branch `4.9-joshfixes
 - **Passed:** Hypnos analog voltage sampling on hardware.
 - **Passed:** DS3231 first alarm, alarm clearing/replacement, and repeated Hypnos standby wake behavior on hardware.
 - **Passed:** SARA-R4 AT initialization, network registration, PDP/IP acquisition, and outbound HTTP reachability on hardware.
+- **Passed:** Smartrock flash and log, checking that it's not randomly making new files as we introduced that last night pre-4.9 bringup.
+- **Passed:** Wisp V2 Deploy sketch has correct timestamps.
 - **Compile coverage:** the audit harness discovers the complete example tree and the 4.9.1 fixes address the Loom-owned failures found during the 123-sketch run.
 - **Still recommended:** a multi-day LoRa/LTE/MongoDB soak test, a complete Wisp V2 SEN66/DF-gas mux sleep test, final SmartRock EC-board wake validation, and final Jolteon SARA-R5 end-to-end validation.
