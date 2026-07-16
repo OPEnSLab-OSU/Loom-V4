@@ -59,7 +59,7 @@ Comparison used for this changelog: Git tag `v4.9` through branch `4.9-joshfixes
 - Prevented an asserted DS3231 active-low interrupt from immediately retriggering when a replacement alarm is attached.
 - Retained the exact scheduled alarm `DateTime`, fixing month/year boundary comparisons and alarm-overrun detection.
 - Rejected zero-length alarms and sleep attempts without a registered wake interrupt.
-- Added `setCompileTime(__DATE__, __TIME__)` so sketches can supply their own build timestamp when recovering an RTC that lost power instead of receiving a cached library-build timestamp.
+- Added `setCompileTime(__DATE__, __TIME__)` so sketches can supply their own build timestamp, for quicker testing when needing to supply hypnos with current time.
 - Corrected timezone/DST handling, network-time result propagation, and zero-padded ISO timestamps.
 - Expanded SD sleep configuration parsing to accept root or nested `SleepInterval`, `sleepInterval`, and `sleep_interval` objects, tolerate a UTF-8 BOM, validate timezone values, and use a safe fallback for missing/invalid configuration.
 - Hardened SD filenames, CSV rows, and batch filenames against overflow. SD initialization, logging, and file-open results now report actual success.
