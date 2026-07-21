@@ -100,5 +100,5 @@ class Loom_Multiplexer : public Module {
     /**
      * Possible alternate addresses for the TCA9548
      */
-    const std::array<byte, 9> alt_addresses = {0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x78};
+    const std::array<byte, 9> alt_addresses = {0x71, 0x72, 0x73, 0x74, 0x75, 0x78};
 };
