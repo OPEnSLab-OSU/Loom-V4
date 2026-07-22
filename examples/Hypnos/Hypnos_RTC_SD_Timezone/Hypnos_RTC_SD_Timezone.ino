@@ -25,11 +25,12 @@ void setup() {
   // Start and wait for the user to open the Serial monitor
   manager.beginSerial();
 
-  // Load the Timezone before we enable the hypnos
+  // Enable the hypnos rails first
+  hypnos.enable();
+
+  // Load the Timezone after we enable the hypnos
   hypnos.getConfigFromSD("HypnosConfig.json");
 
-  // Enable the hypnos rails
-  hypnos.enable();
 }
 
 void loop() {
