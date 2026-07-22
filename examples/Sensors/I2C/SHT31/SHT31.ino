@@ -19,6 +19,7 @@ void setup() {
   // Start the serial interface
   manager.beginSerial();
 
+  // Enable hypnos for RTC
   hypnos.enable();
 
   // Initialize the manager
