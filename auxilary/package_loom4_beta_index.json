@@ -18,7 +18,7 @@
             "online": "https://github.com/OPEnSLab-OSU/Loom-V4/issues"
           },
           "url": "https://github.com/OPEnSLab-OSU/Loom-V4/releases/download/v4.9.1-beta.1/loom4_beta.zip",
-          "archiveFileName": "loom4.zip",
+          "archiveFileName": "loom4_beta.zip",
           "checksum": "SHA-256:e119b72fe3f66cbdb6b1134084d8d23cedfe1ffab12b9493e6363360079d0ad5",
           "size": "24625528",
           "boards": [
