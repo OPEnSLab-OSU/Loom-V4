@@ -10,12 +10,15 @@
 
 #include <Loom_Manager.h>
 
+#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Sensors/I2C/Loom_MS5803/Loom_MS5803.h>
 
 Manager manager("Device", 1);
 
-Loom_MS5803 ms_water(manager, 0x77, false); // MS5803 CSB pin tied to VCC i2c addr 0x77
-Loom_MS5803 ms_air(manager, 0x76, false); // MS5803 CSB pin tied to VCC i2c addr 0x76
+Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
+
+Loom_MS5803 ms_water(manager, 119, false); // MS5803 CSB pin tied to VCC i2c addr 0x77
+Loom_MS5803 ms_air(manager, 118, false); // MS5803 CSB pin tied to VCC i2c addr 0x76
 
 
 /* Calculate the water height based on the difference of pressures*/
@@ -28,6 +31,8 @@ void setup() {
 
   // Start the serial interface
   manager.beginSerial();
+
+  hypnos.enable();
 
   // Initialize the manager
   manager.initialize();
