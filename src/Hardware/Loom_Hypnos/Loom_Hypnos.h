@@ -125,7 +125,8 @@ class Loom_Hypnos : public Module {
      * @param enable33 whether or not to enable the 3.3v rails
      * @param enable5 whether or not to enable the 5v and 12v rails
      */
-    void enable(bool enable33 = true, bool enable5 = true);
+    void enable();
+    void enable(bool enable33, bool enable5 = true);
 
     /**
      * Apply the configured wake power-rail state immediately.
@@ -145,10 +146,10 @@ class Loom_Hypnos : public Module {
     void setSleepConfiguration(POWERRAIL_CONFIG config) { sleepModePowerConfig = config; };
 
     /**
-     * Set the configuration for the power rails when waking up from sleep
-     * @param config The configuration that we wish to perform when exiting sleep
+     * Set and immediately apply the power rail configuration used after waking.
+     * @param config The configuration to apply and retain for wake-up
      */
-    void setWakeConfiguration(POWERRAIL_CONFIG config) { wakeModePowerConfig = config; };
+    void setWakeConfiguration(POWERRAIL_CONFIG config);
 
     /* SD Functionality */
 
@@ -294,6 +295,8 @@ class Loom_Hypnos : public Module {
      * @param state The new state teh device is entering
      */
     bool is5VDisabled(DEVICE_STATE deviceState);
+
+    void setPowerRails(bool enable33, bool enable5);
 
     /* SD configuration */
     SDManager *sdMan = nullptr; // SD Manager

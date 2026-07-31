@@ -109,11 +109,26 @@ void Loom_Hypnos::package() {
 /* Power Rail Control Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::setPowerRails(bool enable33, bool enable5) {
+    digitalWrite(5, enable33 ? LOW : HIGH);
+    digitalWrite(6, enable5 ? HIGH : LOW);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::enable() {
+    const bool enable33 = !is3VDisabled(DEVICE_STATE::EXITING_SLEEP);
+    const bool enable5 = !is5VDisabled(DEVICE_STATE::EXITING_SLEEP);
+
+    enable(enable33, enable5);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::enable(bool enable33, bool enable5) {
 
-    // Enable the 3.3v and 5v rails on the Hypnos
-    digitalWrite(5, (enable33) ? LOW : HIGH);
-    digitalWrite(6, (enable5) ? HIGH : LOW);
+    // Enable the configured 3.3v and 5v rails on the Hypnos
+    setPowerRails(enable33, enable5);
     digitalWrite(LED_BUILTIN, HIGH);
 
     if (enableSD) {
@@ -134,19 +149,25 @@ void Loom_Hypnos::enable(bool enable33, bool enable5) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::setWakeConfiguration(POWERRAIL_CONFIG config) {
+    wakeModePowerConfig = config;
+    applyWakeConfiguration();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::applyWakeConfiguration() {
     const bool enable33 = !is3VDisabled(DEVICE_STATE::EXITING_SLEEP);
     const bool enable5 = !is5VDisabled(DEVICE_STATE::EXITING_SLEEP);
 
-    enable(enable33, enable5);
+    setPowerRails(enable33, enable5);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::disable(bool disable33, bool disable5) {
-    // Disable the 3.3v and 5v rails on the Hypnos
-    digitalWrite(5, (disable33) ? HIGH : LOW);
-    digitalWrite(6, (disable5) ? LOW : HIGH);
+    // Disable the configured 3.3v and 5v rails on the Hypnos
+    setPowerRails(!disable33, !disable5);
     digitalWrite(LED_BUILTIN, LOW);
 
     if (enableSD) {
@@ -796,7 +817,7 @@ void Loom_Hypnos::post_sleep(bool waitForSerial) {
         Serial.begin(115200);
         WD_TIMER_RESET;
 
-        applyWakeConfiguration();
+        enable();
         WD_TIMER_RESET;
         delay(1000);
         WD_TIMER_RESET;
