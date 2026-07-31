@@ -58,10 +58,14 @@ Loom_Hypnos::Loom_Hypnos(Manager &man, HYPNOS_VERSION version, TIME_ZONE zone, b
     : Module("Hypnos"), manInst(&man), sd_chip_select(version), enableSD(useSD), batch_size(0),
       custom_time(use_custom_time), timezone(zone) {
 
-    // Set the pins to write mode
-    pinMode(5, OUTPUT);           // 3.3v power rail
-    pinMode(6, OUTPUT);           // 5v power rail
-    pinMode(LED_BUILTIN, OUTPUT); // Status LED
+    // Establish both rails OFF before exposing the control pins as outputs.
+    digitalWrite(5, HIGH);
+    digitalWrite(6, LOW);
+    digitalWrite(LED_BUILTIN, LOW);
+
+    pinMode(5, OUTPUT);
+    pinMode(6, OUTPUT);
+    pinMode(LED_BUILTIN, OUTPUT);
 
     // Create the SD Manager if we want to use SD
     if (useSD) {
@@ -126,6 +130,15 @@ void Loom_Hypnos::enable(bool enable33, bool enable5) {
         initializeRTC();
 
     manInst->setEnableState(true);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::applyWakeConfiguration() {
+    const bool enable33 = !is3VDisabled(DEVICE_STATE::EXITING_SLEEP);
+    const bool enable5 = !is5VDisabled(DEVICE_STATE::EXITING_SLEEP);
+
+    enable(enable33, enable5);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -783,13 +796,7 @@ void Loom_Hypnos::post_sleep(bool waitForSerial) {
         Serial.begin(115200);
         WD_TIMER_RESET;
 
-        // Check if they are not disabled to see if they should be enabled
-        bool enable5 = !is5VDisabled(DEVICE_STATE::EXITING_SLEEP);
-        WD_TIMER_RESET;
-        bool enable33 = !is3VDisabled(DEVICE_STATE::EXITING_SLEEP);
-        WD_TIMER_RESET;
-
-        enable(enable33, enable5); // Checks if the 3.3v or 5v are disabled and re-enables them
+        applyWakeConfiguration();
         WD_TIMER_RESET;
         delay(1000);
         WD_TIMER_RESET;

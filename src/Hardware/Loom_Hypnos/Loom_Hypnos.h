@@ -128,6 +128,11 @@ class Loom_Hypnos : public Module {
     void enable(bool enable33 = true, bool enable5 = true);
 
     /**
+     * Apply the configured wake power-rail state immediately.
+     */
+    void applyWakeConfiguration();
+
+    /**
      * Disables the Hypnos Board
      * Disables the Power Rails and sets the SPI pins to INPUT which effectively disables them
      */
