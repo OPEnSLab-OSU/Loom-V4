@@ -5,7 +5,6 @@
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 
-
 #include <Loom_Manager.h>
 
 #include <Sensors/SPI/Loom_MAX318XX/Loom_MAX31865.h>
@@ -13,11 +12,11 @@
 
 Manager manager("Device", 1);
 
-// Reads the temperature
-Loom_MAX31865 max65(manager);
+Loom_MAX31865 max65(manager);   // Reads the temperature
 
-void setup() {
 
+void setup() 
+{
   // Start the serial interface
   manager.beginSerial();
 
@@ -25,7 +24,9 @@ void setup() {
   manager.initialize();
 }
 
-void loop() {
+
+void loop()
+{
   // put your main code here, to run repeatedly:
 
   // Measure the data from the sensors
