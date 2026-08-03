@@ -1,85 +1,105 @@
 #include <Loom_Manager.h>
 
 #include <BlockDriver.h>
+
 #include <FreeStack.h>
+
 #include <MinimumSerial.h>
+
 #include <SdFat.h>
+
 #include <SdFatConfig.h>
+
 #include <SysCall.h>
+
 #include <sdios.h>
 
 /**
  * In lab use case example for the SmartRock project
- * IN DEVELOPMENT CODE - MAY BE UNSTABLE
+ * HARDWARE DEPRECATED - This sensor is no longer supported on the current
+ * board profile. Use at your own risk.
  * This project uses a hypnos, an ADS1115 and a MS5803
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
+
 #include <Loom_Manager.h>
 
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
+
 #include <Sensors/I2C/Loom_ADS1115/Loom_ADS1115.h>
+
 #include <Sensors/I2C/Loom_MS5803/Loom_MS5803.h>
+
 #include <Sensors/Loom_Analog/Loom_Analog.h>
+
 #include <Sensors/I2C/Loom_VCNL4010/Loom_VCNL4010.h>
 
 //------------------------------------------------------------
 #include <Wire.h>
 //------------------------------------------------------------
 
+
 Manager manager("Data", 1);
 
-  // Create a new Hypnos object
-Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
+Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);      // Create a new Hypnos object
 
-  // Sensors to use
+/* Sensors to use */
 Loom_ADS1115 ads(manager);
+
 Loom_MS5803 ms(manager, 119);
+
 Loom_VCNL4010 vcnl(manager, 0x13, false);
 
 Loom_Analog analog(manager);
-struct EC_calibration {
+
+
+struct EC_calibration 
+{
   float intercept;
   float slope;
 };
 
 EC_calibration calib;
+
 TimeSpan sleepInterval;
 
 EC_calibration getCalibrationValsFromSD(const char* fileName);
 
-  // Called when the interrupt is triggered 
-void isrTrigger(){
+
+// Called when the interrupt is triggered 
+void isrTrigger()
+{
   hypnos.wakeup();
 }
 
-//************ Chris' Function Declares ************
 
+//************ Chris' Function Declares ************
 void take_data(float, float, int, int);
 float calculate_EC(float,float);
-
 //**************************************************
 
-void setup() {
 
+void setup() 
+{
     // Wait 20 seconds for the serial console to open
   manager.beginSerial();
 
-    // Enable the hypnos rails
+  // Enable the hypnos rails
   hypnos.enable();
+  
   manager.initialize();
 
-    // Gets sleep interval from SD card
+  // Gets sleep interval from SD card
   sleepInterval = hypnos.getConfigFromSD("SD_config.json");
-    // Register the ISR and attach to the interrupt
+  // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);
-
 }
 
-void loop() {
 
+void loop() 
+{
 //************************************* Chris' main ***************************************
-
     // EC_slope: EC calibration slope
     // EC_intercept: EC calibration y-intercept
     // count: Number of data points to take
@@ -104,8 +124,8 @@ void loop() {
   hypnos.sleep(false);
     
 //*****************************************************************************************
-
 }
+
 
 //************************************ Chris' Functions ***********************************
 
@@ -114,12 +134,14 @@ void loop() {
   // b: EC calibration y-intercept
   // count: Number of data points to take
   // interval: Time interval between data collection in milliseconds
-void take_data(float m, float b, int count, int interval){
+void take_data(float m, float b, int count, int interval)
+{
 
       //Troubleshooting print
     Serial.println("taking data");
     
-    for(int i = 0 ; i < count ; i++ ){
+    for(int i = 0 ; i < count ; i++ )
+    {
 
           // Measure and package the data
         manager.measure();
@@ -151,7 +173,8 @@ void take_data(float m, float b, int count, int interval){
     }
 }
 
-EC_calibration getCalibrationValsFromSD(const char* fileName){
+EC_calibration getCalibrationValsFromSD(const char* fileName)
+{
     (void) fileName;
     EC_calibration defaults = {0.0f, 1.0f};
     return defaults;
@@ -160,7 +183,8 @@ EC_calibration getCalibrationValsFromSD(const char* fileName){
   // calculaute_EC calculates the EC in uS/cm, can be set to remove outliars
   // m: EC calibration slope
   // b: EC calibration y-intercept
-float calculate_EC(float m, float b){
+float calculate_EC(float m, float b)
+{
 
       //Troubleshooting print
     Serial.print("calculating EC");
@@ -175,7 +199,8 @@ float calculate_EC(float m, float b){
     //Serial.print(EC);
 
       //remove values too low for OPAMP voltage threshold
-    if(curr <= 0 || volt <= 0){
+    if(curr <= 0 || volt <= 0)
+    {
           EC = 0;
     } 
     return EC;
