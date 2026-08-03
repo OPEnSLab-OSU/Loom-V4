@@ -12,17 +12,22 @@
 
 #include <Sensors/I2C/Loom_VCNL4020/Loom_VCNL4020.h>
 
+
 Manager manager("VCNL_Example", 1);
 
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 
 Loom_VCNL4020 vcnl(manager);
 
- void isrTrigger(){
+
+ void isrTrigger()
+ {
     hypnos.wakeup();
  }
+ 
 
- void setup() {
+ void setup() 
+ {
     // Manager begins serial communication at 115200 baud
     manager.beginSerial();
 
@@ -36,7 +41,9 @@ Loom_VCNL4020 vcnl(manager);
     hypnos.registerInterrupt(isrTrigger);
  }
 
- void loop() {
+
+ void loop() 
+ {
     // Measure Ambient Light Counts and Proximity
     manager.measure();
 
@@ -57,5 +64,4 @@ Loom_VCNL4020 vcnl(manager);
 
     // Put MCU to sleep until RTC alarm fires and wakes device up
     hypnos.sleep();
-
 }

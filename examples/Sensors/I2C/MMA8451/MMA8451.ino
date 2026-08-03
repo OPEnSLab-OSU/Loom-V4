@@ -4,28 +4,29 @@
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 
-
 #include <Loom_Manager.h>
 
 #include <Sensors/I2C/Loom_MMA8451/Loom_MMA8451.h>
 
-// CHANGE THIS TO WHATEVER PIN YOU HAVE THE MMA INTERRUPT CONNECTED TO
-#define INTERRUPT_PIN 10
+
+#define INTERRUPT_PIN 10    // CHANGE THIS TO WHATEVER PIN YOU HAVE THE MMA INTERRUPT CONNECTED TO
 
 volatile bool isrTriggered = false;
 
+
 Manager manager("Device", 1);
 
-// Reads the battery voltage
-// Manger Instance, Address, Range, Interrupt Pin, Interrupt Trigger Sensitivity 
+// Manger Instance,     Address, Range, Interrupt Pin, Interrupt Trigger Sensitivity 
 Loom_MMA8451 mma(manager, 0x1D, false, MMA8451_RANGE_2_G, INTERRUPT_PIN, 0x10);
 
-void ISR(){
+void ISR()
+{
   isrTriggered = true;
 }
 
-void setup() {
 
+void setup() 
+{
   // Start the serial interface
   manager.beginSerial();
 
@@ -36,10 +37,12 @@ void setup() {
   mma.setISR(ISR);
 }
 
-void loop() {
-  
+
+void loop() 
+{  
   // put your main code here, to run repeatedly:
-  if(isrTriggered){
+  if(isrTriggered)
+  {
     delay(5);
     Serial.println("Movement Detected!!");
   }

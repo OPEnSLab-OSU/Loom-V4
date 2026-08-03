@@ -3,25 +3,32 @@
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
-#include <Loom_Manager.h>
+
+ #include <Loom_Manager.h>
 
 #include <Radio/Loom_LoRa/Loom_LoRa.h>
+
 #include <Logger.h>
+
 
 Manager manager("Device", 0);
 
-// Create a new lora instance using the instance number as the address
-Loom_LoRa lora(manager);
+Loom_LoRa lora(manager);    // Create a new lora instance using the instance number as the address
 
-void setup() {
+
+void setup() 
+{
   manager.beginSerial();
+
   manager.initialize();
 }
 
-void loop() {
 
+void loop() 
+{
   // Wait 5 seconds for a message
-  if(lora.receive(5000)){
+  if(lora.receive(5000))
+  {
     manager.display_data();
   }
 }

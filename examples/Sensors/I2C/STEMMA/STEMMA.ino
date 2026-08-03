@@ -4,18 +4,18 @@
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 
-
 #include <Loom_Manager.h>
 
 #include <Sensors/I2C/Loom_STEMMA/Loom_STEMMA.h>
 
+
 Manager manager("Device", 1);
 
-// Reads the battery voltage
-Loom_STEMMA stemma(manager);
+Loom_STEMMA stemma(manager);    // Reads the battery voltage
 
-void setup() {
 
+void setup() 
+{
   // Start the serial interface
   manager.beginSerial();
 
@@ -23,7 +23,9 @@ void setup() {
   manager.initialize();
 }
 
-void loop() {
+
+void loop() 
+{
   // put your main code here, to run repeatedly:
 
   // Measure the data from the sensors
