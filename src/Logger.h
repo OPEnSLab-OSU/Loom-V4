@@ -10,9 +10,9 @@
 // relevant function.
 #define LOOM_LOGGER_JOIN_IMPL(a, b) a##b
 #define LOOM_LOGGER_JOIN(a, b) LOOM_LOGGER_JOIN_IMPL(a, b)
-#define INSTRUMENT()                                                                          \
-    FunctionInstrumentor LOOM_LOGGER_JOIN(_loomInstrumentor_, __LINE__)(__FILE__, __func__,   \
-                                                                          __LINE__);
+#define INSTRUMENT()                                                                               \
+    FunctionInstrumentor LOOM_LOGGER_JOIN(_loomInstrumentor_, __LINE__)(__FILE__, __func__,        \
+                                                                        __LINE__);
 
 // DEPRECATED - use INSTRUMENT
 #define FUNCTION_START INSTRUMENT()

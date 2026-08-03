@@ -22,7 +22,7 @@ void Loom_SEN55::power_up() {
     sen5x.begin(Wire);
     delay(1000);
     moduleInitialized = checkDeviceConnection();
-    if(!moduleInitialized)
+    if (!moduleInitialized)
         ERROR(F("SEN55 did not acknowledge after power-up."));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -110,9 +110,8 @@ void Loom_SEN55::measure() {
                 continue;
             }
 
-            readErr = sen5x.readMeasuredPmValues(Pm1p0, Pm2p5, Pm4p0, Pm10p0,
-                                                  numPm0p5, numPm1p0, numPm2p5,
-                                                  numPm4p0, numPm10p0, particleSize);
+            readErr = sen5x.readMeasuredPmValues(Pm1p0, Pm2p5, Pm4p0, Pm10p0, numPm0p5, numPm1p0,
+                                                 numPm2p5, numPm4p0, numPm10p0, particleSize);
             if (readErr) {
                 errorToString(readErr, sensorError, OUTPUT_SIZE);
                 snprintf(output, OUTPUT_SIZE, "Failed to read PM values: %s", sensorError);
@@ -169,7 +168,8 @@ void Loom_SEN55::measure() {
         readErr = sen5x.startMeasurementWithoutPm();
         if (readErr) {
             errorToString(readErr, sensorError, OUTPUT_SIZE);
-            snprintf(output, OUTPUT_SIZE, "Failed to switch to non-PM measurement: %s", sensorError);
+            snprintf(output, OUTPUT_SIZE, "Failed to switch to non-PM measurement: %s",
+                     sensorError);
             ERROR(output);
         }
         delay(60);

@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include "Arduino.h"
 #include <Adafruit_SleepyDog.h>
 #include <ArduinoJson.h>

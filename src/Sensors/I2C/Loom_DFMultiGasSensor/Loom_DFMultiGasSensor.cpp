@@ -138,8 +138,7 @@ bool Loom_DFMultiGasSensor::attemptConnectionToSensor() {
 
     /* Attempt a set number of times to initialize the sensor */
     for (uint8_t retryCount = 0; retryCount < retryLimit; retryCount++) {
-        LOGF("Attempting to connect to sensor... Attempt %u / %u ", retryCount + 1,
-             retryLimit);
+        LOGF("Attempting to connect to sensor... Attempt %u / %u ", retryCount + 1, retryLimit);
 
         // If we do successfully begin the sensor we want to stop the loop immediatly and move on to
         // the next part of initialization
@@ -153,8 +152,7 @@ bool Loom_DFMultiGasSensor::attemptConnectionToSensor() {
         // If we have reached the max number of retries, then we want to just stop and disable the
         // module
         if (retryCount == retryLimit - 1) {
-            ERRORF("Failed to connect to DFRobot Multi Gas Sensor after %u attempts. ",
-                   retryLimit);
+            ERRORF("Failed to connect to DFRobot Multi Gas Sensor after %u attempts. ", retryLimit);
             FUNCTION_END;
             return false;
         }
@@ -190,4 +188,3 @@ void Loom_DFMultiGasSensor::configureSensorProperties(DFRobot_GAS::eMethod_t aqu
     LOGF("Temp compensation set to %hs", gasCompMode == gasSensor.OFF ? "OFF" : "ON");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-

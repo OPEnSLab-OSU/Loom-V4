@@ -9,11 +9,11 @@
  */
 
 #if __has_include("Loom_LTE_Config.h")
-    #include "Loom_LTE_Config.h"
+#include "Loom_LTE_Config.h"
 #endif
 
 #if __has_include("arduino_secrets.h")
-    #include "arduino_secrets.h"
+#include "arduino_secrets.h"
 #endif
 
 /*
@@ -24,7 +24,7 @@
  * RESET_N, that LOW state is the asserted state.
  */
 #ifndef LOOM_LTE_R5_OPENS_CONTROL_ACTIVE_HIGH
-    #define LOOM_LTE_R5_OPENS_CONTROL_ACTIVE_HIGH 1
+#define LOOM_LTE_R5_OPENS_CONTROL_ACTIVE_HIGH 1
 #endif
 
 /*
@@ -34,19 +34,19 @@
  * width, releases A5 LOW, and then waits for the modem OS before sending AT.
  */
 #ifndef LOOM_LTE_R5_PWR_PULSE_MS
-    #define LOOM_LTE_R5_PWR_PULSE_MS 1200UL
+#define LOOM_LTE_R5_PWR_PULSE_MS 1200UL
 #endif
 
 #ifndef LOOM_LTE_R5_RESET_PULSE_MS
-    #define LOOM_LTE_R5_RESET_PULSE_MS 250UL
+#define LOOM_LTE_R5_RESET_PULSE_MS 250UL
 #endif
 
 #ifndef LOOM_LTE_R5_BOOT_AT_TIMEOUT_MS
-    #define LOOM_LTE_R5_BOOT_AT_TIMEOUT_MS 45000UL
+#define LOOM_LTE_R5_BOOT_AT_TIMEOUT_MS 45000UL
 #endif
 
 #ifndef LOOM_LTE_R5_POST_PWR_SETTLE_MS
-    #define LOOM_LTE_R5_POST_PWR_SETTLE_MS 10000UL
+#define LOOM_LTE_R5_POST_PWR_SETTLE_MS 10000UL
 #endif
 
 /*
@@ -57,7 +57,7 @@
  * Loom_LTE.cpp. Normal SARA-R5 bring-up uses 115200.
  */
 #ifndef LOOM_LTE_R5_UART_BAUD
-    #define LOOM_LTE_R5_UART_BAUD 115200UL
+#define LOOM_LTE_R5_UART_BAUD 115200UL
 #endif
 
 /*
@@ -67,19 +67,19 @@
  * Reset recovery and fallback baud probing are opt-in diagnostics.
  */
 #ifndef LOOM_LTE_R5_COMPAT_POWER_FIRST
-    #define LOOM_LTE_R5_COMPAT_POWER_FIRST 1
+#define LOOM_LTE_R5_COMPAT_POWER_FIRST 1
 #endif
 
 #ifndef LOOM_LTE_R5_EXACT_OPENS_POWER_PATH
-    #define LOOM_LTE_R5_EXACT_OPENS_POWER_PATH 1
+#define LOOM_LTE_R5_EXACT_OPENS_POWER_PATH 1
 #endif
 
 #ifndef LOOM_LTE_R5_ENABLE_RESET_RECOVERY
-    #define LOOM_LTE_R5_ENABLE_RESET_RECOVERY 0
+#define LOOM_LTE_R5_ENABLE_RESET_RECOVERY 0
 #endif
 
 #ifndef LOOM_LTE_R5_SCAN_BAUDS_ON_FAILURE
-    #define LOOM_LTE_R5_SCAN_BAUDS_ON_FAILURE 0
+#define LOOM_LTE_R5_SCAN_BAUDS_ON_FAILURE 0
 #endif
 
 /*
@@ -89,11 +89,11 @@
  * as "310410" can be configured for controlled AT&T tests.
  */
 #ifndef LOOM_LTE_R5_FORCE_OPERATOR_NUMERIC
-    #define LOOM_LTE_R5_FORCE_OPERATOR_NUMERIC ""
+#define LOOM_LTE_R5_FORCE_OPERATOR_NUMERIC ""
 #endif
 
 #ifndef LOOM_LTE_R5_FORCE_OPERATOR_ACT
-    #define LOOM_LTE_R5_FORCE_OPERATOR_ACT 7
+#define LOOM_LTE_R5_FORCE_OPERATOR_ACT 7
 #endif
 
 /*
@@ -104,28 +104,28 @@
  * to power the 3.3 V and 5 V rails directly.
  */
 #ifndef LOOM_LTE_R5_ENABLE_POWER_RAIL_PINS
-    #define LOOM_LTE_R5_ENABLE_POWER_RAIL_PINS 0
+#define LOOM_LTE_R5_ENABLE_POWER_RAIL_PINS 0
 #endif
 
 #ifndef LOOM_LTE_R5_3V3_RAIL_PIN
-    #define LOOM_LTE_R5_3V3_RAIL_PIN 5
+#define LOOM_LTE_R5_3V3_RAIL_PIN 5
 #endif
 
 #ifndef LOOM_LTE_R5_5V_RAIL_PIN
-    #define LOOM_LTE_R5_5V_RAIL_PIN 6
+#define LOOM_LTE_R5_5V_RAIL_PIN 6
 #endif
 
 #ifndef LOOM_LTE_R5_3V3_RAIL_ON_LEVEL
-    #define LOOM_LTE_R5_3V3_RAIL_ON_LEVEL LOW
+#define LOOM_LTE_R5_3V3_RAIL_ON_LEVEL LOW
 #endif
 
 #ifndef LOOM_LTE_R5_5V_RAIL_ON_LEVEL
-    #define LOOM_LTE_R5_5V_RAIL_ON_LEVEL HIGH
+#define LOOM_LTE_R5_5V_RAIL_ON_LEVEL HIGH
 #endif
 
-#include "Loom_Manager.h"
 #include "../NetworkComponent.h"
 #include "Loom_LTE_Modem.h"
+#include "Loom_Manager.h"
 #include <functional>
 
 #include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
@@ -133,15 +133,9 @@
 // The LTE modem is connected to the board's hardware Serial1 port.
 #define SerialAT Serial1
 
-enum LTE_VERSION{
-    SPARKFUN,
-    OPENS
-};
+enum LTE_VERSION { SPARKFUN, OPENS };
 
-enum class LTE_MODEM {
-    SARA_R4,
-    SARA_R5
-};
+enum class LTE_MODEM { SARA_R4, SARA_R5 };
 
 // Preserve the old library-wide define as a source-compatible constructor
 // default, but runtime selection is preferred for Arduino IDE sketches.
@@ -158,197 +152,192 @@ static constexpr LTE_MODEM LOOM_LTE_DEFAULT_MODEM = LTE_MODEM::SARA_R4;
  * registration, APN/PDP activation, socket verification, network diagnostics,
  * and direct UART passthrough for field debugging.
  */
-class Loom_LTE : public NetworkComponent{
-    protected:
-        void measure() override {};
+class Loom_LTE : public NetworkComponent {
+  protected:
+    void measure() override {};
 
-        bool isConnected() override { return modem->isGprsConnected(); };
+    bool isConnected() override { return modem->isGprsConnected(); };
 
-    public:
-        /**
-         * Construct a configured LTE instance from sketch-supplied credentials.
-         *
-         * @param man Reference to the Loom manager.
-         * @param apn Cellular APN. For Hologram this is usually "hologram".
-         * @param user APN username, usually empty for Hologram.
-         * @param pass APN password, usually empty for Hologram.
-         * @param powerPin Board-level pin that controls LTE PWR_ON.
-         * @param version Board power-control style.
-         * @param resetPin Optional board-level pin that controls LTE RESET_N. Use -1 to leave reset unused.
-         * @param modemType Runtime modem family. R4 is the compatibility default.
-         */
-        Loom_LTE(
-            Manager& man,
-            const char* apn,
-            const char* user,
-            const char* pass,
-            const int powerPin = A5,
-            LTE_VERSION version = SPARKFUN,
-            const int resetPin = -1,
-            LTE_MODEM modemType = LOOM_LTE_DEFAULT_MODEM
-        );
+  public:
+    /**
+     * Construct a configured LTE instance from sketch-supplied credentials.
+     *
+     * @param man Reference to the Loom manager.
+     * @param apn Cellular APN. For Hologram this is usually "hologram".
+     * @param user APN username, usually empty for Hologram.
+     * @param pass APN password, usually empty for Hologram.
+     * @param powerPin Board-level pin that controls LTE PWR_ON.
+     * @param version Board power-control style.
+     * @param resetPin Optional board-level pin that controls LTE RESET_N. Use -1 to leave reset
+     * unused.
+     * @param modemType Runtime modem family. R4 is the compatibility default.
+     */
+    Loom_LTE(Manager &man, const char *apn, const char *user, const char *pass,
+             const int powerPin = A5, LTE_VERSION version = SPARKFUN, const int resetPin = -1,
+             LTE_MODEM modemType = LOOM_LTE_DEFAULT_MODEM);
 
-        /**
-         * Construct an LTE instance whose credentials will be loaded later from
-         * SD-card JSON.
-         */
-        Loom_LTE(Manager& man, LTE_MODEM modemType = LOOM_LTE_DEFAULT_MODEM);
+    /**
+     * Construct an LTE instance whose credentials will be loaded later from
+     * SD-card JSON.
+     */
+    Loom_LTE(Manager &man, LTE_MODEM modemType = LOOM_LTE_DEFAULT_MODEM);
 
-        ~Loom_LTE() override;
+    ~Loom_LTE() override;
 
-        Loom_LTE(const Loom_LTE&) = delete;
-        Loom_LTE& operator=(const Loom_LTE&) = delete;
+    Loom_LTE(const Loom_LTE &) = delete;
+    Loom_LTE &operator=(const Loom_LTE &) = delete;
 
-        /**
-         * Boot the modem, verify AT/TinyGSM readiness, read modem identity, and
-         * open the cellular data session.
-         */
-        void initialize() override;
+    /**
+     * Boot the modem, verify AT/TinyGSM readiness, read modem identity, and
+     * open the cellular data session.
+     */
+    void initialize() override;
 
-        /**
-         * Apply board power sequencing and bring the modem to an AT-ready state.
-         * Carrier registration and APN/PDP activation are handled by connect().
-         */
-        void power_up() override;
+    /**
+     * Apply board power sequencing and bring the modem to an AT-ready state.
+     * Carrier registration and APN/PDP activation are handled by connect().
+     */
+    void power_up() override;
 
-        /**
-         * Request modem power-down when the module is initialized and active.
-         */
-        void power_down() override;
-        bool retryPowerUpWhenUninitialized() const override { return true; }
+    /**
+     * Request modem power-down when the module is initialized and active.
+     */
+    void power_down() override;
+    bool retryPowerUpWhenUninitialized() const override { return true; }
 
-        /**
-         * Add LTE signal quality to the Loom data package.
-         */
-        void package() override;
+    /**
+     * Add LTE signal quality to the Loom data package.
+     */
+    void package() override;
 
-        /**
-         * Read UTC network time from the modem while preserving the timezone
-         * supplied by Hypnos for its separate local-time packaging.
-         */
-        bool getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) override;
+    /**
+     * Read UTC network time from the modem while preserving the timezone
+     * supplied by Hypnos for its separate local-time packaging.
+     */
+    bool getNetworkTime(int *year, int *month, int *day, int *hour, int *minute, int *second,
+                        float *tz) override;
 
-        /**
-         * Load APN credentials and optional pin configuration from JSON.
-         *
-         * Expected credential keys:
-         * - apn
-         * - user
-         * - pass
-         *
-         * Optional pin keys:
-         * - pin
-         * - reset_pin
-         */
-        void loadConfigFromJSON(char* json);
+    /**
+     * Load APN credentials and optional pin configuration from JSON.
+     *
+     * Expected credential keys:
+     * - apn
+     * - user
+     * - pass
+     *
+     * Optional pin keys:
+     * - pin
+     * - reset_pin
+     */
+    void loadConfigFromJSON(char *json);
 
-        /**
-         * Attach a BatchSD module so LTE can remain off until the configured
-         * batch window requires upload.
-         */
-        void setBatchSD(Loom_BatchSD& batch) { batch_sd = &batch; };
+    /**
+     * Attach a BatchSD module so LTE can remain off until the configured
+     * batch window requires upload.
+     */
+    void setBatchSD(Loom_BatchSD &batch) { batch_sd = &batch; };
 
-        LTE_MODEM getModemType() const { return modemType; }
+    LTE_MODEM getModemType() const { return modemType; }
 
-        /**
-         * Register on the cellular network and activate the APN/PDP data session.
-         */
-        bool connect();
+    /**
+     * Register on the cellular network and activate the APN/PDP data session.
+     */
+    bool connect();
 
-        /**
-         * Disconnect the APN/PDP data session.
-         */
-        void disconnect();
+    /**
+     * Disconnect the APN/PDP data session.
+     */
+    void disconnect();
 
-        /**
-         * Open a real TCP socket to verify that the data session can route
-         * internet traffic.
-         */
-        bool verifyConnection();
+    /**
+     * Open a real TCP socket to verify that the data session can route
+     * internet traffic.
+     */
+    bool verifyConnection();
 
-        /**
-         * Bridge USB serial to the LTE UART for manual AT-command debugging.
-         * Call this from loop when the Serial Monitor should talk directly to the modem.
-         */
-        void debugPassthrough();
+    /**
+     * Bridge USB serial to the LTE UART for manual AT-command debugging.
+     * Call this from loop when the Serial Monitor should talk directly to the modem.
+     */
+    void debugPassthrough();
 
-        /**
-         * Return the TinyGSM client used by MQTT and other internet modules.
-         */
-        Client* getClient() override;
+    /**
+     * Return the TinyGSM client used by MQTT and other internet modules.
+     */
+    Client *getClient() override;
 
-        /**
-         * Request a modem poweroff, then run the normal power-up sequence again.
-         */
-        void restartModem() {
-            TIMER_RESET;
-            modem->poweroff();
-            delay(5000);
-            powered = false;
-            power_up();
-            TIMER_RESET;
-        };
+    /**
+     * Request a modem poweroff, then run the normal power-up sequence again.
+     */
+    void restartModem() {
+        TIMER_RESET;
+        modem->poweroff();
+        delay(5000);
+        powered = false;
+        power_up();
+        TIMER_RESET;
+    };
 
-        /**
-         * Convert an IPAddress into a dotted IPv4 string.
-         */
-        void ipToString(IPAddress ip, char array[16]) {
-            snprintf(array, 16, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
-        };
+    /**
+     * Convert an IPAddress into a dotted IPv4 string.
+     */
+    void ipToString(IPAddress ip, char array[16]) {
+        snprintf(array, 16, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+    };
 
-    private:
-        // Copy sketch or SD-card credentials into owned, null-terminated buffers.
-        void copyCredential(char* dst, const char* src, size_t dstSize);
+  private:
+    // Copy sketch or SD-card credentials into owned, null-terminated buffers.
+    void copyCredential(char *dst, const char *src, size_t dstSize);
 
-        bool isSaraR5() const { return modemType == LTE_MODEM::SARA_R5; }
+    bool isSaraR5() const { return modemType == LTE_MODEM::SARA_R5; }
 
-        // Board-level control pin helpers.
-        void driveControlPinIdle(int pin);
-        void driveControlPinActive(int pin);
-        void pulseControlPin(int pin, uint32_t pulseMs, const __FlashStringHelper* label);
-        void idlePowerPin();
-        void idleResetPin();
+    // Board-level control pin helpers.
+    void driveControlPinIdle(int pin);
+    void driveControlPinActive(int pin);
+    void pulseControlPin(int pin, uint32_t pulseMs, const __FlashStringHelper *label);
+    void idlePowerPin();
+    void idleResetPin();
 
-        // Board and modem bring-up.
-        void prepareOptionalPowerRails();
-        void powerBoardOn();
-        void powerBoardOff();
-        bool waitForModemAT(uint32_t timeoutMs);
-        bool selectWorkingBaud(uint32_t timeoutMs);
-        bool initializeModemFromAT();
-        bool bootModemWithRetries();
+    // Board and modem bring-up.
+    void prepareOptionalPowerRails();
+    void powerBoardOn();
+    void powerBoardOff();
+    bool waitForModemAT(uint32_t timeoutMs);
+    bool selectWorkingBaud(uint32_t timeoutMs);
+    bool initializeModemFromAT();
+    bool bootModemWithRetries();
 
-        // Raw AT helpers and R5 setup hints.
-        bool sendATExpectOK(const char* command, uint32_t timeoutMs = 5000L);
-        void applyR5NetworkHints();
+    // Raw AT helpers and R5 setup hints.
+    bool sendATExpectOK(const char *command, uint32_t timeoutMs = 5000L);
+    void applyR5NetworkHints();
 
-        // Human-readable diagnostics for field logs.
-        void logBootChecklist();
-        void logPlainFailure(const __FlashStringHelper* message);
-        void logNetworkDiagnostics();
-        void logSignalDiagnostic();
-        void logSimDiagnostic();
-        void logRegistrationDiagnostic();
-        void logRawAT(const char* command, uint32_t timeoutMs = 3000L);
+    // Human-readable diagnostics for field logs.
+    void logBootChecklist();
+    void logPlainFailure(const __FlashStringHelper *message);
+    void logNetworkDiagnostics();
+    void logSignalDiagnostic();
+    void logSimDiagnostic();
+    void logRegistrationDiagnostic();
+    void logRawAT(const char *command, uint32_t timeoutMs = 3000L);
 
-        LTE_VERSION lteBoardVersion = SPARKFUN;
-        LTE_MODEM modemType = LTE_MODEM::SARA_R4;
+    LTE_VERSION lteBoardVersion = SPARKFUN;
+    LTE_MODEM modemType = LTE_MODEM::SARA_R4;
 
-        Manager* manInst;
+    Manager *manInst;
 
-        char APN[100];
-        char gprsUser[100];
-        char gprsPass[100];
+    char APN[100];
+    char gprsUser[100];
+    char gprsPass[100];
 
-        int powerPin = A5;
-        int resetPin = -1;
-        uint32_t selectedBaud = 9600UL;
+    int powerPin = A5;
+    int resetPin = -1;
+    uint32_t selectedBaud = 9600UL;
 
-        Loom_LTE_Modem* modem = nullptr;
+    Loom_LTE_Modem *modem = nullptr;
 
-        bool powerUp = true;
-        bool firstInit = true;
-        Loom_BatchSD* batch_sd = nullptr;
+    bool powerUp = true;
+    bool firstInit = true;
+    Loom_BatchSD *batch_sd = nullptr;
 
-        bool powered = false;
+    bool powered = false;
 };

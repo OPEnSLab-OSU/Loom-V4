@@ -43,8 +43,7 @@ void Loom_ADS1115::initialize() {
             Wire.beginTransmission(candidate);
             if (Wire.endTransmission() == 0) {
                 WARNINGF("ADS1115 did not answer at 0x%02X; using responding address 0x%02X.",
-                         static_cast<unsigned>(i2c_address),
-                         static_cast<unsigned>(candidate));
+                         static_cast<unsigned>(i2c_address), static_cast<unsigned>(candidate));
                 i2c_address = candidate;
                 module_address = candidate;
                 i2cStatus = 0;

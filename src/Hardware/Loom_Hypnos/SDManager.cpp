@@ -27,7 +27,8 @@ void copyBounded(char *destination, size_t destinationSize, const char *source,
 
     size_t index = 0;
     if (source != nullptr) {
-        while (index < destinationSize - 1 && index < maxSourceCharacters && source[index] != '\0') {
+        while (index < destinationSize - 1 && index < maxSourceCharacters &&
+               source[index] != '\0') {
             destination[index] = source[index];
             ++index;
         }

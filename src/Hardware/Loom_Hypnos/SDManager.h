@@ -141,7 +141,7 @@ class SDManager : public Module {
     int current_batch = 0; // Current count of the batch
     int file_count = 0;    // What file number are we logging to
 
-    bool sdInitialized = false;  // Whether the card is reachable for the current operation
+    bool sdInitialized = false;   // Whether the card is reachable for the current operation
     bool logFileSelected = false; // Whether this MCU boot session already chose its CSV filename
     char
         *headers[2]; // Contains the main and sub headers that are added to the top of the CSV files

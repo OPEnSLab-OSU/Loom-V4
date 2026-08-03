@@ -83,8 +83,7 @@ class Loom_Analog : public Module {
      * @param man Reference to the manager
      * @param firstPin First analog pin we want to read from
      */
-    template <typename T>
-    Loom_Analog(Manager &man, T firstPin) : Module("Analog"), manInst(&man) {
+    template <typename T> Loom_Analog(Manager &man, T firstPin) : Module("Analog"), manInst(&man) {
         analogReadResolution(adcResolutionBits);
         pinMappings.push_back(new AnalogMapping(firstPin, pinNumberToName(firstPin), 0, 0));
         const float batteryVoltage = readBatteryVoltage();
@@ -112,13 +111,12 @@ class Loom_Analog : public Module {
     /**
      * Get the current voltage of the battery
      */
-    static float getBatteryVoltage(
-        int batteryPin = LOOM_ANALOG_BATTERY_PIN,
-        uint8_t resolutionBits = LOOM_ANALOG_ADC_RESOLUTION_BITS,
-        float referenceVoltage = LOOM_ANALOG_ADC_REFERENCE_VOLTAGE,
-        float dividerScale = LOOM_ANALOG_BATTERY_DIVIDER_SCALE,
-        uint8_t sampleCount = LOOM_ANALOG_BATTERY_SAMPLE_COUNT,
-        uint32_t maxReading = LOOM_ANALOG_ADC_MAX_READING);
+    static float getBatteryVoltage(int batteryPin = LOOM_ANALOG_BATTERY_PIN,
+                                   uint8_t resolutionBits = LOOM_ANALOG_ADC_RESOLUTION_BITS,
+                                   float referenceVoltage = LOOM_ANALOG_ADC_REFERENCE_VOLTAGE,
+                                   float dividerScale = LOOM_ANALOG_BATTERY_DIVIDER_SCALE,
+                                   uint8_t sampleCount = LOOM_ANALOG_BATTERY_SAMPLE_COUNT,
+                                   uint32_t maxReading = LOOM_ANALOG_ADC_MAX_READING);
 
     /**
      * Get the Millivolts of a specified pin
@@ -149,7 +147,7 @@ class Loom_Analog : public Module {
         return get_variadic_parameters(args...);
     };
 
-    float analogToMV(int analog);   // Convert the analog voltage to mV
+    float analogToMV(int analog); // Convert the analog voltage to mV
     float readBatteryVoltage() const;
     char *pinNumberToName(int pin); // Convert the given to a name with the style "A0"
 

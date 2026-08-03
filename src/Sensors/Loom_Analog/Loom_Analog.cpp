@@ -42,9 +42,8 @@ void Loom_Analog::package() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-float Loom_Analog::getBatteryVoltage(int batteryPin, uint8_t resolutionBits,
-                                     float referenceVoltage, float dividerScale,
-                                     uint8_t sampleCount, uint32_t maxReading) {
+float Loom_Analog::getBatteryVoltage(int batteryPin, uint8_t resolutionBits, float referenceVoltage,
+                                     float dividerScale, uint8_t sampleCount, uint32_t maxReading) {
     if (sampleCount == 0 || maxReading == 0) {
         return 0.0f;
     }

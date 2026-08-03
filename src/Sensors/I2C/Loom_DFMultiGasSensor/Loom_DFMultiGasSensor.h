@@ -74,4 +74,3 @@ class Loom_DFMultiGasSensor : public I2CDevice {
     float currentConcentration = 0.0f;
     float currentTemperature = 0.0f;
 };
-

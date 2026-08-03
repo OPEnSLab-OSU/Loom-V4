@@ -38,8 +38,7 @@ DateTime compileLocalTime(const char *buildDate, const char *buildTime) {
 }
 
 bool timezoneUsesDST(TIME_ZONE zone) {
-    return zone == AST || zone == EST || zone == CST || zone == MST || zone == PST ||
-           zone == AKST;
+    return zone == AST || zone == EST || zone == CST || zone == MST || zone == PST || zone == AKST;
 }
 
 DateTime compileUtcTime(TIME_ZONE zone, const char *buildDate, const char *buildTime) {
@@ -311,8 +310,8 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin) {
         // it has not elapsed, recover a stale alarm flag before attaching. The
         // previous behavior returned success without attaching anything, which
         // allowed sleep() to enter standby with no usable wake source.
-        const bool alarmElapsed = RTC_initialized && alarmScheduled &&
-                                  alarmTime.unixtime() <= RTC_DS.now().unixtime();
+        const bool alarmElapsed =
+            RTC_initialized && alarmScheduled && alarmTime.unixtime() <= RTC_DS.now().unixtime();
         if (alarmElapsed) {
             LOG(F("RTC alarm is already active; deferring callback to the sleep overrun handler."));
             FUNCTION_END;
@@ -325,7 +324,8 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin) {
         clearPendingExternalInterrupt(interruptPin);
         delay(2);
         if (digitalRead(interruptPin) == LOW) {
-            ERROR(F("RTC INT remained LOW after clearing alarm state; wake interrupt was not attached."));
+            ERROR(F("RTC INT remained LOW after clearing alarm state; wake interrupt was not "
+                    "attached."));
             FUNCTION_END;
             return false;
         }
@@ -334,8 +334,8 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin) {
     clearPendingExternalInterrupt(interruptPin);
     if (interruptType != SLEEP) {
 
-        attachInterrupt(digitalPinToInterrupt(interruptPin),
-                        std::get<0>(registered->second), std::get<1>(registered->second));
+        attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(registered->second),
+                        std::get<1>(registered->second));
     } else {
         LowPower.attachInterruptWakeup(interruptPin, std::get<0>(registered->second),
                                        std::get<1>(registered->second));
@@ -517,8 +517,8 @@ void Loom_Hypnos::dateTime_toString(DateTime time, char array[21], bool isLocal)
     const unsigned int second = static_cast<unsigned int>(time.second() % 100);
 
     if (isLocal) {
-        snprintf_P(array, 21, PSTR("%04u-%02u-%02uT%02u:%02u:%02u"), year, month, day, hour,
-                   minute, second);
+        snprintf_P(array, 21, PSTR("%04u-%02u-%02uT%02u:%02u:%02u"), year, month, day, hour, minute,
+                   second);
     } else {
         snprintf_P(array, 21, PSTR("%04u-%02u-%02uT%02u:%02u:%02uZ"), year, month, day, hour,
                    minute, second);
@@ -662,7 +662,8 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration) {
         RTC_DS.disableAlarm(1);
         RTC_DS.clearAlarm(1);
         alarmScheduled = false;
-        ERROR(F("RTC alarm readback did not match the requested wake time; sleep will be aborted."));
+        ERROR(
+            F("RTC alarm readback did not match the requested wake time; sleep will be aborted."));
         FUNCTION_END;
         return;
     }
@@ -786,8 +787,7 @@ bool Loom_Hypnos::pre_sleep() {
     }
 
     if (sleepInterruptPin == 12 && digitalRead(sleepInterruptPin) == LOW) {
-        if (RTC_initialized && alarmScheduled &&
-            alarmTime.unixtime() <= RTC_DS.now().unixtime()) {
+        if (RTC_initialized && alarmScheduled && alarmTime.unixtime() <= RTC_DS.now().unixtime()) {
             WARNING(F("RTC alarm became active during pre-sleep preparation; skipping standby."));
         } else {
             ERROR(F("RTC INT is LOW before its scheduled time; refusing to enter standby."));
@@ -874,8 +874,8 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char *fileName) {
 
     char *jsonStart = fileRead;
     const size_t fileLength = strlen(fileRead);
-    if (fileLength >= 3 && (uint8_t)fileRead[0] == 0xEF &&
-        (uint8_t)fileRead[1] == 0xBB && (uint8_t)fileRead[2] == 0xBF)
+    if (fileLength >= 3 && (uint8_t)fileRead[0] == 0xEF && (uint8_t)fileRead[1] == 0xBB &&
+        (uint8_t)fileRead[2] == 0xBF)
         jsonStart += 3;
 
     // Mutable input enables zero-copy parsing, so fileRead remains alive until
@@ -1008,9 +1008,8 @@ bool Loom_Hypnos::checkVoltage(float vmin, int analogPin, float scale, bool mv, 
 
         if (analogPin == LOOM_ANALOG_BATTERY_PIN) {
             voltage = Loom_Analog::getBatteryVoltage(
-                analogPin, LOOM_ANALOG_ADC_RESOLUTION_BITS,
-                LOOM_ANALOG_ADC_REFERENCE_VOLTAGE, scale,
-                LOOM_ANALOG_BATTERY_SAMPLE_COUNT, LOOM_ANALOG_ADC_MAX_READING);
+                analogPin, LOOM_ANALOG_ADC_RESOLUTION_BITS, LOOM_ANALOG_ADC_REFERENCE_VOLTAGE,
+                scale, LOOM_ANALOG_BATTERY_SAMPLE_COUNT, LOOM_ANALOG_ADC_MAX_READING);
         } else {
             float pin_reading = analogRead(analogPin);
             pin_reading *= scale;
