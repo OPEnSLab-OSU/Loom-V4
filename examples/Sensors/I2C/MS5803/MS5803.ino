@@ -12,15 +12,13 @@
 
 #include <Sensors/I2C/Loom_MS5803/Loom_MS5803.h>
 
-
 Manager manager("Device", 1);
 
 // Manager Instance,      Address, useMux
-Loom_MS5803 ms03(manager, 0x77, false);   // MS5803 CSB pin tied to VCC i2c addr 0x76
+Loom_MS5803 ms03(manager, 0x77, false); // MS5803 CSB pin tied to VCC i2c addr 0x76
 
+void setup() {
 
-void setup() 
-{
   // Start the serial interface
   manager.beginSerial();
 
@@ -29,9 +27,7 @@ void setup()
   
 }
 
-
-void loop() 
-{
+void loop() {
   // Put your main code here, to run repeatedly:
 
   // Measure and package the data from the sensors
@@ -44,5 +40,6 @@ void loop()
   manager.display_data();  
 
   // Wait for 2 seconds
-  manager.pause(2000);    
+  manager.pause(2000);  
+  
 }

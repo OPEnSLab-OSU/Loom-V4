@@ -3,19 +3,16 @@
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
-
 #include <Loom_Manager.h>
 
 #include <Sensors/Analog/Loom_Teros10/Loom_Teros10.h>
-
 
 Manager manager("Device", 1);
 
 Loom_Teros10 teros(manager, A0);
 
+void setup() {
 
-void setup() 
-{
   // Start the serial interface
   manager.beginSerial();
 
@@ -23,9 +20,7 @@ void setup()
   manager.initialize();
 }
 
-
-void loop() 
-{
+void loop() {
   // put your main code here, to run repeatedly:
 
   // Measure the data from the sensors

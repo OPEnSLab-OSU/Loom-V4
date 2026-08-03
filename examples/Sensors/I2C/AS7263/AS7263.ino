@@ -9,15 +9,14 @@
 
 #include <Sensors/I2C/Loom_AS7263/Loom_AS7263.h>
 
-
 Manager manager("Device", 1);
 
+// Reads the battery voltage
 // Manager Instance, useMux, Address, Gain, Mode, Integration Time
 Loom_AS7263 as63(manager, false, 0x49, 1, 3, 50);
 
+void setup() {
 
-void setup() 
-{
   // Start the serial interface
   manager.beginSerial();
 
@@ -25,8 +24,7 @@ void setup()
   manager.initialize();
 }
 
-void loop() 
-{
+void loop() {
   // put your main code here, to run repeatedly:
 
   // Measure the data from the sensors

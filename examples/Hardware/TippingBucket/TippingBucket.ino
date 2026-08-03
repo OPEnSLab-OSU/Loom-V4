@@ -5,12 +5,11 @@
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 
+
 #include <Loom_Manager.h>
 
 #include <Hardware/Loom_TippingBucket/Loom_TippingBucket.h>
-
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
-
 
 Manager manager("Device", 1);
 
@@ -23,25 +22,20 @@ Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 // (This one uses an interrupt) Manger Instance, Interrupt Pin, Inches of rainfall per tip (WIP)
 Loom_TippingBucket bucket(manager, COUNTER_TYPE::MANUAL, 0.01f);
 
-
 // Pin to have the secondary interrupt triggered from
 #define INT_PIN A0
 
 volatile bool tipFlag = false;
 
-
-void tipTrigger() 
-{
+void tipTrigger() {
   hypnos.shouldPowerUp = false;
-
   tipFlag = true;
-
   detachInterrupt(INT_PIN);
 }
 
 
-void setup() 
-{
+void setup() {
+
   // Start the serial interface and wait for the user to open the serial monitor
   manager.beginSerial();
 
@@ -57,9 +51,7 @@ void setup()
   attachInterrupt(INT_PIN, tipTrigger, FALLING);
 }
 
-
-void loop() 
-{
+void loop() {
   // Measure the data from the sensors
   manager.measure();
 
@@ -73,20 +65,14 @@ void loop()
   manager.pause(500);
 
   // Log tip if the flag was set to true through an interrupt
-  if (tipFlag)
-  {
+  if(tipFlag){
     digitalWrite(LED_BUILTIN, LOW);
-  
     delay(50);
-  
     bucket.incrementCount();
-  
     tipFlag = false;
-  
     attachInterrupt(INT_PIN, tipTrigger, FALLING);
-  
     attachInterrupt(INT_PIN, tipTrigger, FALLING);
-  
     digitalWrite(LED_BUILTIN, HIGH);
   }
+
 }

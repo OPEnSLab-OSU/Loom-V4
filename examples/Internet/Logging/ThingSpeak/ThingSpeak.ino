@@ -9,7 +9,6 @@
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
-
 #include "arduino_secrets.h"
 
 #include <Loom_Manager.h>
@@ -19,7 +18,6 @@
 //#include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
 
 #include <Internet/Logging/Loom_ThingSpeak/Loom_ThingSpeak.h>
-
 
 Manager manager("Device", 1);
 
@@ -33,21 +31,15 @@ Loom_ThingSpeak thingspeak(manager, wifi, CHANNEL_ID, CLIENT_ID, BROKER_USER, BR
 // LTE
 //Loom_ThingSpeak mqtt(manager, lte, CHANNEL_ID, CLIENT_ID, BROKER_USER, BROKER_PASS);
 
-
-float exampleNoParam() 
-{
+float exampleNoParam() {
     return 45.6;
 }
 
-
-float exampleParam(int param) 
-{
+float exampleParam(int param) {
     return 75 + param;
 }
 
-
-void setup() 
-{
+void setup() {
     manager.beginSerial();
 
     // Populates field 1 with the return value of exampleNoParam
@@ -64,12 +56,9 @@ void setup()
     manager.initialize();
 }
 
-
-void loop() 
-{
+void loop() {
     /* Measure, package display, publish */
     manager.measure();
-
     manager.package();
 
     manager.display_data();

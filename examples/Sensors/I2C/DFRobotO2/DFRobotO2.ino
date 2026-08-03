@@ -4,18 +4,18 @@
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 
+
  #include <Loom_Manager.h>
 
  #include <Sensors/I2C/Loom_DFRobotO2/Loom_DFRobotO2.h>
-
  
  Manager manager("Device", 1);
  
- Loom_DFRobotO2 oxygen(manager);    // Initialize the DFRobotO2 Sensor
+ // Initialize the DFRobotO2 Sensor
+ Loom_DFRobotO2 oxygen(manager);
  
-
- void setup() 
- {
+ void setup() {
+ 
    // Start the serial interface
    manager.beginSerial();
  
@@ -40,8 +40,7 @@
 
  }
  
- void loop() 
- {
+ void loop() {
    // put your main code here, to run repeatedly:
  
    // Measure the data from the sensors

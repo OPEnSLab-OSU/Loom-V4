@@ -16,27 +16,23 @@ Manager manager("Device", 1);
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 
 
-void setup() 
-{
+void setup() {
+
   manager.beginSerial();
   
   // Enable the hypnos rails
   hypnos.enable();
 
   manager.addData("Test", "Test1", 31);
- 
   manager.addData("Test", "Test2", 34);
 
   manager.display_data();
   
   // Log to the SD card twice and then lay dormant
   hypnos.logToSD();
- 
   hypnos.logToSD();
 }
 
-
-void loop() 
-{
+void loop() {
   
 }

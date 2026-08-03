@@ -3,26 +3,21 @@
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
-
 #include <Loom_Manager.h>
 
 #include <Radio/Loom_LoRa/Loom_LoRa.h>
 
-
 Manager manager("Device", 1);
 
-Loom_LoRa lora(manager);    // Do we want to use the instance number as the LoRa address
+// Do we want to use the instance number as the LoRa address
+Loom_LoRa lora(manager);
 
-
-void setup() 
-{
+void setup() {
   manager.beginSerial();
   manager.initialize();
 }
 
-
-void loop() 
-{
+void loop() {
   manager.package();
   manager.display_data();
 

@@ -3,35 +3,26 @@
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
-
 #include "arduino_secrets.h"
 
 #include <Loom_Manager.h>
 
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
-
 #include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
-
 #include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h>
-
-#include <Sensors/Loom_Analog/Loom_Analog.h>
-
 
 Manager manager("Device", 1);
 
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 
 Loom_WIFI wifi(manager, CommunicationMode::CLIENT, SECRET_SSID, SECRET_PASS);
-
 Loom_MongoDB mqtt(manager, wifi, SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS, PROJECT);
 
-Loom_BatchSD batchSD(hypnos, 15);   // Enables batch logging with a batch size of 15
+// Enables batch logging with a batch size of 15
+Loom_BatchSD batchSD(hypnos, 15);
 
-Loom_Analog analog(manager);    // Enables read for battery voltage
+void setup() {
 
-
-void setup() 
-{
   // Start serial
   manager.beginSerial();
 
@@ -45,9 +36,7 @@ void setup()
   manager.initialize();
 }
 
-
-void loop() 
-{
+void loop() {
   // Package data
   manager.package();
 

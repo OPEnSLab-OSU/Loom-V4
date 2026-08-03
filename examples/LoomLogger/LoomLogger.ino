@@ -4,12 +4,11 @@
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 
-#include <Loom_Manager.h>
 
+#include <Loom_Manager.h>
 #include <Logger.h>
 
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
-
 
 Manager manager("Device", 1);
 
@@ -19,8 +18,7 @@ Manager manager("Device", 1);
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 
 
-void setup() 
-{
+void setup() {
     // Start the serial interface and wait for the user to open the serial monitor
     manager.beginSerial();
 
@@ -35,11 +33,11 @@ void setup()
 
     // Initialize the manager
     manager.initialize();
+
 }
 
-
-void loop() 
-{
+void loop() {
+    
     // Example log
     LOG("Measure the sensors!");
 
