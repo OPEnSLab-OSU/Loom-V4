@@ -6,13 +6,12 @@
 
 #include <Loom_Manager.h>
 
-// Loom Modules
-
 #include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
 
 //#include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
 
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
+
 
 Manager manager("Device", 1);
 
@@ -26,8 +25,9 @@ Loom_WIFI wifi(manager, CommunicationMode::CLIENT, "OSU_Access", "");
 // LTE
 //Loom_LTE lte(manager, "hologram", "", "");
 
-void setup() {
 
+void setup() 
+{
   manager.beginSerial();
 
   hypnos.enable();
@@ -38,13 +38,15 @@ void setup() {
   //Using LTE
   //hypnos.setNetworkInterface(&lte);
   
-
   manager.initialize();
 
   hypnos.networkTimeUpdate();
 }
 
-void loop() {
+
+void loop() 
+{
   manager.pause(5000);
+
   hypnos.networkTimeUpdate();
 }

@@ -8,6 +8,7 @@
 
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 
+
 Manager manager("Device", 1);
 
 // Create a new Hypnos object setting the version to determine the SD Chip select pin
@@ -15,15 +16,17 @@ Manager manager("Device", 1);
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, true, false);
 
 
-void setup() {
-
+void setup() 
+{
   manager.beginSerial();
   
   // Enable the hypnos rails
   hypnos.enable();
 }
 
-void loop() {
+
+void loop() 
+{
   manager.package();
 
   manager.display_data();
