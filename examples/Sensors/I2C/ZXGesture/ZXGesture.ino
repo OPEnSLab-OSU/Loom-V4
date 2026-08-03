@@ -2,9 +2,11 @@
  * Temperature Readings using teh MAX31865 sensor
  * Pass in a variable number of arguments to the construct to designate the number of samples and which pin you're using
  * 
+ * HARDWARE DEPRECATED - This sensor is no longer supported on the current
+ * board profile. Use at your own risk.
+ * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
-
 
 #include <Loom_Manager.h>
 
@@ -16,8 +18,9 @@ Manager manager("Device", 1);
 // Gets gestures from sensor
 Loom_ZXGesture zx(manager);
 
-void setup() {
 
+void setup() 
+{
   // Start the serial interface
   manager.beginSerial();
 
@@ -32,10 +35,10 @@ void setup() {
 
   // Print the JSON document to the Serial monitor
   manager.display_data();
-
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
 
+void loop() 
+{
+  // put your main code here, to run repeatedly:
 }
