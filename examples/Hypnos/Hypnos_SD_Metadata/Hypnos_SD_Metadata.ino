@@ -20,7 +20,7 @@ Loom_Analog analog(manager);    // Analog for reading battery voltage
 
 Loom_LTE lte(manager, "hologram","","");
 
-//Loom_WIFI wifi(manager, CommunicationMode::CLIENT, "Kuti", "kuti101!");
+//Loom_WIFI wifi(manager, CommunicationMode::CLIENT, "OSU_Access", "");
 
 Loom_MongoDB mqtt(manager, lte);
 
