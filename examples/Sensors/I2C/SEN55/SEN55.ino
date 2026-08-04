@@ -3,16 +3,20 @@
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
+
 #include <Loom_Manager.h>
 
 #include <Sensors/I2C/Loom_SEN55/Loom_SEN55.h>
 
+
 Manager manager("Device", 1);
-// Manager Reference, Whether or not we should measure particulate matter or nor
-Loom_SEN55 sen55(manager, true);
 
-void setup() {
+Loom_SEN55 sen55(manager, true);    // Manager Reference, Whether or not we should measure particulate matter or not
 
+
+
+void setup() 
+{
   // Start the serial interface
   manager.beginSerial();
 
@@ -20,7 +24,9 @@ void setup() {
   manager.initialize();
 }
 
-void loop() {
+
+void loop() 
+{
   // Measure the data from the sensors
   manager.measure();
 

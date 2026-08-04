@@ -4,15 +4,15 @@
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 
-
 #include <Loom_Manager.h>
 
 #include <Hardware/Loom_Multiplexer/Loom_Multiplexer.h>
 
+
 Manager manager("Device", 1);
 
-// Reads the battery voltage
-Loom_Multiplexer mux(manager);
+Loom_Multiplexer mux(manager);    // Reads the battery voltage
+
 
 void setup() {
 
@@ -22,6 +22,7 @@ void setup() {
   // Initialize the manager
   manager.initialize();
 }
+
 
 void loop() {
   // put your main code here, to run repeatedly:

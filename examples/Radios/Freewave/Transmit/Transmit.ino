@@ -3,23 +3,29 @@
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
+
 #include <Loom_Manager.h>
 
 #include <Radio/Loom_Freewave/Loom_Freewave.h>
 
+
 Manager manager("Device", 1);
 
-// Do we want to use the instance number as the LoRa address
-Loom_Freewave fw(manager);
+Loom_Freewave fw(manager);    // Do we want to use the instance number as the LoRa address
 
-void setup() {
 
+void setup() 
+{
   manager.beginSerial();
+
   manager.initialize();
 }
 
-void loop() {
+
+void loop() 
+{
   manager.package();
+
   manager.display_data();
 
   // Send the current JSON document to address 1
