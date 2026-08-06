@@ -93,6 +93,7 @@ class Loom_Multiplexer : public Module{
 			0x49, ///< AS726X / AS7265X
 			0x68, ///< K30
 			0x69, ///< SEN55
+			0x6B, ///< SEN66
 			0x70, ///< MB1232
 			0x74, ///< DFMultiGasSensor
 			0x76, ///< MS5803
