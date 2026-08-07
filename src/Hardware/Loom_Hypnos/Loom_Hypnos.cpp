@@ -327,31 +327,33 @@ DateTime Loom_Hypnos::getCurrentTime() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::networkTimeUpdate() {
     FUNCTION_START;
-    if (networkComponent != nullptr && networkComponent->isConnected()) {
-        char output[OUTPUT_SIZE];
-        int year, month, day, hour, minute, second = 0;
-        float tz = 0;
-
-        /* Try twice to set the time if it works break out if not we just og again*/
-        for (int i = 0; i < 2; i++) {
-            LOG("Attempting to set RTC time to the current network time...");
-
-            // Attempt to retrieve the current time from our network component
-            if (networkComponent->getNetworkTime(&year, &month, &day, &hour, &minute, &second,
-                                                 &tz)) {
-                RTC_DS.adjust(DateTime(year, month, day, hour, minute, second));
-                DateTime t = getCurrentTime();
-                char tbuf[21];
-                dateTime_toString(t, tbuf);
-                snprintf(output, OUTPUT_SIZE, "Network time successfully set to: %s", tbuf);
-                LOG(output);
-                break;
-            } else {
-                ERROR("Failed to get network time! Time has not been set. Retrying...");
-            }
-        }
-    } else {
+    if (networkComponent == nullptr || !networkComponent->isConnected()) {
         ERROR("Network component not set in hypnos or component wasn't connected to the internet.");
+        return;
+    }
+
+    int year, month, day, hour, minute, second = 0;
+    float tz = 0;
+
+    /* Try twice to set the time if it works break out if not we just go again */
+    for (int i = 0; i < 2; i++) {
+        LOG("Attempting to set RTC time to the current network time...");
+
+        // Attempt to retrieve the current time from our network component
+        if (!networkComponent->getNetworkTime(&year, &month, &day, &hour, &minute, &second, &tz)) {
+            ERROR("Failed to get network time! Time has not been set. Retrying...");
+            continue;
+        }
+
+        RTC_DS.adjust(DateTime(year, month, day, hour, minute, second));
+
+        DateTime t = getCurrentTime();
+        char output[OUTPUT_SIZE];
+        char tbuf[21];
+        dateTime_toString(t, tbuf);
+        snprintf(output, OUTPUT_SIZE, "Network time successfully set to: %s", tbuf);
+        LOG(output);
+        break;
     }
     FUNCTION_END;
 }
