@@ -1,6 +1,6 @@
 #include "Loom_LTE.h"
 #include "Logger.h"
-#include <RTClib.h>
+#include <OPEnS_RTC.h>
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_LTE::Loom_LTE(Manager &man, const char *apn, const char *user, const char *pass, const int pin,
@@ -331,28 +331,23 @@ bool Loom_LTE::getNetworkTime(int *year, int *month, int *day, int *hour, int *m
     // modem.getNetworkTime overwrites the refrenced values to UTC time
     // so we have to remember the original timezone value and reset it
     // before returning from this function.
-    float timezone = *tz;
 
     // Pull the current values from the GSM
-    if (!modem.getNetworkTime(year, month, day, hour, minute, second, tz)) {
+    if (!modem.getNetworkUTCTime(year, month, day, hour, minute, second, tz)) {
         // Reset original timezone value.
-        *tz = timezone;
         return false;
     }
 
     // Create a DateTime object from GSM UTC time and then add the
     // timezone to the value to get adjusted local time.
     DateTime utcTime = DateTime(*year, *month, *day, *hour, *minute, *second);
-    DateTime localTime = utcTime + TimeSpan(0, (int)timezone, 0, 0);
-    *year = localTime.year();
-    *month = localTime.month();
-    *day = localTime.day();
-    *hour = localTime.hour();
-    *minute = localTime.minute();
-    *second = localTime.second();
+    *year = utcTime.year();
+    *month = utcTime.month();
+    *day = utcTime.day();
+    *hour = utcTime.hour();
+    *minute = utcTime.minute();
+    *second = utcTime.second();
 
-    // Reset original timezone value.
-    *tz = timezone;
     return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
