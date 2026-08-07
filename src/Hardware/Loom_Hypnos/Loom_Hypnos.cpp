@@ -248,29 +248,31 @@ void Loom_Hypnos::wakeup() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::initializeRTC(){
+void Loom_Hypnos::initializeRTC() {
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     LOG("Initializing DS3231....");
 
     // If the RTC failed to start inform the user and hang
-    if(!RTC_DS.begin()){
-        ERROR(F("Couldn't start RTC! Check your connections... Execution will now hang as this is likely a fatal error"));
+    if (!RTC_DS.begin()) {
+        ERROR(F("Couldn't start RTC! Check your connections... Execution will now hang as this is "
+                "likely a fatal error"));
         return;
     }
 
-    // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't happen with coin cell batt backup
-	if (RTC_DS.lostPower()) {
-		WARNING(F("RTC lost power, let's set the time!"));
+    // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't
+    // happen with coin cell batt backup
+    if (RTC_DS.lostPower()) {
+        WARNING(F("RTC lost power, let's set the time!"));
 
         // If we want to set a custom time
-        if(Serial){
+        if (Serial) {
             set_custom_time();
         }
-	}
+    }
 
-	// Clear any pending alarms
-	RTC_DS.clearAlarm();
+    // Clear any pending alarms
+    RTC_DS.clearAlarm();
 
     RTC_DS.writeSqwPinMode(DS3231_OFF);
 
@@ -280,8 +282,6 @@ void Loom_Hypnos::initializeRTC(){
     snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
     LOG(output);
     FUNCTION_END;
-
-
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -296,8 +296,7 @@ DateTime Loom_Hypnos::getLocalTime(DateTime time) {
         return time + TimeSpan(0, (timezone), 0, 0);
     }
 }
-///////////////////////////////////////
-//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::isDaylightSavings() {
@@ -457,9 +456,8 @@ void Loom_Hypnos::set_custom_time() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
+void Loom_Hypnos::setInterruptDuration(const TimeSpan duration) {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
 
     // The time in the future that the alarm will be set for
     alarmTime = RTC_DS.now() + duration;
@@ -475,46 +473,50 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 /* Sleep Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::sleep(bool waitForSerial){
-	
-    // If the alarm set time is less than the current time we missed our next alarm so we need to set a new one, we need to check if we have powered on already so we dont use the RTC that isn't enabled
+void Loom_Hypnos::sleep(bool waitForSerial) {
+
+    // If the alarm set time is less than the current time we missed our next alarm so we need to
+    // set a new one, we need to check if we have powered on already so we dont use the RTC that
+    // isn't enabled
     bool hasAlarmTriggered = false;
-	
-	// Try to power down the active modules
+
+    // Try to power down the active modules
     if (shouldPowerUp) {
         manInst->power_down();
 
-        // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
+        // After powering down the devices check if the alarmed time is less than the current time,
+        // this means that the alarm may have already triggered
         uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
         uint32_t currentTime = RTC_DS.now().unixtime();
         hasAlarmTriggered = alarmedTime <= currentTime;
-        
+
         // 50ms delay allows this last message to be sent before the bus disconnects
         LOG("Entering Standby Sleep...");
         delay(50);
     }
 
     // If it hasn't we should preform our sleep as before
-    if(!hasAlarmTriggered){
-        pre_sleep();                                            // Pre-sleep cleanup
+    if (!hasAlarmTriggered) {
+        pre_sleep(); // Pre-sleep cleanup
         shouldPowerUp = true;
-        LowPower.sleep();                                       // Go to sleep and hang
-        Watchdog.enable(WATCHDOG_TIMEOUT);
+        LowPower.sleep(); // Go to sleep and hang
+        WD_TIMER_ENABLE;
     }
     // If it has we want to trigger a resample which requires powering the sensors back up
-    else{
-        WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");
+    else {
+        WARNING("Alarm triggered during sample, specified sample duration was too short! "
+                "Resampling...");
         reattachRTCInterrupt();
-        if(shouldPowerUp){
+        if (shouldPowerUp) {
             manInst->power_up();
         }
     }
-    Watchdog.reset();
+    WD_TIMER_RESET;
 
     // If the alarm hadn't triggered last time we want to wake up like normal
-    if(!hasAlarmTriggered)
-        post_sleep(waitForSerial);         // Wake up
-   
+    if (!hasAlarmTriggered) {
+        post_sleep(waitForSerial); // Wake up
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -540,44 +542,48 @@ void Loom_Hypnos::pre_sleep() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::post_sleep(bool waitForSerial){
+void Loom_Hypnos::post_sleep(bool waitForSerial) {
     // Enable the Watchdog timer when waking up
     WD_TIMER_ENABLE;
-    Watchdog.reset();
-    
-    if(shouldPowerUp){
+    WD_TIMER_RESET;
+
+    if (shouldPowerUp) {
         USBDevice.attach();
-        Watchdog.reset();
+        WD_TIMER_RESET;
         Serial.begin(115200);
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
         // Check if they are not disabled to see if they should be enabled
         bool enable5 = !is5VDisabled(DEVICE_STATE::EXITING_SLEEP);
-        Watchdog.reset();
+        WD_TIMER_RESET;
         bool enable33 = !is3VDisabled(DEVICE_STATE::EXITING_SLEEP);
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
         enable(enable33, enable5); // Checks if the 3.3v or 5v are disabled and re-enables them
-        Watchdog.reset();
+        WD_TIMER_RESET;
         delay(1000);
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
         LOG(F("Device has awoken from sleep!"));
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
         // Clear any pending RTC alarms
         RTC_DS.clearAlarm();
-        Watchdog.reset();
+        WD_TIMER_RESET;
 
         // Re-init the modules that need it
         manInst->power_up();
 
-        // We want to wait for the user to re-open the serial monitor before continuing to see readouts
-        if(waitForSerial){
+        // We want to wait for the user to re-open the serial monitor before continuing to see
+        // readouts
+        if (waitForSerial) {
             WD_TIMER_DISABLE;
-            while(!Serial);
+            while (!Serial)
+                ;
             WD_TIMER_ENABLE;
-        }        
+        }
+    } else {
+        WD_TIMER_DISABLE;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
