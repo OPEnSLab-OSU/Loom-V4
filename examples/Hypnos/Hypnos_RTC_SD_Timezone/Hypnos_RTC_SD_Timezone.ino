@@ -28,7 +28,7 @@ void setup()
   // Enable the hypnos rails
   hypnos.enable();
 
-  // Load the Timezone before we enable the hypnos
+  // Load the Timezone after we enable the hypnos
   hypnos.getConfigFromSD("HypnosConfig.json");
 }
 
