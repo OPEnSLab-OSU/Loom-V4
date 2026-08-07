@@ -2,29 +2,30 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_K30::Loom_K30(Manager& man, bool useMux, int addr, bool warmUp, int valMult) : I2CDevice("K30"), manInst(&man), valMult(valMult), warmUp(warmUp), addr(addr){
+Loom_K30::Loom_K30(Manager &man, bool useMux, int addr, bool warmUp, int valMult)
+    : I2CDevice("K30"), manInst(&man), valMult(valMult), warmUp(warmUp), addr(addr) {
     module_address = addr;
 
-    if(!useMux)
+    if (!useMux)
         manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_K30::initialize(){
-    
+void Loom_K30::initialize() {
+
     Wire.begin();
 
     // Check if the sensor is actually connected
     Wire.beginTransmission(addr);
-    if(Wire.endTransmission() != 0){
+    if (Wire.endTransmission() != 0) {
         ERROR(F("Failed to initialize sensor!"));
         moduleInitialized = false;
         return;
     }
 
     // If we want to wait for the sensor to warmup do so here
-    if(warmUp){
+    if (warmUp) {
         LOG(F("Warm-up was enabled for this sensor. Initialization will now pause for 6 minutes"));
 
         // Pause for 6 minutes
@@ -37,40 +38,40 @@ void Loom_K30::initialize(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_K30::measure(){
-   
+void Loom_K30::measure() {
+
     // Get the current connection status
     bool connectionStatus = checkDeviceConnection();
 
     // If we are connected and we need to reinit
-    if(connectionStatus && needsReinit){
+    if (connectionStatus && needsReinit) {
         initialize();
         needsReinit = false;
     }
 
     // If we are not connected
-    else if(!connectionStatus){
+    else if (!connectionStatus) {
         ERROR(F("No acknowledge received from the device"));
         return;
-    } 
+    }
     delay(1);
-    
+
     getCO2Level();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_K30::package(){
+void Loom_K30::package() {
     JsonObject json = manInst->get_data_object(getModuleName());
-    json["CO2_Level_PPM"] = CO2Levels; // 
+    json["CO2_Level_PPM"] = CO2Levels; //
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_K30::verifyChecksum(){
+bool Loom_K30::verifyChecksum() {
     // Verify the data is actually correct
     byte sum = 0;
-    sum = buffer[0] + buffer[1] + buffer[2]; 
+    sum = buffer[0] + buffer[1] + buffer[2];
     return sum == buffer[3];
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -92,19 +93,18 @@ void Loom_K30::getCO2Level() {
     Wire.requestFrom(addr, 4);
 
     // Read the data from the wire
-    for(int i = 0; i < 4; i++){
+    for (int i = 0; i < 4; i++) {
         buffer[i] = Wire.read();
     }
 
     // Make sure the data is correct
-    if(verifyChecksum()){
+    if (verifyChecksum()) {
         // Bit shift the result into an integer
         CO2Levels = 0;
         CO2Levels |= buffer[1] & 0xFF;
         CO2Levels = CO2Levels << 8;
         CO2Levels |= buffer[2] & 0xFF;
-    }
-    else{
+    } else {
         ERROR(F("Failed to validate checksum! Using previously recorded data."));
     }
 }

@@ -1,42 +1,41 @@
 #pragma once
 
-#include <vector>
 #include "../Loom_Hypnos/Loom_Hypnos.h"
+#include <vector>
 
 /**
  * Basic wrapper for SD to manage batch uploading
- */ 
-class Loom_BatchSD{
-    public:
+ */
+class Loom_BatchSD {
+  public:
+    /**
+     * Construct a new BatchSD instance
+     *
+     * @param hypnos Reference to the hypnos to manage the SD card
+     */
+    Loom_BatchSD(Loom_Hypnos &hypnos, int batchSize);
 
-        /**
-         * Construct a new BatchSD instance
-         * 
-         * @param hypnos Reference to the hypnos to manage the SD card
-         */ 
-        Loom_BatchSD(Loom_Hypnos& hypnos, int batchSize);
+    /**
+     * Returns if we should publish the data on this batch
+     */
+    bool shouldPublish();
 
-        /**
-         * Returns if we should publish the data on this batch
-         */ 
-        bool shouldPublish();
+    /**
+     * Return a pointer to the open memory read from arduino
+     */
+    File &getBatch();
 
-        /**
-         * Return a pointer to the open memory read from arduino
-         */ 
-        File& getBatch();
+    /**
+     * Get the specified size of the batch
+     */
+    int getBatchSize() { return batchSize; };
 
-        /**
-         * Get the specified size of the batch
-         */ 
-        int getBatchSize() { return batchSize; };
+    /**
+     * Get the current batch we are on
+     */
+    int getCurrentBatch() { return sdMan->getCurrentBatch(); };
 
-        /**
-         * Get the current batch we are on
-         */ 
-        int getCurrentBatch() { return sdMan->getCurrentBatch(); };
-
-    private:
-        SDManager* sdMan = nullptr;                 // Pointer to the SD manager
-        int batchSize;                              // Batch size to log to
+  private:
+    SDManager *sdMan = nullptr; // Pointer to the SD manager
+    int batchSize;              // Batch size to log to
 };

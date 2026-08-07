@@ -2,17 +2,14 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_MB1232::Loom_MB1232(
-                        Manager& man,
-                        int addr,
-                        bool useMux 
-                    ) : I2CDevice("MB1232"), manInst(&man), address(addr) {
-                        module_address = addr;
-                        // Register the module with the manager
-                        
-                        if(!useMux)
-                            manInst->registerModule(this);
-                    }
+Loom_MB1232::Loom_MB1232(Manager &man, int addr, bool useMux)
+    : I2CDevice("MB1232"), manInst(&man), address(addr) {
+    module_address = addr;
+    // Register the module with the manager
+
+    if (!useMux)
+        manInst->registerModule(this);
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -32,36 +29,33 @@ void Loom_MB1232::initialize() {
     Wire.requestFrom(address, byte(2));
 
     // If we have less than 2 bytes of data from the sensor
-    if(Wire.available() < 2){
+    if (Wire.available() < 2) {
         ERROR(F("Failed to initialize MB1232! Check connections and try again..."));
         moduleInitialized = false;
-    }
-    else{
+    } else {
         LOG(F("Successfully initialized MB1232!"));
-
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MB1232::measure() {
-    if(moduleInitialized){
+    if (moduleInitialized) {
         // Get the current connection status
         bool connectionStatus = checkDeviceConnection();
 
         // If we are connected and we need to reinit
-        if(connectionStatus && needsReinit){
+        if (connectionStatus && needsReinit) {
             initialize();
             needsReinit = false;
         }
 
         // If we are not connected
-        else if(!connectionStatus){
+        else if (!connectionStatus) {
             ERROR(F("No acknowledge received from the device"));
             return;
         }
-    
-    
+
         Wire.beginTransmission(address);
 
         Wire.write(RangeCommand);
@@ -77,21 +71,20 @@ void Loom_MB1232::measure() {
             // byte is equal to the range, so only the range is transmitted.
             // The low byte will not be less than 20.
             byte high = Wire.read();
-            byte low  = Wire.read();
-            byte tmp  = Wire.read();
+            byte low = Wire.read();
+            byte tmp = Wire.read();
 
             range = (high * 256) + low;
         } else {
             ERROR(F("Error reading from MB1232"));
         }
     }
-    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MB1232::package() {
-    if(moduleInitialized){
+    if (moduleInitialized) {
         JsonObject json = manInst->get_data_object(getModuleName());
         json["Range_cm"] = range;
     }

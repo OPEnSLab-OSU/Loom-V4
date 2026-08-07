@@ -2,19 +2,20 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_MPU6050::Loom_MPU6050(Manager& man, bool useMux, const bool autoCalibrate) : I2CDevice("MPU6050"), manInst(&man), mpu(Wire), autoCali(autoCalibrate){ 
-    if(!useMux)
-        manInst->registerModule(this); 
+Loom_MPU6050::Loom_MPU6050(Manager &man, bool useMux, const bool autoCalibrate)
+    : I2CDevice("MPU6050"), manInst(&man), mpu(Wire), autoCali(autoCalibrate) {
+    if (!useMux)
+        manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_MPU6050::initialize(){
+void Loom_MPU6050::initialize() {
     Wire.begin();
     mpu.begin();
 
     // If we want to auto calibrate the gyro on initialize
-    if(autoCali){
+    if (autoCali) {
         calibrate();
     }
 
@@ -24,16 +25,16 @@ void Loom_MPU6050::initialize(){
 
 /*
 
-MPU6050 appears to have the ability to set accelerometer(±2G, ±4G, ±6G, ±8G) and gyro ranges(±250deg/s, ±500deg/s, ±1000deg/s, ± 2000deg/s). 
-https://github.com/tockn/MPU6050_tockn/blob/master/src/MPU6050_tockn.cpp defaults to 2G and 500 deg/s
-Should add to issues to fix in the future.
+MPU6050 appears to have the ability to set accelerometer(±2G, ±4G, ±6G, ±8G) and gyro
+ranges(±250deg/s, ±500deg/s, ±1000deg/s, ± 2000deg/s).
+https://github.com/tockn/MPU6050_tockn/blob/master/src/MPU6050_tockn.cpp defaults to 2G and 500
+deg/s Should add to issues to fix in the future.
 
 @author Reid Pettibone
 */
 
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_MPU6050::measure(){
+void Loom_MPU6050::measure() {
 
     // Pull new data from the sensor
     mpu.update();
@@ -51,13 +52,11 @@ void Loom_MPU6050::measure(){
     angle[0] = mpu.getAngleX();
     angle[1] = mpu.getAngleY();
     angle[2] = mpu.getAngleZ();
-
-
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_MPU6050::package(){
+void Loom_MPU6050::package() {
     JsonObject json = manInst->get_data_object(getModuleName());
 
     // Acceleration
@@ -66,8 +65,8 @@ void Loom_MPU6050::package(){
     json["az_g"] = acc[2];
 
     // Rotation Rate
-    json["gx_°/s"] = rate[0]; 
-    json["gy_°/s"] = rate[1];                      
+    json["gx_°/s"] = rate[0];
+    json["gy_°/s"] = rate[1];
     json["gz_°/s"] = rate[2];
 
     // Angle
@@ -78,7 +77,7 @@ void Loom_MPU6050::package(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_MPU6050::calibrate(){
+void Loom_MPU6050::calibrate() {
     LOG(F("Calibrating Gyroscope..."));
 
     mpu.calcGyroOffsets(true);

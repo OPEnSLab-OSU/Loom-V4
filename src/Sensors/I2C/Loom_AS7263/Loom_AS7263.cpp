@@ -2,36 +2,30 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_AS7263::Loom_AS7263(
-                        Manager& man,
-                        bool useMux,
-                        int addr,
-                        uint8_t gain,
-                        uint8_t mode,
-                        uint8_t integration_time 
-                    ) : I2CDevice("AS7263"), manInst(&man), gain(gain), mode(mode), integration_time(integration_time) {
-                        module_address = addr;
+Loom_AS7263::Loom_AS7263(Manager &man, bool useMux, int addr, uint8_t gain, uint8_t mode,
+                         uint8_t integration_time)
+    : I2CDevice("AS7263"), manInst(&man), gain(gain), mode(mode),
+      integration_time(integration_time) {
+    module_address = addr;
 
-                        // Register the module with the manager
-                        if(!useMux)
-                            manInst->registerModule(this);
-                        
-                    }
+    // Register the module with the manager
+    if (!useMux)
+        manInst->registerModule(this);
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7263::initialize() {
 
     // If we have less than 2 bytes of json from the sensor
-    if(!asInst.begin()){
+    if (!asInst.begin()) {
         ERROR(F("Failed to initialize AS7263! Check connections and try again..."));
         moduleInitialized = false;
         return;
-    }
-    else{
+    } else {
         LOG(F("Successfully initialized AS7263!"));
         asInst.setGain(gain);
-		asInst.setMeasurementMode(mode);
+        asInst.setMeasurementMode(mode);
         asInst.setIntegrationTime(integration_time);
     }
 }
@@ -39,25 +33,25 @@ void Loom_AS7263::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7263::measure() {
-    if(moduleInitialized){
+    if (moduleInitialized) {
         // Get the current connection status
         bool connectionStatus = checkDeviceConnection();
 
         // If we are connected and we need to reinit
-        if(connectionStatus && needsReinit){
+        if (connectionStatus && needsReinit) {
             initialize();
             needsReinit = false;
         }
 
         // If we are not connected
-        else if(!connectionStatus){
+        else if (!connectionStatus) {
             ERROR(F("No acknowledge received from the device"));
             return;
         }
-    
+
         // Take a measurement and wait for it to be ready
         asInst.takeMeasurements();
-        while(!asInst.dataAvailable()){
+        while (!asInst.dataAvailable()) {
             delay(5);
         }
 
@@ -74,7 +68,7 @@ void Loom_AS7263::measure() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7263::package() {
-    if(moduleInitialized){
+    if (moduleInitialized) {
         JsonObject json = manInst->get_data_object(getModuleName());
         json["NIR_610nm"] = nir[0];
         json["NIR_680nm"] = nir[1];
@@ -88,9 +82,9 @@ void Loom_AS7263::package() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7263::power_up() {
-    if(moduleInitialized){
+    if (moduleInitialized) {
         asInst.setGain(gain);
-		asInst.setMeasurementMode(mode);
+        asInst.setMeasurementMode(mode);
         asInst.setIntegrationTime(integration_time);
     }
 }

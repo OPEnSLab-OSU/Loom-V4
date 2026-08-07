@@ -1,26 +1,25 @@
 #include "Loom_EZODO.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_EZODO::Loom_EZODO(Manager& man, byte address, bool useMux) : EZOSensor("EZO-DO"), manInst(&man){
+Loom_EZODO::Loom_EZODO(Manager &man, byte address, bool useMux)
+    : EZOSensor("EZO-DO"), manInst(&man) {
     module_address = address;
 
-    if(!useMux)
+    if (!useMux)
         manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZODO::initialize(){
-    Wire.begin();
-}
+void Loom_EZODO::initialize() { Wire.begin(); }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZODO::measure(){
-    if(moduleInitialized){
+void Loom_EZODO::measure() {
+    if (moduleInitialized) {
 
         // Attempt to read data from the sensor
-        if(!readSensor(700)){
+        if (!readSensor(700)) {
             ERROR(F("Failed to read sensor!"));
             return;
         }
@@ -32,8 +31,8 @@ void Loom_EZODO::measure(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZODO::package(){
-    if(moduleInitialized){
+void Loom_EZODO::package() {
+    if (moduleInitialized) {
         JsonObject json = manInst->get_data_object(getModuleName());
         json["D-Ox_mg/L"] = oxygen;
         json["Sat_%"] = saturation;
@@ -43,8 +42,8 @@ void Loom_EZODO::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_EZODO::power_down() {
-    if(moduleInitialized){
-        if(!sendTransmission("sleep")){
+    if (moduleInitialized) {
+        if (!sendTransmission("sleep")) {
             ERROR(F("Failed to send 'sleep' command to device"));
         }
     }
@@ -52,8 +51,8 @@ void Loom_EZODO::power_down() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZODO::parseResponse(const char* response){
-    char* splitResponse; 
+void Loom_EZODO::parseResponse(const char *response) {
+    char *splitResponse;
     char internalResponse[33];
     strncpy(internalResponse, response, 33);
 

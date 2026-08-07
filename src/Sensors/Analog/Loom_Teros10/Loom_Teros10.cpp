@@ -1,18 +1,19 @@
 #include "Loom_Teros10.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_Teros10::Loom_Teros10(Manager& man, int port) : Module("Teros10"), manInst(&man), analogPort(port){
+Loom_Teros10::Loom_Teros10(Manager &man, int port)
+    : Module("Teros10"), manInst(&man), analogPort(port) {
     analogReadResolution(12);
 
     // Set the module address in-case we have more than one Teros 10 on a single device
     module_address = port;
-    
+
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Teros10::measure(){
+void Loom_Teros10::measure() {
     milliVolt = analogToMV(analogRead(analogPort));
     volumetricWater = computeVWC(milliVolt);
     dielecPerm = computeDP(milliVolt);
@@ -20,7 +21,7 @@ void Loom_Teros10::measure(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Teros10::package(){
+void Loom_Teros10::package() {
     JsonObject json = manInst->get_data_object(getModuleName());
     json["Millivolt_Reading"] = milliVolt;
     json["Dielectric_Permittivity"] = dielecPerm;
@@ -29,19 +30,20 @@ void Loom_Teros10::package(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-float Loom_Teros10::computeVWC(float mV){
-    return ((4.824 * pow(10, -10) * pow(mV, 3)) - (2.278 * pow(10, -6) * pow(mV, 2)) + (3.898 * pow(10, -3) * mV) - 2.154);
+float Loom_Teros10::computeVWC(float mV) {
+    return ((4.824 * pow(10, -10) * pow(mV, 3)) - (2.278 * pow(10, -6) * pow(mV, 2)) +
+            (3.898 * pow(10, -3) * mV) - 2.154);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-float Loom_Teros10::computeDP(float mV){
+float Loom_Teros10::computeDP(float mV) {
     return ((1.054 * pow(10, -1)) * exp(2.827 * pow(10, -3) * mV));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-float Loom_Teros10::analogToMV(int analog){
+float Loom_Teros10::analogToMV(int analog) {
     float analogRes = 4095.0;
     float voltage = (analog * 3.3) / analogRes;
     return voltage * 1000;
