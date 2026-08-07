@@ -20,20 +20,21 @@ void isrTrigger(){
   hypnos.wakeup();
 }
 
-void setup() {
-
+void setup() 
+{
   // Start and wait for the user to open the Serial monitor
   manager.beginSerial();
 
-  // Load the Timezone before we enable the hypnos
-  hypnos.getConfigFromSD("HypnosConfig.json");
-
   // Enable the hypnos rails
   hypnos.enable();
+
+  // Load the Timezone before we enable the hypnos
+  hypnos.getConfigFromSD("HypnosConfig.json");
 }
 
-void loop() {
-  
+
+void loop() 
+{  
   // Print the current JSON packet
   manager.display_data();            
 
