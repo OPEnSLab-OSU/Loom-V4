@@ -44,8 +44,9 @@ void Loom_Analog::package() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 float Loom_Analog::getBatteryVoltage() {
     /* Ensure ADC resolution is configured to 12 bit.  This is NOT the case when BOTH the function
-     * is called statically (such as through Loom_MQTT::publish) AND when no Loom_Analog object is
-     * instantiated because the constructor is never run and thus the ADC resolution is never set. */
+     * is called statically (such as through Loom_MongoDB::publish) AND when no Loom_Analog object
+     * is instantiated because the constructor is never run and thus the ADC resolution is never set.
+     */
     analogReadResolution(12);
 
     float pin_reading = analogRead(A7);
