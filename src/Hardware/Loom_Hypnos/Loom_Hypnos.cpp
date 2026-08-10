@@ -300,20 +300,57 @@ DateTime Loom_Hypnos::getLocalTime(DateTime time) {
         return time + TimeSpan(0, (timezone), 0, 0);
     }
 }
-///////////////////////////////////////
-//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::isDaylightSavingsForDate(const DateTime &now, TIME_ZONE zone) {
+    // Timezones that observe US daylight savings (added MST)
+    switch (zone) {
+    case AST:
+    case EST:
+    case CST:
+    case MST:
+    case PST:
+    case AKST:
+        break;
+    default:
+        return false;
+    }
+
+    int year = now.year();
+
+    DateTime dstStart = nthWeekdayOfMonth(year, 3, 0, 2, 2);
+    DateTime dstEnd = nthWeekdayOfMonth(year, 11, 0, 1, 2);
+
+    return (now >= dstStart) && (now < dstEnd);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::isDaylightSavings() {
-    // Timezones that observe daylight savings
-    if (timezone == AST || timezone == EST || timezone == CST || timezone == AST ||
-        timezone == PST || timezone == AKST) {
-        int currMonth = getCurrentTime().month();
 
-        // If we are in the months where daylight savings is in affect
-        return (currMonth >= 3 && currMonth < 11);
+    return isDaylightSavingsForDate(getCurrentTime(), timezone);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+DateTime Loom_Hypnos::nthWeekdayOfMonth(int year, int month, int dow, int week, int hour) {
+    DateTime firstOfMonth(year, month, 1, 0, 0, 0);
+    int firstDow = firstOfMonth.dayOfTheWeek();
+    int day = 1 + ((dow - firstDow + 7) % 7);
+
+    if (week == 0) {
+        // first day of week: step forward a week at a time while still in month
+        static const int daysInMonthTable[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+        int dim = daysInMonthTable[month - 1];
+        if (month == 2 && ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0))
+            dim = 29;
+        while (day + 7 <= dim)
+            day += 7;
+    } else {
+        day += (week - 1) * 7;
     }
-    return false;
+    return DateTime(year, month, day, hour, 0, 0);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
