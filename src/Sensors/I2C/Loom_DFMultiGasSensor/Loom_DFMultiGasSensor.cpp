@@ -65,10 +65,10 @@ void Loom_DFMultiGasSensor::measure() {
         if(checkDeviceConnection()){
 
             // Update the current gas type
-            // currentGasType = gasSensor.queryGasTypeCstr();
-            // if(strlen(currentGasType) <= 0){
-            //     currentGasType = "INV_TYPE";
-            // }
+            currentGasType = gasSensor.queryGasTypeCstr();
+            if(strlen(currentGasType) <= 0){
+                currentGasType = "INV_TYPE";
+            }
 
             if (gasSensor.dataIsAvailable()) {
                 LOG(F("Sensor has data availible. Reading ..."));
@@ -176,13 +176,13 @@ bool Loom_DFMultiGasSensor::attemptConnectionToSensor() {
 void Loom_DFMultiGasSensor::configureSensorProperties(DFRobot_GAS::eMethod_t aquireMode, DFRobot_GAS::eSwitch_t gasCompMode){
     // Set aquire mode to passive so we are able to request data from it whenever
         LOG(F("Setting Acquire Mode to..."));
-        gasSensor.changeAcquireMode(gasSensor.PASSIVITY);
+        gasSensor.changeAcquireMode(acquireMode);
         delay(1000);
         LOGF("Acquire Mode set to %hs", aquireMode == gasSensor.PASSIVITY ? "PASSIVE" : "INITIATIVE");
 
         // Set temperature compensation
         LOG(F("Setting temp compensation..."));
-        gasSensor.setTempCompensation(gasSensor.ON);
+        gasSensor.setTempCompensation(gasCompMode);
         delay(1000);
         LOGF("Temp compensation set to %hs", gasCompMode == gasSensor.OFF ? "OFF" : "ON");
 }
