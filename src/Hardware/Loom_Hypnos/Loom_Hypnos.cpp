@@ -319,8 +319,8 @@ bool Loom_Hypnos::isDaylightSavingsForDate(const DateTime &now, TIME_ZONE zone) 
 
     int year = now.year();
 
-    DateTime dstStartLocalStd = nthWeekdayOfMonth(year, 3, 0, 2, 2);  // 2nd Sun of March
-    DateTime dstEndLocalDst = nthWeekdayOfMonth(year, 11, 0, 1, 2);   // 1st Sun of November
+    DateTime dstStartLocalStd = nthWeekdayOfMonth(year, 3, 0, 2, 2); // 2nd Sun of March
+    DateTime dstEndLocalDst = nthWeekdayOfMonth(year, 11, 0, 1, 2);  // 1st Sun of November
 
     int standardOffsetHours = (int)zone;
     int daylightOffsetHours = standardOffsetHours + 1;
