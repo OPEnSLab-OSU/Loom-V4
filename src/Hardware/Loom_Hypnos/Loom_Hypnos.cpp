@@ -315,10 +315,19 @@ bool Loom_Hypnos::isDaylightSavingsForDate(const DateTime &now, TIME_ZONE zone) 
 
     int year = now.year();
 
-    DateTime dstStart = nthWeekdayOfMonth(year, 3, 0, 2, 2);
-    DateTime dstEnd = nthWeekdayOfMonth(year, 11, 0, 1, 2);
+    DateTime dstStartLocalStd = nthWeekdayOfMonth(year, 3, 0, 2, 2);  // 2nd Sun of March
+    DateTime dstEndLocalDst = nthWeekdayOfMonth(year, 11, 0, 1, 2);   // 1st Sun of November
 
-    return (now >= dstStart) && (now < dstEnd);
+    int standardOffsetHours = (int)zone;
+    int daylightOffsetHours = standardOffsetHours + 1;
+
+    // Convert each boundary to UTC using its own fixed offset
+    uint32_t dstStartUTC = dstStartLocalStd.unixtime() - (int32_t)standardOffsetHours * 3600;
+    uint32_t dstEndUTC = dstEndLocalDst.unixtime() - (int32_t)daylightOffsetHours * 3600;
+
+    uint32_t nowUTC = now.unixtime();
+
+    return (nowUTC >= dstStartUTC) && (nowUTC < dstEndUTC);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
