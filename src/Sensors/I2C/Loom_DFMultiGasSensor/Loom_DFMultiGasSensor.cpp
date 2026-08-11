@@ -173,12 +173,12 @@ bool Loom_DFMultiGasSensor::attemptConnectionToSensor() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_DFMultiGasSensor::configureSensorProperties(DFRobot_GAS::eMethod_t aquireMode, DFRobot_GAS::eSwitch_t gasCompMode){
+void Loom_DFMultiGasSensor::configureSensorProperties(DFRobot_GAS::eMethod_t acquireMode, DFRobot_GAS::eSwitch_t gasCompMode){
     // Set aquire mode to passive so we are able to request data from it whenever
         LOG(F("Setting Acquire Mode to..."));
         gasSensor.changeAcquireMode(acquireMode);
         delay(1000);
-        LOGF("Acquire Mode set to %hs", aquireMode == gasSensor.PASSIVITY ? "PASSIVE" : "INITIATIVE");
+        LOGF("Acquire Mode set to %hs", acquireMode == gasSensor.PASSIVITY ? "PASSIVE" : "INITIATIVE");
 
         // Set temperature compensation
         LOG(F("Setting temp compensation..."));
