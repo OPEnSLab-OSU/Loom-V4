@@ -7,7 +7,11 @@
 #include <Adafruit_SleepyDog.h>
 
 /* Watchdog Timer Setup */
+#define WATCHDOG_TIMEOUT_MAX 16000
+
+#ifndef WATCHDOG_TIMEOUT
 #define WATCHDOG_TIMEOUT 8000
+#endif
 
 // Only allow the Timer to be used if WATCHDOG_ENABLE is set
 #if defined(WATCHDOG_ENABLE)
