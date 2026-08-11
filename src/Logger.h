@@ -137,14 +137,14 @@ public:
         if (hypnosInst != nullptr && hypnosInst->isRTCInitialized()) {
             snprintf_P(
                 logMessage, OUTPUT_SIZE, 
-                PSTR("[%s] [%s] [%s:%s:%u] %s"), 
+                PSTR("[%s] [%s] [%s:%s:%lu] %s"),
                 hypnosInst->getCurrentTime().text(), 
                 log.level, fileName, log.func, log.lineNum, msg
             );
         } else {
             snprintf_P(
                 logMessage, OUTPUT_SIZE, 
-                PSTR("[%s] [%s:%s:%u] %s"), 
+                PSTR("[%s] [%s:%s:%lu] %s"),
                 log.level, fileName, log.func, log.lineNum, msg
             );
         }
