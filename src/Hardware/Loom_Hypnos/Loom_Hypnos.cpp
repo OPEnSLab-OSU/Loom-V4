@@ -459,6 +459,8 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::sleep(bool waitForSerial){
+    bool hasAlarmTriggered = false;
+
     // Try to power down the active modules
     if (shouldPowerUp) {
         manInst->power_down();
