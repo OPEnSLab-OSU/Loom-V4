@@ -3,10 +3,10 @@
 #include "../../Loom_Manager.h"
 #include "../../Module.h"
 
-#include <vector>
-#include <tuple>
-#include <algorithm>
 #include "Wire.h"
+#include <algorithm>
+#include <tuple>
+#include <vector>
 
 // I2C Sensors Used by Loom
 #include "../../Sensors/I2C/Loom_ADS1115/Loom_ADS1115.h"
@@ -23,7 +23,6 @@
 #include "../../Sensors/I2C/Loom_T6793/Loom_T6793.h"
 #include "../../Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h"
 #include "../../Sensors/I2C/Loom_ZXGesture/Loom_ZXGesture.h"
-#include "../../Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h"
 
 /**
  * Adds Hot Swappable functionality for TCA9548 multiplexer

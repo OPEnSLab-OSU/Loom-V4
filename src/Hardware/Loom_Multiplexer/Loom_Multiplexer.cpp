@@ -263,9 +263,9 @@ Module *Loom_Multiplexer::loadSensor(const byte addr) {
     // SEN55
     case 0x69:
         return new Loom_SEN55(*manInst, 0x69, true);
-                                        
-    // SEN66                            
-    case 0x6B:                          
+
+    // SEN66
+    case 0x6B:
         return new Loom_SEN66(*manInst, 0x6B, true);
 
     // MS5803

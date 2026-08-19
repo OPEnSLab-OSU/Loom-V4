@@ -328,11 +328,10 @@ Client *Loom_LTE::getClient() { return (Client *)&client; }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::getNetworkTime(int *year, int *month, int *day, int *hour, int *minute, int *second,
                               float *tz) {
-        
+
     // getNetworkTime applies timezone depending on what cell tower it connects to
 
     return modem.getNetworkTime(year, month, day, hour, minute, second, tz);
 }
-
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
