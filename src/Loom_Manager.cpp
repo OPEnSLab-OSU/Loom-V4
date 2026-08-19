@@ -1,6 +1,5 @@
 #include "Loom_Manager.h"
 #include "Logger.h"
-Logger *Logger::instance = nullptr;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Manager::Manager(const char *devName, uint32_t instanceNum)
