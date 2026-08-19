@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ArduinoLowPower.h>
-#include <RTClib.h>
+#include <OPEnS_RTC.h>
 #include <map>
 #include <tuple>
 
@@ -48,7 +48,7 @@ enum TIME_ZONE {
     MST = -7,
     PST = -8,
     AKST = -9,
-    HST = -9,
+    HST = -10,
     SST = -11,
     GMT = 0,
     BST = 1,
@@ -242,6 +242,10 @@ class Loom_Hypnos : public Module {
 
     /* Whether or not the current timezone is observing daylight savings */
     bool isDaylightSavings();
+
+    /*Daylight Savings Implementation*/
+    static DateTime nthWeekdayOfMonth(int year, int month, int dow, int week, int hour);
+    static bool isDaylightSavingsForDate(const DateTime &now, TIME_ZONE zone);
 
     /**
      * Set an alternative name to log data to
