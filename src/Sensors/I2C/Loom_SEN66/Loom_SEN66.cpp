@@ -276,4 +276,3 @@ void Loom_SEN66::resetValuesForMeasure() {
     co2 = 0;
     FUNCTION_END;
 }
-

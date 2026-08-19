@@ -2,7 +2,6 @@
 
 #include "../../Loom_Manager.h"
 #include "../../Module.h"
-#include "../Loom_Hypnos/Loom_Hypnos.h"
 
 #include <vector>
 #include <tuple>
@@ -57,30 +56,13 @@ class Loom_Multiplexer : public Module {
      */
     Loom_Multiplexer(Manager &man, const std::vector<byte> &addresses);
 
-    /**
-     * @brief Construct a new Loom_Multiplexer object with hypnos object
-     *
-     * @param man Reference to the manager
-     * @param hypnos hypnos object, will allow for SD card access
-     */
-    Loom_Multiplexer(Manager &man, Loom_Hypnos &hypnos, const char *filename);
-
     // Destructor removes all new sensor instances
     ~Loom_Multiplexer();
 
-    /**
-     * @brief Load custom multiplexer addresses stored in SD
-     *
-     * @param fileName The file name of the json in root of SD card
-     */
-    void loadAddressesFromSD(const char *fileName);
-
   private:
-    Manager *manInst;             // Instance of the manager
-    SDManager *sdMan = nullptr;   // pointer to the SD manager
-    const char *sdFile = nullptr; // name of file on SD card
-    byte activeMuxAddr;           // The port which we want to try to communicate over
-    const uint8_t numPorts = 8;   // Number of ports on the multiplexer
+    Manager *manInst;           // Instance of the manager
+    byte activeMuxAddr;         // The port which we want to try to communicate over
+    const uint8_t numPorts = 8; // Number of ports on the multiplexer
 
     std::vector<std::tuple<byte, Module *, int>> sensors; // List of sensors
 
