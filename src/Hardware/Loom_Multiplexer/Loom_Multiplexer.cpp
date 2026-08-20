@@ -17,7 +17,7 @@ Loom_Multiplexer::Loom_Multiplexer(Manager& man, const std::vector<byte>& addres
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Multiplexer::~Loom_Multiplexer()  {
-    for(int i = 0; i < sensors.size(); i++){
+    for(size_t i = 0; i < sensors.size(); i++){
         delete std::get<1>(sensors[i]);
     }
 }
@@ -129,7 +129,7 @@ void Loom_Multiplexer::measure(){
     // Refresh sensors before measuring
     // refreshSensors();
 
-    for(int i = 0; i < sensors.size(); i++){
+    for(size_t i = 0; i < sensors.size(); i++){
         selectPin(std::get<2>(sensors[i]));
         delay(50);
         std::get<1>(sensors[i])->measure();
@@ -141,7 +141,7 @@ void Loom_Multiplexer::measure(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::package(){
     FUNCTION_START;
-    for(int i = 0; i < sensors.size(); i++){
+    for(size_t i = 0; i < sensors.size(); i++){
         std::get<1>(sensors[i])->package();
     }
     FUNCTION_END;
@@ -151,7 +151,7 @@ void Loom_Multiplexer::package(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::power_up(){
     FUNCTION_START;
-    for(int i = 0; i < sensors.size(); i++){
+    for(size_t i = 0; i < sensors.size(); i++){
         selectPin(std::get<2>(sensors[i]));
         delay(50);
         std::get<1>(sensors[i])->power_up();
@@ -163,7 +163,7 @@ void Loom_Multiplexer::power_up(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::power_down(){
     FUNCTION_START;
-    for(int i = 0; i < sensors.size(); i++){
+    for(size_t i = 0; i < sensors.size(); i++){
         selectPin(std::get<2>(sensors[i]));
         delay(50);
         std::get<1>(sensors[i])->power_down();

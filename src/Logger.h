@@ -82,18 +82,19 @@ private:
      * @param silent Whether to print to the serial monitor
      */
     void log(char* message, bool silent) {
-        char filePath[100];
-        
         // If we want to actually print to serial
         if (!silent)
             Serial.println(message);
 
-        snprintf_P(filePath, 100, PSTR("/debug/output_%i.log"), 
-                   sdInst->getCurrentFileNumber());
-
         // Log as long as we have given it a SD card instance
-        if (sdInst != nullptr && enableSDLogging)
+        if (sdInst != nullptr && enableSDLogging) {
+            char filePath[100];
+
+            snprintf_P(filePath, 100, PSTR("/debug/output_%i.log"),
+                       sdInst->getCurrentFileNumber());
+
             sdInst->writeLineToFile(filePath, message);
+        }
     }
 
 public:
@@ -123,13 +124,13 @@ public:
         sdInst = hypnos->getSDManager();
     };
 
-    void genericLog(LogContext log, const __FlashStringHelper* msg) {
+    void genericLog(const LogContext &log, const __FlashStringHelper* msg) {
         char buf[OUTPUT_SIZE];
         memcpy_P(buf, msg, OUTPUT_SIZE);
         genericLog(log, buf);
     }
 
-    void genericLog(LogContext log, const char *msg) {
+    void genericLog(const LogContext &log, const char *msg) {
         char logMessage[OUTPUT_SIZE];
         char fileName[260] = {};
         truncateFileName(fileName, log.file);
@@ -219,7 +220,7 @@ public:
         );
 
         char output[300] = {};
-        snprintf_P(output, sizeof(output), PSTR("start,%d,%s,%s,%d,%d,%lu"), 
+        snprintf_P(output, sizeof(output), PSTR("start,%u,%s,%s,%d,%d,%lu"),
                    logger->stackDepth - 1, fileName, func, lineNum, freemem, millis());
         bool worked = logger->sdInst->writeLineToFile(logfileName, output);
         if (!worked) WARNINGF("Could not write instrumentation to file!");
@@ -243,7 +244,7 @@ public:
         );
 
         char output[300];
-        snprintf_P(output, sizeof(output), PSTR("end,%d, , , ,%d,%lu"), 
+        snprintf_P(output, sizeof(output), PSTR("end,%u, , , ,%d,%lu"),
                    logger->stackDepth, freemem, millis());
         bool worked = logger->sdInst->writeLineToFile(logfileName, output);
         if (!worked) WARNINGF("Could not write instrumentation to file!");
