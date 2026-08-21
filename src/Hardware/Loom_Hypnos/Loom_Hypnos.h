@@ -307,10 +307,10 @@ class Loom_Hypnos : public Module{
         DateTime getLocalTime(DateTime time);                                               // Convert a given UTC time to local time
         TIME_ZONE timezone;                                                                 // Timezone the RTC was set to
 
-        DateTime time;                                                                      // UTC time
-        DateTime localTime;                                                                 // Local time
+        DateTime timeUtc;                                                                   // UTC time
+        DateTime timeLocal;                                                                 // Local time
 
-        DateTime alarmTime;                                                                 // Time the alarm has been set for
+        DateTime timeAlarm;                                                                 // Time the alarm has been set for
 
         /* Sleep functionality */
         void pre_sleep();                            // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus

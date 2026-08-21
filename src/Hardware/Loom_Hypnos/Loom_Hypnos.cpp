@@ -38,13 +38,13 @@ void Loom_Hypnos::package(){
     char timeStr[21];
     char localStr[21];
 
-    time = getCurrentTime();
-    localTime = getLocalTime(time);
+    timeUtc = getCurrentTime();
+    timeLocal = getLocalTime(timeUtc);
 
-    dateTime_toString(time, timeStr);
+    dateTime_toString(timeUtc, timeStr);
     json["time_utc"] = timeStr;
 
-    dateTime_toString(localTime, localStr, true);
+    dateTime_toString(timeLocal, localStr, true);
     json["time_local"] = localStr;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -280,14 +280,14 @@ void Loom_Hypnos::initializeRTC(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-DateTime Loom_Hypnos::getLocalTime(DateTime time){
+DateTime Loom_Hypnos::getLocalTime(DateTime timeUtc){
     // Add 30 minutes from this zone
     if(timezone == TIME_ZONE::ACST)
-        return time + TimeSpan(0, timezone, 30, 0);
+        return timeUtc + TimeSpan(0, timezone, 30, 0);
     if(isDaylightSavings()){
-        return time + TimeSpan(0, (timezone)+1, 0, 0);
+        return timeUtc + TimeSpan(0, (timezone)+1, 0, 0);
     }else{
-        return time + TimeSpan(0, (timezone), 0, 0);
+        return timeUtc + TimeSpan(0, (timezone), 0, 0);
     }
 }
 /////////////////////////////////////// ///////////////////////////////////////////////////////////////
@@ -327,8 +327,8 @@ bool Loom_Hypnos::networkTimeUpdate(){
             LOG("Attempting to set RTC time to the current network time...");
 
             // Attempt to retrieve the current time from our network component
-            if(networkComponent->getNetworkTimeUtc(&time)){
-                RTC_DS.adjust(time);
+            if(networkComponent->getNetworkTimeUtc(&timeUtc)){
+                RTC_DS.adjust(timeUtc);
                 snprintf(output, OUTPUT_SIZE, "Network time successfully set to: %s", getCurrentTime().text());
                 LOG(output);
                 break;
@@ -443,12 +443,12 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
     char output[OUTPUT_SIZE];
 
     // The time in the future that the alarm will be set for
-    alarmTime = RTC_DS.now() + duration;
-    RTC_DS.setAlarm(alarmTime);
+    timeAlarm = RTC_DS.now() + duration;
+    RTC_DS.setAlarm(timeAlarm);
 
     // Print the time that the next interrupt is set to trigger
-    LOGF("Current Time (Local): %s", getLocalTime(RTC_DS.now()).text());
-    LOGF("Next interrupt alarm set for: %s", getLocalTime(alarmTime).text());
+    LOGF("Current Time (UTC): %s", RTC_DS.now().text();
+    LOGF("Next interrupt alarm set for: %s", timeAlarm.text();
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
