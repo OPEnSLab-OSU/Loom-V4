@@ -1,5 +1,5 @@
-#include "Logger.h"
 #include "Loom_SEN66.h"
+#include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_SEN66::Loom_SEN66(Manager &man, bool measurePM, bool useMux, bool readNumVals)
