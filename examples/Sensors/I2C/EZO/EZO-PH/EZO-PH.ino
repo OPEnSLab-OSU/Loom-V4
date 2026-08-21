@@ -1,6 +1,8 @@
 /**
  * EZO PH Sensor Example
- *
+ * HARDWARE DEPRECATED - This sensor is no longer supported on the current
+ * board profile. Use at your own risk.
+ * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 
@@ -8,22 +10,25 @@
 
 #include <Sensors/I2C/Loom_EZOPH/Loom_EZOPH.h>
 
+
 Manager manager("Device", 1);
 
 // Manager Instance,      Address, useMux
 Loom_EZOPH ezoPH(manager, 0x63, false);
 
-void setup() {
 
+void setup() 
+{
   // Start the serial interface
   manager.beginSerial();
 
   // Initialize the manager
-  manager.initialize();
-  
+  manager.initialize(); 
 }
 
-void loop() {
+
+void loop() 
+{
   // Measure and package the data from the sensors
   manager.measure();
   
@@ -34,6 +39,5 @@ void loop() {
   manager.display_data();  
 
   // Wait for 2 seconds
-  manager.pause(2000);  
-  
+  manager.pause(2000);    
 }

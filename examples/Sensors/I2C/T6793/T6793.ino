@@ -1,8 +1,11 @@
 /**
- * This is an example use case for using the SEN55 Sensor
+ * This is an example use case for using the SEN55 Sensor. 
+ * HARDWARE DEPRECATED - This sensor is no longer supported on the current
+ * board profile. Use at your own risk.
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
+
 #include <Loom_Manager.h>
 
 #include <Sensors/I2C/Loom_T6793/Loom_T6793.h>
