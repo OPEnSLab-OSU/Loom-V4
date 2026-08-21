@@ -69,9 +69,11 @@ class Loom_MongoDB : public MQTTComponent {
     void loadConfigFromJSON(char *json) override;
 
   private:
+    static constexpr size_t TOPIC_COMPONENT_SIZE = 64;
+
     Manager *manInst; // Instance of the manager
 
     char topic[MAX_TOPIC_LENGTH]; // Topic we are publishing to
-    char database_name[100];      // Database to publish the data to
-    char projectServer[100];      // Project
+    char database_name[TOPIC_COMPONENT_SIZE]; // Database to publish the data to
+    char projectServer[TOPIC_COMPONENT_SIZE]; // Project
 };

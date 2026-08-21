@@ -277,32 +277,20 @@ void prepareSDForWrite() {
  *
  */
 void logData(float weight, float temp, float vbat){
-  //Get the current time from hypnos and save it as a c str
-  char buf1[32] = {};
   DateTime now = hypnos.getCurrentTime();
 
-  sprintf(buf1, "%02d:%02d:%02d %02d/%02d/%02d",
-          now.hour(), now.minute(), now.second(),
-          now.day(), now.month(), now.year());
-
-  char buf2[32] = {};
-  sprintf(buf2, "%.2f", weight);
-
-  char buf3[32] = {};
-  sprintf(buf3, "%.2f", temp);
-
-  char buf4[32] = {};
-  sprintf(buf4, "%f", vbat);
-
-  //Combine the time and measurments strings. Include "," to separate columns
+  // Preserve the established CSV row exactly, but construct it with one bounded write.
   char date_and_data[128] = {};
-  strcat(date_and_data, buf1);
-  strcat(date_and_data, ",");
-  strcat(date_and_data, buf2);
-  strcat(date_and_data,",");
-  strcat(date_and_data, buf3);
-  strcat(date_and_data, ",");
-  strcat(date_and_data, buf4);
+  const int written = snprintf(
+      date_and_data, sizeof(date_and_data), "%02u:%02u:%02u %02u/%02u/%02u,%.2f,%.2f,%f",
+      static_cast<unsigned int>(now.hour()), static_cast<unsigned int>(now.minute()),
+      static_cast<unsigned int>(now.second()), static_cast<unsigned int>(now.day()),
+      static_cast<unsigned int>(now.month()), static_cast<unsigned int>(now.year()), weight, temp,
+      vbat);
+  if (written < 0 || static_cast<size_t>(written) >= sizeof(date_and_data)) {
+    Serial.println("log_row_too_long");
+    return;
+  }
 
   prepareSDForWrite();
 

@@ -55,7 +55,9 @@ class Loom_ThingSpeak : public MQTTComponent {
     bool publish() override;
 
     /**
-     * Publish the current JSON data as a batch
+     * Batch replay is unavailable because ThingSpeak fields are callback-generated rather than
+     * stored in the Loom batch file. This overload is retained for source compatibility and
+     * returns false instead of publishing incorrect values.
      */
     bool publish(Loom_BatchSD &batchSD);
 
@@ -84,8 +86,10 @@ class Loom_ThingSpeak : public MQTTComponent {
     void addFunction(int fieldNumber, FloatReturnFuncDefsWithParam function, int parameter);
 
   private:
+    static constexpr size_t MESSAGE_SIZE = 1024;
+
     Manager *manInst; // Instance of the manager
-    int channelID;    // The channelID we are publishing to
+    int channelID = 0; // The channelID we are publishing to
 
     /**
      * Format the packet to be sent to ThingSpeak
@@ -94,7 +98,7 @@ class Loom_ThingSpeak : public MQTTComponent {
      * @param topic The topic buffer we should format to publish data to our given feed
      * @param message The message buffer we should fill with our formatted packet
      */
-    void formatMessage(char topic[MAX_TOPIC_LENGTH], char message[MAX_JSON_SIZE]);
+    bool formatMessage(char topic[MAX_TOPIC_LENGTH], char message[MESSAGE_SIZE]);
 
     /* List of mappings from field names to functions */
     std::vector<std::pair<int, FloatReturnFuncDefs>>

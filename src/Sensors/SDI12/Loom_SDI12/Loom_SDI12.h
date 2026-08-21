@@ -1,6 +1,6 @@
 #pragma once
 
-#include <map>
+#include <array>
 #include <vector>
 
 #include "Arduino.h"
@@ -30,6 +30,9 @@ class Loom_SDI12 : public Module {
 
     Loom_SDI12(const int pinAddr = 11); // Standard Sensor Interaction Constructor
 
+    Loom_SDI12(const Loom_SDI12 &) = delete;
+    Loom_SDI12 &operator=(const Loom_SDI12 &) = delete;
+
     void initialize() override; // Initialize the sensor interface
 
     /* The following methods are intended for manual usage, outside of the Loom framework*/
@@ -58,13 +61,18 @@ class Loom_SDI12 : public Module {
     int sensorTracker = 0; // If we have multiple SDI-12 sensors on one bus we need to distinguish
                            // them in the json so increment a counter per
 
-    float sensorData[3];              // Array of floats to store sensor data
-    std::vector<char> inUseAddresses; // List of address that have SDI_12 sensors connected
-    std::vector<char *> sensorNames;  // List of strings of sensor names
+    struct SensorRecord {
+        char type[RESPONSE_SIZE] = {};
+        char name[MODULE_NAME_SIZE] = {};
+        std::array<float, 3> data = {{0.0f, 0.0f, 0.0f}};
+    };
 
-    std::map<char, const char *> addressToType; // Maps an SDI12 device address to a device type
+    float sensorData[3] = {};         // Most recently read sensor data for the manual getters
+    std::vector<char> inUseAddresses; // List of address that have SDI_12 sensors connected
+    std::vector<SensorRecord> sensors; // Per-address type, name, and latest readings
 
     void readResponse(
         char response[RESPONSE_SIZE]); // Reads and returns the sensor's response to the command
     bool checkActive(char addr);       // Checks if the current address is actually being used
+    int findSensorIndex(char addr) const;
 };

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Wire.h>
-#include <bitset>
 
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
@@ -54,5 +53,5 @@ class Loom_T6793 : public I2CDevice {
     uint8_t i2s_addr;
 
     uint8_t wireReadDelay;
-    float CO2_Val;
+    float CO2_Val = 0.0f;
 };

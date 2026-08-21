@@ -1,6 +1,21 @@
 #include "Loom_ThingSpeak.h"
 #include "Logger.h"
 
+namespace {
+bool appendText(char *destination, size_t capacity, const char *suffix) {
+    if (destination == nullptr || suffix == nullptr || capacity == 0)
+        return false;
+
+    const size_t used = strnlen(destination, capacity);
+    const size_t suffixLength = strlen(suffix);
+    if (used >= capacity || suffixLength > capacity - used - 1)
+        return false;
+
+    memcpy(destination + used, suffix, suffixLength + 1);
+    return true;
+}
+} // namespace
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_ThingSpeak::Loom_ThingSpeak(Manager &man, NetworkComponent &internet_client, int channelID,
                                  const char *clientID, const char *broker_user,
@@ -12,8 +27,7 @@ Loom_ThingSpeak::Loom_ThingSpeak(Manager &man, NetworkComponent &internet_client
 
     /* ThingSpeak provided connection details */
     setClientID(clientID);
-    strncpy(this->username, broker_user, 100);
-    strncpy(this->password, broker_pass, 100);
+    setBrokerCredentials(broker_user, broker_pass);
     this->channelID = channelID;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -28,7 +42,7 @@ Loom_ThingSpeak::Loom_ThingSpeak(Manager &man, NetworkComponent &internet_client
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_ThingSpeak::publish() {
     FUNCTION_START;
-    char message[MAX_JSON_SIZE];
+    char message[MESSAGE_SIZE];
     char topic[MAX_TOPIC_LENGTH];
     if (moduleInitialized) {
         // TIMER_DISABLE;
@@ -40,7 +54,11 @@ bool Loom_ThingSpeak::publish() {
         }
 
         /* Format the message we want to publish */
-        formatMessage(topic, message);
+        if (!formatMessage(topic, message)) {
+            ERROR(F("ThingSpeak message exceeded its fixed buffer."));
+            FUNCTION_END;
+            return false;
+        }
 
         /* Publish the message to the given topic */
         if (!publishMessage(topic, message, false, 0)) {
@@ -61,7 +79,23 @@ bool Loom_ThingSpeak::publish() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_ThingSpeak::publish(Loom_BatchSD &batchSD) {
+    (void)batchSD;
+    ERROR(F("ThingSpeak batch replay is not supported by the callback-based field API."));
+    return false;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ThingSpeak::addFunction(int fieldNumber, FloatReturnFuncDefs function) {
+    if (function == nullptr) {
+        ERROR(F("Cannot add a null ThingSpeak field function."));
+        return;
+    }
+    if (functionsNoParam.size() + functionsParam.size() >= 8) {
+        WARNING(F("ThingSpeak supports at most eight fields; field was not retained."));
+        return;
+    }
     functionsNoParam.push_back(std::make_pair(fieldNumber, function));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -69,18 +103,26 @@ void Loom_ThingSpeak::addFunction(int fieldNumber, FloatReturnFuncDefs function)
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ThingSpeak::addFunction(int fieldNumber, FloatReturnFuncDefsWithParam function,
                                   int parameter) {
+    if (function == nullptr) {
+        ERROR(F("Cannot add a null ThingSpeak field function."));
+        return;
+    }
+    if (functionsNoParam.size() + functionsParam.size() >= 8) {
+        WARNING(F("ThingSpeak supports at most eight fields; field was not retained."));
+        return;
+    }
     functionsParam.push_back(std::make_tuple(fieldNumber, function, parameter));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_ThingSpeak::formatMessage(char topic[MAX_TOPIC_LENGTH], char message[MAX_JSON_SIZE]) {
+bool Loom_ThingSpeak::formatMessage(char topic[MAX_TOPIC_LENGTH], char message[MESSAGE_SIZE]) {
     char tempBuffer[100];
 
     /* Clear all buffers */
     memset(tempBuffer, '\0', 100);
     memset(topic, '\0', MAX_TOPIC_LENGTH);
-    memset(message, '\0', MAX_JSON_SIZE);
+    memset(message, '\0', MESSAGE_SIZE);
 
     /* Format the topic to publish to many fields at once */
     snprintf(topic, MAX_TOPIC_LENGTH, "channels/%i/publish", channelID);
@@ -99,52 +141,63 @@ void Loom_ThingSpeak::formatMessage(char topic[MAX_TOPIC_LENGTH], char message[M
         // Set the field number and then call the corresponding function to update
         snprintf(tempBuffer, 100, "field%i=%f&", functionsNoParam[i].first,
                  functionsNoParam[i].second());
-        strncat(message, tempBuffer, MAX_JSON_SIZE);
+        if (!appendText(message, MESSAGE_SIZE, tempBuffer))
+            return false;
         totalAdded++;
     }
 
-    /* Next do the same thing except with list of functions that have a single integer paramater,
+    /* Next do the same thing except with a list of functions that have one integer parameter,
      * also check if we are still less than 8 fields*/
     for (i = 0; i < functionsParam.size() && totalAdded < 8; i++) {
         // Set the field number and then call the corresponding function to update
         snprintf(tempBuffer, 100, "field%i=%f&", std::get<0>(functionsParam[i]),
                  std::get<1>(functionsParam[i])(std::get<2>(functionsParam[i])));
-        strncat(message, tempBuffer, MAX_JSON_SIZE);
+        if (!appendText(message, MESSAGE_SIZE, tempBuffer))
+            return false;
         totalAdded++;
     }
 
-    /* Check if we have a timestamp property if so we want to add a "created_at" paramater to the
+    /* Check if we have a timestamp property; if so, add a "created_at" parameter to the
      * message that we are publishing */
     if (!manInst->getDocument()["timestamp"].isNull()) {
-        snprintf(tempBuffer, 100, "created_at=%s&",
-                 manInst->getDocument()["timestamp"]["time_local"].as<const char *>());
-        strncat(message, tempBuffer, MAX_JSON_SIZE);
+        const char *localTime =
+            manInst->getDocument()["timestamp"]["time_local"].as<const char *>();
+        if (localTime != nullptr) {
+            snprintf(tempBuffer, sizeof(tempBuffer), "created_at=%s&", localTime);
+            if (!appendText(message, MESSAGE_SIZE, tempBuffer))
+                return false;
+        }
     }
 
     /* Finally end the message with the status */
-    strncat(message, "status=MQTTPUBLISH", MAX_JSON_SIZE);
+    return appendText(message, MESSAGE_SIZE, "status=MQTTPUBLISH");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ThingSpeak::loadConfigFromJSON(char *json) {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
 
-    // Doc to store the JSON data from the SD card in
-    StaticJsonDocument<300> doc;
-    DeserializationError deserialError = deserializeJson(doc, (const char *)json);
+    if (json == nullptr) {
+        ERROR(F("Cannot load ThingSpeak credentials from a null buffer."));
+        moduleInitialized = false;
+        FUNCTION_END;
+        return;
+    }
+
+    // Mutable input enables zero-copy strings; only the four object slots occupy document RAM.
+    StaticJsonDocument<JSON_OBJECT_SIZE(4)> doc;
+    DeserializationError deserialError = deserializeJson(doc, json);
 
     // Check if an error occurred and if so print it
     if (deserialError != DeserializationError::Ok) {
-        snprintf_P(output, OUTPUT_SIZE,
-                   PSTR("There was an error reading the MQTT credentials from SD: %s"),
-                   deserialError.c_str());
-        ERROR(output);
+        ERRORF("There was an error reading the MQTT credentials from SD: %s",
+               deserialError.c_str());
+        free(json);
+        moduleInitialized = false;
+        FUNCTION_END;
+        return;
     }
-
-    memset(username, '\0', 100);
-    memset(password, '\0', 100);
 
     if (!doc["channelID"].isNull())
         channelID = doc["channelID"].as<int>();
@@ -152,11 +205,11 @@ void Loom_ThingSpeak::loadConfigFromJSON(char *json) {
     if (!doc["clientID"].isNull())
         setClientID(doc["clientID"].as<const char *>());
 
-    if (!doc["username"].isNull())
-        strncpy(username, doc["username"].as<const char *>(), 100);
+    setBrokerCredentials(doc["username"] | "", doc["password"] | "");
 
-    if (!doc["password"].isNull())
-        strncpy(password, doc["password"].as<const char *>(), 100);
+    moduleInitialized = channelID > 0;
+    if (!moduleInitialized)
+        ERROR(F("ThingSpeak configuration requires a positive channelID."));
 
     free(json);
     FUNCTION_END;

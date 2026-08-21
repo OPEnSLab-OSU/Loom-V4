@@ -85,8 +85,6 @@ void loop()
   
     attachInterrupt(INT_PIN, tipTrigger, FALLING);
   
-    attachInterrupt(INT_PIN, tipTrigger, FALLING);
-  
     digitalWrite(LED_BUILTIN, HIGH);
   }
 }

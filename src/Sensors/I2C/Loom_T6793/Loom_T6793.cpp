@@ -16,24 +16,19 @@ Loom_T6793::Loom_T6793(Manager &man, uint8_t addr,
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_T6793::initialize() {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
-    // char errorMessage[OUTPUT_SIZE]; // Reserved for expanded sensor error reporting.
 
     /* Initialize wire and start the sensor using the standard I2C interface */
     Wire.begin();
 
     // Wire init delay
-    unsigned long startMillis = millis();
-    while ((millis() - startMillis) < 1000) {
-    }
+    delay(1000);
 
     if (GetSensorStatus()) {
-        LOG("Sensor successfully initialized!");
+        moduleInitialized = true;
+        needsReinit = false;
+        LOG(F("Sensor successfully initialized!"));
     } else {
-        snprintf(
-            output, OUTPUT_SIZE,
-            "Error occurred while attempting to reset device, module will not be initialized!");
-        ERROR(output);
+        ERROR(F("T6793 status check failed; module will not be initialized."));
         moduleInitialized = false;
     }
 
@@ -44,19 +39,24 @@ void Loom_T6793::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_T6793::measure() {
     FUNCTION_START;
-    // char output[OUTPUT_SIZE];      // Reserved for expanded measurement logging.
-    // char sensorError[OUTPUT_SIZE]; // Reserved for expanded sensor error reporting.
+
+    if (!moduleInitialized) {
+        initialize();
+        if (!moduleInitialized) {
+            FUNCTION_END;
+            return;
+        }
+    }
 
     float CO2_Sample_Sum = 0;
     float CO2_Sample = 0;
     bool failed_read;
-    unsigned long startMillis;
 
     for (int i = 0; i < CO2_AVERAGE_COUNT; i++) {
 
         failed_read = false;
 
-        byte data[4];
+        byte data[4] = {};
         Wire.beginTransmission(i2s_addr);
 
         Wire.write(0x04);
@@ -70,11 +70,12 @@ void Loom_T6793::measure() {
         }
 
         // Read delay
-        startMillis = millis();
-        while ((millis() - startMillis) < wireReadDelay) {
-        }
+        delay(wireReadDelay);
 
-        Wire.requestFrom(i2s_addr, 4);
+        const uint8_t received = Wire.requestFrom(i2s_addr, 4);
+        if (received != 4) {
+            failed_read = true;
+        }
         for (int j = 0; j < 4; j++) {
             if (Wire.available()) {
                 data[j] = Wire.read();
@@ -90,9 +91,7 @@ void Loom_T6793::measure() {
         CO2_Sample_Sum += CO2_Sample;
 
         // Delay 250 ms between samples
-        startMillis = millis();
-        while ((millis() - startMillis) < 150) {
-        }
+        delay(150);
     }
 
     CO2_Val = CO2_Sample_Sum / CO2_AVERAGE_COUNT;
@@ -115,7 +114,7 @@ void Loom_T6793::package() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_T6793::GetSensorStatus() {
     FUNCTION_START;
-    byte data[4];
+    byte data[4] = {};
     Wire.beginTransmission(i2s_addr);
 
     Wire.write(0x04);
@@ -128,12 +127,12 @@ bool Loom_T6793::GetSensorStatus() {
         return false;
 
     // Read delay
-    unsigned long startMillis = millis();
-    while ((millis() - startMillis) < wireReadDelay) {
-    }
+    delay(wireReadDelay);
 
-    // delay(readDelay);
-    Wire.requestFrom(i2s_addr, 4);
+    const uint8_t received = Wire.requestFrom(i2s_addr, 4);
+    if (received != 4) {
+        return false;
+    }
     for (int i = 0; i < 4; i++) {
         if (Wire.available())
             data[i] = Wire.read();
@@ -149,7 +148,7 @@ bool Loom_T6793::GetSensorStatus() {
 unsigned long Loom_T6793::GetSerialNo() {
 
     FUNCTION_START;
-    byte data[6];
+    byte data[6] = {};
     Wire.beginTransmission(i2s_addr);
 
     Wire.write(0x03);
@@ -159,17 +158,17 @@ unsigned long Loom_T6793::GetSerialNo() {
     Wire.write(0x02);
 
     if (Wire.endTransmission() != 0) {
-        Serial.println("Serial Request Failed!");
+        ERROR(F("Serial number request failed"));
         return 0;
     }
 
     // Read delay
-    unsigned long startMillis = millis();
-    while ((millis() - startMillis) < wireReadDelay) {
-    }
+    delay(wireReadDelay);
 
-    // delay(readDelay);
-    Wire.requestFrom(i2s_addr, 6);
+    const uint8_t received = Wire.requestFrom(i2s_addr, 6);
+    if (received != 6) {
+        return 0;
+    }
     for (int i = 0; i < 6; i++) {
         if (Wire.available())
             data[i] = Wire.read();

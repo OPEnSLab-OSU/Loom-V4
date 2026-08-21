@@ -2,10 +2,27 @@
 
 #include <DFRobot_MultiGasSensor.h>
 #include <string.h>
-#include <unordered_map>
 
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
+
+/**
+ * Allocation-free adapter for the two DFRobot calls used by Loom.
+ *
+ * The packaged vendor dataIsAvailable() writes the gas label into a global Arduino String on
+ * every sample. Loom does not consume that global result, so this adapter performs the same wire
+ * transactions and checksum validation without touching it.
+ */
+class Loom_DFGasI2C : public DFRobot_GAS_I2C {
+  public:
+    Loom_DFGasI2C(TwoWire *wire, uint8_t address) : DFRobot_GAS_I2C(wire, address) {}
+
+    bool dataIsAvailable() override;
+    const char *queryGasTypeFixed();
+
+  private:
+    static bool hasValidResponse(const uint8_t response[9], uint8_t command);
+};
 
 /**
  * Implementation of the DFRobot MultiGasSensor
@@ -58,7 +75,7 @@ class Loom_DFMultiGasSensor : public I2CDevice {
     Manager *manInst = nullptr;
 
     // --- Sensor Properties ---
-    DFRobot_GAS_I2C gasSensor;
+    Loom_DFGasI2C gasSensor;
     uint8_t retryLimit;
 
     bool powersDown;
@@ -69,7 +86,7 @@ class Loom_DFMultiGasSensor : public I2CDevice {
                               DFRobot_GAS::eSwitch_t gasCompMode = DFRobot_GAS::eSwitch_t::ON);
 
     // --- Sensor Readings
-    // Local storage avoids retaining a pointer into a temporary Arduino String.
+    // Local storage retains the allocation-free gas label returned by the fixed protocol adapter.
     char currentGasType[24] = "";
     float currentConcentration = 0.0f;
     float currentTemperature = 0.0f;

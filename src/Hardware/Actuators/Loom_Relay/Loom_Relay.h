@@ -24,12 +24,11 @@ class Loom_Relay : public Actuator {
     void package(JsonObject json) override;
 
     void printModuleName(const char *message) override {
-        char output[OUTPUT_SIZE];
-        snprintf(output, OUTPUT_SIZE, "[%s] %s", moduleName, message);
-        Serial.print(output);
+        Serial.print('[');
+        Serial.print(getModuleName());
+        Serial.print(F("] "));
+        Serial.print(message ? message : "");
     };
-
-    const char *getModuleName() override { return moduleName; };
 
     /**
      * Set the state of the relay
@@ -42,6 +41,4 @@ class Loom_Relay : public Actuator {
     Manager *manInst;
     byte pin;
     bool state = false;
-
-    char moduleName[100];
 };

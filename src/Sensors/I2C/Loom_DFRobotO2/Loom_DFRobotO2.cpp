@@ -3,7 +3,7 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_DFRobotO2::Loom_DFRobotO2(Manager &man, bool useMux, int address, int collectNum)
-    : I2CDevice("DFRobotO2"), manInst(&man), collectNumber(collectNum) {
+    : I2CDevice("DFRobotO2"), manInst(&man), collectNumber(collectNum > 0 ? collectNum : 1) {
     module_address = address;
     if (!useMux)
         manInst->registerModule(this);
@@ -18,6 +18,8 @@ void Loom_DFRobotO2::initialize() {
         moduleInitialized = false;
     } else {
         LOG(F("Successfully initialized DFRobotO2!"));
+        moduleInitialized = true;
+        needsReinit = false;
     }
     FUNCTION_END;
 }

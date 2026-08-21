@@ -1,14 +1,19 @@
 
 #include "Loom_Ethernet.h"
 #include "Logger.h"
-#include <RTClib.h>
+#include <OPEnS_RTC.h>
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Ethernet::Loom_Ethernet(Manager &man, uint8_t mac[6], IPAddress ip)
     : NetworkComponent("Ethernet"), manInst(&man) {
     this->ip = ip;
-    for (int i = 0; i < 6; i++)
-        this->mac[i] = mac[i];
+    if (mac != nullptr) {
+        for (int i = 0; i < 6; i++)
+            this->mac[i] = mac[i];
+    } else {
+        moduleInitialized = false;
+        ERROR(F("Ethernet constructor received a null MAC address."));
+    }
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -21,25 +26,24 @@ Loom_Ethernet::Loom_Ethernet(Manager &man) : NetworkComponent("Ethernet"), manIn
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Ethernet::initialize() {
-    char output[OUTPUT_SIZE];
     char ip[16];
     LOG(F("Initializing Ethernet module..."));
 
-    // Call the connect class to initiate the connection
-    connect();
+    if (!connect()) {
+        ERROR(F("Failed to initialize Ethernet."));
+        return;
+    }
 
     // Give a bit more time to initialize the module
     delay(1000);
 
-    LOG(F("Successfully Initalized Ethernet!"));
+    LOG(F("Successfully initialized Ethernet!"));
     // Print the device IP
     ipToString(getIPAddress(), ip);
-    snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
-    LOG(output);
+    LOGF("Device IP Address: %s", ip);
 
     ipToString(getSubnetMask(), ip);
-    snprintf(output, OUTPUT_SIZE, "Device Subnet Address: %s", ip);
-    LOG(output);
+    LOGF("Device Subnet Address: %s", ip);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -74,21 +78,33 @@ bool Loom_Ethernet::connect() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Ethernet::loadConfigFromJSON(char *json) {
-    // Doc to store the JSON data from the SD card in
-    StaticJsonDocument<300> doc;
-    char output[OUTPUT_SIZE];
-    DeserializationError deserialError = deserializeJson(doc, (const char *)json);
+    if (json == nullptr) {
+        ERROR(F("Cannot load Ethernet configuration from a null buffer."));
+        moduleInitialized = false;
+        return;
+    }
+
+    // Mutable input enables zero-copy parsing; capacity covers the two arrays and outer object.
+    StaticJsonDocument<JSON_OBJECT_SIZE(2) + JSON_ARRAY_SIZE(6) + JSON_ARRAY_SIZE(4)> doc;
+    DeserializationError deserialError = deserializeJson(doc, json);
 
     // Check if an error occurred and if so print it
     if (deserialError != DeserializationError::Ok) {
-        snprintf(output, OUTPUT_SIZE,
-                 "There was an error reading the Ethernet credentials from SD: %s",
-                 deserialError.c_str());
-        ERROR(output);
+        ERRORF("There was an error reading the Ethernet credentials from SD: %s",
+               deserialError.c_str());
+        free(json);
+        moduleInitialized = false;
+        return;
     }
 
     JsonArray macJson = doc["mac"].as<JsonArray>();
     JsonArray ipJson = doc["ip"].as<JsonArray>();
+    if (macJson.size() != 6 || ipJson.size() != 4) {
+        ERROR(F("Ethernet configuration requires six MAC bytes and four IP bytes."));
+        free(json);
+        moduleInitialized = false;
+        return;
+    }
 
     // Loop over the loaded mac address
     for (int i = 0; i < 6; i++) {
@@ -97,6 +113,7 @@ void Loom_Ethernet::loadConfigFromJSON(char *json) {
 
     ip = IPAddress(ipJson[0], ipJson[1], ipJson[2], ipJson[3]);
 
+    moduleInitialized = true;
     free(json);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -104,6 +121,12 @@ void Loom_Ethernet::loadConfigFromJSON(char *json) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Ethernet::getNetworkTime(int *year, int *month, int *day, int *hour, int *minute,
                                    int *second, float *tz) {
+    if (year == nullptr || month == nullptr || day == nullptr || hour == nullptr ||
+        minute == nullptr || second == nullptr)
+        return false;
+    if (tz != nullptr)
+        *tz = 0.0f; // NTP is UTC.
+
     byte packetBuffer[NTP_PACKET_SIZE];              // Buffer to read in packet
     const unsigned long seventyYears = 2208988800UL; // Unix time start
 
@@ -117,14 +140,16 @@ bool Loom_Ethernet::getNetworkTime(int *year, int *month, int *day, int *hour, i
     delay(1000);
 
     /* Receive the packet from the timeserver*/
-    if (udp.parsePacket()) {
-        udp.read(packetBuffer, NTP_PACKET_SIZE);
+    if (udp.parsePacket() >= static_cast<int>(NTP_PACKET_SIZE) &&
+        udp.read(packetBuffer, NTP_PACKET_SIZE) == static_cast<int>(NTP_PACKET_SIZE)) {
 
         unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
         unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);
         // combine the four bytes (two words) into a long integer
         // this is NTP time (seconds since Jan 1 1900):
-        unsigned long secsSince1900 = highWord << 16 | lowWord;
+        const unsigned long secsSince1900 = highWord << 16 | lowWord;
+        if (secsSince1900 < seventyYears)
+            return false;
 
         // Convert seconds since 1900 into unixtime
         unsigned long unixtime = secsSince1900 - seventyYears;

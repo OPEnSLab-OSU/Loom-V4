@@ -3,15 +3,45 @@
 GET NEW PACKAGE DEPENDENCIES HERE (too big for github): https://drive.google.com/file/d/1-3h9KJZLhEqDoYGxGSycEwhwRnLGpojW/view?usp=sharing
 
 Updated libraries in the zip (you cannot get all of these off Arduino library manager!):
+- OPEnS_RTC (hardened no-allocation DS3231 fork for Feather M0/Hypnos)
 - ArduinoMqttClient
 - SDS011-master (fixes a build warning present in every sketch)
 - ADS1232_Library (fixed and brought up another student's work)
 - SparkFun_LTE_Shield_Arduino_Library-master (SARA R5 support, custom edit)
 - TinyGSM (adds SARA_R5 profile)
+- SparkFun AS726X (bounded virtual-register polling)
+- SparkFun Spectral Triad AS7265X (bounded virtual-register polling)
 
-You may also want to update the DS3231 library.
+The matching `loom4:samd` platform package also contains the Feather M0 Wire/SERCOM timeout
+backport. Shipping only the Loom library without the patched core and these two sensor dependencies
+does not include the full I2C hang protection described below. See
+`docs/PLATFORM_PATCH_MANIFEST.md` for the exact package files and beta validation requirements.
+
+Use the packaged OPEnS_RTC dependency instead of Adafruit RTClib for this stable re-release.
 
 Loom 4.9.1 is a bug-fix and hardware-support release built directly on Loom 4.9. It preserves the 4.9 APIs and packaged field names while correcting sleep, SD, multiplexer, LTE, networking, sensor, and example failures found during field deployment and the full example compile audit.
+
+The compatibility-preserving professionalism pass also bounds string/config parsing; removes the
+duplicate 2 KB OLED, 1 KB Max, and 1 KB Freewave JSON workspaces; removes LoRa/Freewave manager heap
+allocations; corrects retained MQTT and EZO payload handling; makes hardware ownership explicit;
+and rejects malformed commands and partial file reads. See `docs/COMPATIBILITY_CONTRACT.md` for the
+storage, topic, and wire-format invariants retained by these changes.
+
+The Cortex-M0 second pass removes recurring Digital map and tipping-bucket deque allocations,
+retains one lazy LoRa fragment workspace, reduces RemoteManager/ThingSpeak stack peaks, bounds all
+AS726x measurement waits, and backports bounded SAMD21 Wire/SERCOM transaction failure. WISP and
+Dendrometer sketches emit heap/stack lifecycle checkpoints to Serial without changing stored
+packets, and WISP supplies a non-interactive compile-time RTC fallback using the corrected DST path.
+Actuator names now use the base module's single fixed buffer, formatting-only 256-byte caller
+buffers were removed from several communication/sensor paths, and MQTT keep-alive configuration now
+updates the client instead of retaining an unused field.
+
+The final beta pass makes SD rows and batch records transactional at the file boundary, retains a
+pending batch until every MongoDB/LoRa record succeeds, and retries connectivity above the batch
+threshold instead of only at one exact count. It adds JSON-pool overflow diagnostics, pre-reserves
+multiplexer discovery capacity, and gives ThingSpeak's formerly undefined batch overload a safe
+`false` result. These changes preserve JSON labels, CSV ordering, numbered filenames, MQTT topics,
+and radio framing.
 
 Comparison used for this changelog: Git tag `v4.9` through branch `4.9-joshfixes`.
 
@@ -24,7 +54,7 @@ All paths below are relative to the Loom repository root. “Implementation” i
 | Report | 4.9.1 status and resolution | Exact implementation and validation files |
 | --- | --- | --- |
 | [#252 — SARA-R4 to SARA-R5 conversion](https://github.com/OPEnSLab-OSU/Loom-V4/issues/252) | **Addressed in Loom.** Added runtime R4/R5 selection, separate TinyGSM adapters, Jolteon power timing, AT/PDP diagnostics, retry handling, and Arduino IDE-compatible R5 sketches. Updated TinyGSM and SparkFun LTE libraries are included in the package archive. Final Jolteon end-to-end hardware validation is still recommended. | **Implementation:** `src/Internet/Connectivity/Loom_LTE/Loom_LTE.cpp`, `src/Internet/Connectivity/Loom_LTE/Loom_LTE.h`, `src/Internet/Connectivity/Loom_LTE/Loom_LTE_Config.h`, `src/Internet/Connectivity/Loom_LTE/Loom_LTE_Modem.cpp`, `src/Internet/Connectivity/Loom_LTE/Loom_LTE_Modem.h`, `src/Internet/Connectivity/Loom_LTE/Loom_LTE_SaraR4.cpp`, `src/Internet/Connectivity/Loom_LTE/Loom_LTE_SaraR5.cpp`, `src/Internet/Connectivity/Loom_LTE/Loom_LTE_TinyGsmAdapter.h`.<br>**Validation/examples:** `examples/Lab Examples/Jolteon/Loomified_LTE_R5_example/Loomified_LTE_R5_example.ino`, `examples/Lab Examples/Jolteon/Loomified_LTE_R5_debug_passthrough/Loomified_LTE_R5_debug_passthrough.ino`, `examples/Lab Examples/Jolteon/SARA_R5_Test_No_Loom/SARA_R5_Test_No_Loom.ino`, `examples/Lab Examples/Jolteon/WC_FastRegisterR5Compat/WC_FastRegisterR5Compat.ino`; packaged `TinyGSM` and `SparkFun_LTE_Shield_Arduino_Library-master`. |
-| [#268 — SD log bounds checks and Arduino String removal](https://github.com/OPEnSLab-OSU/Loom-V4/issues/268) | **Partially addressed.** Bounded SD header, row, filename, and batch-name construction; corrected initialization/open status; and checked, exact-size file reads. CSV escaping, explicit truncation status, FNV schema rotation, complete temporary `String` removal, and a memory-pool pipeline are not part of 4.9.1. | **Implementation:** `src/Hardware/Loom_Hypnos/SDManager.cpp`, `src/Hardware/Loom_Hypnos/SDManager.h`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.h`.<br>**Validation/examples:** `examples/Lab Examples/SmartRock/SmartRock/SD_config_nested_example.json`, `examples/Lab Examples/Evaporometer/Evaporometer_V1_fixed/Evaporometer_V1_fixed.ino`. |
+| [#268 — SD log bounds checks and Arduino String removal](https://github.com/OPEnSLab-OSU/Loom-V4/issues/268) | **Partially addressed.** Bounded SD header, row, filename, and batch-name construction; corrected initialization/open status; checked exact-size reads; and rolled failed row/record writes back to the prior file size. CSV escaping, FNV schema rotation, complete dependency-level `String` removal, and a memory-pool pipeline are not part of 4.9.1. | **Implementation:** `src/Hardware/Loom_Hypnos/SDManager.cpp`, `src/Hardware/Loom_Hypnos/SDManager.h`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.h`.<br>**Validation/examples:** `examples/Lab Examples/SmartRock/SmartRock/SD_config_nested_example.json`, `examples/Lab Examples/Evaporometer/Evaporometer_V1_fixed/Evaporometer_V1_fixed.ino`. |
 | [#288 — LoRa + LTE Mongo upload failures](https://github.com/OPEnSLab-OSU/Loom-V4/issues/288) | **Targeted; soak testing required.** MQTT uses QoS 1, supports Loom-sized payloads, and propagates publish/delete status. LTE separates boot, registration, PDP, and socket failures. LoRa rejects incomplete fragment sets. The reported multi-day degradation still requires a long-running hub test. | **Implementation:** `src/Internet/Logging/MQTTComponent/MQTTComponent.cpp`, `src/Internet/Logging/MQTTComponent/MQTTComponent.h`; `src/Internet/Logging/Loom_MongoDB/Loom_MongoDB.cpp`; `src/Internet/Connectivity/Loom_LTE/Loom_LTE.cpp`, `src/Internet/Connectivity/Loom_LTE/Loom_LTE.h`; `src/Radio/Loom_LoRa/Loom_LoRa.cpp`.<br>**Validation/examples:** `examples/Lab Examples/LoRa_To_4G/LoRa_To_4G.ino`, `examples/Internet/Logging/LTEMongoDBBatch/LTEMongoDBBatch.ino`. |
 | [#290 — AS7263 example typo](https://github.com/OPEnSLab-OSU/Loom-V4/issues/290) | **Addressed.** Replaced the invalid `Loom_AwS7262` type with `Loom_AS7263` and corrected the constructor documentation. | **Example:** `examples/Sensors/I2C/AS7263/AS7263.ino`. |
 | [#291 — Various example compile errors](https://github.com/OPEnSLab-OSU/Loom-V4/issues/291) | **Partially addressed.** Corrected invalid sketch-folder/main-file layouts, duplicate SmartRock entry points, stale class/method names, missing constants, and R5 selection. Credential-bearing examples still require local ignored secrets. | **Renamed/fixed sketches:** `examples/ClassExamples/E102/Adalogger_i2cSensorsSD_STEMMA/Adalogger_i2cSensorsSD_STEMMA.ino`; `examples/Lab Examples/MultipleInterrupts/MultipleInterrupts.ino`; `examples/Lab Examples/SmartRock/SmartRock_2026/SmartRock_2026.ino`; `examples/Lab Examples/WC_FastRegister/WC_FastRegister.ino`; `examples/Lab Examples/WeatherChimes/Configurable_Chime_Code_2026/Configurable_Chime_Code_2026.ino`; `examples/Lab Examples/WeatherChimes/Cumulative_Chimes_Code_2025/Cumulative_Chimes_Code_2025.ino`; `examples/Lab Examples/Wisp/Wisp_Batch_Logging/Wisp_Batch_Logging.ino`; `examples/Sensors/I2C/VCNL2/VCNL2.ino`.<br>**Audit files:** `tests/loom_compile_engine.bat`, `tests/loom_compile_audit_no_bins.bat`, `tests/loom_compile_retry_failed.bat`, `tests/loom_retry_failed.ps1`. |
@@ -37,7 +67,7 @@ All paths below are relative to the Loom repository root. “Implementation” i
 
 | Team complaint | 4.9.1 status and resolution | Exact implementation and validation files |
 | --- | --- | --- |
-| Wisp: DS3231 Alarm 1 was not cleared after the RTClib migration | **Addressed and hardware-verified.** Disables and clears alarm sources before replacement, retains the exact alarm `DateTime`, clears pending EIC/NVIC state, and avoids reattaching the active-low RTC interrupt while asserted. | **Implementation:** `src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.h`.<br>**Hardware test:** `examples/Lab Examples/Jolteon/debug_hypnos_adc_sleep_test/debug_hypnos_adc_sleep_test.ino`. |
+| Wisp: DS3231 Alarm 1 was not cleared after the RTClib migration | **Addressed in code; hardened fork needs soak validation.** Restores the field-proven OPEnS direct-`Wire`/contiguous arm sequence without dynamic allocation, while retaining checked I2C, alarm readback, exact scheduled `DateTime`, and active-low interrupt guards. | **Implementation:** `dependencies/OPEnS_RTC`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.h`.<br>**Validation:** `tests/OPEnS_RTC_Compatibility/OPEnS_RTC_Compatibility.ino`, `tests/Hypnos_DST_Boundaries/Hypnos_DST_Boundaries.ino`.<br>**Hardware soak:** still required on Feather M0 + Hypnos. |
 | Wisp/Chimes: SEN66, SHT31, and three DF Multi-Gas sensors behind a mux | **Addressed in the Loom integration.** Added SEN66, both DF-gas addresses, verified port selection, per-port names, refresh/retry behavior, and channel shutdown. Failed auto-loads are deleted rather than retained. | **Implementation:** `src/Hardware/Loom_Multiplexer/Loom_Multiplexer.cpp`, `src/Hardware/Loom_Multiplexer/Loom_Multiplexer.h`; `src/Sensors/I2C/Loom_SEN66/Loom_SEN66.cpp`, `src/Sensors/I2C/Loom_SEN66/Loom_SEN66.h`; `src/Sensors/I2C/Loom_SEN55/Loom_SEN55.cpp`, `src/Sensors/I2C/Loom_SEN55/Loom_SEN55.h`; `src/Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.cpp`, `src/Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h`.<br>**Examples:** `examples/Lab Examples/Wisp/Wisp_Mux_BatchLogging/Wisp_Mux_BatchLogging.ino`, `examples/Lab Examples/Jolteon/Jolteon_TSL_Sen66_Test_Mux/Jolteon_TSL_Sen66_Test_Mux.ino`. |
 | Wisp: local DFRobot Multi-Gas patch was required | **Partially addressed.** The wrapper honors its address and acquisition/temperature-compensation arguments, owns its gas-type string, reconnects after rail cycles, and retains the previous sample when new data is unavailable. | **Implementation:** `src/Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.cpp`, `src/Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h`.<br>**Example:** `examples/Sensors/I2C/DFMultiGasSensor/DFMultiGasSensor.ino`.<br>**Dependency:** packaged `DFRobot_MultiGasSensor-main`. |
 | WiFiMongoDBBatch: false low-battery warning and approximately 2.7 V readings | **Addressed.** Battery reads configure ADC resolution, discard the first conversion, average samples, and use the 12-bit maximum. Mongo batch gating uses the corrected direct reading without requiring a registered analog module. | **Implementation:** `src/Sensors/Loom_Analog/Loom_Analog.cpp`, `src/Sensors/Loom_Analog/Loom_Analog.h`; `src/Internet/Logging/Loom_MongoDB/Loom_MongoDB.cpp`.<br>**Example:** `examples/Internet/Logging/WiFiMongoDBBatch/WiFiMongoDBBatch.ino`.<br>**Hardware test:** `examples/Lab Examples/Jolteon/debug_hypnos_adc_sleep_test/debug_hypnos_adc_sleep_test.ino`. |
@@ -87,7 +117,7 @@ All paths below are relative to the Loom repository root. “Implementation” i
 - **`src/Hardware/Loom_Multiplexer/Loom_Multiplexer.cpp`, `src/Hardware/Loom_Multiplexer/Loom_Multiplexer.h` — device coverage:** add mux loading for SEN66, SEN55, both DF Multi-Gas addresses, TSL2591 options, and MMA8451 address `0x1C`.
 - **`src/Sensors/I2C/Loom_SEN66/Loom_SEN66.cpp`, `src/Sensors/I2C/Loom_SEN66/Loom_SEN66.h`:** add the SEN66 module with particulate mass, particle counts, humidity, temperature, VOC, NOx, and CO2 packaging.
 - **`src/Sensors/I2C/Loom_SEN55/Loom_SEN55.cpp`, `src/Sensors/I2C/Loom_SEN55/Loom_SEN55.h`:** add number concentrations and typical particle size and improve measurement error handling.
-- **`src/Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.cpp`, `src/Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h`:** own the configured address/options/string data, reconnect after rail cycles, and retain the previous sample when new data is unavailable.
+- **`src/Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.cpp`, `src/Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h`:** own the configured address/options/label data, bypass the vendor global Arduino-`String` analysis path with fixed protocol responses, reconnect after rail cycles, and retain the previous sample when new data is unavailable.
 - **`src/Sensors/I2C/Loom_MS5803/Loom_MS5803.cpp`, `src/Sensors/I2C/Loom_MS5803/Loom_MS5803.h`:** probe the configured address and calibration PROM, avoid trusting the legacy library's unreliable initialization return, prime the first reading, and report actual readiness.
 - **`src/Sensors/I2C/Loom_ADS1115/Loom_ADS1115.cpp`:** initialize the shared I²C controller, probe the configured address, discover valid `0x48`–`0x4B` address straps, and avoid repeated allocating `begin()` calls after Hypnos wakes.
 - **`src/Sensors/I2C/Loom_TSL2591/Loom_TSL2591.cpp`, `src/Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h`:** add functional `power_up()` and `power_down()` lifecycle methods for WeatherChimes and mux workflows.

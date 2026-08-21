@@ -18,7 +18,6 @@ class Loom_LTE_Modem {
     virtual void setPdpContext(const char *apn) = 0;
     virtual int8_t waitResponse(uint32_t timeoutMs) = 0;
 
-    virtual String getModemInfo() = 0;
     virtual int16_t getSignalQuality() = 0;
     virtual IPAddress localIP() = 0;
     virtual bool isGprsConnected() = 0;

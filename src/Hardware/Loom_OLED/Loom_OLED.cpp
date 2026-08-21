@@ -4,17 +4,72 @@
 
 #include <Adafruit_GFX.h>
 
+namespace {
+size_t printTruncated(Adafruit_SSD1306 &display, const char *text, size_t maximumLength) {
+    if (text == nullptr)
+        return 0;
+    size_t i = 0;
+    for (; i < maximumLength && text[i] != '\0'; ++i)
+        display.write(static_cast<uint8_t>(text[i]));
+    return i;
+}
+
+void printValueTruncated(Adafruit_SSD1306 &display, JsonVariant value, size_t maximumLength) {
+    if (value.is<const char *>()) {
+        printTruncated(display, value.as<const char *>(), maximumLength);
+        return;
+    }
+
+    char buffer[24] = {};
+    serializeJson(value, buffer, sizeof(buffer));
+    printTruncated(display, buffer, maximumLength);
+}
+
+size_t countEntries(JsonArray contents) {
+    size_t count = 0;
+    for (JsonVariant module : contents)
+        count += module["data"].as<JsonObject>().size();
+    return count;
+}
+
+void printQualifiedKey(Adafruit_SSD1306 &display, const char *moduleName, const char *key,
+                       size_t maximumLength) {
+    const size_t moduleLength = printTruncated(display, moduleName ? moduleName : "", maximumLength);
+    if (moduleLength >= maximumLength)
+        return;
+    display.write(static_cast<uint8_t>('.'));
+    printTruncated(display, key, maximumLength - moduleLength - 1);
+}
+
+void printEntryAt(Adafruit_SSD1306 &display, JsonArray contents, size_t targetIndex, int keyX,
+                  int valueX, int y, size_t keyLength, size_t valueLength) {
+    size_t index = 0;
+    for (JsonVariant module : contents) {
+        const char *moduleName = module["module"].as<const char *>();
+        for (JsonPair entry : module["data"].as<JsonObject>()) {
+            if (index++ != targetIndex)
+                continue;
+
+            display.setCursor(keyX, y);
+            printQualifiedKey(display, moduleName, entry.key().c_str(), keyLength);
+            display.setCursor(valueX, y);
+            printValueTruncated(display, entry.value(), valueLength);
+            return;
+        }
+    }
+}
+} // namespace
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_OLED::Loom_OLED(Manager &man, const bool enable_rate_filter, const uint16_t min_filter_delay,
                      const Version type, const byte reset_pin, const Format display_format,
                      const uint16_t scroll_duration, const byte freeze_pin,
                      const FreezeType freeze_behavior)
     : Module("OLED"), manInst(&man), featherwingDisplay(), breakoutDisplay(reset_pin),
-      display(nullptr), min_filter_delay(min_filter_delay), version(type), reset_pin(reset_pin),
-      display_format(display_format), scroll_duration(scroll_duration), freeze_pin(freeze_pin),
-      freeze_behavior(freeze_behavior), lastLogTime(0), previous_time(0),
-      flattenedDoc(MAX_JSON_SIZE) {
-    (void)enable_rate_filter;
+      display(nullptr), rateFilterEnabled(enable_rate_filter), min_filter_delay(min_filter_delay),
+      version(type), reset_pin(reset_pin), display_format(display_format),
+      scroll_duration(scroll_duration), freeze_pin(freeze_pin), freeze_behavior(freeze_behavior),
+      lastLogTime(0), previous_time(0) {
     manInst->registerModule(this);
 
     // Create the correct display module given the OLED version
@@ -23,7 +78,7 @@ Loom_OLED::Loom_OLED(Manager &man, const bool enable_rate_filter, const uint16_t
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_OLED::~Loom_OLED() { display = nullptr; }
+Loom_OLED::~Loom_OLED() = default;
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -35,7 +90,11 @@ void Loom_OLED::initialize() {
     }
 
     // Start the I2C device on 0x3C for the 128x32 display, address cannot be changed
-    display->begin(SSD1306_SWITCHCAPVCC, 0x3C);
+    if (display == nullptr || !display->begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        moduleInitialized = false;
+        ERROR(F("Failed to initialize OLED display."));
+        return;
+    }
 
     // Draws to the screen
     display->display();
@@ -63,51 +122,30 @@ void Loom_OLED::display_data() {
     display->setTextColor(WHITE);
     display->setTextSize(1);
 
-    // Flatten the main JSON document
-    flattenJSONObject(manInst->getDocument().as<JsonObject>());
-
-    // Get the size of the flattened object
-    JsonObject data = flattenedDoc["flatObj"].as<JsonObject>();
-    int size = data.size();
-    String keys[size], vals[size];
-
-    int i = 0;
-    for (auto kv : data) {
-        keys[i] = kv.key().c_str();
-        vals[i] = kv.value().as<String>();
-        i++;
-    }
+    // Walk the Manager document directly; duplicating it used to reserve another 2 KB JSON pool.
+    JsonArray contents = manInst->getDocument()["contents"].as<JsonArray>();
+    const size_t size = contents.isNull() ? 0 : countEntries(contents);
 
     // Write the values to memory in the correct spots
     switch (display_format) {
     case Format::FOUR:
-        for (int i = 0; i < 4 && i < size; i++) {
-            display->setCursor(0, i * 8);
-            display->print(keys[i].substring(0, 8));
-
-            display->setCursor(64, i * 8);
-            display->print(vals[i].substring(0, 8));
-        }
+        for (size_t i = 0; i < 4 && i < size; ++i)
+            printEntryAt(*display, contents, i, 0, 64, static_cast<int>(i * 8), 8, 8);
         break;
 
     case Format::EIGHT:
-        for (int i = 0; i < 4 && i < size; i++) {
-            display->setCursor(0, i * 8);
-            display->print(keys[i].substring(0, 4));
-
-            display->setCursor(32, i * 8);
-            display->print(vals[i].substring(0, 4));
-        }
-        for (int i = 0; i < 4 && i < size; i++) {
-            display->setCursor(64, i * 8);
-            display->print(keys[i + 4].substring(0, 4));
-
-            display->setCursor(96, i * 8);
-            display->print(vals[i + 4].substring(0, 4));
+        for (size_t i = 0; i < 8 && i < size; ++i) {
+            const bool rightColumn = i >= 4;
+            const int keyX = rightColumn ? 64 : 0;
+            const int valueX = keyX + 32;
+            printEntryAt(*display, contents, i, keyX, valueX, static_cast<int>((i % 4) * 8), 4,
+                         4);
         }
         break;
 
     case Format::SCROLL:
+        if (size == 0)
+            break;
 
         unsigned long time;
 
@@ -122,15 +160,13 @@ void Loom_OLED::display_data() {
             time = millis();
         }
 
-        int offset = size * (float(time % (scroll_duration)) / (float)(scroll_duration));
+        const unsigned int duration = scroll_duration == 0 ? 1 : scroll_duration;
+        const size_t offset = static_cast<size_t>(
+            size * (static_cast<float>(time % duration) / static_cast<float>(duration)));
 
-        for (int i = 0; i < 5; i++) {
-            display->setCursor(0, i * 8);
-            display->print(keys[(i + offset) % size].substring(0, 15));
-
-            display->setCursor(80, i * 8);
-            display->print(vals[(i + offset) % size].substring(0, 10));
-        }
+        for (size_t i = 0; i < 5; ++i)
+            printEntryAt(*display, contents, (i + offset) % size, 0, 80,
+                         static_cast<int>(i * 8), 15, 10);
 
         break;
     }
@@ -142,42 +178,14 @@ void Loom_OLED::display_data() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_OLED::canWrite() {
-    if ((millis() > min_filter_delay) && ((millis() - lastLogTime) < min_filter_delay)) {
+    const unsigned long now = millis();
+    if (rateFilterEnabled && hasDisplayed &&
+        static_cast<unsigned long>(now - lastLogTime) < min_filter_delay) {
         LOG(F("Not enough time since last log"));
         return false;
-    } else {
-        lastLogTime = millis();
-        return true;
     }
+
+    lastLogTime = now;
+    hasDisplayed = true;
+    return true;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_OLED::flattenJSONObject(JsonObject json) {
-    char keyName[100];
-
-    // Get the contents array
-    JsonArray contents = json["contents"].as<JsonArray>();
-
-    // Check if there is actual data
-    if (contents.isNull())
-        return;
-
-    // Using our temp doc we convert it to and object and create a new nested object that is called
-    // flatObj
-    JsonObject flatData = flattenedDoc.to<JsonObject>().createNestedObject("flatObj");
-
-    // Flatten the data into the flattenedDoc
-    JsonObject data;
-    for (auto module_obj : contents) {
-        for (JsonPair kv : module_obj["data"].as<JsonObject>()) {
-            const char *moduleName = module_obj["module"].as<const char *>();
-            if (moduleName == nullptr)
-                moduleName = "";
-            snprintf(keyName, sizeof(keyName), "%s.%s", moduleName, kv.key().c_str());
-            LOG(keyName);
-            flatData[keyName] = kv.value();
-        }
-    }
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,6 +1,7 @@
 #include "arduino_secrets.h"
 
 #include <Loom_Manager.h> //4.7
+#include <Diagnostics/Loom_MemoryDiagnostics.h>
 
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Radio/Loom_LoRa/Loom_LoRa.h>
@@ -16,6 +17,7 @@ Loom_Analog batteryVoltage(manager);
 Loom_LoRa lora(manager);
 Loom_LTE lte(manager, "hologram", "", "", A5);
 Loom_MongoDB mqtt(manager, lte, SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
+Loom_MemoryDiagnostics memoryDiagnostics;
 
 
 int packetNumber = 0;
@@ -25,10 +27,11 @@ void setup()
   /* Enables logging logs to the SD card for later viewing under the 'debug' folder */
   ENABLE_SD_LOGGING;   
   
-  /* Enables generation of function summaries */
-  ENABLE_FUNC_SUMMARIES;
+  // Function summaries cause extra SD open/write/close traffic on every instrumented call.
+  // Leave them disabled during endurance deployments; the bounded [MEM] checkpoints remain on.
     // Start the serial interface
     manager.beginSerial();
+    memoryDiagnostics.checkpoint(F("post_global_ctor"), manager.getDocument(), -1);
 
     // Enable the power rails on the hypnos
     hypnos.enable();
@@ -40,20 +43,31 @@ void setup()
 
 
     // load MQTT credentials from the SD card, if they exist
+    memoryDiagnostics.checkpoint(F("pre_mqtt_config"), manager.getDocument(), -1);
     mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
+    memoryDiagnostics.checkpoint(F("post_mqtt_config"), manager.getDocument(), -1);
 
     // Initialize the modules
+    memoryDiagnostics.checkpoint(F("pre_initialize"), manager.getDocument(), -1);
     manager.initialize();
+    memoryDiagnostics.checkpoint(F("setup_done"), manager.getDocument(), -1);
 }
 
 void loop()
 {
+    memoryDiagnostics.beginCycle();
+    memoryDiagnostics.checkpoint(F("pre_lora_receive"), manager.getDocument(), -1);
     // Wait 5 seconds for a message
     if (lora.receive(5000, true))
     {
+        memoryDiagnostics.checkpoint(F("post_lora_receive"), manager.getDocument(), -1);
         manager.display_data();
+        memoryDiagnostics.checkpoint(F("pre_sd"), manager.getDocument(), -1);
         hypnos.logToSD();
+        memoryDiagnostics.checkpoint(F("post_sd"), manager.getDocument(), -1);
+        memoryDiagnostics.checkpoint(F("pre_mqtt"), manager.getDocument(), -1);
         mqtt.publish();
+        memoryDiagnostics.checkpoint(F("post_mqtt"), manager.getDocument(), -1);
     }
   static unsigned long timer = millis();
   if (millis() - timer > REPORT_INTERVAL)
@@ -63,8 +77,10 @@ void loop()
 
           manager.measure();
           manager.package();
+          memoryDiagnostics.checkpoint(F("heartbeat_packaged"), manager.getDocument(), -1);
           manager.display_data();
           mqtt.publish();
+          memoryDiagnostics.checkpoint(F("heartbeat_published"), manager.getDocument(), -1);
           
           timer = millis();
       }

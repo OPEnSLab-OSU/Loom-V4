@@ -1,6 +1,10 @@
 #include "Loom_AS7265X.h"
 #include "Logger.h"
 
+namespace {
+constexpr uint32_t MEASUREMENT_TIMEOUT_MS = 2500;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_AS7265X::Loom_AS7265X(Manager &man, bool useMux, int addr, bool use_bulb, uint8_t gain,
                            uint8_t mode, uint8_t integration_time)
@@ -34,16 +38,42 @@ void Loom_AS7265X::measure() {
     if (moduleInitialized) {
         if (needsReinit) {
             initialize();
+            needsReinit = false;
+            if (!moduleInitialized)
+                return;
         } else if (!checkDeviceConnection()) {
             ERROR(F("No acknowledge received from the device"));
             return;
         }
 
-        // Whether or not to take the measurements with the bulb or not
+        // Start the one-shot conversion directly. The dependency's takeMeasurements() waits
+        // forever, so Loom owns a bounded data-ready poll and can keep servicing the watchdog.
         if (use_bulb) {
-            asInst.takeMeasurementsWithBulb();
-        } else {
-            asInst.takeMeasurements();
+            asInst.enableBulb(AS7265x_LED_WHITE);
+            asInst.enableBulb(AS7265x_LED_IR);
+            asInst.enableBulb(AS7265x_LED_UV);
+        }
+        asInst.setMeasurementMode(AS7265X_MEASUREMENT_MODE_6CHAN_ONE_SHOT);
+
+        const uint32_t measurementStart = millis();
+        while (!asInst.dataAvailable()) {
+            if (millis() - measurementStart >= MEASUREMENT_TIMEOUT_MS) {
+                if (use_bulb) {
+                    asInst.disableBulb(AS7265x_LED_WHITE);
+                    asInst.disableBulb(AS7265x_LED_IR);
+                    asInst.disableBulb(AS7265x_LED_UV);
+                }
+                ERROR(F("AS7265X measurement timed out"));
+                return;
+            }
+            TIMER_RESET;
+            delay(5);
+        }
+
+        if (use_bulb) {
+            asInst.disableBulb(AS7265x_LED_WHITE);
+            asInst.disableBulb(AS7265x_LED_IR);
+            asInst.disableBulb(AS7265x_LED_UV);
         }
 
         // UV

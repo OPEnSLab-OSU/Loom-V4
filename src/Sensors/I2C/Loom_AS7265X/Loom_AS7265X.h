@@ -50,9 +50,9 @@ class Loom_AS7265X : public I2CDevice {
     Manager *manInst; // Instance of the manager
     AS7265X asInst;   // Instance of the AS7265X
 
-    uint16_t uv[6];    // Measured UV bands values. Units: counts / (μW/cm^2)
-    uint16_t color[6]; // Measured color bands values. Units: counts / (μW/cm^2)
-    uint16_t nir[6];   // Measured near-infra-red bands values. Units: counts / (μW/cm^2)
+    uint16_t uv[6]{};    // Measured UV bands values. Units: counts / (μW/cm^2)
+    uint16_t color[6]{}; // Measured color bands values. Units: counts / (μW/cm^2)
+    uint16_t nir[6]{};   // Measured near-infra-red bands values. Units: counts / (μW/cm^2)
 
     bool use_bulb; // Whether or not to use the bulb
 

@@ -60,7 +60,11 @@ class Loom_Max : public Module {
     Loom_Max(Manager &man, Loom_WIFI &wifi, T *firstAct)
         : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi) {
 
-        actuators.push_back(firstAct);
+        wifi.useMax();
+        if (firstAct != nullptr) {
+            actuators.reserve(1);
+            actuators.push_back(firstAct);
+        }
         manInst->registerModule(this);
     };
 
@@ -76,11 +80,18 @@ class Loom_Max : public Module {
     template <typename T, typename... Args>
     Loom_Max(Manager &man, Loom_WIFI &wifi, T *firstAct, Args *...additionalActuators)
         : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi) {
+        wifi.useMax();
+        // Allocate the pointer table once during global construction instead of leaving the
+        // progressively grown blocks as holes in the SAMD21 heap.
+        actuators.reserve(1 + sizeof...(Args));
         get_variadic_parameters((Actuator *)firstAct, (Actuator *)additionalActuators...);
         manInst->registerModule(this);
     };
 
     ~Loom_Max();
+
+    Loom_Max(const Loom_Max &) = delete;
+    Loom_Max &operator=(const Loom_Max &) = delete;
 
   private:
     Manager *manInst;    // Instance of the manager
@@ -97,22 +108,18 @@ class Loom_Max : public Module {
     void setUDPPort(); // Set the UDP port to the correct port number
     void setIP();      // Set the remote IP to send the packets too
 
-    StaticJsonDocument<1000> messageJson; // Response packet
-
     std::vector<Actuator *> actuators; // List of actuators we want to control with max
 
-    /*
-     *   The following two functions are some sorcery to get the variadic parameters without the
-     * need for passing in a size variable I don't fully understand it so don't touch it just works
-     *   Based off: https://eli.thegreenplace.net/2014/variadic-templates-in-c/
-     */
+    // Collect a variadic list of actuator pointers into the pre-reserved pointer table.
     template <typename T> T *get_variadic_parameters(T *v) {
-        actuators.push_back(v);
+        if (v != nullptr)
+            actuators.push_back(v);
         return v;
     };
 
     template <typename T, typename... Args> T *get_variadic_parameters(T *first, Args *...args) {
-        actuators.push_back(first);
+        if (first != nullptr)
+            actuators.push_back(first);
         return get_variadic_parameters(args...);
     };
 };

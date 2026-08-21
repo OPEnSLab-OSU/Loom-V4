@@ -15,7 +15,6 @@ class Loom_LTE_TinyGsmAdapter : public Loom_LTE_Modem {
     }
     int8_t waitResponse(uint32_t timeoutMs) override { return modem.waitResponse(timeoutMs); }
 
-    String getModemInfo() override { return modem.getModemInfo(); }
     int16_t getSignalQuality() override { return modem.getSignalQuality(); }
     IPAddress localIP() override { return modem.localIP(); }
     bool isGprsConnected() override { return modem.isGprsConnected(); }

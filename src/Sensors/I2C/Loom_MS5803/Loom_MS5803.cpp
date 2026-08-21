@@ -69,10 +69,8 @@ void Loom_MS5803::initialize() {
     // initializeMS_5803(). Determine presence from the actual I2C device and calibration PROM
     // instead of permanently disabling the Loom module based on that return value.
     if (!probeMS5803(static_cast<byte>(module_address))) {
-        char output[OUTPUT_SIZE];
-        snprintf(output, OUTPUT_SIZE, "MS5803 not detected or PROM invalid at address 0x%02X.",
-                 static_cast<unsigned>(module_address));
-        ERROR(output);
+        ERRORF("MS5803 not detected or PROM invalid at address 0x%02X.",
+               static_cast<unsigned>(module_address));
         moduleInitialized = false;
         FUNCTION_END;
         return;

@@ -9,20 +9,23 @@ Loom_MongoDB::Loom_MongoDB(Manager &man, NetworkComponent &internet_client,
                            const char *projectServer)
     : MQTTComponent("MongoDB", internet_client), manInst(&man) {
     /* MQTT Connection parameters */
-    strncpy(this->address, broker_address, 100);
+    strncpy(this->address, broker_address, sizeof(this->address) - 1);
     port = broker_port;
-    strncpy(this->username, broker_user, 100);
-    strncpy(this->password, broker_pass, 100);
+    setBrokerCredentials(broker_user, broker_pass);
 
     /* Local MongoDB parameters */
-    strncpy(this->database_name, database_name, 100);
-    strncpy(this->projectServer, projectServer, 100);
+    memset(this->database_name, '\0', sizeof(this->database_name));
+    memset(this->projectServer, '\0', sizeof(this->projectServer));
+    strncpy(this->database_name, database_name, sizeof(this->database_name) - 1);
+    strncpy(this->projectServer, projectServer, sizeof(this->projectServer) - 1);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MongoDB::Loom_MongoDB(Manager &man, NetworkComponent &internet_client)
     : MQTTComponent("MongoDB", internet_client), manInst(&man) {
+    memset(database_name, '\0', sizeof(database_name));
+    memset(projectServer, '\0', sizeof(projectServer));
     moduleInitialized = false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -31,7 +34,6 @@ Loom_MongoDB::Loom_MongoDB(Manager &man, NetworkComponent &internet_client)
 bool Loom_MongoDB::publish() {
     FUNCTION_START;
 
-    char jsonString[MAX_JSON_SIZE];
     if (moduleInitialized) {
 
         // TIMER_DISABLE;
@@ -54,8 +56,7 @@ bool Loom_MongoDB::publish() {
         }
 
         /* Attempt to publish the data to the given topic */
-        manInst->getJSONString(jsonString);
-        if (!publishMessage(topic, jsonString)) {
+        if (!publishDocument(topic, manInst->getDocument())) {
             FUNCTION_END;
             return false;
         }
@@ -121,7 +122,6 @@ bool Loom_MongoDB::publishMetadata(char *metadata) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
 
     const float batteryVoltage = Loom_Analog::getBatteryVoltage();
     if (batteryVoltage < 3.4f) {
@@ -132,9 +132,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
         return false;
     }
 
-    char line[MAX_JSON_SIZE];
-    int packetNumber = 0, index = 0;
-    char c;
+    int packetNumber = 0;
     if (moduleInitialized) {
         // TIMER_DISABLE;
         if (batchSD.shouldPublish()) {
@@ -156,80 +154,88 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
                 return false;
 
             /* Get the file containing our batch of data */
-            File fileOutput = batchSD.getBatch();
+            File &fileOutput = batchSD.getBatch();
+            if (!fileOutput) {
+                ERROR(F("Unable to open the BatchSD file."));
+                FUNCTION_END;
+                return false;
+            }
 
             bool allDataSuccess = true;
 
-            /* Utilize a stream so it doesn't matter how much data we have as its read in one by one
-             */
+            // MQTT requires the payload length before the body. Scan each line once for its length,
+            // seek back, and then stream it in small chunks instead of reserving 2 KB on the stack.
             while (fileOutput.available()) {
-                c = fileOutput.read();
+                int value = fileOutput.read();
+                if (value == '\r' || value == '\n')
+                    continue;
 
-                // Accept CRLF, CR-only, and LF-only batch files.
-                if (c == '\r' || c == '\n') {
-                    if (index == 0)
-                        continue;
-
-                    // Track the packet number we are currently publishing
-                    snprintf_P(output, OUTPUT_SIZE, PSTR("Publishing Packet %i of %i"),
-                               packetNumber + 1, batchSD.getBatchSize());
-                    LOG(output);
-
-                    // Replace the \r with a null character
-                    line[index] = '\0';
-
-                    if (!publishMessage(topic, line)) { // This fails if the line is greater than
-                                                        // 2000 bytes Or if the line is malformed
-                        snprintf(output, OUTPUT_SIZE, PSTR("Failed to publish packet #%i"),
-                                 packetNumber + 1);
-                        WARNING(output);
-                        allDataSuccess = false;
-                    }
-
-                    delay(500);
-                    index = 0;
-                    packetNumber++;
+                const uint32_t lineStart = fileOutput.curPosition() - 1;
+                size_t lineLength = 1;
+                bool lineTooLong = false;
+                while (fileOutput.available()) {
+                    value = fileOutput.read();
+                    if (value == '\r' || value == '\n')
+                        break;
+                    ++lineLength;
+                    if (lineLength >= MAX_JSON_SIZE)
+                        lineTooLong = true;
                 }
 
-                // If not just add the packet to the line array
-                else if (index < MAX_JSON_SIZE - 1) {
-                    line[index++] = c;
-                } else {
+                ++packetNumber;
+                if (lineTooLong) {
                     ERROR(F("Batch packet exceeds MAX_JSON_SIZE and was skipped."));
                     allDataSuccess = false;
-                    index = 0;
-                    while (fileOutput.available()) {
-                        c = fileOutput.read();
-                        if (c == '\r' || c == '\n')
-                            break;
-                    }
+                    continue;
                 }
-            }
 
-            // Publish a final LF-less line instead of silently dropping it.
-            if (index > 0) {
-                line[index] = '\0';
-                if (!publishMessage(topic, line)) {
-                    WARNINGF("Failed to publish packet #%i", packetNumber + 1);
+                LOGF("Publishing Packet %i of %i", packetNumber, batchSD.getCurrentBatch());
+                if (!fileOutput.seekSet(lineStart) ||
+                    !publishStream(topic, fileOutput, lineLength)) {
+                    WARNINGF("Failed to publish packet #%i", packetNumber);
                     allDataSuccess = false;
                 }
-                packetNumber++;
+                // On a partial network write, restore the cursor to the end of this record so its
+                // remainder cannot be mistaken for a new packet.
+                fileOutput.seekSet(lineStart + lineLength);
+                // publishStream leaves the cursor just before the delimiter. The next outer
+                // iteration consumes CR, LF, or both.
+                delay(500);
             }
             fileOutput.close();
 
+            if (packetNumber == 0) {
+                ERROR(F("BatchSD counter is ready, but the batch file contains no records."));
+                FUNCTION_END;
+                return false;
+            }
+
+            if (packetNumber != batchSD.getCurrentBatch()) {
+                ERRORF("BatchSD record/count mismatch (%i file records, %i counted); retaining "
+                       "the file.",
+                       packetNumber, batchSD.getCurrentBatch());
+                FUNCTION_END;
+                return false;
+            }
+
             // Check if we actually sent all the data successfully
-            if (allDataSuccess)
+            if (allDataSuccess) {
+                if (!batchSD.markPublished()) {
+                    ERROR(F("Batch was sent, but its SD file could not be cleared; it will be "
+                            "retried."));
+                    FUNCTION_END;
+                    return false;
+                }
                 LOG(F("Data has been successfully sent!"));
-            else {
+            } else {
                 WARNING(F("1 or more packets failed to send!"));
                 FUNCTION_END;
                 return false;
             }
 
         } else {
-            snprintf_P(output, OUTPUT_SIZE, PSTR("Batch not ready to publish: %i/%i"),
-                       batchSD.getCurrentBatch(), batchSD.getBatchSize());
-            LOG(output);
+            LOGF("Batch not ready to publish: %i/%i", batchSD.getCurrentBatch(),
+                 batchSD.getBatchSize());
             FUNCTION_END;
             return false;
         }
@@ -248,58 +254,49 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MongoDB::loadConfigFromJSON(char *json) {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
-    char topic[MAX_TOPIC_LENGTH];
+
+    if (json == nullptr) {
+        ERROR(F("Cannot load MQTT credentials from a null buffer."));
+        moduleInitialized = false;
+        FUNCTION_END;
+        return;
+    }
 
     // Doc to store the JSON data from the SD card in
-    StaticJsonDocument<300> doc;
-    DeserializationError deserialError = deserializeJson(doc, (const char *)json);
+    // Mutable input enables ArduinoJson's zero-copy mode; only the object nodes need document RAM.
+    StaticJsonDocument<JSON_OBJECT_SIZE(6)> doc;
+    DeserializationError deserialError = deserializeJson(doc, json);
 
     // Check if an error occurred and if so print it
     if (deserialError != DeserializationError::Ok) {
-        snprintf_P(output, OUTPUT_SIZE,
-                   PSTR("There was an error reading the MQTT credentials from SD: %s"),
-                   deserialError.c_str());
-        ERROR(output);
+        ERRORF("There was an error reading the MQTT credentials from SD: %s",
+               deserialError.c_str());
+        free(json);
+        moduleInitialized = false;
+        FUNCTION_END;
+        return;
     }
 
     // Clear the strings and set port = 0
-    memset(address, '\0', 100);
-    memset(database_name, '\0', 100);
-    memset(username, '\0', 100);
-    memset(password, '\0', 100);
+    memset(address, '\0', sizeof(address));
+    memset(database_name, '\0', sizeof(database_name));
+    memset(projectServer, '\0', sizeof(projectServer));
     port = 0;
 
     /* We should check if any parameter is null */
     if (!doc["broker"].isNull())
-        strncpy(address, doc["broker"].as<const char *>(), 100);
+        strncpy(address, doc["broker"].as<const char *>(), sizeof(address) - 1);
 
     if (!doc["database"].isNull())
-        strncpy(database_name, doc["database"].as<const char *>(), 100);
+        strncpy(database_name, doc["database"].as<const char *>(), sizeof(database_name) - 1);
 
-    if (!doc["username"].isNull())
-        strncpy(username, doc["username"].as<const char *>(), 100);
-
-    if (!doc["password"].isNull())
-        strncpy(password, doc["password"].as<const char *>(), 100);
+    setBrokerCredentials(doc["username"] | "", doc["password"] | "");
 
     if (!doc["project"].isNull())
-        strncpy(projectServer, doc["project"].as<const char *>(), 100);
+        strncpy(projectServer, doc["project"].as<const char *>(), sizeof(projectServer) - 1);
 
     if (!doc["port"].isNull())
         port = doc["port"].as<int>();
-
-    if (strlen(projectServer) > 0) {
-        // Formulate a topic to publish on with the format
-        // "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
-        snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s/%s%i"), projectServer, database_name,
-                   manInst->get_device_name(), manInst->get_instance_num());
-    } else {
-        // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber"
-        // eg. WeatherChimes/Chime1
-        snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name,
-                   manInst->get_device_name(), manInst->get_instance_num());
-    }
 
     moduleInitialized = true;
     free(json);

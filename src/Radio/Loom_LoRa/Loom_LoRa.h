@@ -11,7 +11,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <unordered_map>
 
 #define MAX_MESSAGE_LENGTH RH_RF95_MAX_MESSAGE_LEN
 
@@ -27,11 +26,6 @@ enum class FragReceiveStatus {
     Incomplete, // no packet has been completed
     Complete,   // packet has been loaded into the global document
     Error       // could not receive fragment
-};
-
-struct PartialPacket {
-    int remainingFragments;
-    DynamicJsonDocument working;
 };
 
 class Loom_LoRa : public Module {
@@ -67,7 +61,10 @@ class Loom_LoRa : public Module {
     Loom_LoRa(Manager &manager, const uint8_t powerLevel = 23, const uint8_t retryCount = 3,
               const uint16_t retryTimeout = 200);
 
-    ~Loom_LoRa();
+    ~Loom_LoRa() override = default;
+
+    Loom_LoRa(const Loom_LoRa &) = delete;
+    Loom_LoRa &operator=(const Loom_LoRa &) = delete;
 
     /**
      * Initialize the module
@@ -187,7 +184,8 @@ class Loom_LoRa : public Module {
 
   private:
     // receives some data from lora
-    bool receiveFromLoRa(uint8_t *buf, uint8_t buf_size, uint timeout, uint8_t *fromAddress);
+    bool receiveFromLoRa(uint8_t *buf, uint8_t bufferCapacity, uint8_t &receivedLength,
+                         uint timeout, uint8_t *fromAddress);
 
     // receives a single fragment from some device
     FragReceiveStatus receiveFrag(uint timeout, bool shouldProxy, uint8_t *fromAddress);
@@ -198,6 +196,7 @@ class Loom_LoRa : public Module {
     bool handleFragBody(JsonDocument &workingDoc, uint8_t fromAddress);
     bool handleSingleFrag(JsonDocument &workingDoc);
     bool handleLostFrag(JsonDocument &workingDoc, uint8_t fromAddress);
+    void resetFragmentState();
 
     // transmits a json document to over lora
     bool transmitToLoRa(JsonObject json, uint8_t destinationAddress);
@@ -207,23 +206,29 @@ class Loom_LoRa : public Module {
     bool sendFragmentedPacket(JsonObject json, uint8_t destinationAddress);
     bool sendPacketHeader(JsonObject json, uint8_t destinationAddress);
 
-    Manager *manager;                 // Instance of the Loom manager
-    RHReliableDatagram *radioManager; // Radio manager
-    RH_RF95 radioDriver;              // Underlying radio driver
+    Manager *manager = nullptr; // Instance of the Loom manager
+    RH_RF95 radioDriver;        // Underlying radio driver
+    RHReliableDatagram radioManager; // RadioHead reliability manager, owned in-place
 
     Loom_BatchSD *batchSD = nullptr; // Pointer to the batchSD
 
     bool poweredUp = true;
 
     uint8_t deviceAddress;  // Device address
-    int16_t signalStrength; // Strength of the signal received
+    int16_t signalStrength = 0; // Strength of the signal received
 
     uint8_t powerLevel;        // The power level we want to transmit at
     uint8_t sendRetryCount;    // Number of transmission retries allowed
     uint8_t receiveRetryCount; // Number of fragment receive retries allowed
     uint16_t retryTimeout;     // Delay between retries (MS)
 
-    std::unordered_map<uint8_t, PartialPacket> frags; // Partial packets sorted by address
+    // Lazily allocate one fragment workspace on the first fragmented receive, then retain and
+    // reuse it. Transmit-only nodes pay no 2 KB penalty, while hubs avoid per-packet heap churn.
+    static constexpr int MAX_FRAGMENT_COUNT = 64;
+    DynamicJsonDocument fragmentWorking{0};
+    int remainingFragments = 0;
+    uint8_t fragmentSender = 0;
+    bool fragmentActive = false;
 
-    uint expectedOutstandingPackets; // estimated number of outstanding packets
+    uint expectedOutstandingPackets; // Estimated number of outstanding packets
 };

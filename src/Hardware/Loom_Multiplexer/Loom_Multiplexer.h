@@ -6,6 +6,7 @@
 #include "Wire.h"
 #include <algorithm>
 #include <array>
+#include <initializer_list>
 #include <tuple>
 #include <vector>
 // I2C Sensors Used by Loom
@@ -43,6 +44,7 @@ class Loom_Multiplexer : public Module {
     void package() override;
     void power_down() override;
     void power_up() override;
+    bool retryPowerUpWhenUninitialized() const override { return true; }
 
     /**
      * Construct a new Multiplexer using the default Loom I2C address list.
@@ -59,8 +61,14 @@ class Loom_Multiplexer : public Module {
      */
     Loom_Multiplexer(Manager &man, const std::vector<byte> &addresses);
 
+    /** Construct from a brace list without allocating a temporary std::vector. */
+    Loom_Multiplexer(Manager &man, std::initializer_list<byte> addresses);
+
     // Destructor removes all auto-loaded sensor instances.
     ~Loom_Multiplexer();
+
+    Loom_Multiplexer(const Loom_Multiplexer &) = delete;
+    Loom_Multiplexer &operator=(const Loom_Multiplexer &) = delete;
 
     /**
      * Set the I2C addresses that the mux should scan for.
@@ -137,6 +145,7 @@ class Loom_Multiplexer : public Module {
     Module *loadSensor(const byte addr); // Load the correct sensor based on the I2C address
 
     void debugLog(const char *message); // Print a diagnostic line when debug is enabled
+    void debugLogFormatted(const char *format, ...);
     void debugLogI2CResult(const char *label, byte addr, uint8_t result);
 
     std::vector<byte> known_addresses = {};
@@ -150,28 +159,6 @@ class Loom_Multiplexer : public Module {
 
     bool debugOutput = false;
     bool scanDebugOutput = false;
-
-    // Used to optimize searching for sensors:
-    // search addresses in array rather than 0-127.
-    const std::vector<byte> default_addresses = {
-        0x10, ///< ZXGESTURESENSOR
-        0x11, ///< ZXGESTURESENSOR
-        0x15, ///< T6793
-        0x1C, ///< MMA8451
-        0x1D, ///< MMA8451
-        0x29, ///< TSL2591
-        0x36, ///< STEMMA
-        0x44, ///< SHT31D
-        0x45, ///< SHT31D
-        0x48, ///< ADS1115
-        0x69, ///< MPU6050 / SEN55
-        0x6B, ///< SEN66
-        0x70, ///< MB1232
-        0x74, ///< DFMultiGasSensor
-        0x75, ///< DFMultiGasSensor
-        0x76, ///< MS5803
-        0x77  ///< MS5803
-    };
 
     /**
      * Possible TCA9548 addresses.

@@ -1,15 +1,18 @@
 #pragma once
 
+#include <ArduinoJson.h>
 #include <ArduinoMqttClient.h>
 
 #include "../../Connectivity/NetworkComponent.h"
 #include "Module.h"
 
 #define MAX_JSON_SIZE 2000   // The maximum length of an MQTT message
-#define MAX_TOPIC_LENGTH 512 // The maximum length of a topic string
+// Project/database components are bounded to 63 characters and Manager device names to 63.
+// Three components, two separators, an 11-character signed instance, and null need 203 bytes.
+#define MAX_TOPIC_LENGTH 208
 
 /**
- * MQTT Abstraction class that provides basic MQTT communciation functionality
+ * MQTT abstraction class that provides basic MQTT communication functionality
  *
  * @author Will Richards
  */
@@ -33,15 +36,25 @@ class MQTTComponent : public Module {
      */
     bool publishMessage(const char *topic, const char *message, bool retain = false, int qos = 1);
 
+    /** Publish JSON directly to the network without constructing a temporary character array. */
+    bool publishDocument(const char *topic, const DynamicJsonDocument &document,
+                         bool retain = false, int qos = 1);
+
+    /** Publish exactly length bytes from a stream without buffering the whole payload in RAM. */
+    bool publishStream(const char *topic, Stream &source, size_t length, bool retain = false,
+                       int qos = 1);
+
     /**
      * Subscribe to a given topic to get the retained message and then immediately unsubscribe
      *
      * @param topic The topic we want to retrieve the message from
      * @param message The buffer we want to store the retrieved message in
+     * @param messageCapacity Writable bytes in message, including its null terminator
      *
-     * @param The status of the retrieval attempt
+     * @return The status of the retrieval attempt
      */
-    bool getCurrentRetained(const char *topic, char message[MAX_JSON_SIZE]);
+    bool getCurrentRetained(const char *topic, char *message,
+                            size_t messageCapacity = MAX_JSON_SIZE);
 
     /**
      * Publishes a message to a given topic with size 0 and the retain flag set to true so that the
@@ -57,19 +70,26 @@ class MQTTComponent : public Module {
      * Length of time the broker should keep the connection open for default
      * @param time Length of time in MILLISECONDS the connection will be kept open
      */
-    void setKeepAlive(int time) { keep_alive = time; };
+    void setKeepAlive(int time) {
+        mqttClient.setKeepAliveInterval(time > 0 ? static_cast<unsigned long>(time) : 1000UL);
+    };
 
     /**
      * Set the client ID for the specific MQTT connection
      *
      * @param id The new ID to set
      */
-    void setClientID(const char *id) { mqttClient.setId(id); };
+    void setClientID(const char *id) { mqttClient.setId(id ? id : ""); };
+
+    /** Copy credentials once into ArduinoMqttClient's retained strings. */
+    void setBrokerCredentials(const char *user, const char *pass) {
+        mqttClient.setUsernamePassword(user ? user : "", pass ? pass : "");
+    }
 
     /**
      * Wrapper for specifying that we want to use a clean session or not (defaults to true)
      *
-     * @param cleanSession Wether or not the session should be clean
+     * @param cleanSession Whether or not the session should be clean
      */
     void setCleanSession(bool cleanSession) { mqttClient.setCleanSession(cleanSession); };
 
@@ -78,14 +98,12 @@ class MQTTComponent : public Module {
     virtual void power_up() override { connectToBroker(); };
 
     /* On initialize we just want to call the power_up function to connect to the broker, this can
-     * also be overriden but you should call power_up or connectToBroker again */
+     * also be overridden, but you should call power_up or connectToBroker again */
     virtual void initialize() override;
 
     /* MQTT Connection parameters */
     char address[100];  // Domain that the broker is running on
     int port;           // Port the broker is listening on
-    char username[100]; // Username to log into the broker
-    char password[100]; // Password to log into the broker
 
   public:
     /**
@@ -100,9 +118,6 @@ class MQTTComponent : public Module {
         /* Clear all connection parameters */
         memset(address, '\0', 100);
         port = 0;
-        memset(username, '\0', 100);
-        memset(password, '\0', 100);
-        mqttClient.setTxPayloadSize(MAX_JSON_SIZE);
     };
 
     /* Publishes the current sample to the remote broker */
@@ -119,13 +134,11 @@ class MQTTComponent : public Module {
      * Set the maximum number of reconnection attempts to make before failing
      * @param retries The number of retries we want to make
      */
-    void setMaxRetries(int retries) { maxRetries = retries; };
+    void setMaxRetries(int retries) { maxRetries = retries > 0 ? retries : 1; };
 
   private:
     MqttClient mqttClient; // Instance of the MQTT client
     NetworkComponent &internetClient;
 
-    int keep_alive =
-        60000;          // How long the broker should keep the connection open, defaults to a minute
     int maxRetries = 4; // How many times we want to retry the connection
 };

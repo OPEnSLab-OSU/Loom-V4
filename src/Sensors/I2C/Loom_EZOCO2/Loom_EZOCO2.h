@@ -34,5 +34,5 @@ class Loom_EZOCO2 : public EZOSensor {
   private:
     Manager *manInst; // Instance of the manager
 
-    float co2; // Reading for the DO value
+    float co2 = 0.0f; // CO2 reading
 };

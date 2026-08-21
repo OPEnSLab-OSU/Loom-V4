@@ -7,17 +7,17 @@ void Loom_Analog::measure() {
     for (size_t i = 0; i < pinMappings.size(); i++) {
 
         /* If we are measuring the Vbat pin we want a little different behavior */
-        if (pinMappings[i]->pinNumber == batteryPin) {
+        if (pinMappings[i].pinNumber == batteryPin) {
             const float batteryVoltage = readBatteryVoltage();
-            pinMappings[i]->analog = batteryVoltage;
-            pinMappings[i]->analog_mv = batteryVoltage * 1000.0f;
+            pinMappings[i].analog = batteryVoltage;
+            pinMappings[i].analog_mv = batteryVoltage * 1000.0f;
         }
 
         /* If its a normal pin then just read the value and update the previous values */
         else {
-            int analogData = analogRead(pinMappings[i]->pinNumber);
-            pinMappings[i]->analog = analogData;
-            pinMappings[i]->analog_mv = analogToMV(analogData);
+            int analogData = analogRead(pinMappings[i].pinNumber);
+            pinMappings[i].analog = analogData;
+            pinMappings[i].analog_mv = analogToMV(analogData);
         }
     }
 }
@@ -31,12 +31,12 @@ void Loom_Analog::package() {
     /* Loop over the list of pins and pull out the data to formulate the JSON entries*/
     for (size_t i = 0; i < pinMappings.size(); i++) {
         memset(output, '\0', 10);
-        json[pinMappings[i]->name] = pinMappings[i]->analog;
+        json[pinMappings[i].name] = pinMappings[i].analog;
 
         /* Append MV to the name to differentiate between normal analog and the millivolt
          * representation */
-        snprintf(output, sizeof(output), "%s_MV", pinMappings[i]->name);
-        json[output] = pinMappings[i]->analog_mv;
+        snprintf(output, sizeof(output), "%s_MV", pinMappings[i].name);
+        json[output] = pinMappings[i].analog_mv;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -70,15 +70,6 @@ float Loom_Analog::readBatteryVoltage() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-char *Loom_Analog::pinNumberToName(int pin) {
-    // Malloc a name of size 4
-    char *name = (char *)malloc(sizeof(char) * 4);
-    snprintf_P(name, 4, PSTR("A%i"), pin - 14);
-    return name;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 float Loom_Analog::analogToMV(int analog) {
     if (adcMaxReading == 0) {
         return 0.0f;
@@ -91,8 +82,8 @@ float Loom_Analog::analogToMV(int analog) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 float Loom_Analog::getMV(int pin) {
     for (size_t i = 0; i < pinMappings.size(); i++) {
-        if (pinMappings[i]->pinNumber == pin) {
-            return pinMappings[i]->analog_mv;
+        if (pinMappings[i].pinNumber == pin) {
+            return pinMappings[i].analog_mv;
         }
     }
     return 0.0f;
@@ -102,8 +93,8 @@ float Loom_Analog::getMV(int pin) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 float Loom_Analog::getAnalog(int pin) {
     for (size_t i = 0; i < pinMappings.size(); i++) {
-        if (pinMappings[i]->pinNumber == pin) {
-            return pinMappings[i]->analog;
+        if (pinMappings[i].pinNumber == pin) {
+            return pinMappings[i].analog;
         }
     }
     return 0.0f;

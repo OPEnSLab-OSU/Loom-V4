@@ -76,15 +76,19 @@ class Loom_OLED : public Module {
     /* Destructor for the display pointer */
     ~Loom_OLED();
 
+    Loom_OLED(const Loom_OLED &) = delete;
+    Loom_OLED &operator=(const Loom_OLED &) = delete;
+
   private:
     bool canWrite(); // Returns whether or not we can write to the display yet
-    void flattenJSONObject(JsonObject json); // Flattens the given JSON object so we can display it
 
     Manager *manInst; // Pointer to the manager
 
     Adafruit_SSD1306 featherwingDisplay; // FeatherWing OLED controller
     Adafruit_SSD1306 breakoutDisplay;    // Breakout OLED controller
     Adafruit_SSD1306 *display = nullptr; // Selected OLED controller
+    bool rateFilterEnabled;              // Whether the minimum update interval is enforced
+    bool hasDisplayed = false;           // Whether an initial frame has been written
     uint16_t min_filter_delay;           // Time to wait in between updates
     Version version;                     // What type the OLED is (FeatherWing or breakout)
     byte reset_pin;                      // The reset pin (only applies to breakout version)
@@ -95,7 +99,6 @@ class Loom_OLED : public Module {
     byte freeze_pin;            // Which pin to check if display should freeze
     FreezeType freeze_behavior; // What 'freezing' behavior should be followed
 
-    unsigned long lastLogTime;        // Value of millis() at the last log
-    unsigned long previous_time;      // Used to handle scrolling
-    DynamicJsonDocument flattenedDoc; // Flattened object
+    unsigned long lastLogTime;   // Value of millis() at the last log
+    unsigned long previous_time; // Used to handle scrolling
 };

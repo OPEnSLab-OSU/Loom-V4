@@ -44,7 +44,7 @@ class Loom_ADS1115 : public I2CDevice {
      * Get the value in the diff table according to diff number not INDEX
      * @param pin Pin to get data from (1-2)
      */
-    float getDiff(int pin) { return (float)analogData[pin - 1]; };
+    float getDiff(int pin) { return (float)diffData[pin - 1]; };
 
   private:
     Manager *manInst;     // Instance of the manager
@@ -55,7 +55,7 @@ class Loom_ADS1115 : public I2CDevice {
     bool enableAnalog;  // Read from the analog pins
     bool enableDiff;    // Read differentials
 
-    int16_t analogData[4]; // Stores the analog ADS1115 data
-    int16_t diffData[2];   // Stores the differential data from the sensor
-    float volts[4];        // Stores Computed Voltage Conversions
+    int16_t analogData[4] = {}; // Stores the analog ADS1115 data
+    int16_t diffData[2] = {};   // Stores the differential data from the sensor
+    float volts[4] = {};        // Stores Computed Voltage Conversions
 };

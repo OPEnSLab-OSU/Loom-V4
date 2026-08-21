@@ -1,6 +1,5 @@
 #pragma once
 
-#include <FlashStorage.h>
 #include <WiFi101.h>
 #include <WiFiUdp.h>
 
@@ -21,6 +20,7 @@ typedef struct {
     bool is_valid;
     char name[100];
     char password[100];
+    uint8_t reserved[3]; // Keep flash writes word-aligned without reading beyond the record.
 } WifiInfo;
 
 /**
@@ -83,9 +83,9 @@ class Loom_WIFI : public NetworkComponent {
     Client *getClient() override { return (Client *)&wifiClient; };
 
     /**
-     * Get a reference to the UDP communication handler
+     * Get a non-owning pointer to the UDP communication handler
      */
-    WiFiUDP *getUDP() { return new WiFiUDP(); };
+    WiFiUDP *getUDP();
 
     /**
      * Attempt to ping Google, this tests if we are truly connected to the internet
@@ -139,14 +139,16 @@ class Loom_WIFI : public NetworkComponent {
     /**
      * Set the number of connection retries
      */
-    void setMaxRetries(int retries) { connectionRetries = retries; };
+    void setMaxRetries(int retries) { connectionRetries = retries > 0 ? retries : 1; };
 
     /**
      * Convert an IP address to a string
      */
     void ipToString(IPAddress ip, char array[16]) {
-        snprintf(array, 16, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
-    };
+        snprintf(array, 16, "%u.%u.%u.%u", static_cast<unsigned int>(ip[0]),
+                 static_cast<unsigned int>(ip[1]), static_cast<unsigned int>(ip[2]),
+                 static_cast<unsigned int>(ip[3]));
+    }
 
   private:
     Manager *manInst; // Pointer to the manager
@@ -157,8 +159,8 @@ class Loom_WIFI : public NetworkComponent {
 
     bool powerUp = true; // Whether or not the WiFi should power up (used with batch uploads)
 
-    char wifi_name[100];     // Access point to connect to
-    char wifi_password[100]; // Password to connect to the access point
+    char wifi_name[100] = {};     // Access point to connect to
+    char wifi_password[100] = {}; // Password to connect to the access point
     int connectionRetries;
 
     bool usingMax = false; // If we are using max

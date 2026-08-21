@@ -37,6 +37,6 @@ class Loom_NOVASDS011 : public Module {
     Manager *manInst;       // Instance of the Manager
     SDS011 nova;            // Instance of the library
     HardwareSerial *serial; // Pointer to the interface we are using
-    float pm25;             // PM 2.5 measurement
-    float pm10;             // PM 10 measurement
+    float pm25 = 0.0f;      // PM 2.5 measurement
+    float pm10 = 0.0f;      // PM 10 measurement
 };

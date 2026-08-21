@@ -48,8 +48,8 @@ class Loom_VCNL4020 : public I2CDevice {
   private:
     Manager *managerInstance; // Manager instance
     Adafruit_VCNL4020 vcnl;   // Adafruit's VCNL4020 object
-    uint16_t ambientLight;    // Ambient illumination value
-    uint16_t proximity;       // Proximity value
+    uint16_t ambientLight = 0; // Ambient illumination value
+    uint16_t proximity = 0;    // Proximity value
 
     // Config settings for power_up
     vcnl4020_ambientrate ambRate;
@@ -58,5 +58,4 @@ class Loom_VCNL4020 : public I2CDevice {
     uint8_t proxLED;
     vcnl4020_proxfreq proxFreq;
 
-    bool initialized = true; // True until set to false
 };

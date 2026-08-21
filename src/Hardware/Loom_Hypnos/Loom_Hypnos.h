@@ -1,9 +1,7 @@
 #pragma once
 
 #include <ArduinoLowPower.h>
-#include <RTClib.h>
-#include <map>
-#include <tuple>
+#include <OPEnS_RTC.h>
 
 #include "Arduino.h"
 #include "Internet/Connectivity/NetworkComponent.h"
@@ -37,7 +35,8 @@ enum DEVICE_STATE { ENTERING_SLEEP, EXITING_SLEEP };
 enum HYPNOS_VERSION { V3_2 = 10, V3_3 = 11, ADALOGGER = 4 };
 
 /**
- * Time zone abbreviations that map to the hour offset from UTC
+ * Time zone abbreviations. Most values are their whole-hour standard UTC offset; ACST is handled
+ * as UTC+09:30 by the conversion code.
  */
 enum TIME_ZONE {
     WAT = -1,
@@ -48,7 +47,7 @@ enum TIME_ZONE {
     MST = -7,
     PST = -8,
     AKST = -9,
-    HST = -9,
+    HST = -10,
     SST = -11,
     GMT = 0,
     BST = 1,
@@ -61,7 +60,7 @@ enum TIME_ZONE {
     ZP6 = 6,
     ZP7 = 7,
     AWST = 8,
-    ACST = 10, // Half an hour off so its -9.5
+    ACST = 9, // Australian Central Standard Time is UTC+09:30
     AEST = 10
 
 };
@@ -69,12 +68,7 @@ enum TIME_ZONE {
 /**
  * Type of interrupt to register
  */
-enum HypnosInterruptType { SLEEP, OTHER };
-
-// Custom comparator for const char*, used for evaluating timezone name to timezone enum
-struct cmp_str {
-    bool operator()(const char *a, const char *b) const { return strcmp(a, b) < 0; }
-};
+enum HypnosInterruptType : uint8_t { SLEEP, OTHER };
 
 /**
  * All in one driver for the Hypnos board. This allows users to use the Hypnos board in a more
@@ -115,6 +109,9 @@ class Loom_Hypnos : public Module {
      *  Cleanup any dynamically allocated pointers
      */
     ~Loom_Hypnos();
+
+    Loom_Hypnos(const Loom_Hypnos &) = delete;
+    Loom_Hypnos &operator=(const Loom_Hypnos &) = delete;
 
     /* Power Control Functionality */
 
@@ -247,8 +244,20 @@ class Loom_Hypnos : public Module {
     /* Set the current RTC time to the time retrieved from the network */
     bool networkTimeUpdate();
 
-    /* Whether or not the current timezone is observing daylight savings */
+    /* Whether or not the configured timezone is currently observing daylight saving time. */
     bool isDaylightSavings();
+
+    /**
+     * Evaluate the current North American DST rule for a specific UTC timestamp.
+     * DST begins at 02:00 local standard time on the second Sunday in March and ends at 02:00
+     * local daylight time on the first Sunday in November.
+     */
+    static bool isDaylightSavingsForDate(const DateTime &utcTime, TIME_ZONE zone);
+
+    /** Return the requested weekday occurrence in a month. dow uses the RTC's 0=Sunday convention.
+     * A week value of zero returns the final occurrence in the month.
+     */
+    static DateTime nthWeekdayOfMonth(int year, int month, int dow, int week, int hour);
 
     /**
      * Set an alternative name to log data to
@@ -286,13 +295,13 @@ class Loom_Hypnos : public Module {
 
     /**
      * Based on the state we are entering determine the configuration of the 3V power rail
-     * @param state The new state teh device is entering
+     * @param state The new state the device is entering
      */
     bool is3VDisabled(DEVICE_STATE deviceState);
 
     /**
      * Based on the state we are entering determine the configuration of the 5V power rail
-     * @param state The new state teh device is entering
+     * @param state The new state the device is entering
      */
     bool is5VDisabled(DEVICE_STATE deviceState);
 
@@ -333,19 +342,20 @@ class Loom_Hypnos : public Module {
 
     uint8_t voltage_flags = 0; // Flag mask defaults to 0x00
 
-    // Map the given pin to an interrupt call back
-    // 0th - ISR
-    // 1st - Interrupt Trigger
-    // 2nd - Interrupt Type (SLEEP or OTHER)
-    std::map<int, std::tuple<InterruptCallbackFunction, int, HypnosInterruptType>> pinToInterrupt;
+    // Feather M0 deployments use one RTC wake source; retain room for a second source without
+    // allocating std::map nodes on the 32 KB SAMD21 heap.
+    struct InterruptRegistration {
+        InterruptCallbackFunction callback = nullptr;
+        int16_t pin = -1;
+        int8_t triggerState = LOW;
+        HypnosInterruptType type = OTHER;
+    };
+    static constexpr uint8_t MAX_INTERRUPT_REGISTRATIONS = 2;
+    InterruptRegistration interruptRegistrations[MAX_INTERRUPT_REGISTRATIONS];
+    InterruptRegistration *findInterruptRegistration(int pin);
     int sleepInterruptPin = -1;
 
     void initializeRTC(); // Initialize RTC
-
-    void createTimezoneMap(); // Map Timezone Strings to Timezone enum
-    std::map<const char *, TIME_ZONE, cmp_str>
-        timezoneMap; // String to Timezone enum, use custom compare to ensure that strings are
-                     // compared correctly
 
     DateTime getLocalTime(DateTime time); // Convert a given UTC time to local time
     TIME_ZONE timezone;                   // Timezone the RTC was set to

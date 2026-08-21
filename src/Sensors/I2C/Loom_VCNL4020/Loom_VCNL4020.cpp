@@ -34,7 +34,6 @@ void Loom_VCNL4020::initialize() {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_VCNL4020::measure() {
     FUNCTION_START;
-    Serial.println("VCNL4020 Measure\n");
     if (moduleInitialized) {
         bool connectionStatus = checkDeviceConnection();
 
@@ -46,21 +45,23 @@ void Loom_VCNL4020::measure() {
 
         // If no connection
         else if (!connectionStatus) {
-            ERROR("No acknoledge recieved from VCNL4020 module");
+            ERROR(F("No acknowledge received from VCNL4020 module"));
             FUNCTION_END;
             return;
         }
 
         // When everything works, measure
-        LOG("Running Adafruit VCNL4020 measure functions");
+        LOG(F("Running Adafruit VCNL4020 measure functions"));
 
         // make sure ALS works
         uint32_t start = millis();
         while (!vcnl.isAmbientReady()) {
             if (millis() - start > 100) {
-                ERROR("Ambient timeout");
+                ERROR(F("VCNL4020 ambient measurement timed out"));
+                FUNCTION_END;
                 return;
             }
+            TIMER_RESET;
         }
 
         // Measure ambient light and proximity
@@ -80,8 +81,6 @@ void Loom_VCNL4020::package() {
         json["Ambient Light_counts"] = ambientLight;
         json["Proximity"] = proximity;
     }
-    Serial.println(ambientLight);
-    Serial.println(proximity);
     FUNCTION_END;
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -92,7 +91,7 @@ void Loom_VCNL4020::power_up() {
     if (moduleInitialized) {
         // If sensor does not reconnect upon wakeup
         if (!checkDeviceConnection()) {
-            ERROR("VCNL4020 not responding after wake");
+            ERROR(F("VCNL4020 not responding after wake"));
             FUNCTION_END;
             return;
         }

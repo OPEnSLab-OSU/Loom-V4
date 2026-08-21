@@ -55,13 +55,11 @@ void Loom_Max::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Max::publish() {
-    char output[OUTPUT_SIZE];
     char ip[16];
 
     // Print the device IP
     wifiInst->ipToString(remoteIP, ip);
-    snprintf(output, OUTPUT_SIZE, "Sending packet to %s:%u", ip, sendPort);
-    LOG(output);
+    LOGF("Sending packet to %s:%u", ip, sendPort);
 
     // Attempt to start a new packet
     if (udpSend.beginPacket(remoteIP, sendPort) != 1) {
@@ -96,19 +94,19 @@ bool Loom_Max::publish() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Max::subscribe() {
-    char output[OUTPUT_SIZE];
     char ip[16];
     // If there is a packet available
     if (udpRecv.parsePacket()) {
 
-        // Clear the JSON document
+        // A subscribe normally follows publish(), and the next manager.package() rebuilds the
+        // outgoing sample. Reuse the Manager's 2 KB pool instead of retaining a second 1 KB pool.
+        DynamicJsonDocument &messageJson = manInst->getDocument();
         messageJson.clear();
 
         DeserializationError error = deserializeJson(messageJson, udpRecv);
         if (error != DeserializationError::Ok) {
-            snprintf(output, OUTPUT_SIZE, "Failed to parse JSON data from UDP stream, Error: %s",
-                     error.c_str());
-            ERROR(output);
+            ERRORF("Failed to parse JSON data from UDP stream, Error: %s", error.c_str());
+            messageJson.clear();
             return false;
         }
 
@@ -116,13 +114,16 @@ bool Loom_Max::subscribe() {
         if (actuators.size() > 0) {
 
             // Is the packet actually a command
-            if (strcmp(messageJson["type"].as<const char *>(), "command") == 0) {
+            const char *messageType = messageJson["type"].as<const char *>();
+            if (messageType != nullptr && strcmp(messageType, "command") == 0) {
 
                 // Loop over each command being sent to the device
                 for (size_t j = 0; j < messageJson["commands"].as<JsonArray>().size(); j++) {
 
                     // Loop over each actuator to find the right one
                     const char *type = messageJson["commands"][j]["module"].as<const char *>();
+                    if (type == nullptr)
+                        continue;
                     int instanceNum = messageJson["commands"][j]["params"][0].as<int>();
 
                     // Loop over each actuator
@@ -151,16 +152,15 @@ bool Loom_Max::subscribe() {
 
             // Print out where the packet came from
             wifiInst->ipToString(udpRecv.remoteIP(), ip);
-            snprintf(output, OUTPUT_SIZE, "Packet received from: %s", ip);
-            LOG(output);
-            char jsonStr[MAX_JSON_SIZE];
-
+            LOGF("Packet received from: %s", ip);
             LOG(F("Message Json: "));
-            serializeJsonPretty(messageJson, jsonStr, MAX_JSON_SIZE);
-            LOG(jsonStr);
+            serializeJsonPretty(messageJson, Serial);
+            Serial.println();
 
             // If we are receiving a command for the MaxSub module
-            if (strstr(messageJson["commands"][0]["module"].as<const char *>(), "MaxSub") != NULL) {
+            const char *commandModule =
+                messageJson["commands"][0]["module"].as<const char *>();
+            if (commandModule != nullptr && strstr(commandModule, "MaxSub") != NULL) {
 
                 // Then we are trying to set the WiFi credentials
                 if (messageJson["commands"][0]["func"].as<int>() == 99) {
@@ -187,7 +187,6 @@ bool Loom_Max::subscribe() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Max::setUDPPort() {
-    char output[OUTPUT_SIZE];
     sendPort = SEND_BASE_UDP_PORT + manInst->get_instance_num();
     recvPort = RECV_BASE_UDP_PORT + manInst->get_instance_num();
 
@@ -195,8 +194,7 @@ void Loom_Max::setUDPPort() {
     udpSend.begin(sendPort);
     udpRecv.begin(recvPort);
 
-    snprintf(output, OUTPUT_SIZE, "Listening for UDP Packets on %u", recvPort);
-    LOG(output);
+    LOGF("Listening for UDP Packets on %u", recvPort);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

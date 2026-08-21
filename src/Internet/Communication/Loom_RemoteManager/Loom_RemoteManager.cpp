@@ -6,10 +6,10 @@ Loom_RemoteManager::Loom_RemoteManager(Manager &man, NetworkComponent &internet_
                                        const char *broker_address, int broker_port,
                                        const char *broker_user, const char *broker_pass)
     : MQTTComponent("RemoteManager", internet_client), manInst(&man) {
-    strncpy(this->address, broker_address, 100);
+    strncpy(this->address, broker_address ? broker_address : "", sizeof(this->address) - 1);
+    this->address[sizeof(this->address) - 1] = '\0';
     port = broker_port;
-    strncpy(this->username, broker_user, 100);
-    strncpy(this->password, broker_pass, 100);
+    setBrokerCredentials(broker_user, broker_pass);
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -42,11 +42,11 @@ bool Loom_RemoteManager::publish() {
     // Create topic name buffer and message buffer as well as a temp JSON document to parse the
     // received packets into
     char topic[MAX_TOPIC_LENGTH];
-    char message[MAX_JSON_SIZE];
-    StaticJsonDocument<MAX_JSON_SIZE> tempDoc;
+    char message[RETAINED_MESSAGE_SIZE];
+    StaticJsonDocument<JSON_OBJECT_SIZE(4)> tempDoc;
 
     // Update the current device status
-    updateDeviceStatus(true);
+    bool success = updateDeviceStatus(true);
 
     // Check if we are using a hypnos and then update the parameters about the hypnos
     if (hypnosInst != nullptr) {
@@ -55,50 +55,59 @@ bool Loom_RemoteManager::publish() {
         updateHypnosInterval(topic, message, tempDoc);
 
         // Update the RTC time, if desired
-        updateHypnosTime(topic, message, tempDoc);
+        updateHypnosTime(topic, message);
     }
 
-    updateDeviceStatus(false);
+    success = updateDeviceStatus(false) && success;
 
-    return true;
+    return success;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_RemoteManager::loadConfigFromJSON(char *json) {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
 
-    // Doc to store the JSON data from the SD card in
-    StaticJsonDocument<300> doc;
-    DeserializationError deserialError = deserializeJson(doc, (const char *)json);
+    if (json == nullptr) {
+        ERROR(F("Cannot load RemoteManager credentials from a null buffer."));
+        moduleInitialized = false;
+        FUNCTION_END;
+        return;
+    }
+
+    // Mutable input enables zero-copy strings; only the four object slots occupy document RAM.
+    StaticJsonDocument<JSON_OBJECT_SIZE(4)> doc;
+    DeserializationError deserialError = deserializeJson(doc, json);
 
     // Check if an error occurred and if so print it
     if (deserialError != DeserializationError::Ok) {
-        snprintf_P(output, OUTPUT_SIZE,
-                   PSTR("There was an error reading the MQTT credentials from SD: %s"),
-                   deserialError.c_str());
-        ERROR(output);
+        ERRORF("There was an error reading the MQTT credentials from SD: %s",
+               deserialError.c_str());
+        free(json);
+        moduleInitialized = false;
+        FUNCTION_END;
+        return;
     }
 
     // Clear the strings and set port = 0
     memset(address, '\0', 100);
-    memset(username, '\0', 100);
-    memset(password, '\0', 100);
     port = 0;
 
     /* We should check if any parameter is null */
-    if (!doc["broker"].isNull())
-        strncpy(address, doc["broker"].as<const char *>(), 100);
+    if (!doc["broker"].isNull()) {
+        const char *broker = doc["broker"].as<const char *>();
+        strncpy(address, broker ? broker : "", sizeof(address) - 1);
+    }
+    address[sizeof(address) - 1] = '\0';
 
-    if (!doc["username"].isNull())
-        strncpy(username, doc["username"].as<const char *>(), 100);
-
-    if (!doc["password"].isNull())
-        strncpy(password, doc["password"].as<const char *>(), 100);
+    setBrokerCredentials(doc["username"] | "", doc["password"] | "");
 
     if (!doc["port"].isNull())
         port = doc["port"].as<int>();
+
+    moduleInitialized = address[0] != '\0' && port > 0;
+    if (!moduleInitialized)
+        ERROR(F("RemoteManager configuration requires a broker address and positive port."));
 
     free(json);
     FUNCTION_END;
@@ -107,11 +116,11 @@ void Loom_RemoteManager::loadConfigFromJSON(char *json) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_RemoteManager::updateHypnosInterval(char topic[MAX_TOPIC_LENGTH],
-                                              char message[MAX_JSON_SIZE],
-                                              StaticJsonDocument<MAX_JSON_SIZE> &json) {
+                                              char message[RETAINED_MESSAGE_SIZE],
+                                              StaticJsonDocument<JSON_OBJECT_SIZE(4)> &json) {
     // Clear message and topic and json
     memset(topic, '\0', MAX_TOPIC_LENGTH);
-    memset(message, '\0', MAX_JSON_SIZE);
+    memset(message, '\0', RETAINED_MESSAGE_SIZE);
     json.clear();
 
     /*
@@ -126,13 +135,32 @@ void Loom_RemoteManager::updateHypnosInterval(char topic[MAX_TOPIC_LENGTH],
     */
     snprintf(topic, MAX_TOPIC_LENGTH, "RemoteManager/%s%i/Hypnos/setSleepInterval",
              manInst->get_device_name(), manInst->get_instance_num());
-    if (getCurrentRetained((const char *)topic, message)) {
+    if (getCurrentRetained(topic, message, RETAINED_MESSAGE_SIZE)) {
 
         // Parse the incoming message into a JSON Document and then create a new date time from the
         // values to update the current time in the Hypnos
-        deserializeJson(json, (const char *)message);
-        TimeSpan time = TimeSpan(json["days"].as<int>(), json["hours"].as<int>(),
-                                 json["minutes"].as<int>(), json["seconds"].as<int>());
+        const DeserializationError error = deserializeJson(json, message);
+        if (error != DeserializationError::Ok) {
+            ERRORF("Invalid retained Hypnos interval JSON: %s", error.c_str());
+            return;
+        }
+        const int days = json["days"] | 0;
+        const int hours = json["hours"] | 0;
+        const int minutes = json["minutes"] | 0;
+        const int seconds = json["seconds"] | 0;
+        if (days < 0 || days > 24854 || hours < 0 || hours > 23 || minutes < 0 || minutes > 59 ||
+            seconds < 0 || seconds > 59) {
+            ERROR(F("Retained Hypnos interval contains an out-of-range field."));
+            return;
+        }
+
+        const TimeSpan time(static_cast<int16_t>(days), static_cast<int8_t>(hours),
+                            static_cast<int8_t>(minutes), static_cast<int8_t>(seconds));
+
+        if (time.totalseconds() <= 0) {
+            ERROR(F("Retained Hypnos interval must be greater than zero."));
+            return;
+        }
 
         // Set the new interrupt duration
         hypnosInst->setInterruptDuration(time);
@@ -144,12 +172,11 @@ void Loom_RemoteManager::updateHypnosInterval(char topic[MAX_TOPIC_LENGTH],
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_RemoteManager::updateHypnosTime(char topic[MAX_TOPIC_LENGTH], char message[MAX_JSON_SIZE],
-                                          StaticJsonDocument<MAX_JSON_SIZE> &json) {
-    // Clear message and topic and json
+void Loom_RemoteManager::updateHypnosTime(char topic[MAX_TOPIC_LENGTH],
+                                          char message[RETAINED_MESSAGE_SIZE]) {
+    // Clear message and topic
     memset(topic, '\0', MAX_TOPIC_LENGTH);
-    memset(message, '\0', MAX_JSON_SIZE);
-    json.clear();
+    memset(message, '\0', RETAINED_MESSAGE_SIZE);
 
     /*
         This is the topic that we need to publish to to change the RTC time. The contents of the
@@ -157,9 +184,12 @@ void Loom_RemoteManager::updateHypnosTime(char topic[MAX_TOPIC_LENGTH], char mes
     */
     snprintf(topic, MAX_TOPIC_LENGTH, "RemoteManager/%s%i/Hypnos/setRTC",
              manInst->get_device_name(), manInst->get_instance_num());
-    if (getCurrentRetained((const char *)topic, message)) {
+    if (getCurrentRetained(topic, message, RETAINED_MESSAGE_SIZE)) {
         // Set the new RTC time from the network
-        hypnosInst->networkTimeUpdate();
+        if (!hypnosInst->networkTimeUpdate()) {
+            ERROR(F("Remote RTC update failed; retaining the request for a later retry."));
+            return;
+        }
 
         // And then delete the current retained message so we don't update it again
         deleteRetained((const char *)topic);
@@ -168,8 +198,8 @@ void Loom_RemoteManager::updateHypnosTime(char topic[MAX_TOPIC_LENGTH], char mes
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_RemoteManager::updateDeviceStatus(bool onOff) {
-    StaticJsonDocument<100> json;
+bool Loom_RemoteManager::updateDeviceStatus(bool onOff) {
+    StaticJsonDocument<JSON_OBJECT_SIZE(1)> json;
     char message[100];
     char topic[MAX_TOPIC_LENGTH];
 
@@ -179,11 +209,11 @@ void Loom_RemoteManager::updateDeviceStatus(bool onOff) {
 
     // Set the online flag and then serialize the json to a string
     json["online"] = onOff;
-    serializeJson(json, message);
+    serializeJson(json, message, sizeof(message));
 
     // Format the topic to publish the data to and publish the message
     snprintf(topic, MAX_TOPIC_LENGTH, "RemoteManager/%s%i/status", manInst->get_device_name(),
              manInst->get_instance_num());
-    publishMessage((const char *)topic, message);
+    return publishMessage(topic, message);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

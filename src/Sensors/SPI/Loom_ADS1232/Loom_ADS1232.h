@@ -38,7 +38,7 @@ class Loom_ADS1232 : public Module {
 
     ADS1232_Lib_Fixed inst; // Instance of the bounded ADS1232 driver
 
-    float weight; // Weight output
+    float weight = 0.0f; // Weight output
 
     long offset;     // Calibration offset
     float scale;     // Calibration scale

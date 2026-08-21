@@ -2,24 +2,20 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Digital::measure() {
-
-    // Clear collected data
-    pinToData.clear();
-
-    // Read the data from the given analog pin
+    // Reuse the fixed-size value storage instead of allocating map nodes on every measurement.
     for (size_t i = 0; i < digitalPins.size(); i++) {
-        pinToData.insert(std::pair<int, int>(digitalPins[i], digitalRead(digitalPins[i])));
+        pinData[i] = digitalRead(digitalPins[i]);
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Digital::package() {
-    char name[5];
+    char name[12];
     JsonObject json = manInst->get_data_object(getModuleName());
-    for (const auto &myPair : pinToData) {
-        snprintf_P(name, 5, PSTR("%i"), myPair.first);
-        json[name] = pinToData[myPair.first];
+    for (size_t i = 0; i < digitalPins.size(); i++) {
+        snprintf_P(name, sizeof(name), PSTR("%i"), digitalPins[i]);
+        json[name] = pinData[i];
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

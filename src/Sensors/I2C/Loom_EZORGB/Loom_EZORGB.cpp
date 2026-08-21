@@ -25,7 +25,9 @@ void Loom_EZORGB::measure() {
         }
 
         // Parse the constructed string
-        parseData(getSensorData());
+        if (!parseData(getSensorData())) {
+            ERROR(F("Malformed RGB response"));
+        }
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -54,19 +56,35 @@ void Loom_EZORGB::power_down() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZORGB::parseData(const char *sensorData) {
-    // Parse out the comma separated strings
-    char *splitPointer;
-    char response[33];
-    strncpy(response, sensorData, 33);
+bool Loom_EZORGB::parseData(const char *sensorData) {
+    if (!sensorData) {
+        return false;
+    }
 
-    splitPointer = strtok(response, ",");
-    rgb[0] = atoi(splitPointer);
+    // Parse out the comma separated strings without committing a partial sample.
+    char response[33] = {};
+    strncpy(response, sensorData, sizeof(response) - 1);
+
+    char *splitPointer = strtok(response, ",");
+    if (!splitPointer) {
+        return false;
+    }
+    const int red = atoi(splitPointer);
 
     splitPointer = strtok(NULL, ",");
-    rgb[1] = atoi(splitPointer);
+    if (!splitPointer) {
+        return false;
+    }
+    const int green = atoi(splitPointer);
 
     splitPointer = strtok(NULL, ",");
-    rgb[2] = atoi(splitPointer);
+    if (!splitPointer) {
+        return false;
+    }
+
+    rgb[0] = static_cast<uint8_t>(red);
+    rgb[1] = static_cast<uint8_t>(green);
+    rgb[2] = static_cast<uint8_t>(atoi(splitPointer));
+    return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

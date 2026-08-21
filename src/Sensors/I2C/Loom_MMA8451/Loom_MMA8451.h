@@ -87,6 +87,6 @@ class Loom_MMA8451 : public I2CDevice {
     static int interruptPin;              // Interrupt pin on movement; -1 disables the interrupt
     static InterruptCallbackFunction isr; // ISR to call when the interrupt is triggered
 
-    float accel[3];      // Acceleration values for each axis. Units: g
-    uint8_t orientation; // Orientation
+    float accel[3] = {};                  // Acceleration values for each axis. Units: g
+    uint8_t orientation = MMA8451_PL_PUF; // Orientation
 };

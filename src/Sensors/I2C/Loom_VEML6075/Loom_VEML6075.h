@@ -48,9 +48,7 @@ class Loom_VEML6075 : public I2CDevice {
   private:
     Manager *manInst;       // Instance of the manager
     Adafruit_VEML6075 veml; // Adafruit VENL6075 Sensor Object
-    float UVA;              // Ultraviolet-A value (315nm - 400nm)
-    float UVB;              // Ultraviolet-B value (280nm - 315nm)
-    float UVI;              // Ultraviolet Index value
-
-    bool initialized = true; // True until set to false
+    float UVA = 0.0f; // Ultraviolet-A value (315nm - 400nm)
+    float UVB = 0.0f; // Ultraviolet-B value (280nm - 315nm)
+    float UVI = 0.0f; // Ultraviolet Index value
 };

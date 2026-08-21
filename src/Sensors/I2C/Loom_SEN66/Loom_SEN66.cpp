@@ -14,8 +14,6 @@ Loom_SEN66::Loom_SEN66(Manager &man, bool measurePM, bool useMux, bool readNumVa
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SEN66::initialize() {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
-    char errorMessage[OUTPUT_SIZE];
 
     Wire.begin();
     sen66.begin(Wire, SEN66_I2C_ADDRESS);
@@ -24,9 +22,7 @@ void Loom_SEN66::initialize() {
     uint16_t error = sen66.deviceReset();
 
     if (error) {
-        snprintf(errorMessage, OUTPUT_SIZE, "Error code: %u", error);
-        snprintf(output, OUTPUT_SIZE, "Reset Failed: %s", errorMessage);
-        ERROR(output);
+        ERRORF("SEN66 reset failed, error: %u", error);
         moduleInitialized = false;
         FUNCTION_END;
         return;
@@ -40,13 +36,13 @@ void Loom_SEN66::initialize() {
     // Start Continuous Measurement
     error = sen66.startContinuousMeasurement();
     if (error) {
-        snprintf(output, OUTPUT_SIZE, "Error starting measurement: %u", error);
-        ERROR(output);
+        ERRORF("Error starting SEN66 measurement: %u", error);
         moduleInitialized = false;
         FUNCTION_END;
         return;
     } else {
         moduleInitialized = true;
+        needsReinit = false;
         LOG("SEN66 Started. Waiting 5s for fan spin-up...");
         delay(5000); // Initial spin-up delay
     }
@@ -66,7 +62,6 @@ void Loom_SEN66::power_up() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SEN66::measure() {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
 
     // Reset internal accumulators to 0
     resetValuesForMeasure();
@@ -99,8 +94,7 @@ void Loom_SEN66::measure() {
         bool dataReady = false;
         error = sen66.getDataReady(padding, dataReady);
         if (error) {
-            snprintf(output, OUTPUT_SIZE, "Data-ready check failed: %u", error);
-            ERROR(output);
+            ERRORF("SEN66 data-ready check failed: %u", error);
             continue;
         }
 
@@ -133,21 +127,17 @@ void Loom_SEN66::measure() {
                         accNumPm10p0 += tmpNumPm10p0;
                         validNumberSamples++;
                     } else {
-                        snprintf(output, OUTPUT_SIZE, "Number concentration read failed: %u",
-                                 error);
-                        ERROR(output);
+                        ERRORF("SEN66 number concentration read failed: %u", error);
                     }
                 }
                 validSamples++;
             } else {
                 // Debug print
                 if (error) {
-                    snprintf(output, OUTPUT_SIZE, "Read Error: %u", error);
-                    ERROR(output);
+                    ERRORF("SEN66 read error: %u", error);
                 } else {
-                    snprintf(output, OUTPUT_SIZE, "Invalid Data Skipped (PM2.5: %.2f, CO2: %u)",
-                             tmpPm2p5, tmpCo2);
-                    ERROR(output);
+                    ERRORF("Invalid SEN66 data skipped (PM2.5: %.2f, CO2: %u)", tmpPm2p5,
+                           tmpCo2);
                 }
             }
         }
@@ -216,14 +206,11 @@ void Loom_SEN66::package() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SEN66::adjustTempOffset(int16_t offset, int16_t slope, uint16_t timeConstant) {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
 
     if (moduleInitialized) {
         uint16_t error = sen66.setTemperatureOffsetParameters(offset, slope, timeConstant, 0);
-        if (error) {
-            snprintf(output, OUTPUT_SIZE, "Failed to adjust sensor offset. Error: %u", error);
-            ERROR(output);
-        }
+        if (error)
+            ERRORF("Failed to adjust SEN66 sensor offset. Error: %u", error);
     }
     FUNCTION_END;
 }
@@ -232,19 +219,14 @@ void Loom_SEN66::adjustTempOffset(int16_t offset, int16_t slope, uint16_t timeCo
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SEN66::logDeviceStatus() {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
 
     SEN66DeviceStatus deviceStatus;
     uint16_t error = sen66.readDeviceStatus(deviceStatus);
 
     if (!error) {
-        std::bitset<32> bits(deviceStatus.value);
-        std::string bitString = bits.to_string();
-        snprintf(output, OUTPUT_SIZE, "Device Status: %s", bitString.c_str());
-        LOG(output);
+        LOGF("Device status: 0x%08lX", static_cast<unsigned long>(deviceStatus.value));
     } else {
-        snprintf(output, OUTPUT_SIZE, "Error logging device status: %u", error);
-        ERROR(output);
+        ERRORF("Error logging SEN66 device status: %u", error);
     }
 
     FUNCTION_END;

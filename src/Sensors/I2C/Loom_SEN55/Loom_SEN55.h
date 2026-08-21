@@ -2,7 +2,6 @@
 
 #include <SensirionI2CSen5x.h>
 #include <Wire.h>
-#include <bitset>
 
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
@@ -204,21 +203,19 @@ class Loom_SEN55 : public I2CDevice {
     bool readNumVals; // Do we want to read the number concentration and typical particle size?
 
     /* Sensor readings */
-    float massConcentrationPm1p0;
-    float massConcentrationPm2p5;
-    float massConcentrationPm4p0;
-    float massConcentrationPm10p0;
-    float ambientHumidity;
-    float ambientTemperature;
-    float vocIndex;
-    float noxIndex;
+    float massConcentrationPm1p0 = 0.0f;
+    float massConcentrationPm2p5 = 0.0f;
+    float massConcentrationPm4p0 = 0.0f;
+    float massConcentrationPm10p0 = 0.0f;
+    float ambientHumidity = 0.0f;
+    float ambientTemperature = 0.0f;
+    float vocIndex = 0.0f;
+    float noxIndex = 0.0f;
     /* PM number readings */
-    float numConcentrationPm0p5;
-    float numConcentrationPm1p0;
-    float numConcentrationPm2p5;
-    float numConcentrationPm4p0;
-    float numConcentrationPm10p0;
-    float typicalParticleSize;
-
-    int pmReadFrequency = 0; // Counter for the number of times we have read the PM values
+    float numConcentrationPm0p5 = 0.0f;
+    float numConcentrationPm1p0 = 0.0f;
+    float numConcentrationPm2p5 = 0.0f;
+    float numConcentrationPm4p0 = 0.0f;
+    float numConcentrationPm10p0 = 0.0f;
+    float typicalParticleSize = 0.0f;
 };

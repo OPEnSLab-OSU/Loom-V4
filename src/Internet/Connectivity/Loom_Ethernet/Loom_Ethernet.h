@@ -15,7 +15,7 @@
 class Loom_Ethernet : public NetworkComponent {
 
   protected:
-    /* These aren't used with the Wifi manager */
+    /* These aren't used with the Ethernet manager */
     void measure() override {};
 
     void package() override {};
@@ -31,14 +31,14 @@ class Loom_Ethernet : public NetworkComponent {
 
     // Get the current time from the network
     bool getNetworkTime(int *year, int *month, int *day, int *hour, int *minute, int *second,
-                        float *tz);
+                        float *tz) override;
 
     /* Returns the currently connected state of the interface */
     bool isConnected() override { return ethernetClient.connected(); };
 
   public:
     /**
-     * Construct a new WiFi Manager
+     * Construct a new Ethernet manager
      * @param man Reference to the manager to control all aspects of every module
      * @param mac The mac address of our device
      * @param ip The IP address we want to use if DHCP isn't active
@@ -46,7 +46,7 @@ class Loom_Ethernet : public NetworkComponent {
     Loom_Ethernet(Manager &man, uint8_t mac[6], IPAddress ip);
 
     /**
-     * Construct a new WiFi manager, passing the credentials in as a json document
+     * Construct a new Ethernet manager whose configuration will be loaded from JSON
      * @param man Reference to the manager
      * @param jsonString JSON string to pull the credentials from
      */
@@ -73,9 +73,9 @@ class Loom_Ethernet : public NetworkComponent {
     Client *getClient() override { return (Client *)&ethernetClient; };
 
     /**
-     * Get a reference to the UDP communication handler
+     * Get a non-owning pointer to the UDP communication handler
      */
-    EthernetUDP *getUDP() { return new EthernetUDP(); };
+    EthernetUDP *getUDP() { return &udp; }
 
     /**
      * Get the IP address of the Ethernet module
@@ -100,8 +100,10 @@ class Loom_Ethernet : public NetworkComponent {
      * Convert an IP address to a string
      */
     void ipToString(IPAddress ip, char array[16]) {
-        snprintf(array, 16, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
-    };
+        snprintf(array, 16, "%u.%u.%u.%u", static_cast<unsigned int>(ip[0]),
+                 static_cast<unsigned int>(ip[1]), static_cast<unsigned int>(ip[2]),
+                 static_cast<unsigned int>(ip[3]));
+    }
 
   private:
     Manager *manInst; // Pointer to the manager
@@ -110,15 +112,13 @@ class Loom_Ethernet : public NetworkComponent {
                                    // additional objects
     EthernetUDP udp;               // UDP Client
 
-    /* NTP Syncronization */
+    /* NTP synchronization */
     unsigned int localPort = 8888;
     const char *timeServer = "time.nist.gov";
-    const int NTP_PACKET_SIZE = 48;
+    static constexpr size_t NTP_PACKET_SIZE = 48;
     void sendNTPpacket();
 
-    bool hasInitialized = false; // Has the Ethernet module run through the initialization process
-
-    uint8_t mac[6]; // MAC Address of the connected device
+    uint8_t mac[6] = {}; // MAC address of the connected device
     IPAddress ip;   // The IP we should assign to this device
 
     IPAddress remoteIP; // IP address to send the UDP requests to

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <map>
 #include <vector>
 
 #include "Loom_Manager.h"
@@ -30,14 +29,22 @@
 /* Contain all the information regarding the analog pin that we want to use*/
 struct AnalogMapping {
     int pinNumber;
-    const char *name;
+    char name[5];
     float analog;
     float analog_mv;
 
     /* Construct a new analog mapping */
     AnalogMapping(int pinNumber, const char *name, float analog, float analog_mv) {
         this->pinNumber = pinNumber;
-        this->name = name;
+        strncpy(this->name, name ? name : "", sizeof(this->name) - 1);
+        this->name[sizeof(this->name) - 1] = '\0';
+        this->analog = analog;
+        this->analog_mv = analog_mv;
+    }
+
+    AnalogMapping(int pinNumber, float analog, float analog_mv) {
+        this->pinNumber = pinNumber;
+        snprintf(this->name, sizeof(this->name), "A%i", pinNumber - 14);
         this->analog = analog;
         this->analog_mv = analog_mv;
     }
@@ -69,10 +76,10 @@ class Loom_Analog : public Module {
     Loom_Analog(Manager &man, T firstPin, Args... additionalPins)
         : Module("Analog"), manInst(&man) {
         analogReadResolution(adcResolutionBits);
+        pinMappings.reserve(sizeof...(additionalPins) + 2);
         get_variadic_parameters(firstPin, additionalPins...);
         const float batteryVoltage = readBatteryVoltage();
-        pinMappings.push_back(
-            new AnalogMapping(batteryPin, "Vbat", batteryVoltage, batteryVoltage * 1000.0f));
+        pinMappings.emplace_back(batteryPin, "Vbat", batteryVoltage, batteryVoltage * 1000.0f);
 
         // Register the module with the manager
         manInst->registerModule(this);
@@ -85,10 +92,10 @@ class Loom_Analog : public Module {
      */
     template <typename T> Loom_Analog(Manager &man, T firstPin) : Module("Analog"), manInst(&man) {
         analogReadResolution(adcResolutionBits);
-        pinMappings.push_back(new AnalogMapping(firstPin, pinNumberToName(firstPin), 0, 0));
+        pinMappings.reserve(2);
+        pinMappings.emplace_back(firstPin, 0, 0);
         const float batteryVoltage = readBatteryVoltage();
-        pinMappings.push_back(
-            new AnalogMapping(batteryPin, "Vbat", batteryVoltage, batteryVoltage * 1000.0f));
+        pinMappings.emplace_back(batteryPin, "Vbat", batteryVoltage, batteryVoltage * 1000.0f);
 
         // Register the module with the manager
         manInst->registerModule(this);
@@ -100,9 +107,9 @@ class Loom_Analog : public Module {
      */
     Loom_Analog(Manager &man) : Module("Analog"), manInst(&man) {
         analogReadResolution(adcResolutionBits);
+        pinMappings.reserve(1);
         const float batteryVoltage = readBatteryVoltage();
-        pinMappings.push_back(
-            new AnalogMapping(batteryPin, "Vbat", batteryVoltage, batteryVoltage * 1000.0f));
+        pinMappings.emplace_back(batteryPin, "Vbat", batteryVoltage, batteryVoltage * 1000.0f);
 
         // Register the module with the manager
         manInst->registerModule(this);
@@ -138,21 +145,19 @@ class Loom_Analog : public Module {
      */
     template <typename T> T get_variadic_parameters(T v) {
         /* Push the pin number to vector */
-        pinMappings.push_back(new AnalogMapping(v, pinNumberToName(v), 0, 0));
+        pinMappings.emplace_back(v, 0, 0);
         return v;
     };
 
     template <typename T, typename... Args> T get_variadic_parameters(T first, Args... args) {
-        pinMappings.push_back(new AnalogMapping(first, pinNumberToName(first), 0, 0));
+        pinMappings.emplace_back(first, 0, 0);
         return get_variadic_parameters(args...);
     };
 
     float analogToMV(int analog); // Convert the analog voltage to mV
     float readBatteryVoltage() const;
-    char *pinNumberToName(int pin); // Convert the given to a name with the style "A0"
-
-    Manager *manInst;                         // Instance of the manager
-    std::vector<AnalogMapping *> pinMappings; // Contains a struct for each pin we are monitoring
+    Manager *manInst;                       // Instance of the manager
+    std::vector<AnalogMapping> pinMappings; // Contains a struct for each pin we are monitoring
     int batteryPin = LOOM_ANALOG_BATTERY_PIN;
     uint8_t adcResolutionBits = LOOM_ANALOG_ADC_RESOLUTION_BITS;
     float adcReferenceVoltage = LOOM_ANALOG_ADC_REFERENCE_VOLTAGE;

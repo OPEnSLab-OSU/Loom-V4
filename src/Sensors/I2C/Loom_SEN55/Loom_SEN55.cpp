@@ -30,8 +30,6 @@ void Loom_SEN55::power_up() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SEN55::initialize() {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
-    char errorMessage[OUTPUT_SIZE];
 
     /* Initialize wire and start the sensor using the standard I2C interface */
     Wire.begin();
@@ -40,18 +38,14 @@ void Loom_SEN55::initialize() {
     // Attempt to reset the device
     uint16_t error = sen5x.deviceReset();
     if (error) {
-        /* Stringify the errro and log the error */
-        errorToString(error, errorMessage, OUTPUT_SIZE);
-        snprintf(
-            output, OUTPUT_SIZE,
-            "Error occurred while attempting to reset device: %s, module will not be initialized!",
-            errorMessage);
-        ERROR(output);
+        ERRORF("Error %u while resetting SEN55; module will not be initialized.", error);
         moduleInitialized = false;
         FUNCTION_END;
         return;
     } else {
-        LOG("Sensor successfully initialized!");
+        moduleInitialized = true;
+        needsReinit = false;
+        LOG(F("Sensor successfully initialized!"));
     }
 
     FUNCTION_END;
@@ -61,8 +55,6 @@ void Loom_SEN55::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SEN55::measure() {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
-    char sensorError[OUTPUT_SIZE];
 
     delay(100);
     // Reset the relevent values for the average calcuation of the PM measurements
@@ -74,9 +66,7 @@ void Loom_SEN55::measure() {
               "mesurement..."));
         uint16_t readErr = sen5x.startMeasurement();
         if (readErr) {
-            errorToString(readErr, sensorError, OUTPUT_SIZE);
-            snprintf(output, OUTPUT_SIZE, "Failed to start PM measurement: %s", sensorError);
-            ERROR(output);
+            ERRORF("Failed to start PM measurement (error %u).", readErr);
             FUNCTION_END;
             return;
         }
@@ -90,9 +80,7 @@ void Loom_SEN55::measure() {
             bool dataReady = false;
             readErr = sen5x.readDataReady(dataReady);
             if (readErr) {
-                errorToString(readErr, sensorError, OUTPUT_SIZE);
-                snprintf(output, OUTPUT_SIZE, "Failed to check PM data readiness: %s", sensorError);
-                ERROR(output);
+                ERRORF("Failed to check PM data readiness (error %u).", readErr);
                 continue;
             }
             if (!dataReady && i == 0) {
@@ -101,8 +89,13 @@ void Loom_SEN55::measure() {
                       "data becomes available"));
                 while (!dataReady && (uint32_t)(millis() - startTime) < 5000) {
                     readErr = sen5x.readDataReady(dataReady);
-                    if (readErr)
+                    if (readErr) {
+                        ERRORF("Failed to check PM data readiness (error %u).", readErr);
                         break;
+                    }
+                    if (!dataReady) {
+                        delay(25);
+                    }
                 }
             }
 
@@ -113,9 +106,7 @@ void Loom_SEN55::measure() {
             readErr = sen5x.readMeasuredPmValues(Pm1p0, Pm2p5, Pm4p0, Pm10p0, numPm0p5, numPm1p0,
                                                  numPm2p5, numPm4p0, numPm10p0, particleSize);
             if (readErr) {
-                errorToString(readErr, sensorError, OUTPUT_SIZE);
-                snprintf(output, OUTPUT_SIZE, "Failed to read PM values: %s", sensorError);
-                ERROR(output);
+                ERRORF("Failed to read PM values (error %u).", readErr);
                 continue;
             }
 
@@ -160,17 +151,12 @@ void Loom_SEN55::measure() {
         readErr = sen5x.readMeasuredValues(tmp, tmp, tmp, tmp, ambientHumidity, ambientTemperature,
                                            vocIndex, noxIndex);
         if (readErr) {
-            errorToString(readErr, sensorError, OUTPUT_SIZE);
-            snprintf(output, OUTPUT_SIZE, "Failed to read environment values: %s", sensorError);
-            ERROR(output);
+            ERRORF("Failed to read environment values (error %u).", readErr);
         }
 
         readErr = sen5x.startMeasurementWithoutPm();
         if (readErr) {
-            errorToString(readErr, sensorError, OUTPUT_SIZE);
-            snprintf(output, OUTPUT_SIZE, "Failed to switch to non-PM measurement: %s",
-                     sensorError);
-            ERROR(output);
+            ERRORF("Failed to switch to non-PM measurement (error %u).", readErr);
         }
         delay(60);
     }
@@ -179,9 +165,7 @@ void Loom_SEN55::measure() {
         LOG("Beginning measurement without PM, waiting 10 seconds for sensor to stabilize...");
         uint16_t readErr = sen5x.startMeasurementWithoutPm();
         if (readErr) {
-            errorToString(readErr, sensorError, OUTPUT_SIZE);
-            snprintf(output, OUTPUT_SIZE, "Failed to start non-PM measurement: %s", sensorError);
-            ERROR(output);
+            ERRORF("Failed to start non-PM measurement (error %u).", readErr);
             FUNCTION_END;
             return;
         }
@@ -195,10 +179,11 @@ void Loom_SEN55::measure() {
         while (!dataReady && (uint32_t)(millis() - startTime) < 10000) {
             error = sen5x.readDataReady(dataReady);
             if (error) {
-                errorToString(error, sensorError, OUTPUT_SIZE);
-                snprintf(output, OUTPUT_SIZE, "Failed to check if data was ready to be read: %s",
-                         sensorError);
-                ERROR(output);
+                ERRORF("Failed to check if SEN55 data was ready (error %u).", error);
+                break;
+            }
+            if (!dataReady) {
+                delay(25);
             }
         }
 
@@ -212,10 +197,7 @@ void Loom_SEN55::measure() {
 
             // Check if we had an error reading the sensor values
             if (error) {
-                errorToString(error, sensorError, OUTPUT_SIZE);
-                snprintf(output, OUTPUT_SIZE, "Error occurred when reading measurement: %s",
-                         sensorError);
-                ERROR(output);
+                ERRORF("Error %u while reading SEN55 measurement.", error);
                 FUNCTION_END;
                 return;
             }
@@ -281,16 +263,11 @@ void Loom_SEN55::package() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SEN55::adjustTempOffset(float offset) {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
-    char sensorError[OUTPUT_SIZE];
 
     if (moduleInitialized) {
         uint16_t error = sen5x.setTemperatureOffsetSimple(offset);
-        if (error) {
-            errorToString(error, sensorError, OUTPUT_SIZE);
-            snprintf(output, OUTPUT_SIZE, "Failed to adjust sensor offset: %s", sensorError);
-            ERROR(output);
-        }
+        if (error)
+            ERRORF("Failed to adjust SEN55 sensor offset (error %u).", error);
     }
     FUNCTION_END;
 }
@@ -300,26 +277,17 @@ void Loom_SEN55::adjustTempOffset(float offset) {
 
 void Loom_SEN55::logDeviceStatus() {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
-    char sensorError[OUTPUT_SIZE];
-
-    uint32_t deviceStatus;
+    uint32_t deviceStatus = 0;
 
     uint16_t error = sen5x.readDeviceStatus(deviceStatus);
 
-    std::bitset<32> bits(deviceStatus);
-
-    std::string bitString = bits.to_string();
-
-    snprintf(output, OUTPUT_SIZE, "Device Status: %s", bitString.c_str());
-    LOG(output);
-
     if (error) {
-        errorToString(error, sensorError, OUTPUT_SIZE);
-        snprintf(output, OUTPUT_SIZE, "Error occurred while logging device status: %s",
-                 sensorError);
-        ERROR(output);
+        ERRORF("Failed to read SEN55 device status (error %u).", error);
+        FUNCTION_END;
+        return;
     }
+
+    LOGF("Device status: 0x%08lX", static_cast<unsigned long>(deviceStatus));
 
     FUNCTION_END;
 }

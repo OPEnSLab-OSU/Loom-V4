@@ -346,15 +346,22 @@ bool Loom_LTE::sendATExpectOK(const char *command, uint32_t timeoutMs) {
     SerialAT.print("\r\n");
 
     uint32_t start = millis();
-    String response;
+    static const char okResponse[] = "OK";
+    static const char errorResponse[] = "ERROR";
+    uint8_t okIndex = 0;
+    uint8_t errorIndex = 0;
 
     while ((uint32_t)(millis() - start) < timeoutMs) {
         while (SerialAT.available()) {
-            char c = SerialAT.read();
-            response += c;
-            if (response.indexOf("OK") >= 0)
+            const char character = SerialAT.read();
+            okIndex = character == okResponse[okIndex] ? okIndex + 1
+                                                       : (character == okResponse[0] ? 1 : 0);
+            errorIndex = character == errorResponse[errorIndex]
+                             ? errorIndex + 1
+                             : (character == errorResponse[0] ? 1 : 0);
+            if (okIndex == sizeof(okResponse) - 1)
                 return true;
-            if (response.indexOf("ERROR") >= 0)
+            if (errorIndex == sizeof(errorResponse) - 1)
                 return false;
         }
         delay(1);
@@ -458,9 +465,7 @@ bool Loom_LTE::bootModemWithRetries() {
     }
 
     for (uint8_t attempt = 1; attempt <= 3; attempt++) {
-        char output[OUTPUT_SIZE];
-        snprintf(output, OUTPUT_SIZE, "LTE modem boot attempt %u / 3", attempt);
-        LOG(output);
+        LOGF("LTE modem boot attempt %u / 3", attempt);
 
         // PWR_ON is a stateful hardware control, not an idempotent reset. Pulse
         // it once, then retry UART/TinyGSM initialization without risking a
@@ -506,13 +511,12 @@ bool Loom_LTE::bootModemWithRetries() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-// Full manager initialization: boot the modem, read identity, then try to open a data session.
+// Full manager initialization: boot the modem, then try to open a data session.
 // moduleInitialized tracks modem/AT readiness so a failed data session can be retried later.
 void Loom_LTE::initialize() {
     // Manager initialization enters here. At the end of this function,
     // moduleInitialized means the modem booted and TinyGSM can issue AT commands.
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
     char ip[16];
 
     // Put the board-level control pins into their released states before boot.
@@ -535,27 +539,9 @@ void Loom_LTE::initialize() {
         return;
     }
 
-    // Get the modem identity after TinyGSM initialization has succeeded.
-    String modemInfo = modem->getModemInfo();
-
-    // Remove stray CR/LF characters before testing whether the response is usable.
-    modemInfo.trim();
-
-    // If no identity text came back, UART is alive but modem initialization is incomplete.
-    if (modemInfo.length() == 0) {
-        ERROR(F("LTE modem info was empty."));
-        ERROR(
-            F("INFO: UART is alive, but the modem did not return identity text. This usually means "
-              "it is not fully initialized yet or the wrong TinyGSM modem profile was selected."));
-        moduleInitialized = false;
-        firstInit = false;
-        FUNCTION_END;
-        return;
-    }
-
-    // Print the modem identity for field logs.
-    snprintf(output, OUTPUT_SIZE, "Modem Information: %s", modemInfo.c_str());
-    LOG(output);
+    // TinyGSM's identity helper returns an Arduino String. AT readiness has already been proved by
+    // power_up(), so querying identity here only creates and frees a variable-sized heap block.
+    LOG(F("LTE modem initialized and responding to AT commands."));
 
     // Connect to the LTE network and open the APN/PDP data session.
     moduleInitialized = true;
@@ -566,17 +552,14 @@ void Loom_LTE::initialize() {
         LOG(F("Connected!"));
 
         // Print APN.
-        snprintf(output, OUTPUT_SIZE, "APN: %s", APN);
-        LOG(output);
+        LOGF("APN: %s", APN);
 
         // Print signal quality as reported by the modem.
-        snprintf(output, OUTPUT_SIZE, "Signal State: %i", modem->getSignalQuality());
-        LOG(output);
+        LOGF("Signal State: %i", modem->getSignalQuality());
 
         // Log IP address.
         ipToString(modem->localIP(), ip);
-        snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
-        LOG(output);
+        LOGF("Device IP Address: %s", ip);
 
         // verifyConnection() is intentionally left for the main loop or user sketch.
         LOG(F("Module successfully initialized!"));
@@ -598,7 +581,15 @@ void Loom_LTE::power_up() {
     FUNCTION_START;
 
     if (batch_sd != nullptr && !firstInit) {
-        if (batch_sd->getCurrentBatch() != batch_sd->getBatchSize() - 1) {
+        // Wake for the sample that will fill the batch and for every retry while an unsent batch
+        // remains at or above the threshold.
+        if (batch_sd->getBatchSize() <= 0) {
+            ERROR(F("Invalid BatchSD configuration; LTE will remain off."));
+            powerUp = false;
+            FUNCTION_END;
+            return;
+        }
+        if (batch_sd->getCurrentBatch() < batch_sd->getBatchSize() - 1) {
             powerUp = false;
             FUNCTION_END;
             return;
@@ -682,7 +673,9 @@ void Loom_LTE::power_down() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::package() {
     FUNCTION_START;
-    if (moduleInitialized) {
+    // Batch deployments deliberately power the modem off between uploads. Do not issue AT
+    // commands (or trigger TinyGSM String churn) merely because it initialized earlier.
+    if (moduleInitialized && powered) {
         JsonObject json = manInst->get_data_object(getModuleName());
         json["RSSI"] = modem->getSignalQuality();
     }
@@ -692,11 +685,9 @@ void Loom_LTE::package() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::logSignalDiagnostic() {
-    char output[OUTPUT_SIZE];
     int signal = modem->getSignalQuality();
 
-    snprintf(output, OUTPUT_SIZE, "LTE diagnostic: signal quality value = %i", signal);
-    LOG(output);
+    LOGF("LTE diagnostic: signal quality value = %i", signal);
 
     if (signal == 99) {
         WARNING(F("INFO: the modem does not know signal quality yet. It may not be registered or "
@@ -782,7 +773,6 @@ bool Loom_LTE::connect() {
     // boot can still fail later because of SIM, antenna, APN, carrier account,
     // tower coverage, or marginal power during transmit bursts.
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
     const uint8_t maxAttempts = 5;
 
     if (strlen(APN) == 0) {
@@ -808,8 +798,7 @@ bool Loom_LTE::connect() {
     applyR5NetworkHints();
 
     for (uint8_t attempt = 1; attempt <= maxAttempts; attempt++) {
-        snprintf(output, OUTPUT_SIZE, "LTE connect attempt %u / %u", attempt, maxAttempts);
-        LOG(output);
+        LOGF("LTE connect attempt %u / %u", attempt, maxAttempts);
 
         modem->sendAT(F("+CFUN=1"));
         modem->waitResponse(10000L);
@@ -834,8 +823,7 @@ bool Loom_LTE::connect() {
         } else {
             LOG(F("Connected to network!"));
 
-            snprintf(output, OUTPUT_SIZE, "Attempting to connect to LTE Network: %s", APN);
-            LOG(output);
+            LOGF("Attempting to connect to LTE Network: %s", APN);
 
             // Clear any stale PDP state before opening the data session.
             modem->gprsDisconnect();
@@ -850,9 +838,7 @@ bool Loom_LTE::connect() {
                 return true;
             }
 
-            snprintf(output, OUTPUT_SIZE, "PDP context connection failed on attempt %u / %u",
-                     attempt, maxAttempts);
-            WARNING(output);
+            WARNINGF("PDP context connection failed on attempt %u / %u", attempt, maxAttempts);
             WARNING(
                 F("INFO: cellular registration worked, but the data session did not open. Check "
                   "APN, SIM data plan, carrier provisioning, and IPv4/IPv6 expectations."));
@@ -956,14 +942,21 @@ void Loom_LTE::debugPassthrough() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::loadConfigFromJSON(char *json) {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
-    StaticJsonDocument<300> doc;
+
+    if (json == nullptr) {
+        ERROR(F("Cannot load LTE credentials from a null buffer."));
+        moduleInitialized = false;
+        FUNCTION_END;
+        return;
+    }
+
+    // Mutable input enables zero-copy strings; only five object slots need document storage.
+    StaticJsonDocument<JSON_OBJECT_SIZE(5)> doc;
     DeserializationError deserialError = deserializeJson(doc, json);
 
     if (deserialError != DeserializationError::Ok) {
-        snprintf(output, OUTPUT_SIZE, "There was an error reading the LTE credentials from SD: %s",
-                 deserialError.c_str());
-        ERROR(output);
+        ERRORF("There was an error reading the LTE credentials from SD: %s",
+               deserialError.c_str());
         ERROR(F("INFO: LTE config JSON could not be parsed, so APN/user/pass may be missing."));
         moduleInitialized = false;
         free(json);

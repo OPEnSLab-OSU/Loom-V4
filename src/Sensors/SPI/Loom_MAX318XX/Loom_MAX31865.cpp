@@ -3,22 +3,29 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MAX31865::Loom_MAX31865(Manager &man, int samples, int chip_select)
-    : Module("MAX31865"), manInst(&man), max(chip_select), num_samples(samples) {
+    : Module("MAX31865"), manInst(&man), max(chip_select),
+      num_samples(samples > 0 ? samples : 1) {
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_MAX31865::initialize() { max.begin(MAX31865_2WIRE); }
+void Loom_MAX31865::initialize() {
+    moduleInitialized = max.begin(MAX31865_2WIRE);
+    if (!moduleInitialized) {
+        ERROR(F("Could not initialize MAX31865 RTD interface"));
+    }
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MAX31865::measure() {
     float temp = 0;
+    int successfulSamples = 0;
 
     // Collect the data however many times as specified
     for (int i = 0; i < num_samples; i++) {
-        temp += max.temperature(RNOMINAL, RREF);
+        const float sample = max.temperature(RNOMINAL, RREF);
 
         // Check and print any faults
         uint8_t fault = max.readFault();
@@ -37,10 +44,17 @@ void Loom_MAX31865::measure() {
                 ERROR(F("Under/Over voltage"));
             break;
         }
+        if (!isnan(sample)) {
+            temp += sample;
+            successfulSamples++;
+        }
     }
 
-    // Get the average temperature
-    temperature = temp / num_samples;
+    if (successfulSamples > 0) {
+        temperature = temp / successfulSamples;
+    } else {
+        ERROR(F("No valid RTD samples collected"));
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

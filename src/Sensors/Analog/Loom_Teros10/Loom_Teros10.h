@@ -43,9 +43,9 @@ class Loom_Teros10 : public Module {
     Manager *manInst;    // Instance of the manager
     int analogPort = A0; // Where the analog sensor is hooked up
 
-    float milliVolt;       // Millivolt output reading
-    float volumetricWater; // Volumetric water content
-    float dielecPerm;      // Dielectric permittivity
+    float milliVolt = 0.0f;       // Millivolt output reading
+    float volumetricWater = 0.0f; // Volumetric water content
+    float dielecPerm = 0.0f;      // Dielectric permittivity
 
     float analogToMV(int analog); // Convert the analog voltage to mV
     float computeVWC(float mV);   // Calculate the Volumetric Water Content from the mV

@@ -33,6 +33,9 @@ class Loom_MAX31856 : public Module {
                   int sclk = -1);
     ~Loom_MAX31856() override { delete maxthermo; }
 
+    Loom_MAX31856(const Loom_MAX31856 &) = delete;
+    Loom_MAX31856 &operator=(const Loom_MAX31856 &) = delete;
+
     /**
      * Get the recorded temperature
      */
