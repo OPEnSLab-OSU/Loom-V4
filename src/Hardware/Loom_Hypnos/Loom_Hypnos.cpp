@@ -272,18 +272,14 @@ void Loom_Hypnos::initializeRTC() {
     }
 
     // Clear any pending alarms
-    RTC_DS.clearAlarm(1);
-    RTC_DS.clearAlarm(2);
+    RTC_DS.clearAlarm();
 
     RTC_DS.writeSqwPinMode(DS3231_OFF);
 
     // We successfully started the RTC
     LOG(F("DS3231 Real-Time Clock Initialized Successfully!"));
     RTC_initialized = true;
-    DateTime t = getCurrentTime();
-    char tbuf[21];
-    dateTime_toString(t, tbuf);
-    snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", tbuf);
+    snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
     LOG(output);
     FUNCTION_END;
 }
@@ -300,20 +296,66 @@ DateTime Loom_Hypnos::getLocalTime(DateTime time) {
         return time + TimeSpan(0, (timezone), 0, 0);
     }
 }
-///////////////////////////////////////
-//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::isDaylightSavingsForDate(const DateTime &now, TIME_ZONE zone) {
+    // Timezones that observe US daylight savings (added MST)
+    switch (zone) {
+    case AST:
+    case EST:
+    case CST:
+    case MST:
+    case PST:
+    case AKST:
+        break;
+    default:
+        return false;
+    }
+
+    int year = now.year();
+
+    DateTime dstStartLocalStd = nthWeekdayOfMonth(year, 3, 0, 2, 2); // 2nd Sun of March
+    DateTime dstEndLocalDst = nthWeekdayOfMonth(year, 11, 0, 1, 2);  // 1st Sun of November
+
+    int standardOffsetHours = (int)zone;
+    int daylightOffsetHours = standardOffsetHours + 1;
+
+    // Convert each boundary to UTC using its own fixed offset
+    uint32_t dstStartUTC = dstStartLocalStd.unixtime() - (int32_t)standardOffsetHours * 3600;
+    uint32_t dstEndUTC = dstEndLocalDst.unixtime() - (int32_t)daylightOffsetHours * 3600;
+
+    uint32_t nowUTC = now.unixtime();
+
+    return (nowUTC >= dstStartUTC) && (nowUTC < dstEndUTC);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::isDaylightSavings() {
-    // Timezones that observe daylight savings
-    if (timezone == AST || timezone == EST || timezone == CST || timezone == AST ||
-        timezone == PST || timezone == AKST) {
-        int currMonth = getCurrentTime().month();
 
-        // If we are in the months where daylight savings is in affect
-        return (currMonth >= 3 && currMonth < 11);
+    return isDaylightSavingsForDate(getCurrentTime(), timezone);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+DateTime Loom_Hypnos::nthWeekdayOfMonth(int year, int month, int dow, int week, int hour) {
+    DateTime firstOfMonth(year, month, 1, 0, 0, 0);
+    int firstDow = firstOfMonth.dayOfTheWeek();
+    int day = 1 + ((dow - firstDow + 7) % 7);
+
+    if (week == 0) {
+        // first day of week: step forward a week at a time while still in month
+        static const int daysInMonthTable[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+        int dim = daysInMonthTable[month - 1];
+        if (month == 2 && ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0))
+            dim = 29;
+        while (day + 7 <= dim)
+            day += 7;
+    } else {
+        day += (week - 1) * 7;
     }
-    return false;
+    return DateTime(year, month, day, hour, 0, 0);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -335,7 +377,7 @@ bool Loom_Hypnos::networkTimeUpdate() {
     if (networkComponent != nullptr && networkComponent->isConnected()) {
         char output[OUTPUT_SIZE];
         int year, month, day, hour, minute, second = 0;
-        float tz = timezone;
+        float tz = 0;
 
         /* Try twice to set the time if it works break out if not we just og again*/
         for (int i = 0; i < 2; i++) {
@@ -344,7 +386,15 @@ bool Loom_Hypnos::networkTimeUpdate() {
             // Attempt to retrieve the current time from our network component
             if (networkComponent->getNetworkTime(&year, &month, &day, &hour, &minute, &second,
                                                  &tz)) {
-                RTC_DS.adjust(DateTime(year, month, day, hour, minute, second));
+                snprintf(output, OUTPUT_SIZE, "Heres the reported timezone: %f", tz);
+                LOG(output);
+                // convert timezone offset to seconds. This is required becasue some timezones are
+                // not on the hour. eg. 5.5, 5.75
+                int32_t tzToSeconds = static_cast<int32_t>(3600 * tz);
+                // cell tower returns local time, we need to convert to UTC
+                DateTime localTime = DateTime(year, month, day, hour, minute, second);
+                DateTime UTC = localTime - TimeSpan(tzToSeconds);
+                RTC_DS.adjust(UTC);
                 DateTime t = getCurrentTime();
                 char tbuf[21];
                 dateTime_toString(t, tbuf);
@@ -463,19 +513,15 @@ void Loom_Hypnos::set_custom_time() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::setInterruptDuration(const TimeSpan duration) {
     FUNCTION_START;
+    char output[OUTPUT_SIZE];
 
     // The time in the future that the alarm will be set for
     alarmTime = RTC_DS.now() + duration;
-    RTC_DS.setAlarm1(alarmTime, DS3231_A1_Date);
+    RTC_DS.setAlarm(alarmTime);
 
     // Print the time that the next interrupt is set to trigger
-    DateTime t = getLocalTime(RTC_DS.now());
-    char tbuf[21];
-    dateTime_toString(t, tbuf);
-    LOGF("Current Time (Local): %s", tbuf, true);
-    t = getLocalTime(alarmTime);
-    dateTime_toString(t, tbuf);
-    LOGF("Next interrupt alarm set for: %s", tbuf, true);
+    LOGF("Current Time (Local): %s", getLocalTime(RTC_DS.now()).text());
+    LOGF("Next interrupt alarm set for: %s", getLocalTime(alarmTime).text());
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -495,14 +541,9 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
         manInst->power_down();
 
         // After powering down the devices check if the alarmed time is less than the current time,
-        // this means that the alarm may have already triggered Adafruit getAlarm1() returns alarm
-        // day/hour/min/sec with placeholder year/month; build comparable time from current date
-        DateTime now = RTC_DS.now();
-        DateTime alarmReg = RTC_DS.getAlarm1();
-        DateTime alarmDateTime(now.year(), now.month(), alarmReg.day(), alarmReg.hour(),
-                               alarmReg.minute(), alarmReg.second());
-        uint32_t alarmedTime = alarmDateTime.unixtime();
-        uint32_t currentTime = now.unixtime();
+        // this means that the alarm may have already triggered
+        uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
+        uint32_t currentTime = RTC_DS.now().unixtime();
         hasAlarmTriggered = alarmedTime <= currentTime;
 
         // 50ms delay allows this last message to be sent before the bus disconnects
@@ -529,9 +570,8 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
     WD_TIMER_RESET;
 
     // If the alarm hadn't triggered last time we want to wake up like normal
-    if (!hasAlarmTriggered) {
+    if (!hasAlarmTriggered)
         post_sleep(waitForSerial); // Wake up
-    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -583,8 +623,7 @@ void Loom_Hypnos::post_sleep(bool waitForSerial) {
         WD_TIMER_RESET;
 
         // Clear any pending RTC alarms
-        RTC_DS.clearAlarm(1);
-        RTC_DS.clearAlarm(2);
+        RTC_DS.clearAlarm();
         WD_TIMER_RESET;
 
         // Re-init the modules that need it
@@ -598,8 +637,6 @@ void Loom_Hypnos::post_sleep(bool waitForSerial) {
                 ;
             WD_TIMER_ENABLE;
         }
-    } else {
-        WD_TIMER_DISABLE;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

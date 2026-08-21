@@ -39,7 +39,7 @@ class Loom_DFMultiGasSensor : public I2CDevice {
     /**
      * Get gas type that is currently being recorded
      */
-    String getGasType() { return currentGasType; };
+    const char *getGasType() { return currentGasType; };
 
     /**
      * Get the gas concentration that is currently being recorded
