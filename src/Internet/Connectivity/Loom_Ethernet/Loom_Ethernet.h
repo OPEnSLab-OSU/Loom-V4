@@ -32,7 +32,7 @@ class Loom_Ethernet : public NetworkComponent{
         void power_down() override { Ethernet.maintain(); };
 
         // Get the current time from the network
-        bool getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz);
+        bool getNetworkTimeUtc(DateTime *timeNowUtc);
 
         /* Returns the currently connected state of the interface */
         bool isConnected() override { return ethernetClient.connected(); };

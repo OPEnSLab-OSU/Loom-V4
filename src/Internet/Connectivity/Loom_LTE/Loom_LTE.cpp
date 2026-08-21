@@ -326,10 +326,17 @@ Client* Loom_LTE::getClient() { return (Client*)&client; }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LTE::getNetworkTime(int *year, int *month, int *day, int *hour, int *minute, int *second,
-                              float *tz) {
+bool Loom_LTE::getNetworkTimeUtc(DateTime *timeNowUtc) {
+    int year, month, day, hour, minute, second;
+    float tz;
+
     // getNetworkTime gives value in UTC, no need to adjust
-    return modem.getNetworkTime(year, month, day, hour, minute, second, tz);
+    if (!modem.getNetworkTime(&year, &month, &day, &hour, &minute, &second, &tz)) {
+        return false;
+    }
+
+    *timeNowUtc = DateTime(year, month, day, hour, minute, second);
+    return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -96,7 +96,7 @@ void Loom_Ethernet::loadConfigFromJSON(char* json){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_Ethernet::getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz){
+bool Loom_Ethernet::getNetworkTimeUtc(DateTime *timeNowUtc){
     byte packetBuffer[NTP_PACKET_SIZE];     // Buffer to read in packet
     const unsigned long seventyYears = 2208988800UL; // Unix time start
 
@@ -123,13 +123,7 @@ bool Loom_Ethernet::getNetworkTime(int* year, int* month, int* day, int* hour, i
         unsigned long unixtime = secsSince1900 - seventyYears;
 
         // Set the integer pointers to the corresponding time
-        DateTime currentTime = DateTime(unixtime);
-        *year = currentTime.year();
-        *month = currentTime.month();
-        *day = currentTime.day();
-        *hour = currentTime.hour();
-        *minute = currentTime.minute();
-        *second = currentTime.minute();
+        *timeNowUtc = DateTime(unixtime);
 
         return true;
     }

@@ -373,19 +373,9 @@ IPAddress Loom_WIFI::getBroadcast(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_WIFI::getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) {
-    unsigned long unixtime = WiFi.getTime();
-    if(unixtime != 0){
-        DateTime time = DateTime(unixtime);
-        *year = time.year();
-        *month = time.month();
-        *day = time.day();
-        *hour = time.hour();
-        *minute = time.minute();
-        *second = time.second();
-        return true;
-    }else{
-        return false;
-    }
+bool Loom_WIFI::getNetworkTimeUtc(DateTime *timeNowUtc) {
+    unsigned long unixtimeUtc = WiFi.getTime();
+    *timeNowUtc = DateTime(unixtimeUtc);
+    return (unixtimeUtc != 0);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

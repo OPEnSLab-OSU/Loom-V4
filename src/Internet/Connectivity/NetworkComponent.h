@@ -1,5 +1,6 @@
 #pragma once
 #include <Client.h>
+#include <OPEnS_RTC.h>
 
 #include "Module.h"
 
@@ -14,7 +15,7 @@ class NetworkComponent : public Module{
         NetworkComponent(const char* modName) : Module(modName) {}
 
         /* Request the current network time from the NetworkComponent */
-        virtual bool getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) = 0;
+        virtual bool getNetworkTimeUtc(DateTime *timeNowUtc) = 0;
 
         /* Is the current network interface connected */
         virtual bool isConnected() = 0;

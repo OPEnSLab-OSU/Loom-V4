@@ -35,7 +35,7 @@ class Loom_WIFI : public NetworkComponent{
         /* These aren't used with the Wifi manager */
         void measure() override {};
 
-        bool getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) override;
+        bool getNetworkTimeUtc(DateTime *timeNowUtc) override;
 
         // Initialize the device and connect to the network
         void initialize() override;
