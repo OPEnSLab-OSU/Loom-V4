@@ -331,12 +331,20 @@ bool Loom_LTE::getNetworkTimeUtc(DateTime *timeNowUtc) {
     int year, month, day, hour, minute, second;
     float tz;
 
-    // getNetworkTime gives value in UTC, no need to adjust
     if (!modem.getNetworkTime(&year, &month, &day, &hour, &minute, &second, &tz)) {
         return false;
     }
 
-    *timeNowUtc = DateTime(year, month, day, hour, minute, second);
+    /* getNetworkTime gives value in local time, need to adjust.
+     * tz is populated with number of hours ahead of UTC.
+     * Ex: PDT is 7 hours behind UTC, so tz = -7.0F.
+     * This is a fraction because some really weird time zones are 30 or 45
+     * minutes off from the hour. */
+    int32_t localzoneOffsetSeconds = (int32_t) (tz * 3600.0F);
+    TimeSpan localzoneOffset = TimeSpan(localzoneOffsetSeconds);
+
+    DateTime timeNowLocal = DateTime(year, month, day, hour, minute, second);
+    *timeNowUtc = timeNowLocal - localzoneOffset;
     return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
