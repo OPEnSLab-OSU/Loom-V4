@@ -5,13 +5,14 @@
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 
-
 #include <Loom_Manager.h>
-
 #include <Sensors/Loom_Analog/Loom_Analog.h>
+#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 
 
 Manager manager("Device", 1);
+
+Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 
 // Reads the battery voltage
 Loom_Analog analog(manager);
@@ -22,16 +23,21 @@ Loom_Analog analog(manager);
 // Read the battery voltage, A2 and A4
 //Loom_Analog analog(manager, A2, A4);
 
-void setup() {
 
+void setup() 
+{
   // Start the serial interface
   manager.beginSerial();
+
+  hypnos.enable();
 
   // Initialize the manager
   manager.initialize();
 }
 
-void loop() {
+
+void loop() 
+{
   // put your main code here, to run repeatedly:
 
   // Measure the data from the sensors

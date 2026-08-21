@@ -3,31 +3,38 @@
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
+
 #include "arduino_secrets.h"
-
 #include <Loom_Manager.h>
-
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
 #include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h>
+#include <Sensors/Loom_Analog/Loom_Analog.h>
+
 
 Manager manager("Device", 1);
 
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 
 Loom_LTE lte(manager, NETWORK_NAME, NETWORK_USER, NETWORK_PASS);
-Loom_MongoDB mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS, PROJECT);
+
+Loom_MongoDB mqtt(manager, lte, SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS, PROJECT);
+
+Loom_Analog analog(manager);
 
 // Enables batch logging with a batch size of 15
 Loom_BatchSD batchSD(hypnos, 15);
 
+
 // Called when the interrupt is triggered 
-void isrTrigger(){
+void isrTrigger()
+{
   hypnos.wakeup();
 }
 
-void setup() {
 
+void setup() 
+{
   // Start serial
   manager.beginSerial();
 
@@ -42,15 +49,16 @@ void setup() {
 
   // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);
-
 }
 
-void loop() {
+
+void loop() 
+{
   // Set the RTC interrupt alarm to wake the device in 10 seconds
   hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 10));
 
   // Measure data from connected sensors
-  manager.measure()
+  manager.measure();
     
   // Package data
   manager.package();
@@ -64,8 +72,6 @@ void loop() {
   // Pass batch SD along to the MQTT module
   mqtt.publish(batchSD);
   
-  
-
   // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
   hypnos.reattachRTCInterrupt();
 
