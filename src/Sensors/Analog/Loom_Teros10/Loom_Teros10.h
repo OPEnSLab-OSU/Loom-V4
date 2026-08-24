@@ -17,6 +17,8 @@ class Loom_Teros10 : public Module {
 
     void power_up() override {};
     void power_down() override {};
+    void standby() override {};
+    void resume() override {};
 
   public:
     void measure() override;

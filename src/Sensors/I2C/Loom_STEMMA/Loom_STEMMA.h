@@ -18,6 +18,8 @@ class Loom_STEMMA : public I2CDevice {
     void power_up() override {};
     void power_down() override {};
     void package() override;
+    void standby() override {};
+    void resume() override {};
 
   public:
     /**

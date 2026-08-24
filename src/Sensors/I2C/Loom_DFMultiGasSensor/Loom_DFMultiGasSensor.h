@@ -19,6 +19,8 @@ class Loom_DFMultiGasSensor : public I2CDevice {
     void initialize() override;
     void power_up() override;
     void power_down() override {};
+    void standby() override {};
+    void resume() override {};
     void package() override;
 
   public:

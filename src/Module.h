@@ -49,7 +49,7 @@ class Module {
     virtual void power_up() = 0;   // Power the sensor up and come out of sleep
     virtual void power_down() = 0; // Power the sensor down to prepare for sleep
     virtual void resume() = 0;     // Leave low power state
-    virtual void standby() =0;     // Enter low power state
+    virtual void standby() = 0;    // Enter low power state
 
     // Not required overrides
     virtual void display_data() {}; // Called by the manager to allow OLED to display data at the

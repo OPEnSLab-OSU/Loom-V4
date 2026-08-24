@@ -19,7 +19,9 @@ class Actuator : public Module {
     void power_up() override {};
     void power_down() override {};
     void package() override {};
-
+    void standby() override {};
+    void resume() override {};
+    
   public:
     Actuator(ACTUATOR_TYPE actType, int instance) : Module("Actuator") {
         type = actType;

@@ -19,7 +19,9 @@ class Loom_ZXGesture : public I2CDevice {
     void measure() override;
     void initialize() override;
     void package() override;
-
+    void standby() override {};
+    void resume() override {};
+    
   public:
     /**
      * Struct for representing position information

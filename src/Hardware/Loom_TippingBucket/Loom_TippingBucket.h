@@ -23,6 +23,8 @@ class Loom_TippingBucket : public Module {
     void initialize() override;
     void package() override;
     void measure() override;
+    void standby() override;
+    void resume() override;
 
   public:
     /* Constructor for an I2C based tipping bucket*/

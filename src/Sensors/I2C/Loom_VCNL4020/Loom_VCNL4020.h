@@ -24,8 +24,8 @@ class Loom_VCNL4020 : public I2CDevice {
     void package() override;
     void power_up() override;
     void power_down() override {};
-    void resume() override {};
-    void standby() override {};
+    void resume() override;
+    void standby() override;
 
   public:
     /**

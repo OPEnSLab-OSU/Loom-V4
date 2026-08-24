@@ -21,6 +21,8 @@ class SDManager : public Module {
     void initialize() override {};
     void power_up() override {};
     void power_down() override {};
+    void standby() override {};
+    void resume() override {};
 
   public:
     /**

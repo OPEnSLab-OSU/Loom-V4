@@ -15,6 +15,8 @@ class Loom_MPU6050 : public I2CDevice {
   protected:
     void power_up() override {};
     void power_down() override {};
+    void standby() override {};
+    void resume() override {};
 
   public:
     Loom_MPU6050(Manager &man, bool useMux = false, const bool autoCalibrate = true);

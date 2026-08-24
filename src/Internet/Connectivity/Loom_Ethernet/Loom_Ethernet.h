@@ -29,6 +29,10 @@ class Loom_Ethernet : public NetworkComponent {
     // Disconnect from the network
     void power_down() override { Ethernet.maintain(); };
 
+    void standby() override {};
+
+    void resume() override {};
+
     // Get the current time from the network
     bool getNetworkTime(int *year, int *month, int *day, int *hour, int *minute, int *second,
                         float *tz);

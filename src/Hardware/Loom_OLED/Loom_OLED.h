@@ -19,6 +19,8 @@ class Loom_OLED : public Module {
     void measure() override {};
     void initialize() override;
     void package() override {};
+    void resume() override {};
+    void standby() override {};
     void display_data() override;
 
   public:

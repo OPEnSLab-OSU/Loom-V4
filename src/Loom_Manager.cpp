@@ -198,6 +198,44 @@ void Manager::power_down() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+void Manager::standby(){
+    FUNCTION_START;
+    char noInitLog[50];
+    for (int i = 0; i < modules.size(); i++) {
+        if (modules[i].second->moduleInitialized)
+            modules[i].second->standby();
+        else {
+            /* Converted warning from printModuleName to logger*/
+            memset(noInitLog, '\0', 50);
+            snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
+            WARNING(noInitLog);
+        }
+        // TIMER_RESET;
+    }
+    FUNCTION_END;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Manager::resume(){
+    FUNCTION_START;
+    char noInitLog[50];
+    for (int i = 0; i < modules.size(); i++) {
+        if (modules[i].second->moduleInitialized)
+            modules[i].second->resume();
+        else {
+            /* Converted warning from printModuleName to logger*/
+            memset(noInitLog, '\0', 50);
+            snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
+            WARNING(noInitLog);
+        }
+        // TIMER_RESET;
+    }
+    FUNCTION_END;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::display_data() {
     char jsonStr[MAX_JSON_SIZE];
     FUNCTION_START;

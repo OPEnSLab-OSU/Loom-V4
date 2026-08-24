@@ -14,7 +14,9 @@ class Loom_NOVASDS011 : public Module {
   protected:
     void power_up() override {};
     void power_down() override {};
-
+    void standby() override {};
+    void resume() override {};
+    
   public:
     void initialize() override;
     void measure() override;

@@ -16,6 +16,8 @@ class Loom_Freewave : public Radio {
   protected:
     /* These aren't used with this module */
     void measure() override {};
+    void standby() override {};
+    void resume() override {};
 
   public:
     /**

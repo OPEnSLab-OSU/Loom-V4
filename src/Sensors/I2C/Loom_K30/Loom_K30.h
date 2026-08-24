@@ -16,6 +16,8 @@ class Loom_K30 : public I2CDevice {
   protected:
     void power_up() override {};
     void power_down() override {};
+    void standby() override {};
+    void resume() override {};
 
     // Manager controlled functions
     void measure() override;

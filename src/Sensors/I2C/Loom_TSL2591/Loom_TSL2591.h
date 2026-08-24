@@ -19,7 +19,9 @@ class Loom_TSL2591 : public I2CDevice {
     void power_up() override;
     void power_down() override {};
     void package() override;
-
+    void standby() override {};
+    void resume() override {};
+    
   public:
     /**
      * Constructs a new TSL2591 sensor

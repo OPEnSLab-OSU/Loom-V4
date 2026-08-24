@@ -14,6 +14,8 @@
 class Loom_ADS1115 : public I2CDevice {
   protected:
     void power_down() override {};
+    void standby() override {};
+    void resume() override {};
 
   public:
     void initialize() override;

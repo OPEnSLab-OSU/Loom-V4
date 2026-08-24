@@ -14,6 +14,8 @@ class Loom_DFRobotO2 : public I2CDevice {
   protected:
     void power_up() override {};
     void power_down() override {};
+    void standby() override {};
+    void resume() override {};
 
   public:
     Loom_DFRobotO2(Manager &man, bool useMux = false, int address = 0x73, int collectNum = 10);

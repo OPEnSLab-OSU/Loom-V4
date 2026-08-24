@@ -95,6 +95,10 @@ class Loom_Hypnos : public Module {
     // We want to use the package method to add the timestamp to the JSON
     void package() override;
 
+    void resume() override {};
+
+    void standby() override {};
+    
   public:
     volatile bool shouldPowerUp = true;
 

@@ -17,6 +17,8 @@ class Loom_EZOCO2 : public EZOSensor {
     void measure() override;
     void package() override;
     void power_down() override;
+    void standby() override {};
+    void resume() override {};
 
     /**
      *  Construct a new EZCO2 device

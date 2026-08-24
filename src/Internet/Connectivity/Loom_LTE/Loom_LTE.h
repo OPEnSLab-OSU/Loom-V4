@@ -58,6 +58,10 @@ class Loom_LTE : public NetworkComponent {
     // Signal Strength
     void package() override;
 
+    void standby() override {};
+
+    void resume() override {};
+
     // Get the current time from the network
     bool getNetworkTime(int *year, int *month, int *day, int *hour, int *minute, int *second,
                         float *tz) override;

@@ -90,6 +90,9 @@ class Loom_LoRa : public Module {
      */
     void package() override;
 
+    void standby() override {};
+    void resume() override {};
+
     /**
      * Get this device's address
      */

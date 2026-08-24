@@ -33,6 +33,8 @@ class Loom_Analog : public Module {
     void power_up() override {};
     void power_down() override {};
     void initialize() override {};
+    void standby() override {};
+    void resume() override {};
 
   public:
     void measure() override;

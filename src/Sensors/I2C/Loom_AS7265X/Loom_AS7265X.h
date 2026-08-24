@@ -14,6 +14,8 @@
 class Loom_AS7265X : public I2CDevice {
   protected:
     void power_down() override {};
+    void standby() override {};
+    void resume() override {};
 
     // Manager controlled functions
     void measure() override;

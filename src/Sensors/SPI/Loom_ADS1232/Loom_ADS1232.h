@@ -20,7 +20,9 @@ class Loom_ADS1232 : public Module {
     void power_down() override;
     void measure() override;
     void package() override;
-
+    void standby() override {};
+    void resume() override {};
+    
     /**
      * Calibrate the sensor
      */

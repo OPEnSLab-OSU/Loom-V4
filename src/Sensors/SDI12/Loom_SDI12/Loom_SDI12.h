@@ -23,7 +23,9 @@ class Loom_SDI12 : public Module {
     void package() override; // Generic Package Call to Store Sensor Data
     void power_down() override;
     void power_up() override;
-
+    void standby() override {};
+    void resume() override {};
+    
   public:
     Loom_SDI12(Manager &man, const int pinAddr = 11); // Loomified Constructor
 

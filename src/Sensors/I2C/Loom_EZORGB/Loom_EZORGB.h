@@ -11,6 +11,8 @@
 class Loom_EZORGB : public EZOSensor {
   protected:
     void power_up() override {};
+    void standby() override {};
+    void resume() override {};
 
   public:
     void initialize() override;

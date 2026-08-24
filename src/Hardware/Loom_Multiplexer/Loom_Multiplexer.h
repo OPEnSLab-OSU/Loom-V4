@@ -39,6 +39,8 @@ class Loom_Multiplexer : public Module {
     void package() override;
     void power_down() override;
     void power_up() override;
+    void resume() override;
+    void standby() override;
 
     /**
      * Construct a new Multiplexer
