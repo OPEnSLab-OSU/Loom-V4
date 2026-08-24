@@ -24,6 +24,8 @@ class Loom_VCNL4020 : public I2CDevice {
     void package() override;
     void power_up() override;
     void power_down() override {};
+    void resume() override {};
+    void standby() override {};
 
   public:
     /**
@@ -59,4 +61,5 @@ class Loom_VCNL4020 : public I2CDevice {
     vcnl4020_proxfreq proxFreq;
 
     bool initialized = true; // True until set to false
+    bool lowPower = false;
 };

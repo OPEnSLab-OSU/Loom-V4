@@ -83,6 +83,16 @@ class Manager {
     void power_down();
 
     /**
+     * Calls the standby function on each module to enter a low power state
+     */
+    void standby();
+
+    /**
+     * Calls the resume function on each module to enter measurement ready status
+     */
+    void resume();
+    
+    /**
      * Prints out the current JSON Document to the Serial bus
      */
     void display_data();
