@@ -30,7 +30,7 @@
       ],
       "tools":[]
     },
-        {
+      {
       "name": "loom4-beta",
       "maintainer": "OPEnS Lab",
       "websiteURL": "https://github.com/OPEnSLab-OSU/Loom-V4",
@@ -51,6 +51,96 @@
           "archiveFileName": "loom4_beta.zip",
           "checksum": "SHA-256:920a7064b44722cf40f4773c261ef2bb487ef98c29f30b359e7d73b36b31e956",
           "size": "33657573",
+          "boards": [
+            {
+              "name": "Loomified Adafruit Feather M0 (SAMD21)"
+            }
+          ]
+        }
+      ],
+      "tools":[]
+    },
+      {
+      "name": "loom4-beta",
+      "maintainer": "OPEnS Lab",
+      "websiteURL": "https://github.com/OPEnSLab-OSU/Loom-V4",
+      "email": "open.sensing@oregonstate.edu",
+      "help":{
+        "online": "https://github.com/OPEnSLab-OSU/Loom-V4/issues"
+      },
+      "platforms": [
+        {
+          "name": "Loom SAMD Boards V4 Beta",
+          "architecture": "samd",
+          "version": "4.9.1-beta.3",
+          "category": "contributed",
+          "help": {
+            "online": "https://github.com/OPEnSLab-OSU/Loom-V4/issues"
+          },
+          "url": "https://github.com/OPEnSLab-OSU/Loom-V4/releases/download/v4.9.1-beta.3/loom4_beta.zip",
+          "archiveFileName": "loom4_beta.zip",
+          "checksum": "SHA-256:4febf93f4566270660809774ac580ea65671eaac919d2929e17a5c17d9f7b9bc",
+          "size": "24431645",
+          "boards": [
+            {
+              "name": "Loomified Adafruit Feather M0 (SAMD21)"
+            }
+          ]
+        }
+      ],
+      "tools":[]
+    },
+      {
+      "name": "loom4-beta",
+      "maintainer": "OPEnS Lab",
+      "websiteURL": "https://github.com/OPEnSLab-OSU/Loom-V4",
+      "email": "open.sensing@oregonstate.edu",
+      "help":{
+        "online": "https://github.com/OPEnSLab-OSU/Loom-V4/issues"
+      },
+      "platforms": [
+        {
+          "name": "Loom SAMD Boards V4 Beta",
+          "architecture": "samd",
+          "version": "4.9.1-beta.4",
+          "category": "contributed",
+          "help": {
+            "online": "https://github.com/OPEnSLab-OSU/Loom-V4/issues"
+          },
+          "url": "https://github.com/OPEnSLab-OSU/Loom-V4/releases/download/v4.9.1-beta.4/loom4_beta.zip",
+          "archiveFileName": "loom4_beta.zip",
+          "checksum": "SHA-256:6ed135f95d02802e282be5a0f1df531d553b98689f3ec723a9b12447155289d4",
+          "size": "24516345",
+          "boards": [
+            {
+              "name": "Loomified Adafruit Feather M0 (SAMD21)"
+            }
+          ]
+        }
+      ],
+      "tools":[]
+    },
+      {
+      "name": "loom4-beta",
+      "maintainer": "OPEnS Lab",
+      "websiteURL": "https://github.com/OPEnSLab-OSU/Loom-V4",
+      "email": "open.sensing@oregonstate.edu",
+      "help":{
+        "online": "https://github.com/OPEnSLab-OSU/Loom-V4/issues"
+      },
+      "platforms": [
+        {
+          "name": "Loom SAMD Boards V4 Beta",
+          "architecture": "samd",
+          "version": "4.9.1-beta.5",
+          "category": "contributed",
+          "help": {
+            "online": "https://github.com/OPEnSLab-OSU/Loom-V4/issues"
+          },
+          "url": "https://github.com/OPEnSLab-OSU/Loom-V4/releases/download/v4.9.1-beta.5/loom4_beta.zip",
+          "archiveFileName": "loom4_beta.zip",
+          "checksum": "SHA-256:22a32733ad6f211e6b1052da77bb6c70a1d28a32e821e5877521fdf61c893db9",
+          "size": "39628865",
           "boards": [
             {
               "name": "Loomified Adafruit Feather M0 (SAMD21)"

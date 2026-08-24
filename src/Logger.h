@@ -82,20 +82,26 @@ class Logger {
      * @param silent Whether to print to the serial monitor
      */
     void log(char *message, bool silent) {
-        char filePath[100];
-
         // If we want to actually print to serial
         if (!silent)
             Serial.println(message);
 
         // Log as long as we have given it a SD card instance
         if (sdInst != nullptr && enableSDLogging && sdInst->hasSDInitialized()) {
-            snprintf_P(filePath, 100, PSTR("/debug/output_%i.log"), sdInst->getCurrentFileNumber());
-            sdInst->writeLineToFile(filePath, message);
+            snprintf_P(logFile, 100, PSTR("/debug/output_%i.log"), sdInst->getCurrentFileNumber());
+            sdInst->writeLineToFile(logFile, message);
         }
     }
 
   public:
+    /* Statically allocated buffers to minimize stack frame size when calling
+     * LOG family functions */
+    static char logFile[100];
+    static char activeFile[260];
+    static char timeBuf[21];
+    static char flashMessage[OUTPUT_SIZE];
+    static char logMessage[OUTPUT_SIZE];
+
     // Deleting copy constructor.
     Logger(const Logger &obj) = delete;
 
@@ -124,25 +130,21 @@ class Logger {
     };
 
     void genericLog(LogContext log, const __FlashStringHelper *msg) {
-        char buf[OUTPUT_SIZE];
-        memcpy_P(buf, msg, OUTPUT_SIZE);
-        genericLog(log, buf);
+        memcpy_P(flashMessage, msg, OUTPUT_SIZE);
+        genericLog(log, flashMessage);
     }
 
     void genericLog(LogContext log, const char *msg) {
-        char logMessage[OUTPUT_SIZE];
-        char fileName[260] = {};
-        truncateFileName(fileName, log.file);
+        truncateFileName(activeFile, log.file);
 
         if (hypnosInst != nullptr && hypnosInst->isRTCInitialized()) {
             DateTime t = hypnosInst->getCurrentTime();
-            char tbuf[21];
-            hypnosInst->dateTime_toString(t, tbuf);
-            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s] [%s:%s:%u] %s"), tbuf, log.level,
-                       fileName, log.func, log.lineNum, msg);
+            hypnosInst->dateTime_toString(t, timeBuf);
+            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s] [%s:%s:%u] %s"), Logger::timeBuf,
+                       log.level, Logger::activeFile, log.func, log.lineNum, msg);
         } else {
-            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s:%s:%u] %s"), log.level, fileName,
-                       log.func, log.lineNum, msg);
+            snprintf_P(Logger::logMessage, OUTPUT_SIZE, PSTR("[%s] [%s:%s:%u] %s"), log.level,
+                       Logger::activeFile, log.func, log.lineNum, msg);
         }
 
         this->log(logMessage, log.silent);
@@ -191,6 +193,10 @@ const int CONSTRUCTOR_SIZE_DIFFERENCE = 320;
 
 class FunctionInstrumentor {
   public:
+    static char activeFile[300];
+    static char logFile[100];
+    static char output[300];
+
     // delete all other constructors
     FunctionInstrumentor(const FunctionInstrumentor &) = delete;
     FunctionInstrumentor &operator=(const FunctionInstrumentor &) = delete;
@@ -205,17 +211,14 @@ class FunctionInstrumentor {
         if (!logger->shouldLogSummaries())
             return;
 
-        char fileName[300] = {};
-        Logger::truncateFileName(fileName, file);
+        Logger::truncateFileName(activeFile, file);
 
-        char logfileName[100];
-        snprintf_P(logfileName, sizeof(logfileName), PSTR("/debug/funcSummaries_%i.log"),
+        snprintf_P(logFile, sizeof(logFile), PSTR("/debug/funcSummaries_%i.log"),
                    logger->sdInst->getCurrentFileNumber());
 
-        char output[300] = {};
         snprintf_P(output, sizeof(output), PSTR("start,%d,%s,%s,%d,%d,%lu"), logger->stackDepth - 1,
-                   fileName, func, lineNum, freemem, millis());
-        bool worked = logger->sdInst->writeLineToFile(logfileName, output);
+                   activeFile, func, lineNum, freemem, millis());
+        bool worked = logger->sdInst->writeLineToFile(logFile, output);
         if (!worked)
             WARNINGF("Could not write instrumentation to file!");
     }
@@ -230,14 +233,9 @@ class FunctionInstrumentor {
         if (!logger->shouldLogSummaries())
             return;
 
-        char logfileName[100];
-        snprintf_P(logfileName, sizeof(logfileName), PSTR("/debug/funcSummaries_%i.log"),
-                   logger->sdInst->getCurrentFileNumber());
-
-        char output[300];
         snprintf_P(output, sizeof(output), PSTR("end,%d, , , ,%d,%lu"), logger->stackDepth, freemem,
                    millis());
-        bool worked = logger->sdInst->writeLineToFile(logfileName, output);
+        bool worked = logger->sdInst->writeLineToFile(logFile, output);
         if (!worked)
             WARNINGF("Could not write instrumentation to file!");
     }
