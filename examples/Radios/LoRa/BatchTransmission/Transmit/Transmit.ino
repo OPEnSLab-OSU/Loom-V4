@@ -3,11 +3,12 @@
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
-#include <Loom_Manager.h>
 
+#include <Loom_Manager.h>
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Hardware/Loom_BatchSD/Loom_BatchSD.h>
 #include <Radio/Loom_LoRa/Loom_LoRa.h>
+
 
 Manager manager("Device", 1);
 
@@ -19,27 +20,28 @@ Loom_LoRa lora(manager);
 // Create a batch size of 15
 Loom_BatchSD batch(hypnos, 15);
 
-void setup() {
+
+void setup() 
+{
   manager.beginSerial();
 
-  // Set a reference to the batchSD object
-  lora.setBatchSD(batch);
+  lora.setBatchSD(batch);    // Set a reference to the batchSD object
 
   hypnos.enable();
 
   manager.initialize();
 }
 
-void loop() {
+
+void loop() 
+{
   manager.package();
+
   manager.display_data();
 
-  // Log the hypnos to the SD card
-  hypnos.logToSD();
+  hypnos.logToSD();       // Log the hypnos to the SD card
 
-  // Send the current JSON document to address 0
-  lora.sendBatch(0);
+  lora.sendBatch(0);      // Send the current JSON document to address 0
 
-  // Wait 5 seconds between transmits
-  manager.pause(5000);
+  manager.pause(5000);    // Wait 5 seconds between transmits
 }
