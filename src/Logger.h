@@ -176,14 +176,13 @@ class Logger {
             name = strrchr(src, '/');
         }
 
-        // If we found a separator, skip it. Otherwise, use the full string.
         if (name != nullptr) {
-            name += 1;
+            name++;
         } else {
             name = src;
         }
 
-        memcpy(dst, name, strlen(name));
+        strcpy(dst, name);
     }
 };
 
