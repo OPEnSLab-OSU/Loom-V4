@@ -1,337 +1,138 @@
-#include "Loom_LTE.h"
-#include "Logger.h"
-#include <OPEnS_RTC.h>
+#pragma once
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_LTE::Loom_LTE(Manager &man, const char *apn, const char *user, const char *pass, const int pin,
-                   LTE_VERSION version)
-    : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem) {
-    strncpy(this->APN, apn, 100);
-    strncpy(this->gprsUser, user, 100);
-    strncpy(this->gprsPass, pass, 100);
-    this->powerPin = pin;
+// GSM Model Number
+// #define TINY_GSM_MODEM_UBLOX
+#define TINY_GSM_MODEM_SARAR4
 
-    lteBoardVersion = version;
-    manInst->registerModule(this);
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+#include "../NetworkComponent.h"
+#include "Loom_Manager.h"
+#include <TinyGsmClient.h>
+#include <functional>
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-Loom_LTE::Loom_LTE(Manager &man)
-    : NetworkComponent("LTE"), manInst(&man), modem(SerialAT), client(modem) {
-    manInst->registerModule(this);
+#include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
 
-    // Not initialized because we don't actually know what to connect to yet
-    moduleInitialized = false;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+// Specify what serial interface we want to use
+#define SerialAT Serial1
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LTE::powerBoardOn() {
+enum LTE_VERSION { SPARKFUN, OPENS };
 
-    // Handle powering on the parkfun board
-    if (lteBoardVersion == SPARKFUN) {
-        int16_t waitMs = 3000;
-        pinMode(powerPin, OUTPUT);
-        digitalWrite(powerPin, LOW);
-        delay(waitMs);
-        pinMode(powerPin, INPUT);
-    }
-    // Use opens board power on pin mode
-    else {
-        pinMode(powerPin, OUTPUT);
-        digitalWrite(powerPin, HIGH);
-        delay(5000);
-        pinMode(powerPin, INPUT);
-    }
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+/**
+ * Loomified Control for a 4G LTE Board
+ *
+ * @author Will Richards
+ */
+class Loom_LTE : public NetworkComponent {
+  protected:
+    /* These aren't used with the Wifi manager */
+    void measure() override {};
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LTE::powerBoardOff() {
-    // NOTE: We don't need to power off the sparkfun LTE board we can just use the power off command
-    // Handle powering off the parkfun board
-    if (lteBoardVersion == OPENS) {
-        pinMode(powerPin, OUTPUT);
-        digitalWrite(powerPin, LOW);
-        delay(2500);
-        pinMode(powerPin, INPUT);
-    }
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+    bool isConnected() override { return modem.isGprsConnected(); };
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LTE::initialize() {
-    FUNCTION_START;
-    char output[OUTPUT_SIZE];
-    char ip[16];
-    // Set the pin to output so we can write to it
-    pinMode(powerPin, INPUT);
+  public:
+    /**
+     * Construct a new LTE instance
+     * @param man Reference to the manager
+     * @param apn Name of the LTE network
+     * @param user Username to use
+     * @param pass Password to use
+     * @param powerPin Pin used to power the device
+     */
+    Loom_LTE(Manager &man, const char *apn, const char *user, const char *pass,
+             const int powerPin = A5, LTE_VERSION version = SPARKFUN);
 
-    // Start up the module
-    power_up();
+    /**
+     * Construct a new LTE instance assuming credentials will be pulled from an SD card
+     * @param man Reference to the manager
+     */
+    Loom_LTE(Manager &man);
 
-    // Get the modem info
-    char const *modemInfo = modem.getModemInfo().c_str();
+    // Initialize the device and connect to the network
+    void initialize() override;
 
-    // If no LTE shield is found we should not initialize the module
-    if (modemInfo == NULL) {
-        ERROR(F("LTE shield not detected! This can also be triggered if there isn't a SIM card in "
-                "the board"));
-        moduleInitialized = false;
-        FUNCTION_END;
-        return;
-    } else {
-        snprintf(output, OUTPUT_SIZE, "Modem Information: %s", modemInfo);
-    }
+    // Reconnect to the network
+    void power_up() override;
 
-    // Connect to the LTE network
-    moduleInitialized = connect();
+    // Disconnect from the network
+    void power_down() override;
 
-    // If we successfully connected to the LTE network print out some information
-    if (moduleInitialized) {
-        LOG(F("Connected!"));
+    // Signal Strength
+    void package() override;
 
-        // Print APN
-        snprintf(output, OUTPUT_SIZE, "APN: %s", APN);
-        LOG(output);
+    // Get the current time from the network
+    bool getNetworkTime(int *year, int *month, int *day, int *hour, int *minute, int *second,
+                        float *tz) override;
 
-        // Signal Quality
-        snprintf(output, OUTPUT_SIZE, "Signal State: %i", modem.getSignalQuality());
-        LOG(output);
+    /**
+     * Load the config to connect to the LTE network from a JSON string
+     * @param json Json file read, this is freed before returning
+     */
+    void loadConfigFromJSON(char *json);
 
-        // Log IP address
-        ipToString(modem.localIP(), ip);
-        snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
-        LOG(output);
+    /**
+     * Turn on batch upload for the lte which means it will only initialize the module when we need
+     * to upload
+     * @param batch BatchSD module
+     */
+    void setBatchSD(Loom_BatchSD &batch) { batch_sd = &batch; };
 
-        // verifyConnection();
-        LOG(F("Module successfully initialized!"));
-    } else {
-        ERROR(F("Module failed to initialize"));
-    }
+    /**
+     * Connect to the cellular network
+     */
+    bool connect();
 
-    firstInit = false;
-    FUNCTION_END;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+    /**
+     * Disconnect from the cellular network
+     */
+    void disconnect();
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LTE::power_up() {
-    FUNCTION_START;
-    // If the batch_sd is initialized and the current batch is one less than the maximum so we turn
-    // on the device before the last batch
-    if (batch_sd != nullptr && !firstInit) {
-        if (batch_sd->getCurrentBatch() != batch_sd->getBatchSize() - 1) {
-            powerUp = false;
-            FUNCTION_END;
-            return;
-        } else {
-            powerUp = true;
-        }
-    }
+    /**
+     * Attempt to connect to something remote to see if we actually have an internet connection
+     */
+    bool verifyConnection();
 
-    // If not connected to a network we want to connect
-    if (moduleInitialized) {
-        LOG(F("Powering up GPRS Modem. This should take about 10 seconds..."));
-        // TIMER_DISABLE;
+    /**
+     * Get the client to supply to publish platforms that need to communicate using this internet
+     * framework
+     */
+    Client *getClient() override;
 
-        // Power on whatever the currently used LTE board is
-        powerBoardOn();
-
-        // Delay an additional one second to allow communication to open up
-        SerialAT.begin(9600);
-        delay(1000);
-        modem.restart();
-        LOG(F("Powering up complete!"));
-        powered = true;
-        // TIMER_ENABLE;
-    }
-    // If the module isn't initialized we want to try again
-    else {
-        initialize();
-    }
-
-    if (!firstInit && moduleInitialized)
-        connect();
-
-    FUNCTION_END;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LTE::power_down() {
-    FUNCTION_START;
-    if (moduleInitialized && powerUp) {
-        LOG(F("Powering down GPRS Modem. This should take about 5 seconds..."));
+    /* Restart the modem */
+    void restartModem() {
+        // TIMER_RESET;
         modem.poweroff();
-        // // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release
-        // the pin state pull();
-        powered = false;
+        delay(3000);
+        modem.restart();
+        delay(1000);
+        // TIMER_RESET;
+    };
 
-        LOG(F("Powering down complete!"));
-    }
-    FUNCTION_END;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+    /**
+     * Convert an IP address to a string
+     */
+    void ipToString(IPAddress ip, char array[16]) {
+        snprintf(array, 16, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+    };
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LTE::package() {
-    FUNCTION_START;
-    if (moduleInitialized) {
-        JsonObject json = manInst->get_data_object(getModuleName());
-        json["RSSI"] = modem.getSignalQuality();
-    }
-    FUNCTION_END;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+  private:
+    void powerBoardOn();
+    void powerBoardOff();
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LTE::connect() {
-    FUNCTION_START;
-    char output[OUTPUT_SIZE];
-    uint8_t attemptCount = 1; // Tracks number of attempts, 5 is a fail
+    LTE_VERSION lteBoardVersion = SPARKFUN;
 
-    // TIMER_DISABLE;
-    do {
-        LOG(F("Waiting for network..."));
-        if (!modem.waitForNetwork()) {
-            ERROR(F("No Response from network!"));
-            FUNCTION_END;
-            return false;
-        }
+    Manager *manInst; // Instance of the manager
 
-        if (!modem.isNetworkConnected()) {
-            ERROR(F("No connection to network!"));
-            FUNCTION_END;
-            return false;
-        }
+    char APN[100];      // LTE Network Name
+    char gprsUser[100]; // GPRS Username
+    char gprsPass[100]; // GPRS Password
 
-        LOG(F("Connected to network!"));
+    int powerPin = A5; // Analog pin to power the LTE board
 
-        // Connect to lte network
-        snprintf(output, OUTPUT_SIZE, "Attempting to connect to LTE Network: %s", APN);
-        LOG(output);
-        if (modem.gprsConnect(APN, gprsUser, gprsPass)) {
-            LOG(F("Successfully Connected!"));
-            delay(6000);
-            FUNCTION_END;
-            // TIMER_ENABLE;
-            return true;
-        } else {
-            snprintf(output, OUTPUT_SIZE, "Connection failed %u / 10. Retrying...", attemptCount);
-            WARNING(output);
-            delay(10000);
-            attemptCount++;
-        }
+    TinyGsm modem;        // LTE Modem
+    TinyGsmClient client; // LTE Client
 
-        // If the last attempt was the 5th attempt then stop
-        if (attemptCount > 5) {
-            ERROR(F("Connection reattempts exceeded 10 tries. Connection Failed"));
-            FUNCTION_END;
-            // TIMER_ENABLE;
-            return false;
-        }
-    } while (!isConnected());
-    FUNCTION_END;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+    bool powerUp = true;
+    bool firstInit = true;            // First time it was initialized
+    Loom_BatchSD *batch_sd = nullptr; // If we are using batch publish
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LTE::disconnect() {
-    FUNCTION_START;
-    if (moduleInitialized) {
-        modem.gprsDisconnect();
-        delay(200);
-    }
-    FUNCTION_END;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LTE::verifyConnection() {
-    FUNCTION_START;
-    bool returnStatus = false;
-    LOG(F("Attempting to verify internet connection..."));
-
-    // Connect to TinyGSM's creator's website
-    if (!client.connect("vsh.pp.ua", 80)) {
-        ERROR(F("Failed to contact TinyGSM example your internet connection may not be completely "
-                "established!"));
-        client.stop();
-        FUNCTION_END;
-        return false;
-    } else {
-
-        // Request the logo.txt to display
-        client.print("GET /TinyGSM/logo.txt HTTP/1.1\r\n");
-        client.print("Host: vsh.pp.ua\r\n");
-        client.print("Connection: close\r\n\r\n");
-        client.println();
-
-        // Print logo to screen
-        uint32_t timeout = millis();
-        while (client.connected() && millis() - timeout < 10000L) {
-            // Print available data
-            while (client.available() && millis() - timeout < 10000L) {
-                char c = client.read();
-                Serial.print(c);
-                timeout = millis();
-            }
-        }
-        Serial.println();
-        client.stop();
-        returnStatus = true;
-    }
-    // TIMER_RESET;
-    FUNCTION_END;
-    return true;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LTE::loadConfigFromJSON(char *json) {
-    FUNCTION_START;
-    char output[OUTPUT_SIZE];
-    // Doc to store the JSON data from the SD card in
-    StaticJsonDocument<300> doc;
-    DeserializationError deserialError = deserializeJson(doc, (const char *)json);
-
-    // Check if an error occurred and if so print it
-    if (deserialError != DeserializationError::Ok) {
-        snprintf(output, OUTPUT_SIZE, "There was an error reading the WIFI credentials from SD: %s",
-                 deserialError.c_str());
-        ERROR(output);
-    }
-
-    // Check if apn is null
-    if (!doc["apn"].isNull()) {
-        strncpy(APN, doc["apn"].as<const char *>(), 100);
-        strncpy(gprsUser, doc["user"].as<const char *>(), 100);
-        strncpy(gprsPass, doc["pass"].as<const char *>(), 100);
-    }
-
-    // If we are supplying a different power pin then use that one
-    if (doc.containsKey("pin"))
-        powerPin = doc["pin"].as<int>();
-
-    moduleInitialized = true;
-    free(json);
-    FUNCTION_END;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-Client *Loom_LTE::getClient() { return (Client *)&client; }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LTE::getNetworkTime(int *year, int *month, int *day, int *hour, int *minute, int *second,
-                              float *tz) {
-
-    // getNetworkTime applies timezone depending on what cell tower it connects to
-
-    return modem.getNetworkTime(year, month, day, hour, minute, second, tz);
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+    bool powered = false; // Device power status
+};

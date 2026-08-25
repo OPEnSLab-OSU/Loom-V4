@@ -132,6 +132,7 @@ class Loom_LTE : public NetworkComponent {
 
     bool powerUp = true;
     bool firstInit = true;            // First time it was initialized
+    bool initAttempted = false;       // initialize attempt counter
     Loom_BatchSD *batch_sd = nullptr; // If we are using batch publish
 
     bool powered = false; // Device power status
