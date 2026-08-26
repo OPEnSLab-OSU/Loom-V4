@@ -3,6 +3,10 @@
 #include <SparkFun_AS7265X.h>
 #include <Wire.h>
 
+#if !defined(LOOM_AS7265X_PATCH_LEVEL) || LOOM_AS7265X_PATCH_LEVEL < 1
+#error "Loom_AS7265X requires the Loom-patched SparkFun AS7265X dependency from Loom/dependencies."
+#endif
+
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
 

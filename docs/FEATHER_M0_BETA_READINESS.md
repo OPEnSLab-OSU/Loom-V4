@@ -161,8 +161,9 @@ and framing changes are not. Keep these golden captures with the beta test repor
   requires package/core library separation, not risky sketch macros.
 - The 2 KB Manager document remains heap-owned. Moving it to static storage would improve placement
   determinism but would not create more RAM.
-- The bounded Wire/SERCOM changes live in the surrounding board package. A beta archive that ships
-  this Loom repository without every file in `PLATFORM_PATCH_MANIFEST.md` is incomplete.
+- Wire/SERCOM remain the checksum-verified official Loom 4.9 board-core files. The inactive timeout
+  experiment under `dependencies` is excluded from packaging; lower-core stuck-bus behavior remains
+  a hardware acceptance item documented in `PLATFORM_PATCH_MANIFEST.md`.
 
 ## Promotion rule
 

@@ -1,6 +1,10 @@
 #pragma once
 
 #include <OPEnS_RTC.h>
+
+#if !defined(LOOM_OPENS_RTC_PATCH_LEVEL) || LOOM_OPENS_RTC_PATCH_LEVEL < 1
+#error "SDManager requires the hardened OPEnS_RTC dependency from Loom/dependencies."
+#endif
 #include <SPI.h>
 #include <SdFat.h>
 

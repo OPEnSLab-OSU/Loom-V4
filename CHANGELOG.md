@@ -12,10 +12,19 @@ Updated libraries in the zip (you cannot get all of these off Arduino library ma
 - SparkFun AS726X (bounded virtual-register polling)
 - SparkFun Spectral Triad AS7265X (bounded virtual-register polling)
 
-The matching `loom4:samd` platform package also contains the Feather M0 Wire/SERCOM timeout
-backport. Shipping only the Loom library without the patched core and these two sensor dependencies
-does not include the full I2C hang protection described below. See
-`docs/PLATFORM_PATCH_MANIFEST.md` for the exact package files and beta validation requirements.
+The `loom4:samd` platform package uses the checksum-verified official Loom 4.9 Wire/SERCOM core.
+The bounded AS726x changes are confined to the reviewed third-party dependencies and Loom wrappers.
+See `docs/PLATFORM_PATCH_MANIFEST.md` for exact package inputs and beta validation requirements.
+
+The modified OPEnS_RTC, SparkFun AS726X, and SparkFun Spectral Triad AS7265X sources are now
+vendored under `dependencies/`. Release archives must promote byte-equivalent copies into the
+board package's top-level `libraries` directory; nested copies alone are not discoverable reliably
+by Arduino. The spectral wrappers validate Loom patch-level markers so a stale dependency fails
+with an explicit message rather than a private-method compiler error.
+
+An experimental SAMD21 `SERCOM.cpp`/`Wire.cpp` timeout edit is retained under
+`dependencies/Loom_SAMD21_Core_Patches` as inactive investigation notes. It must not be promoted;
+the release verifier instead enforces the official Loom 4.9 core hashes.
 
 Use the packaged OPEnS_RTC dependency instead of Adafruit RTClib for this stable re-release.
 
@@ -28,8 +37,8 @@ and rejects malformed commands and partial file reads. See `docs/COMPATIBILITY_C
 storage, topic, and wire-format invariants retained by these changes.
 
 The Cortex-M0 second pass removes recurring Digital map and tipping-bucket deque allocations,
-retains one lazy LoRa fragment workspace, reduces RemoteManager/ThingSpeak stack peaks, bounds all
-AS726x measurement waits, and backports bounded SAMD21 Wire/SERCOM transaction failure. WISP and
+retains one lazy LoRa fragment workspace, reduces RemoteManager/ThingSpeak stack peaks, and bounds
+AS726x measurement and vendored virtual-register waits. WISP and
 Dendrometer sketches emit heap/stack lifecycle checkpoints to Serial without changing stored
 packets, and WISP supplies a non-interactive compile-time RTC fallback using the corrected DST path.
 Actuator names now use the base module's single fixed buffer, formatting-only 256-byte caller

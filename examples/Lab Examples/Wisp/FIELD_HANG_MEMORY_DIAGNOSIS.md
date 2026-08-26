@@ -26,9 +26,9 @@ criteria. Hardware wake and long-duration soak validation remain required.
 The Cortex-M0 second pass also removed recurring Digital map and tipping-bucket deque allocation,
 made LoRa fragment reassembly allocate once and retain its workspace, reduced RemoteManager and
 ThingSpeak stack buffers, bounded all AS726x conversion/bridge polling, and instrumented both
-Dendrometer roles. The package's SAMD21 Wire/SERCOM waits now return after at most 100 ms on a
-busy/error/stalled transaction. This prevents a software deadlock; electrical stuck-line recovery
-still requires a sensor-rail power cycle and hardware fault-injection validation.
+Dendrometer roles. A SAMD21 Wire/SERCOM timeout patch was evaluated but is retained only as an
+inactive investigation snapshot; the beta uses the official Loom 4.9 core. Lower-core stuck-line
+behavior therefore still requires fault-injection, watchdog, and sensor-rail recovery validation.
 
 The installed Sensirion SEN5x/Core/SEN66 drivers do not use Arduino `String` or `std::string`.
 The packaged DFRobot multi-gas driver does update a global Arduino `String` from
@@ -428,9 +428,10 @@ Both are testable in under two hours by reducing only the batch threshold and ca
 
 The deterministic hazards identified above are now addressed in code: MQTT and SD bodies stream,
 large automatic arrays are removed, LTE waits are bounded, SEN55 recurring string work is removed,
-OPEnS_RTC is restored with checked alarm handling, and SAMD21 I2C waits can return instead of
-blocking forever. The historical eight-hour timing remains useful because it identifies the first
-LTE/batch boundary, but it is no longer evidence that one unresolved eight-hour timer exists.
+and OPEnS_RTC is restored with checked alarm handling. AS726x sensor-level waits are bounded, while
+the official lower-level SAMD21 I2C core still requires hardware fault testing. The historical
+eight-hour timing remains useful because it identifies the first LTE/batch boundary, but it is no
+longer evidence that one unresolved eight-hour timer exists.
 
 The release question is now empirical: during the three-week Feather M0 soak, `brk`, `frag`,
 `holes`, `min_contig`, JSON overflow, and phase pairing must stabilize after each subsystem's first

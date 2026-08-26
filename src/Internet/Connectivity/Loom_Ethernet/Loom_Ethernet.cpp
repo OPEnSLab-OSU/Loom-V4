@@ -3,6 +3,10 @@
 #include "Logger.h"
 #include <OPEnS_RTC.h>
 
+#if !defined(LOOM_OPENS_RTC_PATCH_LEVEL) || LOOM_OPENS_RTC_PATCH_LEVEL < 1
+#error "Loom_Ethernet requires the hardened OPEnS_RTC dependency from Loom/dependencies."
+#endif
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Ethernet::Loom_Ethernet(Manager &man, uint8_t mac[6], IPAddress ip)
     : NetworkComponent("Ethernet"), manInst(&man) {

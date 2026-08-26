@@ -251,11 +251,11 @@ The supplied old library was not automatically more RAM efficient overall:
 
 There is also a transaction-level SAMD21 risk independent of heap fragmentation. OPEnS_RTC ends
 the register-address write with an I2C STOP before reading. RTClib/Adafruit BusIO uses a repeated
-start for multi-byte `now()` and alarm reads. Before this pass, both eventually reached unbounded
-polling loops in the package's SAMD `Wire`/SERCOM core. The beta backport now rejects a non-idle,
-non-owned bus, checks SERCOM error flags, and caps address/data/command waits at 100 ms. A stuck
-SDA/SCL line now returns an I2C failure for the normal Loom retry/power-cycle path instead of
-freezing the MCU. Hardware fault-injection testing is still required.
+start for multi-byte `now()` and alarm reads. Both eventually reach polling loops in the package's
+official SAMD `Wire`/SERCOM core. A timeout-edited core was evaluated, but it is not shipped: this
+beta deliberately restores the checksum-verified official Loom 4.9 board files and confines
+changes to Loom and reviewed third-party libraries. Sensor/vendor timeouts do not guarantee escape
+once execution enters a lower-core wait, so SDA/SCL fault-injection testing remains required.
 
 The supplied old OPEnS implementation also has costs that should not be copied blindly:
 
@@ -281,10 +281,10 @@ control/status arm write used by the stable field version. It does not copy the 
   the guarded Hypnos logic does not have to regress.
 - Temperature conversion polling has a one-second software bound.
 
-The core timeout is a beta safeguard, not proof of electrical bus recovery. It bounds the software
-wait and lets Loom continue, but it cannot release a line physically held low. Bench testing should
-hold SDA and SCL low separately, verify the 100 ms failure return, remove the fault, power-cycle the
-sensor rail, and confirm that the next transaction succeeds.
+The inactive core-timeout experiment is retained only to document the lower-level failure mode and
+a possible future direction. Bench testing should hold SDA and SCL low separately, record whether
+the official core returns or stalls, exercise watchdog and sensor-rail recovery, remove the fault,
+and confirm that the next transaction succeeds. Do not assume a 100 ms core return in this beta.
 
 ## Remaining risks and next decision points
 
@@ -303,8 +303,8 @@ sensor rail, and confirm that the next transaction succeeds.
    reviewing the fragmentation trace.
 6. A successful compile verifies types, capacities, and link layout but cannot prove RTC wake or
    modem behavior. Hardware soak testing remains required.
-7. The new Wire/SERCOM timeout needs stuck-line, clock-stretching, and post-wake recovery testing on
-   Feather M0/Hypnos hardware before the beta is promoted to stable.
+7. The unmodified official Wire/SERCOM path still needs stuck-line, clock-stretching, watchdog, and
+   post-wake recovery testing on Feather M0/Hypnos hardware before the beta is promoted to stable.
 8. Batch acknowledgement survives ordinary publish failures, but the counter and selected queue
    are RAM-only. A reset selects a new numbered batch instead of rediscovering the prior pending
    file; reset-resilient replay needs a separately validated storage design.

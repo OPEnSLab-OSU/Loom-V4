@@ -47,8 +47,9 @@ format migration.
   unbounded per-measurement history.
 - Digital pin keys retain the old sorted, deduplicated order while measurements reuse fixed-size
   storage instead of rebuilding a map.
-- AS726x and SAMD21 Wire waits now return bounded failures instead of blocking forever. Successful
-  transaction bytes and sensor field names are unchanged.
+- Loom AS726x measurement waits and the vendored spectral virtual-register bridges now return
+  bounded failures. Official SAMD21 Wire/SERCOM remain unchanged and are not claimed to recover
+  from every stuck-bus condition. Successful transaction bytes and sensor field names are unchanged.
 - EZO parsing, radio receive workspaces, OLED traversal, Max command parsing, and WiFi flash-write
   checks reject malformed input without changing valid sensor fields, visible screen formats,
   command keys, or credential record layout.

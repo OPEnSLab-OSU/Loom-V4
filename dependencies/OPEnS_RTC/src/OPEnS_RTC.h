@@ -4,6 +4,10 @@
 #ifndef OPENS_RTC_H
 #define OPENS_RTC_H
 
+// Identifies the checked, allocation-free Loom fork. Release packaging must select this copy
+// rather than an older user-installed OPEnS_RTC library with the same header name.
+#define LOOM_OPENS_RTC_PATCH_LEVEL 1
+
 #include <Arduino.h>
 class TimeSpan;
 

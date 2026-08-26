@@ -1,5 +1,11 @@
 # Loom compile tests
 
+Before building a board-package release, run `verify_patched_dependencies.ps1`. It compares the
+installed package-level OPEnS_RTC, SparkFun AS726X, and SparkFun AS7265X build inputs against the
+authoritative copies under `Loom/dependencies`. It also verifies that active SAMD21 SERCOM/Wire
+files match the checksum-verified official Loom 4.9 versions. Experimental core snapshots under
+`dependencies` are inactive engineering notes and are never promoted by the verifier.
+
 Place this `tests` folder inside the Loom library folder:
 
 ```text
