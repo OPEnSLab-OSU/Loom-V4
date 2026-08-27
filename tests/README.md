@@ -21,6 +21,8 @@ Loom\
     loom_compile_audit_full.bat
     loom_retry_failed.ps1
     loom_warning_filter.ps1
+    verify_wisp_diagnostic_boundaries.ps1
+    verify_wisp_example_mirrors.ps1
     warning_scope_strip.cmd
     warning_scope_restore.cmd
     warning_scope_architecture.ps1
@@ -40,6 +42,23 @@ left visible to Git so a stripped branch can preserve the exact patch and
 manifest needed to restore its instrumentation.
 
 ## Scripts
+
+```powershell
+.\verify_wisp_diagnostic_boundaries.ps1
+```
+
+Checks that temporary WISP heap/reset telemetry is behind `LOOM_WISP_BETA_DIAGNOSTICS`, every
+in-sketch diagnostic call is tagged for mechanical removal, markers are balanced, and production
+watchdog coverage has not been mistaken for debug code. The marker policy is defined in
+[`SAMD21_CODING_PROFILE.md`](../docs/SAMD21_CODING_PROFILE.md).
+
+```powershell
+.\verify_wisp_example_mirrors.ps1
+```
+
+Checks that the nested WISP deployment sketches and their local memory-diagnostics header still
+match the canonical Loom copies. Line-ending differences are ignored so the check works across
+Windows and Unix checkouts; any code or configuration drift fails the check.
 
 ```bat
 loom_compile_get_cli_tools.bat

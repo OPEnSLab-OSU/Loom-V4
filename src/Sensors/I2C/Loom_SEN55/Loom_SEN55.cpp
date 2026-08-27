@@ -75,6 +75,7 @@ void Loom_SEN55::measure() {
         float particleSize = 0;
         uint8_t successfulReads = 0;
         for (int i = 0; i < PM_AVERAGE_COUNT; i++) {
+            loomResetWatchdogIfEnabled();
             delay(2000);
 
             bool dataReady = false;
@@ -88,6 +89,7 @@ void Loom_SEN55::measure() {
                 LOG(F("No data available on iteration 0, waiting an additional 5 seconds to see if "
                       "data becomes available"));
                 while (!dataReady && (uint32_t)(millis() - startTime) < 5000) {
+                    loomResetWatchdogIfEnabled();
                     readErr = sen5x.readDataReady(dataReady);
                     if (readErr) {
                         ERRORF("Failed to check PM data readiness (error %u).", readErr);
@@ -177,6 +179,7 @@ void Loom_SEN55::measure() {
         uint32_t startTime = millis();
         LOG(F("Waiting for data to be ready... If not ready in 10 seconds we will stop trying"));
         while (!dataReady && (uint32_t)(millis() - startTime) < 10000) {
+            loomResetWatchdogIfEnabled();
             error = sen5x.readDataReady(dataReady);
             if (error) {
                 ERRORF("Failed to check if SEN55 data was ready (error %u).", error);

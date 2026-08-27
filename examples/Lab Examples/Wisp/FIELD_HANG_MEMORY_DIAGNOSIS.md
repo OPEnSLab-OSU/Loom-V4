@@ -36,7 +36,149 @@ The packaged DFRobot multi-gas driver does update a global Arduino `String` from
 check and literal gas-type mapping, preserving the existing gas field names without entering that
 vendor String path.
 
-## Executive diagnosis
+## Forensic update — 2026-08-27 (current 90-minute report)
+
+This section supersedes the pre-hardening RAM sizes, stack frames, and first-batch timing diagnosis
+below for the current checkout. Those older sections remain as before-state history. The initial
+forensic audit changed no production source or stored format; the subsequently authorized beta
+safeguards are recorded below.
+
+### Current conclusion
+
+The new approximately 90-minute failure is unlikely to be the original LTE/MQTT high-water event
+or a normal-cycle stack/heap collision:
+
+- a 72-record batch with five-minute sleeps cannot reach its first publish before roughly six
+  hours; after 90 minutes the batch is only around record 16–18;
+- before the batch threshold, LTE is powered off, `Loom_LTE::package()` does not call TinyGSM, and
+  `networkTimeUpdate()` returns immediately because the network is disconnected;
+- the active Sensirion SEN5x/SEN66 libraries contain no Arduino `String`, `std::string`, or dynamic
+  allocation, and the fixed DFRobot availability/type path bypasses its recurring vendor String;
+- the 2,000-byte ArduinoJson pool is allocated once by the global `Manager`; `doc.clear()` reuses
+  that pool rather than reallocating it each cycle;
+- SD CSV and batch JSON are streamed directly to `File`; the old overlapping 2 KB automatic
+  buffers no longer exist.
+
+The leading diagnosis is now a **blocking peripheral transaction amplified by field debug
+logging**, with conditional mux reconstruction as the main remaining heap-fragmentation path.
+
+### Current linked RAM and stack evidence
+
+Exact Feather M0 builds using
+`loom4:samd:adafruit_feather_m0:usbstack=arduino,debug=off` report:
+
+| Sketch | Static SRAM | Nominal SRAM after `.data`/`.bss` |
+|---|---:|---:|
+| WISP direct batch | 7,928 B | 24,840 B |
+| WISP mux batch | 7,912 B | 24,856 B |
+| WISP v2 | 7,800 B | 24,968 B |
+
+The reported approximately 17 KB free RAM after constructors is consistent with the linked image
+and the persistent 2,000-byte JSON pool, 1,664-byte `SDManager`, network objects, vectors, and
+allocator metadata. Exact linked object sizes include `Manager` 184 B, `Loom_Hypnos` 144 B,
+`Loom_LTE` 384 B, `Loom_Multiplexer` 100 B, `Loom_SEN55` 116 B, and `Loom_SHT31` 80 B.
+
+The current `-fstack-usage` WISP mux build has no large normal-cycle Loom frame: logger formatting
+is about 360 B, SEN55 measurement 192 B, Manager measure/package 136 B, and SD logging 144 B.
+LTE connect is about 352 B and batch MQTT streaming 248 B, but neither runs at 90 minutes in a
+normal 72-record deployment. This substantially lowers stack collision and raw exhaustion as the
+current explanation.
+
+### Why the ordinary logger was the strongest 90-minute timing match
+
+Before the minimum-change safeguards, the WISP sketches called `ENABLE_SD_LOGGING`. A healthy
+direct-sensor cycle executed roughly 17–18 ordinary `LOG` calls; mux gas boards added more. Each
+call did all of the following:
+
+1. formats into a bounded 256-byte stack buffer;
+2. reads the DS3231 to add a timestamp;
+3. opens `/debug/output_N.log`, appends one line, and closes it.
+
+At cycle 16–18 this was already hundreds of extra RTC reads and SD open/append/close operations,
+and commonly tens of kilobytes of debug-file growth. A filesystem allocation boundary, marginal
+card, marginal I2C device, or stuck SDA/SCL state can therefore produce a repeatable-looking
+90-minute failure without any elapsed-time bug or heap leak. The guarded beta removes this extra
+SD/RTC debug path while leaving normal sensor CSV and batch JSON logging enabled.
+
+This checkout deliberately uses the official Loom 4.9 SAMD core. Its `Wire`/`SERCOM` master waits
+for bus ownership, address completion, receive data, and synchronization with unbounded `while`
+loops. A wedged I2C bus therefore presents as a permanent MCU hang. The same official SERCOM SPI
+implementation also has unbounded peripheral-completion waits. The inactive core-patch snapshots
+in `dependencies` remain notes only and must not be selected by the beta.
+
+### Remaining real heap-fragmentation path
+
+The mux owns auto-loaded sensors with `new`. In the healthy path it allocates them once during
+initialization and reuses them across every wake. If the mux is not initialized, however,
+`power_up()` retries `initialize()`, which deletes the current sensor set, scans, and allocates new
+objects. An intermittent mux/power/bus failure can therefore create genuine repeated heap churn.
+
+Treat mux reconstruction as causal only if the log repeatedly shows `Multiplexer found`, `Found
+I2C device`, or `Loaded sensor` after normal wakes, or if cycle-aligned `contig` falls and `frag` or
+`holes` rises. A stable `brk`, `contig`, `frag`, and `holes` trace across the same phase rules it
+down much more strongly than a single free-RAM number.
+
+### Ranked current hypotheses
+
+| Rank | Hypothesis | What would confirm it |
+|---:|---|---|
+| 1 | I2C/SPI/SD operation blocks; the former debug logger multiplied exposure | A phase loses its matching post-marker while memory remains stable; reset cause and the last phase identify the path |
+| 2 | Mux intermittently fails and repeatedly deletes/recreates sensors | Repeated mux discovery/loading messages plus falling `contig` or rising `frag`/`holes` |
+| 3 | Power or brownout/reset, especially with sensor rails retained during sleep | A new setup/boot sequence, low battery values, or reset-cause evidence instead of a stationary last phase |
+| 4 | 2,000-byte JSON pool overflows on a populated mux | `post_package` reports `ovf=1`; this explains incomplete output, not by itself a hard hang |
+| 5 | TinyGSM/ArduinoMqttClient fragmentation or an uncovered LTE wait | Failure moves to the first upload when the batch threshold changes; cannot explain a normal 90-minute record-18 failure |
+| 6 | Stack/heap collision in the constrained-buffer code | Current linked stack report does not support it; require a falling stack/heap gap or fault evidence |
+
+### Other beta correctness findings
+
+- `SDManager::current_batch` is RAM-only. After an MCU reset it starts at zero and is not rebuilt
+  from an existing nonempty batch file. The later file/count mismatch is retained safely rather
+  than deleted, but upload recovery is incomplete. This is not the cause of a pre-reset hang.
+- All guarded WISP sketches now use a 16-second active watchdog. One SEN66 measurement waits about
+  10 seconds and a T6793 adds about 1.5 seconds, before mux switching, I2C, logging, and filesystem
+  latency. The intentional long sensor loops feed an already-enabled watchdog only between bounded
+  units of useful work; a lower-level stuck transaction still produces a diagnostic reset.
+- The active ArduinoMqttClient is currently selected from the sketchbook (`0.1.8`), not the package
+  dependency. Its String activity is relevant at setup/upload, and the override is a beta
+  reproducibility risk, but it is inactive during the record-18 steady-state window.
+- The WISP sketch calls `reattachRTCInterrupt()` explicitly, and `sleep()` calls it again in
+  `pre_sleep()`. This duplicates work but does not allocate. It should be simplified only after the
+  hardware trace establishes the wake behavior.
+
+### Implemented minimum-change beta safeguards — 2026-08-27
+
+The diagnosis-driven safeguards are now applied to all three canonical WISP sketches and their
+packaged mirrors:
+
+- ordinary Logger output is Serial-only in these endurance sketches; `hypnos.logToSD()` remains
+  enabled, so sensor CSV and batch JSON filenames, keys, labels, and byte formats are unchanged;
+- RTC timestamps are disabled only for ordinary WISP Logger messages, eliminating an RTC I2C read
+  for every debug line while leaving packet timestamps unchanged;
+- a 16-second SAMD21 watchdog covers steady-state measurement, packaging, display, CSV/batch SD,
+  below-threshold batch checks, RTC programming, and the explicit interrupt reattach;
+- SEN55, SEN66, and DFRobot retry loops feed an already-enabled watchdog between bounded units of
+  useful work, so their intentional 10–20 second sampling sequences do not cause false resets;
+- cellular/MQTT and network-time windows remain outside the 16-second watchdog because legitimate
+  modem operations can exceed it; they remain distinguished by the existing phase markers;
+- every `[MEM]` line now includes the SAMD reset-cause register as `reset=0x...`, distinguishing a
+  watchdog/brownout/reset cycle from a stationary peripheral hang;
+- temporary heap/reset checkpoints are gated by `LOOM_WISP_BETA_DIAGNOSTICS`, their definitions are
+  enclosed by `BEGIN/END LOOM_BETA_DIAGNOSTICS`, and every in-flow call is tagged
+  `LOOM_BETA_DIAGNOSTIC` for mechanical canonical cleanup;
+- official `Wire` and `SERCOM` remain unchanged.
+
+The final exact Feather M0 builds remain at 7,928 B, 7,912 B, and 7,800 B of static SRAM. All three
+compile successfully. The first soak comparison should use these guarded sketches against the
+previous field binary; re-enable ordinary SD debug logging only in a deliberately short diagnostic
+run.
+
+## Historical pre-fix diagnosis (retained for traceability)
+
+The remainder of this section records the baseline risks that motivated the hardening work. Its
+RTClib, 2 KB MQTT payload allocation, long LTE retry, large stack-frame, and ordinary SD-debug
+logger descriptions are historical; they are not claims about the guarded current build. The
+current diagnosis and implemented safeguards are documented above and in
+`docs/RAM_OPTIMIZATION_REPORT.md`.
 
 The evidence does not support a single universal "eight-hour bug." There are at least two failure classes:
 
@@ -260,24 +402,21 @@ The handshake retry loops are mostly bounded. One retry delay uses `currentTime 
 
 Confidence: **high that the load exists; medium that it contributes to the reported SD failures**
 
-The WISP v1 and mux sketches enable both `ENABLE_SD_LOGGING` and `ENABLE_FUNC_SUMMARIES`. Every instrumented function then performs a separate start-line and end-line append to the function-summary file. Ordinary `LOG` calls also open and append the debug-output file, and `manager.display_data()` formats a 2,000-byte pretty JSON buffer and sends that entire packet through the logger before the normal CSV and batch writes.
+This was originally diagnosed when both SD logging and function summaries were enabled and display
+copied the full JSON packet. The current sketches keep function summaries disabled and stream
+display/CSV/batch output, so the former 2 KB transient buffers are gone. Ordinary SD logging is
+still enabled, however. Every `LOG` still reads the RTC and separately opens, appends, and closes
+the debug-output file. The current risk is transaction count and unbounded peripheral waits, not a
+large logger stack frame.
 
-This creates many additional SD open/append/close transactions per five-minute cycle and repeatedly exercises the large logger/SD stack frames. It does not allocate a 2 KB heap object, but it changes timing, power, filesystem growth, and the probability of exposing a marginal SD card or stack problem. WISP v2 already comments that function summaries should be disabled for field deployment; the same policy should apply to WISP v1 outside a deliberately instrumented test.
+## Why the SEN55 fix was necessary but is no longer the leading 90-minute theory
 
-## Why the SEN55 fix is necessary but insufficient
-
-Replacing `std::bitset::to_string()` with a fixed 33-byte character representation is sensible. The duplicate status call in the WISP sketch should also be removed. Those changes eliminate avoidable allocator churn.
-
-They do not address:
-
-- per-value Arduino String creation in SD CSV logging;
-- the 4.4 KB overlapping SD stack frames;
-- the lazy, unchecked 2,000-byte MQTT allocation;
-- TinyGSM/MQTT String activity during upload;
-- missing allocation-failure handling;
-- incomplete watchdog coverage of the LTE/MQTT phase.
-
-SEN55 should therefore be treated as one contributor, not the root-cause conclusion.
+The active SEN55 wrapper and Sensirion dependency now use fixed storage, the duplicate sketch-level
+status call is gone, and CSV output streams variants without `as<String>()`. MQTT batch payloads
+also use the known-size streaming path rather than a retained 2,000-byte payload allocation. These
+changes remove the recurring SEN55/SD heap theory from the normal cycle. TinyGSM and MQTT Strings
+remain relevant during setup and upload, but those paths are not active at a normal 90-minute
+failure.
 
 ## Diagnostic instrumentation now present
 
@@ -299,26 +438,22 @@ All three sketches compile for `loom4:samd:adafruit_feather_m0:usbstack=arduino,
 
 Each phase line is emitted directly with fixed `Serial.print()` calls and contains:
 
-`cycle, millis, phase, gap, checkpoint minimum, delta, sbrk(0), JSON usage/capacity/overflow, batch count`
+`cycle, millis, reset cause, phase, gap, checkpoint minimum, delta, sbrk(0), contiguous ceiling/minimum, free
+heap blocks, fragmented free bytes, hole count, JSON usage/capacity/overflow, batch count`
 
-Setup checkpoints bracket global-constructor state, MQTT credential loading, Manager/LTE initialization, and initial time sync. Loop checkpoints bracket measure, package, display, SD, MQTT, RTC programming, SEN55 status, standby/wake, and network time sync.
+Setup checkpoints bracket global-constructor state, MQTT credential loading, Manager/LTE
+initialization, and initial time sync. Loop checkpoints bracket measure, package, display, SD,
+MQTT, RTC programming, standby/wake, and network time sync.
 
-The latest non-allocating values are also inserted as the `Memory` object in the normal data packet before the existing SD write:
-
-- `cycle`
-- `gap`
-- `min_ckpt`
-- `brk`
-- `json`
-- `ovf`
-- `batch`
-
-This persistence method adds no extra SD open/write transaction. It does add a small object to the 2,000-byte JSON document; if that addition is the operation that overflows the document, the helper emits an immediate warning.
+The current WISP sketches intentionally do **not** call `addToPacket()`. Diagnostics are Serial-only,
+so no `Memory` object is added and the saved JSON/CSV/batch schemas remain unchanged. The helper
+retains an optional `addToPacket()` API for a deliberately schema-changing diagnostic build.
 
 Interpretation limits are important:
 
 - `gap` is the stack-marker-to-current-program-break distance at a checkpoint. It is not total free heap.
-- `min_ckpt` is the minimum of those shallow checkpoints. It does **not** observe the 4.4 KB transient stack depth inside SD logging or the 2.6 KB frame inside batch publish; the compiler stack report covers those.
+- `min_ckpt` is the minimum of shallow checkpoints. The compiler stack report covers transient
+  call depth; the old 4.4 KB SD and 2.6 KB batch frames no longer exist.
 - `brk` movement reveals the allocator extending or contracting the heap boundary. A flat `brk` does not reveal holes below it.
 - No diagnostic `malloc/free` probe is performed. A 2 KB probe immediately before MQTT would free a convenient 2 KB block that the real MQTT allocation could reuse, masking fragmentation.
 - The actual allocation-success check belongs inside ArduinoMqttClient's first-write boundary, where the return value can be checked without a preparatory allocation.
@@ -328,13 +463,12 @@ Useful signatures in the Serial capture:
 | Last/next marker | Meaning |
 |---|---|
 | `pre_sd` without `post_sd` | SD/SdFat/logBatch path stalled or faulted |
-| `pre_mqtt` at `batch=72` without `post_mqtt` | broker/publish/first 2 KB allocation path stalled or faulted |
+| `pre_mqtt` below `batch=72` without `post_mqtt` | steady-state battery check or the logger's RTC/SD write stalled; LTE/MQTT transport is not active |
+| `pre_mqtt` at/above `batch=72` without `post_mqtt` | LTE/broker/batch streaming path stalled or faulted |
 | existing `Device has awoken from sleep!` log, but no sketch `post_wake` | wake occurred; Manager module power-up, especially LTE, did not return |
-| `pre_sleep` and no wake log | RTC/standby wake path remains primary |
+| `pre_sleep` and no wake log | power-down logging, the second interrupt reattach, RTC/standby, or wake power-up; inspect the last ordinary log |
 | steadily rising `brk` across identical phase/cycle points | retained allocation or heap high-water growth |
-| stable `brk` and gap | does not clear fragmentation; only a checked real allocation can do that |
-
-The packet is augmented before `hypnos.logToSD()`, so its stored `Memory.batch` value is the count before the current record is appended. For example, the record that makes MQTT ready contains `batch=71`; the following Serial `pre_mqtt` marker reports `batch=72`.
+| stable `brk`, `contig`, `frag`, and `holes` at identical phases | strong evidence against recurring normal-cycle fragmentation |
 
 ## Diagnostic test plan before fixes
 

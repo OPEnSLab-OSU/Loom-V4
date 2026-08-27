@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include <MemoryFree.h>
+#include <malloc.h>
 
 #include "Loom_Manager.h"
 
@@ -12,11 +12,9 @@ extern "C" char *sbrk(int increment);
 /**
  * Low-overhead memory telemetry for long-running SAMD deployment tests.
  *
- * Important: the reported gap is the distance from the current program break
- * (sbrk(0)) to a local stack marker. It is not the total free heap and cannot
- * see reusable holes below the program break. The program-break value is
- * included so long-term heap high-water growth can be distinguished from
- * call-stack variation.
+ * The reported gap is the distance from the current program break (sbrk(0)) to a local stack
+ * marker. newlib-nano's mallinfo() adds allocator state without probing malloc/free: free blocks,
+ * bytes held in holes below the top chunk, and the top free chunk that can grow into the gap.
  *
  * This helper intentionally does not probe the allocator with malloc/free.
  * Doing so immediately before MQTT could create the contiguous block under
@@ -35,8 +33,19 @@ class Loom_MemoryDiagnostics {
         latestGap = static_cast<int32_t>(stackAddress - currentBreak);
         latestBreak = static_cast<uint32_t>(currentBreak);
 
+        const struct mallinfo heapInfo = mallinfo();
+        const int32_t topFree = heapInfo.keepcost > 0 ? heapInfo.keepcost : 0;
+        latestHeapFree = heapInfo.fordblks > 0 ? heapInfo.fordblks : 0;
+        latestFragmentedFree = latestHeapFree > topFree ? latestHeapFree - topFree : 0;
+        latestFreeChunks = heapInfo.ordblks > 0 ? heapInfo.ordblks : 0;
+        // This is the useful allocation ceiling before allowing for future stack growth: the
+        // allocator's top free chunk plus as-yet-unclaimed SRAM below the current stack marker.
+        latestContiguous = latestGap + topFree;
+
         if (!hasSample || latestGap < minimumGap)
             minimumGap = latestGap;
+        if (!hasSample || latestContiguous < minimumContiguous)
+            minimumContiguous = latestContiguous;
 
         const int32_t delta = hasSample ? latestGap - previousGap : 0;
         previousGap = latestGap;
@@ -46,6 +55,8 @@ class Loom_MemoryDiagnostics {
         Serial.print(cycle);
         Serial.print(F(" ms="));
         Serial.print(millis());
+        Serial.print(F(" reset=0x"));
+        Serial.print(Watchdog.resetCause(), HEX);
         Serial.print(F(" phase="));
         Serial.print(phase);
         Serial.print(F(" gap="));
@@ -56,6 +67,16 @@ class Loom_MemoryDiagnostics {
         Serial.print(delta);
         Serial.print(F(" brk=0x"));
         Serial.print(latestBreak, HEX);
+        Serial.print(F(" contig="));
+        Serial.print(latestContiguous);
+        Serial.print(F(" min_contig="));
+        Serial.print(minimumContiguous);
+        Serial.print(F(" heap_free="));
+        Serial.print(latestHeapFree);
+        Serial.print(F(" frag="));
+        Serial.print(latestFragmentedFree);
+        Serial.print(F(" holes="));
+        Serial.print(latestFreeChunks);
         Serial.print(F(" json="));
         Serial.print(document.memoryUsage());
         Serial.print('/');
@@ -80,7 +101,10 @@ class Loom_MemoryDiagnostics {
         manager.addData("Memory", "cycle", cycle);
         manager.addData("Memory", "gap", latestGap);
         manager.addData("Memory", "min_ckpt", minimumGap);
-        manager.addData("Memory", "brk", latestBreak);
+        manager.addData("Memory", "contig", latestContiguous);
+        manager.addData("Memory", "min_contig", minimumContiguous);
+        manager.addData("Memory", "frag", latestFragmentedFree);
+        manager.addData("Memory", "holes", latestFreeChunks);
         manager.addData("Memory", "json", jsonUsedBeforeDiagnostics);
         manager.addData("Memory", "ovf", overflowedBeforeDiagnostics ? 1 : 0);
         manager.addData("Memory", "batch", currentBatch);
@@ -94,6 +118,11 @@ class Loom_MemoryDiagnostics {
     int32_t latestGap = 0;
     int32_t minimumGap = 0;
     int32_t previousGap = 0;
+    int32_t latestContiguous = 0;
+    int32_t minimumContiguous = 0;
+    int32_t latestHeapFree = 0;
+    int32_t latestFragmentedFree = 0;
+    int32_t latestFreeChunks = 0;
     uint32_t latestBreak = 0;
     bool hasSample = false;
 };

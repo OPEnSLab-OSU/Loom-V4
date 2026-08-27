@@ -190,6 +190,7 @@ bool Loom_DFMultiGasSensor::attemptConnectionToSensor() {
 
     /* Attempt a set number of times to initialize the sensor */
     for (uint8_t retryCount = 0; retryCount < retryLimit; retryCount++) {
+        loomResetWatchdogIfEnabled();
         LOGF("Attempting to connect to sensor... Attempt %u / %u ", retryCount + 1, retryLimit);
 
         // If we do successfully begin the sensor we want to stop the loop immediatly and move on to

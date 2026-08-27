@@ -21,6 +21,22 @@
 #define WD_TIMER_RESET
 #endif
 
+// Field sketches may enable SleepyDog at runtime rather than defining WATCHDOG_ENABLE for every
+// Loom translation unit. Long sensor averaging loops use this helper so a healthy SAMD21 sample
+// can exceed one watchdog period without hiding a genuinely stuck I2C transaction.
+inline void loomResetWatchdogIfEnabled() {
+#if defined(ARDUINO_ARCH_SAMD)
+#if defined(__SAMD51__)
+    if (WDT->CTRLA.bit.ENABLE)
+#else
+    if (WDT->CTRL.bit.ENABLE)
+#endif
+        Watchdog.reset();
+#elif defined(WATCHDOG_ENABLE)
+    Watchdog.reset();
+#endif
+}
+
 #ifndef TIMER_ENABLE
 #define TIMER_ENABLE WD_TIMER_ENABLE
 #define TIMER_DISABLE WD_TIMER_DISABLE

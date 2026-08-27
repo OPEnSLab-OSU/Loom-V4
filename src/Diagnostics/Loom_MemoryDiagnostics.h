@@ -55,6 +55,8 @@ class Loom_MemoryDiagnostics {
         Serial.print(cycle);
         Serial.print(F(" ms="));
         Serial.print(millis());
+        Serial.print(F(" reset=0x"));
+        Serial.print(Watchdog.resetCause(), HEX);
         Serial.print(F(" phase="));
         Serial.print(phase);
         Serial.print(F(" gap="));

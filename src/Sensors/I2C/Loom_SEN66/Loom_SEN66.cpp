@@ -86,6 +86,7 @@ void Loom_SEN66::measure() {
 
     // The sensor publishes a new sample once per second.
     for (uint8_t i = 0; i < SAMPLE_COUNT; i++) {
+        loomResetWatchdogIfEnabled();
 
         // Wait 1 second for next data point (Sensor updates @ 1Hz)
         delay(1000);

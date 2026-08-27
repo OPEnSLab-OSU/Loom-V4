@@ -1,7 +1,18 @@
 // Wisp direct-sensor batch logging example.
 #include <Loom_Manager.h>
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
+
+// BEGIN LOOM_BETA_DIAGNOSTICS
+// Temporary soak-test instrumentation. Set to 0 for a clean field build. For the final
+// canonical example, remove this block and every line tagged LOOM_BETA_DIAGNOSTIC.
+#ifndef LOOM_WISP_BETA_DIAGNOSTICS
+#define LOOM_WISP_BETA_DIAGNOSTICS 1
+#endif
+
+#if LOOM_WISP_BETA_DIAGNOSTICS
 #include <Diagnostics/Loom_MemoryDiagnostics.h>
+#endif
+// END LOOM_BETA_DIAGNOSTICS
 
 #include <Sensors/Loom_Analog/Loom_Analog.h>
 #include <Sensors/I2C/Loom_SEN55/Loom_SEN55.h>
@@ -14,30 +25,48 @@
 
 #include <Logger.h>
 #include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
-#include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
 #include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h>
+#include <Adafruit_SleepyDog.h>
 
-Manager manager("Wisp_brd_v0p4_", 1); //change
+constexpr int ACTIVE_WATCHDOG_MS = 16000;
+
+void enableActiveWatchdog()
+{
+  Watchdog.enable(ACTIVE_WATCHDOG_MS);
+  Watchdog.reset();
+}
+
+Manager manager("Wisp_brd_v0p4_", 1); // Set a unique deployment identifier for each stack.
 
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, true);
 
 Loom_Analog analog(manager);
 
-//Main Air Quality, Temperature, Humidity Sensing, CO2, Gravity
+// Main air-quality, temperature, humidity, and CO2 sensors.
 Loom_SEN55 SEN55(manager);
 Loom_SHT31 sht(manager);
 
 Loom_T6793 T6793(manager);
 Loom_DFMultiGasSensor gasSensor(manager, 0x74);
 
-uint32_t deviceStatus;
-
-//Connectivity
+// Connectivity.
 Loom_LTE lte(manager, "hologram", "", "");
 Loom_MongoDB mqtt(manager, lte);
-//A batch is logged every 5 minutes, so 12 per hour (12 * 6 = 72) so mqtt will publish at batch size of 72/ every 6 hours
+// Twelve five-minute records per hour produce one 72-record publish every six hours.
 Loom_BatchSD batchSD(hypnos, 72);
+
+// BEGIN LOOM_BETA_DIAGNOSTICS
+#if LOOM_WISP_BETA_DIAGNOSTICS
 Loom_MemoryDiagnostics memoryDiagnostics;
+#define WISP_DIAGNOSTIC_BEGIN_CYCLE() memoryDiagnostics.beginCycle()
+#define WISP_DIAGNOSTIC_CHECKPOINT(phaseLabel)                                      \
+  memoryDiagnostics.checkpoint(F(phaseLabel), manager.getDocument(),                \
+                               batchSD.getCurrentBatch())
+#else
+#define WISP_DIAGNOSTIC_BEGIN_CYCLE() do { } while (false)
+#define WISP_DIAGNOSTIC_CHECKPOINT(phaseLabel) do { } while (false)
+#endif
+// END LOOM_BETA_DIAGNOSTICS
 
 void isrTrigger()
 {
@@ -46,13 +75,13 @@ void isrTrigger()
 
 
 void setup() {
-  ENABLE_SD_LOGGING;
-  ENABLE_FUNC_SUMMARIES;
+  // Keep ordinary debug logs on Serial only. Sensor CSV and batch JSON still use hypnos.logToSD().
+  // This removes hundreds of avoidable SD opens and RTC reads during an endurance deployment.
+  DISABLE_RTC_LOG_TIMESTAMPS;
 
   // Wait 20 seconds for the serial console to open
   manager.beginSerial();
-  memoryDiagnostics.checkpoint(F("post_global_ctor"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  WISP_DIAGNOSTIC_CHECKPOINT("post_global_ctor"); // LOOM_BETA_DIAGNOSTIC
 
   // Set the LTE board to only powerup when a batch is ready to be sent
   lte.setBatchSD(batchSD);
@@ -63,105 +92,103 @@ void setup() {
   // Only the 5V rail should be on during sleep
   hypnos.setSleepConfiguration(POWERRAIL_CONFIG::PR_3V_OFF_5V_ON);
 
+  // Non-interactive fallback if the RTC backup supply was lost in the field.
+  hypnos.setCompileTime(__DATE__, __TIME__);
+
   // Enable the hypnos rails
   hypnos.enable();
 
-  //Time Sync Using LTE 
+  // Synchronize time using LTE.
   hypnos.setNetworkInterface(&lte);
 
   // Read the MQTT creds file to supply the device with MQTT credentials
-  memoryDiagnostics.checkpoint(F("pre_mqtt_config"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  WISP_DIAGNOSTIC_CHECKPOINT("pre_mqtt_config"); // LOOM_BETA_DIAGNOSTIC
   mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
-  memoryDiagnostics.checkpoint(F("post_mqtt_config"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  WISP_DIAGNOSTIC_CHECKPOINT("post_mqtt_config"); // LOOM_BETA_DIAGNOSTIC
 
   // Initialize all in-use modules
-  memoryDiagnostics.checkpoint(F("pre_initialize"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  WISP_DIAGNOSTIC_CHECKPOINT("pre_initialize"); // LOOM_BETA_DIAGNOSTIC
   manager.initialize();
-  memoryDiagnostics.checkpoint(F("post_initialize"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  WISP_DIAGNOSTIC_CHECKPOINT("post_initialize"); // LOOM_BETA_DIAGNOSTIC
 
   // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);
 
-  memoryDiagnostics.checkpoint(F("pre_initial_time_sync"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  WISP_DIAGNOSTIC_CHECKPOINT("pre_initial_time_sync"); // LOOM_BETA_DIAGNOSTIC
   hypnos.networkTimeUpdate();
-  memoryDiagnostics.checkpoint(F("post_initial_time_sync"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  WISP_DIAGNOSTIC_CHECKPOINT("post_initial_time_sync"); // LOOM_BETA_DIAGNOSTIC
 
-  memoryDiagnostics.checkpoint(F("setup_done"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  WISP_DIAGNOSTIC_CHECKPOINT("setup_done"); // LOOM_BETA_DIAGNOSTIC
 
 }
 
 void loop() {
 
-  memoryDiagnostics.beginCycle();
-  memoryDiagnostics.checkpoint(F("loop_start"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  enableActiveWatchdog();
+  WISP_DIAGNOSTIC_BEGIN_CYCLE(); // LOOM_BETA_DIAGNOSTIC
+  WISP_DIAGNOSTIC_CHECKPOINT("loop_start"); // LOOM_BETA_DIAGNOSTIC
 
   // Measure and package the data
-  memoryDiagnostics.checkpoint(F("pre_measure"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  WISP_DIAGNOSTIC_CHECKPOINT("pre_measure"); // LOOM_BETA_DIAGNOSTIC
+  Watchdog.reset();
   manager.measure();
-  memoryDiagnostics.checkpoint(F("post_measure"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  Watchdog.reset();
+  WISP_DIAGNOSTIC_CHECKPOINT("post_measure"); // LOOM_BETA_DIAGNOSTIC
   manager.package();
-  memoryDiagnostics.checkpoint(F("post_package"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
-  memoryDiagnostics.addToPacket(manager, batchSD.getCurrentBatch());
+  Watchdog.reset();
+  WISP_DIAGNOSTIC_CHECKPOINT("post_package"); // LOOM_BETA_DIAGNOSTIC
 
   // Print the current JSON packet
-  memoryDiagnostics.checkpoint(F("pre_display"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  WISP_DIAGNOSTIC_CHECKPOINT("pre_display"); // LOOM_BETA_DIAGNOSTIC
   manager.display_data();
-  memoryDiagnostics.checkpoint(F("post_display"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  Watchdog.reset();
+  WISP_DIAGNOSTIC_CHECKPOINT("post_display"); // LOOM_BETA_DIAGNOSTIC
 
   // Log the data to the SD
-  memoryDiagnostics.checkpoint(F("pre_sd"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  WISP_DIAGNOSTIC_CHECKPOINT("pre_sd"); // LOOM_BETA_DIAGNOSTIC
+  Watchdog.reset();
   hypnos.logToSD();
-  memoryDiagnostics.checkpoint(F("post_sd"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  Watchdog.reset();
+  WISP_DIAGNOSTIC_CHECKPOINT("post_sd"); // LOOM_BETA_DIAGNOSTIC
 
   // Pass in the batchSD to the mqtt obj to check/ publish a batch of data if ready
-  memoryDiagnostics.checkpoint(F("pre_mqtt"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  WISP_DIAGNOSTIC_CHECKPOINT("pre_mqtt"); // LOOM_BETA_DIAGNOSTIC
+  const bool networkWindow = batchSD.getCurrentBatch() >= batchSD.getBatchSize();
+  if (networkWindow) {
+    Watchdog.disable();
+  }
+  else {
+    Watchdog.reset();
+  }
   mqtt.publish(batchSD);
-  memoryDiagnostics.checkpoint(F("post_mqtt"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  if (networkWindow) {
+    enableActiveWatchdog();
+  }
+  else {
+    Watchdog.reset();
+  }
+  WISP_DIAGNOSTIC_CHECKPOINT("post_mqtt"); // LOOM_BETA_DIAGNOSTIC
   //mqtt.publish();
 
   // Set the interrupt duration for 5 minutes
-  memoryDiagnostics.checkpoint(F("pre_rtc"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
-  hypnos.setInterruptDuration(TimeSpan(0,0,5,0));
+  WISP_DIAGNOSTIC_CHECKPOINT("pre_rtc"); // LOOM_BETA_DIAGNOSTIC
+  Watchdog.reset();
+  hypnos.setInterruptDuration(TimeSpan(0, 0, 5, 0));
+  Watchdog.reset();
 
   // Reattach the interrupt
   hypnos.reattachRTCInterrupt();
-  memoryDiagnostics.checkpoint(F("post_rtc"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  Watchdog.reset();
+  WISP_DIAGNOSTIC_CHECKPOINT("post_rtc"); // LOOM_BETA_DIAGNOSTIC
 
-  memoryDiagnostics.checkpoint(F("pre_sen55_status"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
-  SEN55.logDeviceStatus();
-  memoryDiagnostics.checkpoint(F("post_sen55_status"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
-  
   // Set the hypnos to sleep, but with power still being supplied to the 5v rail (wait for serial when testing from a computer)
-  memoryDiagnostics.checkpoint(F("pre_sleep"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  WISP_DIAGNOSTIC_CHECKPOINT("pre_sleep"); // LOOM_BETA_DIAGNOSTIC
+  // The SAMD21 watchdog continues in standby, so disable it for the five-minute RTC sleep.
+  Watchdog.disable();
   hypnos.sleep(false);
-  memoryDiagnostics.checkpoint(F("post_wake"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  WISP_DIAGNOSTIC_CHECKPOINT("post_wake"); // LOOM_BETA_DIAGNOSTIC
 
-  memoryDiagnostics.checkpoint(F("pre_time_sync"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  WISP_DIAGNOSTIC_CHECKPOINT("pre_time_sync"); // LOOM_BETA_DIAGNOSTIC
   hypnos.networkTimeUpdate();
-  memoryDiagnostics.checkpoint(F("post_time_sync"), manager.getDocument(),
-                               batchSD.getCurrentBatch());
+  WISP_DIAGNOSTIC_CHECKPOINT("post_time_sync"); // LOOM_BETA_DIAGNOSTIC
 }

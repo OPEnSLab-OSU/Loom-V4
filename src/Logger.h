@@ -54,6 +54,7 @@ struct LogContext {
 
 #define ENABLE_SD_LOGGING Logger::getInstance()->enableSD()
 #define ENABLE_FUNC_SUMMARIES Logger::getInstance()->enableSummaries()
+#define DISABLE_RTC_LOG_TIMESTAMPS Logger::getInstance()->disableRTCTimestamps()
 
 constexpr size_t LOGGER_FILENAME_SIZE = 64;
 
@@ -73,6 +74,7 @@ class Logger {
     // Whether or not to use the SD card or log function summaries
     bool enableFunctionSummaries = false;
     bool enableSDLogging = false;
+    bool rtcTimestampsEnabled = true;
 
     SDManager *sdInst = nullptr;
     Loom_Hypnos *hypnosInst = nullptr;
@@ -118,11 +120,12 @@ class Logger {
 
         const char *fileName = baseFileName(log.file);
         int written = 0;
-        if (Logger::getInstance()->hypnosInst != nullptr &&
-            Logger::getInstance()->hypnosInst->isRTCInitialized()) {
-            DateTime time = Logger::getInstance()->hypnosInst->getCurrentTime();
+        Logger *logger = Logger::getInstance();
+        if (logger->rtcTimestampsEnabled && logger->hypnosInst != nullptr &&
+            logger->hypnosInst->isRTCInitialized()) {
+            DateTime time = logger->hypnosInst->getCurrentTime();
             char timestamp[21];
-            Logger::getInstance()->hypnosInst->dateTime_toString(time, timestamp);
+            logger->hypnosInst->dateTime_toString(time, timestamp);
             written = snprintf_P(destination, destinationSize, PSTR("[%s] [%s] [%s:%s:%lu] "),
                                  timestamp, log.level, fileName, log.func, log.lineNum);
         } else {
@@ -200,6 +203,9 @@ class Logger {
 
     /* Save flash write by not logging everything to SD */
     void enableSD() { enableSDLogging = true; };
+
+    /* Avoid an RTC I2C transaction for every Serial log in constrained field sketches. */
+    void disableRTCTimestamps() { rtcTimestampsEnabled = false; };
 
     bool shouldLogSummaries() {
         return enableFunctionSummaries && sdInst != nullptr && enableSDLogging;
