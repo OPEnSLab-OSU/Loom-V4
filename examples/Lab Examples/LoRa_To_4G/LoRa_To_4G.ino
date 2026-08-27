@@ -15,7 +15,7 @@ Manager manager("Device", 0);
 // Do we want to use the instance number as the LoRa address
 Loom_LoRa loRa(manager, 0);
 Loom_LTE lte(manager, NETWORK_NAME, NETWORK_USER, NETWORK_PASS);
-Loom_MongoDB mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
+Loom_MongoDB mqtt(manager, lte, SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
 
 void setup() {
 
