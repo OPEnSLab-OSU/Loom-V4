@@ -40,28 +40,21 @@ class SDManager : public Module {
      * Log the current sensor data to the SD card
      * @param currentTime The current time provided by the RTC this allows us to set accurate
      * modified/created times for files
-     * Opens and closes once per day
      */
     bool log(DateTime currentTime);
 
     /**
-     * @param myFile The name of the csv file to verify
-     * Checks line by line the file's contents and evalutes a checksum that
-     * is compared to the appended checksum computed from log
-     */
-    bool verifyChecksum(File &myFile);
-
-    /**
      * Read the contents of a given file on the SD card and return them as a string
      *
-     * YOU MUST FREE THIS BLOCK OF MEMORY AS IT IS 10kb
+     * The returned buffer is sized to the file and must be freed by the caller.
+     * Files larger than the implementation safety limit return nullptr.
      *
      * @param fileName Name of the file to read from
      */
     char *readFile(const char *fileName);
 
     /*
-     * Returns a pointer to the opened filed
+     * Returns a reference to the opened file
      */
     File &getFile(const char *fileName) {
         myFile = sd.open(fileName);
@@ -83,10 +76,7 @@ class SDManager : public Module {
     /**
      * Get the current batch file name
      */
-    const char *getBatchFilename() {
-        snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
-        return batchFileName;
-    };
+    const char *getBatchFilename();
 
     /**
      * Has the SD card been initialized previously
@@ -100,56 +90,72 @@ class SDManager : public Module {
     bool fileExists(const char *fileName) { return sd.exists(fileName); };
 
     /**
-     * Sets the batch size and thus enables batch loggin
+     * Sets the batch size and thus enables batch logging
      */
     void setBatchSize(int size) { batch_size = size; };
 
     /**
-     * Get the current batch we are ons
+     * Get the current batch index
      */
     int getCurrentBatch() { return current_batch; };
 
     /**
+     * Clear the pending batch only after every record has been delivered.
+     *
+     * Keeping this operation separate from logBatch() makes the batch file transactional: a
+     * temporary network failure cannot cause the next sample to truncate unsent records.
+     */
+    bool clearBatch();
+
+    /**
      * Log to a different name other than one matching the device name
      */
-    void setLogName(const char *name) { strncpy(overrideFileName, name, 100); };
+    void setLogName(const char *name) {
+        char requestedName[sizeof(overrideFileName)];
+        strncpy(requestedName, name ? name : "", sizeof(requestedName) - 1);
+        requestedName[sizeof(requestedName) - 1] = '\0';
+
+        // Selecting a genuinely different base name should create a new session
+        // file. Repeating the same setting must not rotate the file on wake.
+        if (strcmp(overrideFileName, requestedName) != 0) {
+            memcpy(overrideFileName, requestedName, sizeof(overrideFileName));
+            logFileSelected = false;
+        }
+    };
 
     /* Get whatever number we are currently appending to the SD fileNames*/
     int getCurrentFileNumber() { return file_count; };
 
   private:
+    static constexpr size_t LOG_BASENAME_SIZE = Manager::DEVICE_NAME_SIZE;
+    static constexpr size_t LOG_FILENAME_SIZE = LOG_BASENAME_SIZE + 20;
+
     Manager *manInst; // Reference to the manager
 
     File myFile;       // File object used to handle reading and writing
-    File batchFile;    // for txt file, not csv
     File scanningFile; // Used specifically to search through the directory
     File root;         // Open the root directory as a file
-
-    int lastClosed = 0;
 
     SdFat sd; // SD Card Object
 
     int chip_select;       // Chip select pin for the SD card
-    char device_name[100]; // Device name of the whole thing used as the starting point of the SD
-                           // file name
+    char device_name[LOG_BASENAME_SIZE]; // Starting point of the SD file name
 
-    char batchFileName[260];       // File name to log batches to
-    char fileName[260];            // Current file name that data is being logged to
-    char fileNameNoExtension[260]; // Current file name that data is being logged to without the
-                                   // file extension
-    char overrideFileName[260];
+    // A 63-character base + 10-digit counter + "-Batch.txt" + null needs at most 84 bytes.
+    char batchFileName[LOG_FILENAME_SIZE];
+    char fileName[LOG_FILENAME_SIZE];
+    char overrideFileName[LOG_BASENAME_SIZE];
 
     int batch_size = -1;   // How many packets to log per batch
     int current_batch = 0; // Current count of the batch
     int file_count = 0;    // What file number are we logging to
 
-    bool sdInitialized = false; // If the SD card actually initialized
-    char
-        *headers[2]; // Contains the main and sub headers that are added to the top of the CSV files
+    bool sdInitialized = false;   // Whether the card is reachable for the current operation
+    bool logFileSelected = false; // Whether this MCU boot session already chose its CSV filename
 
-    void logBatch(); // Log data in batch format
+    void logBatch(); // Append one JSON record to the batch file
 
-    void writeHeaders(); // Create the headers for the CSV file based off what info we are storing
+    bool writeHeaders(); // Create the headers for the CSV file based off what info we are storing
     bool updateCurrentFileName(); // Update the current file name to log to based on files already
                                   // existing on the SD card
 };

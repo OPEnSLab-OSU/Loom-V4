@@ -1,26 +1,90 @@
 #include "SDManager.h"
 #include "Logger.h"
 
+namespace {
+constexpr size_t MAX_SD_READ_BYTES = 4999;
+
+void copyBounded(char *destination, size_t destinationSize, const char *source,
+                 size_t maxSourceCharacters) {
+    if (destinationSize == 0)
+        return;
+
+    size_t index = 0;
+    if (source != nullptr) {
+        while (index < destinationSize - 1 && index < maxSourceCharacters &&
+               source[index] != '\0') {
+            destination[index] = source[index];
+            ++index;
+        }
+    }
+    destination[index] = '\0';
+}
+
+void appendLiteral(char *destination, size_t destinationSize, const char *suffix) {
+    if (destinationSize == 0 || suffix == nullptr)
+        return;
+
+    size_t destinationIndex = strlen(destination);
+    size_t suffixIndex = 0;
+    while (destinationIndex < destinationSize - 1 && suffix[suffixIndex] != '\0')
+        destination[destinationIndex++] = suffix[suffixIndex++];
+    destination[destinationIndex] = '\0';
+}
+
+void buildNumberedName(char *destination, size_t destinationSize, const char *base, int number,
+                       const char *suffix) {
+    char numberText[12];
+    snprintf(numberText, sizeof(numberText), "%i", number);
+
+    const size_t reserved = strlen(numberText) + strlen(suffix) + 1;
+    const size_t maxBaseCharacters = destinationSize > reserved ? destinationSize - reserved : 0;
+    copyBounded(destination, destinationSize, base, maxBaseCharacters);
+    appendLiteral(destination, destinationSize, numberText);
+    appendLiteral(destination, destinationSize, suffix);
+}
+
+void writeCsvTimestamp(File &file, const char *timestamp) {
+    if (timestamp == nullptr)
+        return;
+
+    for (size_t index = 0; timestamp[index] != '\0' && timestamp[index] != 'Z'; ++index)
+        file.write(index == 10 ? ' ' : timestamp[index]);
+}
+} // namespace
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 SDManager::SDManager(Manager *man, int sd_chip_select)
-    : manInst(man), Module("SD Manager"), chip_select(sd_chip_select) {
-    strncpy(device_name, manInst->get_device_name(), 100);
-    memset(overrideFileName, '\0', 260);
+    : Module("SD Manager"), manInst(man), chip_select(sd_chip_select) {
+    strncpy(device_name, manInst->get_device_name(), sizeof(device_name) - 1);
+    device_name[sizeof(device_name) - 1] = '\0';
+    memset(batchFileName, '\0', sizeof(batchFileName));
+    memset(fileName, '\0', sizeof(fileName));
+    memset(overrideFileName, '\0', sizeof(overrideFileName));
 } // Disables Lora so we can use the SD card on hypnos
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::writeLineToFile(const char *filename, const char *content) {
+    if (filename == nullptr || filename[0] == '\0' || content == nullptr) {
+        printModuleName("Cannot write a null/empty filename or null content!");
+        return false;
+    }
+
     // Check if the SD card is actually functional
     if (sdInitialized) {
         // Open the given file for writing
-        File tempFile = sd.open(filename, O_RDWR | O_CREAT | O_APPEND);
+        myFile = sd.open(filename, O_RDWR | O_CREAT | O_APPEND);
 
         // Check if the file was actually opened, if so write the content to the file
-        if (tempFile) {
-            tempFile.println(content);
-            tempFile.close();
-            return true;
+        if (myFile) {
+            const size_t contentLength = strlen(content);
+            const bool wroteContent = myFile.print(content) == contentLength;
+            const bool wroteNewline = myFile.println() > 0;
+            myFile.close();
+            if (wroteContent && wroteNewline)
+                return true;
+            printModuleName("Failed while writing file contents!");
+            return false;
         }
         printModuleName("Failed to Open File!");
         return false;
@@ -35,106 +99,96 @@ bool SDManager::writeLineToFile(const char *filename, const char *content) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void SDManager::writeHeaders() {
-    char header1[513];
-    char header2[513];
-
-    // Append the serial number to the top of the CSV file, reset the header1 array
-    snprintf_P(header1, 512, PSTR("%s\n"), manInst->get_serial_num());
-    myFile.println(header1);
-
-    // Clear both arrays
-    memset(header1, '\0', 512);
-    memset(header2, '\0', 512);
+bool SDManager::writeHeaders() {
+    // Preserve the legacy byte layout: the serial text contained an LF before println() added its
+    // normal line ending, leaving the established blank separator without a 513-byte stack array.
+    myFile.print(manInst->get_serial_num());
+    myFile.write('\n');
+    myFile.println();
 
     JsonObject document = manInst->getDocument().as<JsonObject>();
-    strncat(header1, "ID,,", 512);
-    strncat(header2, "name,instance,", 512);
+
+    // Write the first header directly. Building both headers in RAM previously consumed 1 KB of
+    // stack on a Cortex-M0 just before an SD write.
+    myFile.print(F("ID,,"));
 
     // If there is a key that contains timestamp data when need to include that separately
-    if (document.containsKey("timestamp")) {
-        strncat(header1, "timestamp,,", 512);
-        strncat(header2, "time_utc,time_local,", 512);
-    }
+    if (document.containsKey("timestamp"))
+        myFile.print(F("timestamp,,"));
 
-    // Get the contents containing the reset of the sensor data
     JsonArray contentsArray = document["contents"].as<JsonArray>();
-
-    // Loop over each
     for (JsonVariant v : contentsArray) {
-        // Get the module name
-        strncat(header1, v.as<JsonObject>()["module"].as<const char *>(), 512);
+        myFile.print(v.as<JsonObject>()["module"].as<const char *>());
+        size_t fieldCount = v.as<JsonObject>()["data"].as<JsonObject>().size();
+        while (fieldCount-- > 0)
+            myFile.print(',');
+    }
+    myFile.println();
 
-        // Get all JSON keys
+    // The second header is a separate pass over the small in-memory JSON tree.
+    myFile.print(F("name,instance,"));
+    if (document.containsKey("timestamp"))
+        myFile.print(F("time_utc,time_local,"));
+    for (JsonVariant v : contentsArray) {
         for (JsonPair keyValue : v.as<JsonObject>()["data"].as<JsonObject>()) {
-            strncat(header2, keyValue.key().c_str(), 512);
-            strncat(header2, ",", 512);
-            strncat(header1, ",", 512);
+            myFile.print(keyValue.key().c_str());
+            myFile.print(',');
         }
     }
+    myFile.println();
 
-    strncat(header2, "checksum,", 512);
-
-    // Write the headers to the file
-    myFile.println(header1);
-    myFile.println(header2);
+    return !myFile.getWriteError();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::log(DateTime currentTime) {
-    char output[MAX_JSON_SIZE + 1];
+    bool logged = false;
 
     if (sdInitialized) {
 
-        // File should be opened already from begin or from previous log
+        // Open the file in read/write mode, create the file if we need to and append the content to
+        // the end of the file
+        myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
+
         if (myFile) {
+            myFile.clearWriteError();
 
             // If this file has never been written to before we need to create and write the proper
             // headers to the file
-            // Dependent on file size because opening in O_APPEND mode
-            if (myFile.size() <= 3) {
+            if (myFile.available() <= 3) {
+                const uint32_t originalSize = myFile.fileSize();
                 // Set the date created timestamp of the File
                 myFile.timestamp(T_CREATE, currentTime.year(), currentTime.month(),
                                  currentTime.day(), currentTime.hour(), currentTime.minute(),
                                  currentTime.second());
 
-                writeHeaders();
-                lastClosed = currentTime.day();
+                if (!writeHeaders() || !myFile.sync()) {
+                    myFile.truncate(originalSize);
+                    myFile.close();
+                    printModuleName("Failed while writing CSV headers!");
+                    return false;
+                }
             }
 
-            snprintf_P(output, MAX_JSON_SIZE, PSTR("%s,%i,"), manInst->get_device_name(),
-                       manInst->get_instance_num());
+            const uint32_t recordStart = myFile.fileSize();
+            myFile.clearWriteError();
+
+            // Write the Instance data that isn't included in the JSON packet
+            myFile.print(manInst->get_device_name());
+            myFile.print(',');
+            myFile.print(manInst->get_instance_num());
+            myFile.print(',');
 
             JsonObject document = manInst->getDocument().as<JsonObject>();
 
             // If there is a key that contains timestamp data when need to include that separately
             if (document.containsKey("timestamp")) {
-                char utcArr[21];
-                char localArr[21];
-                memset(utcArr, '\0', 21);
-                memset(localArr, '\0', 21);
-                strncpy(utcArr, document["timestamp"]["time_utc"].as<const char *>(), 21);
-                strncpy(localArr, document["timestamp"]["time_local"].as<const char *>(), 21);
-
-                // Format date with spaces when logging to SD
-                char *indexPointer = strchr(utcArr, 'Z');
-                if (indexPointer != nullptr) {
-                    utcArr[10] = ' ';
-                    utcArr[indexPointer - utcArr] = '\0';
-                }
-
-                // Format date with spaces when logging to SD
-                indexPointer = strchr(localArr, 'Z');
-                if (indexPointer != nullptr) {
-                    localArr[10] = ' ';
-                    localArr[indexPointer - localArr] = '\0';
-                }
-
-                // Format the time stamp in the CSV file
-                strncat(output, utcArr, MAX_JSON_SIZE);
-                strncat(output, ",", MAX_JSON_SIZE);
-                strncat(output, localArr, MAX_JSON_SIZE);
-                strncat(output, ",", MAX_JSON_SIZE);
+                writeCsvTimestamp(myFile,
+                                  document["timestamp"]["time_utc"].as<const char *>());
+                myFile.print(',');
+                writeCsvTimestamp(myFile,
+                                  document["timestamp"]["time_local"].as<const char *>());
+                myFile.print(',');
             }
 
             // Get the contents containing the reset of the sensor data
@@ -145,136 +199,65 @@ bool SDManager::log(DateTime currentTime) {
 
                 // Get all JSON keys
                 for (JsonPair keyValue : v.as<JsonObject>()["data"].as<JsonObject>()) {
-                    strncat(output, keyValue.value().as<String>().c_str(), MAX_JSON_SIZE);
-                    strncat(output, ",", MAX_JSON_SIZE);
+                    JsonVariant value = keyValue.value();
+                    if (value.is<const char *>())
+                        myFile.print(value.as<const char *>());
+                    else
+                        serializeJson(value, myFile);
+                    myFile.print(',');
                 }
             }
 
-            // Compute checksum for line for later checking
-            uint16_t checksum = 0;
-            for (int i = 0; i < strlen(output); i++) {
-                checksum += (uint8_t)output[i];
-            }
+            myFile.println();
 
-            // Append checksum value to end of line, last column
-            char checksumString[8];
-            snprintf(checksumString, 8, ",%u", checksum);
-            strncat(output, checksumString, MAX_JSON_SIZE);
+            const bool recordComplete = !myFile.getWriteError() && myFile.sync();
 
-            // Write the matching data into the CSV file
-            myFile.println(output);
+            // Set the last modified date
+            if (recordComplete)
+                myFile.timestamp(T_WRITE, currentTime.year(), currentTime.month(),
+                                 currentTime.day(), currentTime.hour(), currentTime.minute(),
+                                 currentTime.second());
 
-            // Sync/flush file, don't close unless EOD
-            myFile.sync();
+            if (!recordComplete)
+                myFile.truncate(recordStart);
 
-            // Checks if the day has chenged, if so we enter and will close, reopen file
-            if (currentTime.day() != lastClosed) {
-                // Run the checksum by going through the file
-                LOG(F("End of day detected, verifying checksum"));
-                // If passes verification, close and reopen file
-                if (verifyChecksum(myFile)) {
-                    myFile.close();
-                    myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
-                }
-                // If failed verification, open new file
-                else {
-                    myFile.close();
-                    // open new file
-                    if (root.open("/", O_RDONLY)) {
-                        updateCurrentFileName();
-                        myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
-                    } else {
-                        ERROR(F("Failed to open root for file rotation"));
-                    }
-                }
-                // Update day integer to current time so don't close file until end of next day
-                lastClosed = currentTime.day();
+            // Close the file
+            myFile.close();
+
+            if (!recordComplete) {
+                printModuleName("Failed while writing CSV data!");
+                return false;
             }
 
             // Inform the user that we have successfully written to the file
-            snprintf_P(output, MAX_JSON_SIZE, PSTR("Successfully logged data to %s"), fileName);
-            LOG(output);
+            LOGF("Successfully logged data to %s", fileName);
+            logged = true;
 
         } else {
             printModuleName("Failed to open log file!");
         }
 
         // If we want to log batch data do so
-        if (batch_size > 0)
+        if (logged && batch_size > 0)
             logBatch();
 
     } else {
         printModuleName("Failed to log! SD card not Initialized!");
     }
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-bool SDManager::verifyChecksum(File &myFile) {
-    myFile.seekSet(0);
-    char lineBuf[MAX_JSON_SIZE];
-    int lineIndex = 0;
-    int lineCount = 0;
-
-    while (myFile.available()) {
-        // Go through every char in file
-        char c = myFile.read();
-
-        // Never let WD timer reset while reading/verifying file
-        WD_TIMER_RESET;
-
-        // When we hit a new line, we start evaluating
-        if (c == '\n') {
-            lineBuf[lineIndex] = '\0';
-
-            // Find last comma = checksum, don't evaluate on the checksum number since it is point
-            // of reference
-            char *checksumComma = strrchr(lineBuf, ',');
-
-            lineCount++;
-
-            // Skip headers in csv
-            if (lineCount > 4) {
-                if (checksumComma != nullptr) {
-                    // Get the value to compare to
-                    uint16_t actualChecksum = atoi(checksumComma + 1);
-
-                    *checksumComma = '\0';
-
-                    // Go through the lineBuf (one line in csv) and manually add checksum
-                    uint16_t lineChecksum = 0;
-                    for (int i = 0; i < strlen(lineBuf); i++) {
-                        lineChecksum += (uint8_t)lineBuf[i];
-                    }
-
-                    // Compare actual checksum to computed checksum, if fails then file is corrupted
-                    if (actualChecksum != lineChecksum) {
-                        char buf[64];
-                        snprintf(buf, 64, "Error: Checksum Failed at Line %i", lineCount);
-                        ERROR(buf);
-                        return false;
-                    }
-                }
-            }
-            // Reset for next line
-            lineIndex = 0;
-            memset(lineBuf, '\0', MAX_JSON_SIZE);
-        }
-        // When not at endline, just keep adding to lineBuf that will represent array of csv
-        // characters
-        else {
-            lineBuf[lineIndex++] = c;
-        }
-    }
-    // If verification passes, file is not corrupted
-    printModuleName("Checksum Passed");
-    return true;
+    return logged;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::begin() {
 
+    // Card reachability can be lost for one wake while the selected log file
+    // must persist for the whole MCU boot session. Keeping these states
+    // separate prevents a transient SD initialization failure from advancing
+    // to a new numbered CSV on the following wake.
+    const bool recoveringExistingLog = logFileSelected && !sdInitialized;
+
+    pinMode(8, OUTPUT);
     digitalWrite(8, HIGH); // Disable LoRa
 
     printModuleName("Initializing SD Card...");
@@ -296,6 +279,7 @@ bool SDManager::begin() {
      4MHz
    */
     if (!sd.begin(chip_select, SD_SCK_MHZ(4))) {
+        sdInitialized = false;
         printModuleName("Failed to Initialize SD Card! SD Card functionality will be disabled, is "
                         "there an SD card inserted into the device?");
         return false;
@@ -307,26 +291,32 @@ bool SDManager::begin() {
         printModuleName("Successfully initialized SD Card!");
     }
 
-    // Only should be run on the first initialize not when it wakes up from sleep
-    if (!sdInitialized) {
+    // Choose a numbered log file only once per MCU boot, or after setLogName()
+    // explicitly changes the requested base name. A normal wake or recovery
+    // from a temporary sd.begin() failure resumes the existing file.
+    if (!logFileSelected) {
         // Try to open the root of the file system so we can get the files on the device
         if (!root.open("/", O_RDONLY)) {
+            sdInitialized = false;
             printModuleName("ERROR");
             ERROR(F("Failed to open root file system on SD Card!"));
             printModuleName("After ERROR");
             return false;
         }
-        updateCurrentFileName();
-
-        // Open the file in read/write mode, create the file if we need to and append the content to
-        // the end of the file
-        // Don't want it to open every time hypnos wakes up, will overwrite persistent handle
-        myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
+        if (!updateCurrentFileName()) {
+            sdInitialized = false;
+            root.close();
+            return false;
+        }
+        logFileSelected = true;
     }
 
-    // Once the SD card has initialized the first round through we don't want to update the file
-    // name
     sdInitialized = true;
+
+    if (recoveringExistingLog) {
+        printModuleName("SD card recovered; resuming data log:");
+        printModuleName(fileName);
+    }
 
     return true;
 }
@@ -334,8 +324,8 @@ bool SDManager::begin() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::updateCurrentFileName() {
-    uint16_t indexDir = 0;
-    char f_name[260];
+    // uint16_t indexDir = 0; // Reserved for directory-index tracking.
+    char f_name[LOG_FILENAME_SIZE];
     char *strLocation;
 
     // What number we need to append to the file name
@@ -343,7 +333,7 @@ bool SDManager::updateCurrentFileName() {
 
     // While there is a next file to open, open it
     while (scanningFile.openNext(&root)) {
-        scanningFile.getName(f_name, 25);
+        scanningFile.getName(f_name, sizeof(f_name));
 
         if (strlen(overrideFileName) > 0) {
             // Check if the substring exists
@@ -367,52 +357,75 @@ bool SDManager::updateCurrentFileName() {
 
     if (strlen(overrideFileName) > 0) {
         // Set all the fileNames with the override name
-        snprintf_P(fileName, 260, PSTR("%s%i.csv"), overrideFileName, getCurrentFileNumber());
-        snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), overrideFileName,
-                   getCurrentFileNumber());
-        snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+        buildNumberedName(fileName, sizeof(fileName), overrideFileName, getCurrentFileNumber(),
+                          ".csv");
+        buildNumberedName(batchFileName, sizeof(batchFileName), overrideFileName,
+                          getCurrentFileNumber(), "-Batch.txt");
 
     } else {
         // Set all the fileNames
-        snprintf_P(fileName, 260, PSTR("%s%i.csv"), device_name, getCurrentFileNumber());
-        snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), device_name, getCurrentFileNumber());
-        snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+        buildNumberedName(fileName, sizeof(fileName), device_name, getCurrentFileNumber(), ".csv");
+        buildNumberedName(batchFileName, sizeof(batchFileName), device_name,
+                          getCurrentFileNumber(), "-Batch.txt");
     }
 
     // Close the root file after we have decided what to name the next file
     root.close();
 
-    char output[OUTPUT_SIZE];
-    snprintf_P(output, OUTPUT_SIZE, PSTR("Data will be logged to %s"), fileName);
-    printModuleName(output);
+    printModuleName("Data will be logged to:");
+    printModuleName(fileName);
 
     return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+const char *SDManager::getBatchFilename() {
+    return batchFileName;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 char *SDManager::readFile(const char *fileName) {
-    // Clear contents
-    char *fileContents = (char *)malloc(5000);
-    memset(fileContents, '\0', 5000);
-
-    long index = 0;
-    if (sdInitialized) {
-        File tempFile = sd.open(fileName);
-
-        if (tempFile) {
-            // read from the file until there's nothing else in it:
-            while (tempFile.available()) {
-                fileContents[index] = (char)(tempFile.read());
-                index++;
-            }
-            fileContents[index] = '\0';
-            tempFile.close();
-        } else {
-            printModuleName("Failed to open file!");
-        }
-    } else {
+    if (!sdInitialized) {
         printModuleName("Failed to read! SD card not Initialized!");
+        return nullptr;
+    }
+
+    myFile = sd.open(fileName);
+    if (!myFile) {
+        printModuleName("Failed to open file!");
+        return nullptr;
+    }
+
+    const size_t fileSize = myFile.size();
+    if (fileSize > MAX_SD_READ_BYTES) {
+        printModuleName("File is too large to read safely into memory!");
+        myFile.close();
+        return nullptr;
+    }
+
+    char *fileContents = static_cast<char *>(malloc(fileSize + 1));
+    if (fileContents == nullptr) {
+        printModuleName("Failed to allocate memory for file contents!");
+        myFile.close();
+        return nullptr;
+    }
+
+    size_t index = 0;
+    while (index < fileSize) {
+        const int value = myFile.read();
+        if (value < 0)
+            break;
+        fileContents[index++] = static_cast<char>(value);
+    }
+    fileContents[index] = '\0';
+    myFile.close();
+
+    if (index != fileSize) {
+        free(fileContents);
+        printModuleName("Failed to read the complete file!");
+        return nullptr;
     }
     return fileContents;
 }
@@ -420,26 +433,54 @@ char *SDManager::readFile(const char *fileName) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void SDManager::logBatch() {
-    char f_name[260];
-    char jsonString[MAX_JSON_SIZE];
-    snprintf_P(f_name, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
-    // We want to clear the file after the batch size has been exceeded
-    if (current_batch >= batch_size) {
-        current_batch = 0;
-        batchFile = sd.open(f_name, O_WRITE | O_TRUNC | O_APPEND);
-    } else {
-        batchFile = sd.open(f_name, O_WRITE | O_CREAT | O_APPEND);
-    }
-    // Check if the file has been opened properly and write the JSON packet to one line
-    if (batchFile) {
+    // Never discard an unsent batch here. The publisher clears it explicitly, and only after
+    // every record succeeds. If a network outage lasts for several samples, the file grows on SD
+    // instead of consuming SRAM or silently dropping the older records.
+    myFile = sd.open(batchFileName, O_WRITE | O_CREAT | O_APPEND);
 
-        manInst->getJSONString(jsonString);
-        batchFile.println(jsonString);
-        batchFile.close();
-        current_batch++;
+    // Check if the file has been opened properly and write the JSON packet to one line.
+    if (myFile) {
+        const uint32_t recordStart = myFile.fileSize();
+        const size_t expectedJsonBytes = measureJson(manInst->getDocument());
+        myFile.clearWriteError();
+        const size_t jsonBytes = serializeJson(manInst->getDocument(), myFile);
+        const size_t newlineBytes = myFile.println();
+
+        // A partial record is worse than no record: it cannot be published and would make the
+        // following line ambiguous. Roll it back while the file is still open.
+        const bool complete = expectedJsonBytes > 0 && jsonBytes == expectedJsonBytes &&
+                              newlineBytes == 2 && !myFile.getWriteError() && myFile.sync();
+        const bool rolledBack = complete || myFile.truncate(recordStart);
+        myFile.close();
+
+        if (complete)
+            current_batch++;
+        else if (rolledBack)
+            printModuleName("Failed while writing batch data!");
+        else
+            printModuleName("Failed to roll back a partial batch record!");
 
     } else {
         printModuleName("Failed to open file!");
     }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool SDManager::clearBatch() {
+    if (!sdInitialized || batch_size <= 0 || batchFileName[0] == '\0') {
+        printModuleName("Cannot clear batch because SD batch logging is unavailable!");
+        return false;
+    }
+
+    myFile = sd.open(batchFileName, O_WRITE | O_CREAT | O_TRUNC);
+    if (!myFile) {
+        printModuleName("Failed to clear the published batch file!");
+        return false;
+    }
+
+    myFile.close();
+    current_batch = 0;
+    return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
