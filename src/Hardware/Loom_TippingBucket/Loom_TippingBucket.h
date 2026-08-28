@@ -1,12 +1,13 @@
+
+#pragma once
+
 #include <Wire.h>
-#include <deque>
 
 #include "../Loom_Hypnos/Loom_Hypnos.h"
 #include "Loom_Manager.h"
 #include "Module.h"
 
 #define COUNTER_ADDRESS 0x32 // I2C Counter address
-#define ONE_HOUR_UNIX 3600   // Number of seconds in one hour of unix time
 
 enum COUNTER_TYPE { I2C, MANUAL };
 
@@ -47,12 +48,20 @@ class Loom_TippingBucket : public Module {
     /* Hourly Tips Tracker*/
     Loom_Hypnos *hypnosInst = nullptr; // Instance of the hypnos for using RTC
     unsigned long hourlyTips = 0;      // Number of tips recorded in the last hour
-    const float inchesPerTip;          //
-    std::deque<uint32_t> times; // Track the UNIX times of each log to be able to determine when we
-                                // want to shift our double ended queue
-    std::deque<unsigned long> tips; // Track the number of total tips per each sample
+    const float inchesPerTip;          // Rainfall represented by one bucket tip
     unsigned long lastTipCount = 0;
 
-    float tipsToInches(
-        unsigned long tips); // Convert the number of tips of a bucket to inches of rainfall
+    // A fixed minute ring keeps hourly tracking deterministic on the 32 KB SAMD21. The previous
+    // pair of deques allocated entries on every measurement and could exhaust RAM in under an
+    // hour at the 500 ms interval used by the example.
+    static const size_t HISTORY_BUCKET_COUNT = 60;
+    static const uint32_t INVALID_MINUTE = UINT32_MAX;
+    struct TipHistoryBucket {
+        uint32_t minute;
+        unsigned long tips;
+    };
+    TipHistoryBucket tipHistory[HISTORY_BUCKET_COUNT];
+
+    void updateHourlyTips(uint32_t currentTime, unsigned long newTips);
+    float tipsToInches(unsigned long tips); // Convert bucket tips to inches of rainfall
 };

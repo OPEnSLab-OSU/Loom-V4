@@ -35,5 +35,5 @@ class Loom_Servo : public Actuator {
     Adafruit_PWMServoDriver servo; // Instance of the Servo driver
     int instance;                  // Instance number of the servo
 
-    int degrees; // The expected current degrees of the servo
+    int degrees = 0; // The expected current degrees of the servo
 };

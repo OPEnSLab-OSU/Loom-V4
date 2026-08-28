@@ -3,12 +3,12 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Servo::Loom_Servo(int instance_num)
-    : Actuator(ACTUATOR_TYPE::SERVO, instance_num), instance(instance_num) {}
+    : Actuator(ACTUATOR_TYPE::SERVO, instance_num), manInst(nullptr), instance(instance_num) {}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Servo::Loom_Servo(Manager &man, int instance_num)
-    : Actuator(ACTUATOR_TYPE::SERVO, instance_num), instance(instance_num), manInst(&man) {
+    : Actuator(ACTUATOR_TYPE::SERVO, instance_num), manInst(&man), instance(instance_num) {
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -45,12 +45,10 @@ void Loom_Servo::control(JsonArray json) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Servo::setDegrees(const int degrees) {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
     this->degrees = degrees;
     servo.setPWM(instance, 0, map(degrees, 0, 180, SERVO_MIN, SERVO_MAX));
 
-    snprintf(output, OUTPUT_SIZE, "Servo set to: %i", degrees);
-    LOG(output);
+    LOGF("Servo set to: %i", degrees);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

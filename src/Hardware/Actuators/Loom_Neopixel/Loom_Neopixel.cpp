@@ -5,14 +5,10 @@
 Loom_Neopixel::Loom_Neopixel(Manager &man, const bool enableA0, const bool enableA1,
                              const bool enableA2, const neoPixelType colorType)
     : Actuator(ACTUATOR_TYPE::NEOPIXEL, 0), manInst(&man),
-      enabledPins{enableA0, enableA1, enableA2},
       pixels{Adafruit_NeoPixel(1, 14, colorType + NEO_KHZ800),
              Adafruit_NeoPixel(1, 15, colorType + NEO_KHZ800),
-             Adafruit_NeoPixel(1, 16, colorType + NEO_KHZ800)} {
-    this->enabledPins[0] = enableA0;
-    this->enabledPins[1] = enableA1;
-    this->enabledPins[2] = enableA2;
-
+             Adafruit_NeoPixel(1, 16, colorType + NEO_KHZ800)},
+      enabledPins{enableA0, enableA1, enableA2} {
     manInst->registerModule(this);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -20,14 +16,11 @@ Loom_Neopixel::Loom_Neopixel(Manager &man, const bool enableA0, const bool enabl
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Neopixel::Loom_Neopixel(const bool enableA0, const bool enableA1, const bool enableA2,
                              const neoPixelType colorType)
-    : Actuator(ACTUATOR_TYPE::NEOPIXEL, 0), enabledPins{enableA0, enableA1, enableA2},
+    : Actuator(ACTUATOR_TYPE::NEOPIXEL, 0), manInst(nullptr),
       pixels{Adafruit_NeoPixel(1, 14, colorType + NEO_KHZ800),
              Adafruit_NeoPixel(1, 15, colorType + NEO_KHZ800),
-             Adafruit_NeoPixel(1, 16, colorType + NEO_KHZ800)} {
-    this->enabledPins[0] = enableA0;
-    this->enabledPins[1] = enableA1;
-    this->enabledPins[2] = enableA2;
-}
+             Adafruit_NeoPixel(1, 16, colorType + NEO_KHZ800)},
+      enabledPins{enableA0, enableA1, enableA2} {}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -53,13 +46,17 @@ void Loom_Neopixel::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Neopixel::package(JsonObject json) {}
+void Loom_Neopixel::package(JsonObject json) { (void)json; }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Neopixel::control(JsonArray json) {
     FUNCTION_START;
-    // TODO: If using instance number offset all these by one
+    if (json.size() < 5) {
+        ERROR(F("Neopixel command requires port, pixel, red, green, and blue values."));
+        FUNCTION_END;
+        return;
+    }
     set_color(json[0].as<uint8_t>(), json[1].as<uint8_t>(), json[2].as<uint8_t>(),
               json[3].as<uint8_t>(), json[4].as<uint8_t>());
     FUNCTION_END;
@@ -70,7 +67,16 @@ void Loom_Neopixel::control(JsonArray json) {
 void Loom_Neopixel::set_color(const uint8_t port, const uint8_t chain_num, const uint8_t red,
                               const uint8_t green, const uint8_t blue) {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
+    if (port >= 3) {
+        ERRORF("Invalid Neopixel port %u; expected 0 through 2.", port);
+        FUNCTION_END;
+        return;
+    }
+    if (chain_num >= pixels[port].numPixels()) {
+        ERRORF("Invalid Neopixel index %u for port %u.", chain_num, port);
+        FUNCTION_END;
+        return;
+    }
     if (enabledPins[port]) {
         // Apply color
         pixels[port].setPixelColor(chain_num, pixels[port].Color(red, green, blue));
@@ -79,8 +85,7 @@ void Loom_Neopixel::set_color(const uint8_t port, const uint8_t chain_num, const
         pixels[port].show();
 
     } else {
-        snprintf(output, OUTPUT_SIZE, "Neopixel not enabled on port %u", port);
-        WARNING(output);
+        WARNINGF("Neopixel not enabled on port %u", port);
     }
     FUNCTION_END;
 }
@@ -89,13 +94,18 @@ void Loom_Neopixel::set_color(const uint8_t port, const uint8_t chain_num, const
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Neopixel::enable_pin(const uint8_t port, const bool state) {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
+    if (port >= 3) {
+        ERRORF("Invalid Neopixel port %u; expected 0 through 2.", port);
+        FUNCTION_END;
+        return;
+    }
     enabledPins[port] = state;
     if (state) {
-        pinMode(port, OUTPUT);
+        pinMode(14 + port, OUTPUT);
+        pixels[port].begin();
+        pixels[port].show();
     }
-    snprintf(output, OUTPUT_SIZE, "Neopixel state changed on port %u", port);
-    LOG(output);
+    LOGF("Neopixel state changed on port %u", port);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

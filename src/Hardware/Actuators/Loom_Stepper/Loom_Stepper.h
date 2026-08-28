@@ -26,7 +26,10 @@ class Loom_Stepper : public Actuator {
     /**
      * Deconstructor to clean up motor controller pointers
      */
-    ~Loom_Stepper();
+    ~Loom_Stepper() override;
+
+    Loom_Stepper(const Loom_Stepper &) = delete;
+    Loom_Stepper &operator=(const Loom_Stepper &) = delete;
 
     void control(JsonArray json) override;
     void initialize() override;
@@ -43,12 +46,12 @@ class Loom_Stepper : public Actuator {
   private:
     Manager *manInst = nullptr; // Manager instance
 
-    Adafruit_MotorShield *AFMS;   // Motor Shield controller
-    Adafruit_StepperMotor *motor; // Stepper controller
+    Adafruit_MotorShield *AFMS = nullptr;   // Owned motor shield controller
+    Adafruit_StepperMotor *motor = nullptr; // Non-owning controller owned by AFMS
 
     int instance; // Instance number of the servo
 
     int currentSteps = 0; // Running step count
-    uint8_t rpm;          // Current RPM of the motor
-    bool clockwise;       // If it is spinning clockwise
+    uint8_t rpm = 0;      // Current RPM of the motor
+    bool clockwise = true; // If it is spinning clockwise
 };
