@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Arduino.h"
 #include <Adafruit_SleepyDog.h>
 #include <ArduinoJson.h>
@@ -20,8 +21,16 @@
 #define WD_TIMER_RESET
 #endif
 
+#ifndef TIMER_ENABLE
+#define TIMER_ENABLE WD_TIMER_ENABLE
+#define TIMER_DISABLE WD_TIMER_DISABLE
+#define TIMER_RESET WD_TIMER_RESET
+#endif
+
 #define OUTPUT_SIZE 256
 #define MAX_JSON_SIZE 2000
+// Built-in module names are at most 18 characters; mux/address suffixes still fit comfortably.
+#define MODULE_NAME_SIZE 32
 
 /**
  *  General overarching interface to provide basic unified functionality
@@ -30,15 +39,20 @@
  */
 class Module {
   public:
-    Module(const char *modName) { strcpy(moduleName, modName); };
+    Module(const char *modName) { setModuleName(modName); };
+    virtual ~Module() = default;
 
-    void setModuleName(const char *modName) { strcpy(moduleName, modName); };
+    void setModuleName(const char *modName) {
+        strncpy(moduleName, modName ? modName : "", sizeof(moduleName) - 1);
+        moduleName[sizeof(moduleName) - 1] = '\0';
+    };
 
     virtual const char *getModuleName() { return moduleName; }; // Return the name of the sensor
     virtual void printModuleName(const char *message) {
-        char output[OUTPUT_SIZE];
-        snprintf_P(output, OUTPUT_SIZE, PSTR("[%s] %s"), getModuleName(), message);
-        Serial.println(output);
+        Serial.print('[');
+        Serial.print(getModuleName());
+        Serial.print(F("] "));
+        Serial.println(message ? message : "");
     };
 
     // Generic measure and package calls to unify some interaction with different sensor
@@ -48,6 +62,7 @@ class Module {
     virtual void package() = 0;    // Package collected data into JSON document
     virtual void power_up() = 0;   // Power the sensor up and come out of sleep
     virtual void power_down() = 0; // Power the sensor down to prepare for sleep
+    virtual bool retryPowerUpWhenUninitialized() const { return false; }
 
     // Not required overrides
     virtual void display_data() {}; // Called by the manager to allow OLED to display data at the
@@ -58,5 +73,5 @@ class Module {
     int module_address =
         -1; // Specifically for I2C addresses, -1 means the module doesn't have an address
   private:
-    char moduleName[100];
+    char moduleName[MODULE_NAME_SIZE];
 };

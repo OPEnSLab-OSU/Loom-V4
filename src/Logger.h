@@ -2,16 +2,21 @@
 
 #include "Hardware/Loom_Hypnos/Loom_Hypnos.h"
 #include <MemoryFree.h>
+#include <cstdarg>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 
 // To acquire a function call summary, just add INSTRUMENT() to the top of the
 // relevant function.
-#define INSTRUMENT() FunctionInstrumentor _instrumentor##__LINE__(__FILE__, __func__, __LINE__);
+#define LOOM_LOGGER_JOIN_IMPL(a, b) a##b
+#define LOOM_LOGGER_JOIN(a, b) LOOM_LOGGER_JOIN_IMPL(a, b)
+#define INSTRUMENT()                                                                               \
+    FunctionInstrumentor LOOM_LOGGER_JOIN(_loomInstrumentor_, __LINE__)(__FILE__, __func__,        \
+                                                                        __LINE__);
 
 // DEPRECATED - use INSTRUMENT
-#define FUNCTION_START FunctionInstrumentor _instrumentor##__LINE__(__FILE__, __func__, __LINE__);
+#define FUNCTION_START INSTRUMENT()
 // DEPRECATED - use INSTRUMENT
 #define FUNCTION_END
 
@@ -39,18 +44,18 @@ struct LogContext {
 #define GENERIC_LOGF(silent, level, msg, ...)                                                      \
     do {                                                                                           \
         LogContext log{__FILE__, __func__, __LINE__, silent, level};                               \
-        char buf[OUTPUT_SIZE];                                                                     \
-        snprintf_P(buf, sizeof(buf), PSTR(msg), ##__VA_ARGS__);                                    \
-        Logger::getInstance()->genericLog(log, buf);                                               \
+        Logger::getInstance()->genericLogFormatted(log, PSTR(msg), ##__VA_ARGS__);                  \
     } while (false)
 
 #define LOGF(msg, ...) GENERIC_LOGF(false, "DEBUG", msg, ##__VA_ARGS__)
-#define SLOGF(msg, ...) GENERIC_LOGF(false, "DEBUG", msg, ##__VA_ARGS__)
+#define SLOGF(msg, ...) GENERIC_LOGF(true, "DEBUG", msg, ##__VA_ARGS__)
 #define WARNINGF(msg, ...) GENERIC_LOGF(false, "WARNING", msg, ##__VA_ARGS__)
 #define ERRORF(msg, ...) GENERIC_LOGF(false, "ERROR", msg, ##__VA_ARGS__)
 
 #define ENABLE_SD_LOGGING Logger::getInstance()->enableSD()
 #define ENABLE_FUNC_SUMMARIES Logger::getInstance()->enableSummaries()
+
+constexpr size_t LOGGER_FILENAME_SIZE = 64;
 
 /**
  * Arduino Logger class that allows for standardized log outputs as well as
@@ -69,7 +74,6 @@ class Logger {
     bool enableFunctionSummaries = false;
     bool enableSDLogging = false;
 
-    static Logger *instance;
     SDManager *sdInst = nullptr;
     Loom_Hypnos *hypnosInst = nullptr;
 
@@ -82,35 +86,65 @@ class Logger {
      * @param silent Whether to print to the serial monitor
      */
     void log(char *message, bool silent) {
+        char filePath[32];
+
         // If we want to actually print to serial
         if (!silent)
             Serial.println(message);
 
         // Log as long as we have given it a SD card instance
         if (sdInst != nullptr && enableSDLogging && sdInst->hasSDInitialized()) {
-            snprintf_P(logFile, 100, PSTR("/debug/output_%i.log"), sdInst->getCurrentFileNumber());
-            sdInst->writeLineToFile(logFile, message);
+            snprintf_P(filePath, sizeof(filePath), PSTR("/debug/output_%i.log"),
+                       sdInst->getCurrentFileNumber());
+            sdInst->writeLineToFile(filePath, message);
         }
     }
 
-  public:
-    /* Statically allocated buffers to minimize stack frame size when calling
-     * LOG family functions */
-    static char logFile[100];
-    static char activeFile[260];
-    static char timeBuf[21];
-    static char flashMessage[OUTPUT_SIZE];
-    static char logMessage[OUTPUT_SIZE];
+    static const char *baseFileName(const char *src) {
+        if (src == nullptr)
+            return "";
 
+        const char *backslash = strrchr(src, '\\');
+        const char *slash = strrchr(src, '/');
+        const char *separator = backslash;
+        if (separator == nullptr || (slash != nullptr && slash > separator))
+            separator = slash;
+        return separator == nullptr ? src : separator + 1;
+    }
+
+    static size_t writePrefix(char *destination, size_t destinationSize, LogContext log) {
+        if (destination == nullptr || destinationSize == 0)
+            return 0;
+
+        const char *fileName = baseFileName(log.file);
+        int written = 0;
+        if (Logger::getInstance()->hypnosInst != nullptr &&
+            Logger::getInstance()->hypnosInst->isRTCInitialized()) {
+            DateTime time = Logger::getInstance()->hypnosInst->getCurrentTime();
+            char timestamp[21];
+            Logger::getInstance()->hypnosInst->dateTime_toString(time, timestamp);
+            written = snprintf_P(destination, destinationSize, PSTR("[%s] [%s] [%s:%s:%lu] "),
+                                 timestamp, log.level, fileName, log.func, log.lineNum);
+        } else {
+            written = snprintf_P(destination, destinationSize, PSTR("[%s] [%s:%s:%lu] "),
+                                 log.level, fileName, log.func, log.lineNum);
+        }
+
+        if (written <= 0)
+            return 0;
+        if (static_cast<size_t>(written) >= destinationSize)
+            return destinationSize - 1;
+        return static_cast<size_t>(written);
+    }
+
+  public:
     // Deleting copy constructor.
     Logger(const Logger &obj) = delete;
 
     /* Get an instance of the logger object */
     static Logger *getInstance() {
-        if (instance == nullptr)
-            instance = new Logger();
-
-        return instance;
+        static Logger instance;
+        return &instance;
     };
 
     /**
@@ -130,22 +164,28 @@ class Logger {
     };
 
     void genericLog(LogContext log, const __FlashStringHelper *msg) {
-        memcpy_P(flashMessage, msg, OUTPUT_SIZE);
-        genericLog(log, flashMessage);
+        // ATSAMD21 flash is memory-mapped, so F() strings can be consumed without a RAM copy.
+        genericLog(log, reinterpret_cast<const char *>(msg));
     }
 
     void genericLog(LogContext log, const char *msg) {
-        truncateFileName(activeFile, log.file);
+        char logMessage[OUTPUT_SIZE] = {};
+        const size_t prefixLength = writePrefix(logMessage, sizeof(logMessage), log);
+        strncpy(logMessage + prefixLength, msg ? msg : "",
+                sizeof(logMessage) - prefixLength - 1);
 
-        if (hypnosInst != nullptr && hypnosInst->isRTCInitialized()) {
-            DateTime t = hypnosInst->getCurrentTime();
-            hypnosInst->dateTime_toString(t, timeBuf);
-            snprintf_P(logMessage, OUTPUT_SIZE, PSTR("[%s] [%s] [%s:%s:%u] %s"), Logger::timeBuf,
-                       log.level, Logger::activeFile, log.func, log.lineNum, msg);
-        } else {
-            snprintf_P(Logger::logMessage, OUTPUT_SIZE, PSTR("[%s] [%s:%s:%u] %s"), log.level,
-                       Logger::activeFile, log.func, log.lineNum, msg);
-        }
+        this->log(logMessage, log.silent);
+    }
+
+    void genericLogFormatted(LogContext log, const char *format, ...) {
+        char logMessage[OUTPUT_SIZE] = {};
+        const size_t prefixLength = writePrefix(logMessage, sizeof(logMessage), log);
+
+        va_list arguments;
+        va_start(arguments, format);
+        vsnprintf(logMessage + prefixLength, sizeof(logMessage) - prefixLength,
+                  format ? format : "", arguments);
+        va_end(arguments);
 
         this->log(logMessage, log.silent);
     }
@@ -167,75 +207,68 @@ class Logger {
 
     /**
      * Truncate the __FILE__ output to just show the name instead of the whole path
-     * Expects dst to be at least as large as src
+     * Always null-terminates within dstSize.
      */
-    static void truncateFileName(char *dst, const char *src) {
-        const char *name = strrchr(src, '\\');
-
-        if (name == nullptr) {
-            name = strrchr(src, '/');
+    static void truncateFileName(char *dst, size_t dstSize, const char *src) {
+        if (dst == nullptr || dstSize == 0)
+            return;
+        if (src == nullptr) {
+            dst[0] = '\0';
+            return;
         }
 
-        if (name != nullptr) {
-            name++;
-        } else {
-            name = src;
-        }
-
-        strcpy(dst, name);
+        const char *name = baseFileName(src);
+        strncpy(dst, name, dstSize - 1);
+        dst[dstSize - 1] = '\0';
     }
 };
 
-// Offset to correct for the difference in the size of the FunctionInstrumentor
-// constructor and destructor stack frames.
-const int CONSTRUCTOR_SIZE_DIFFERENCE = 320;
-
 class FunctionInstrumentor {
-  public:
-    static char activeFile[300];
-    static char logFile[100];
-    static char output[300];
+  private:
+    // Keep the large formatting buffers out of the constructor/destructor frames. GCC otherwise
+    // reserves them before the early return even when field deployments disable summaries.
+    static __attribute__((noinline)) void writeSummary(Logger *logger, bool starting,
+                                                       const char *file, const char *func,
+                                                       int lineNum) {
+        const int freemem = freeMemory();
+        char logfileName[48];
+        snprintf_P(logfileName, sizeof(logfileName), PSTR("/debug/funcSummaries_%i.log"),
+                   logger->sdInst->getCurrentFileNumber());
 
+        char output[OUTPUT_SIZE] = {};
+        if (starting) {
+            char fileName[LOGGER_FILENAME_SIZE] = {};
+            Logger::truncateFileName(fileName, sizeof(fileName), file);
+            snprintf_P(output, sizeof(output), PSTR("start,%d,%s,%s,%d,%d,%lu"),
+                       static_cast<int>(logger->stackDepth - 1), fileName, func, lineNum, freemem,
+                       millis());
+        } else {
+            snprintf_P(output, sizeof(output), PSTR("end,%d, , , ,%d,%lu"),
+                       static_cast<int>(logger->stackDepth), freemem, millis());
+        }
+
+        if (!logger->sdInst->writeLineToFile(logfileName, output))
+            Serial.println(F("Could not write instrumentation to file!"));
+    }
+
+  public:
     // delete all other constructors
     FunctionInstrumentor(const FunctionInstrumentor &) = delete;
     FunctionInstrumentor &operator=(const FunctionInstrumentor &) = delete;
 
     FunctionInstrumentor(const char *file, const char *func, int lineNum) {
-        int freemem = freeMemory() + CONSTRUCTOR_SIZE_DIFFERENCE;
-
         Logger *logger = Logger::getInstance();
-
         logger->stackDepth++;
 
-        if (!logger->shouldLogSummaries())
-            return;
-
-        Logger::truncateFileName(activeFile, file);
-
-        snprintf_P(logFile, sizeof(logFile), PSTR("/debug/funcSummaries_%i.log"),
-                   logger->sdInst->getCurrentFileNumber());
-
-        snprintf_P(output, sizeof(output), PSTR("start,%d,%s,%s,%d,%d,%lu"), logger->stackDepth - 1,
-                   activeFile, func, lineNum, freemem, millis());
-        bool worked = logger->sdInst->writeLineToFile(logFile, output);
-        if (!worked)
-            WARNINGF("Could not write instrumentation to file!");
+        if (logger->shouldLogSummaries())
+            writeSummary(logger, true, file, func, lineNum);
     }
 
     ~FunctionInstrumentor() {
-        int freemem = freeMemory();
-
         Logger *logger = Logger::getInstance();
-
         logger->stackDepth--;
 
-        if (!logger->shouldLogSummaries())
-            return;
-
-        snprintf_P(output, sizeof(output), PSTR("end,%d, , , ,%d,%lu"), logger->stackDepth, freemem,
-                   millis());
-        bool worked = logger->sdInst->writeLineToFile(logFile, output);
-        if (!worked)
-            WARNINGF("Could not write instrumentation to file!");
+        if (logger->shouldLogSummaries())
+            writeSummary(logger, false, nullptr, nullptr, 0);
     }
 };

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <ArduinoJson.h>
-#include <unordered_map>
 #include <vector>
 
 #include "Module.h"
@@ -17,9 +16,13 @@
  */
 class Manager {
   public:
+    // Repository examples use at most 19 characters. A 63-character ceiling leaves substantial
+    // application headroom without reserving 100 bytes in every Manager and SDManager instance.
+    static constexpr size_t DEVICE_NAME_SIZE = 64;
+
     /**
      * Constructs a new Manager
-     * @param devName Device name to provided for logging purposes
+     * @param devName Device name provided for logging purposes
      * @param instanceNum Instance number for logging purposes
      */
     Manager(const char *devName, uint32_t instanceNum);
@@ -109,7 +112,10 @@ class Manager {
      * Set the device name at runtime
      * @param name New name of the device
      */
-    void set_device_name(const char *name) { strcpy(deviceName, name); };
+    void set_device_name(const char *name) {
+        strncpy(deviceName, name ? name : "", sizeof(deviceName) - 1);
+        deviceName[sizeof(deviceName) - 1] = '\0';
+    };
 
     /**
      * Gets the current device instance number
@@ -153,7 +159,7 @@ class Manager {
 
   private:
     /* Device Information */
-    char deviceName[100];      // Name of the device
+    char deviceName[DEVICE_NAME_SIZE]; // Name of the device
     uint32_t instanceNumber;   // Instance number of the device
     uint32_t packetNumber = 1; // Tracks the current packet number
     char serial_num[33];
@@ -163,8 +169,7 @@ class Manager {
     /* Module Data */
     DynamicJsonDocument doc; // JSON document that will store all sensor information
     JsonArray contentsArray; // Stores the contents of the modules
-    std::vector<std::pair<const char *, Module *>>
-        modules; // List of modules that have been added to the stack
+    std::vector<Module *> modules; // List of modules that have been added to the stack
 
     /* Validation */
     bool hasInitialized = false; // Whether or not the initialize function has been called, if not

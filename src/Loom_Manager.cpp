@@ -4,32 +4,41 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Manager::Manager(const char *devName, uint32_t instanceNum)
     : instanceNumber(instanceNum), doc(MAX_JSON_SIZE) {
-    strncpy(this->deviceName, devName, 100);
+    strncpy(deviceName, devName ? devName : "", sizeof(deviceName) - 1);
+    deviceName[sizeof(deviceName) - 1] = '\0';
+    // The three WISP variants register five to eight modules. Allocate the pointer table once
+    // before other global constructors allocate long-lived objects, avoiding 4/8/16-byte holes.
+    modules.reserve(8);
     Logger::getInstance();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::registerModule(Module *module) {
+    if (module == nullptr) {
+        ERROR(F("Cannot register a null module."));
+        return;
+    }
+
     char *location;
     // If there are no duplicates proceed as normal
-    for (int i = 0; i < modules.size(); i++) {
+    for (size_t i = 0; i < modules.size(); i++) {
         // Find the pointer to the module name
-        location = strstr(modules[i].first, module->getModuleName());
+        location = strstr(modules[i]->getModuleName(), module->getModuleName());
 
         // Check if the module name contains the base string to make sure this works past 2 modules
         // of the same type
         if (location != NULL) {
             // Append the address to the name
-            char modifiedName[100];
+            char modifiedName[MODULE_NAME_SIZE];
 
             // Format first module name
-            snprintf_P(modifiedName, 100, PSTR("%s_%i"), modules[i].second->getModuleName(),
-                       modules[i].second->module_address);
-            modules[i].second->setModuleName(modifiedName);
+            snprintf_P(modifiedName, sizeof(modifiedName), PSTR("%s_%i"),
+                       modules[i]->getModuleName(), modules[i]->module_address);
+            modules[i]->setModuleName(modifiedName);
 
             // Format second string using the same array
-            snprintf_P(modifiedName, 100, PSTR("%s_%i"), module->getModuleName(),
+            snprintf_P(modifiedName, sizeof(modifiedName), PSTR("%s_%i"), module->getModuleName(),
                        module->module_address);
             module->setModuleName(modifiedName);
 
@@ -39,7 +48,7 @@ void Manager::registerModule(Module *module) {
         }
     }
 
-    modules.push_back(std::make_pair(module->getModuleName(), module));
+    modules.push_back(module);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -49,14 +58,14 @@ DynamicJsonDocument &Manager::getDocument() { return doc; }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::beginSerial(bool waitForSerial) {
-    long startMillis = millis();
+    uint32_t startMillis = millis();
 
     Serial.begin(BAUD_RATE);
     // Pause if the Serial is not open and we want to wait
     while (!Serial && waitForSerial) {
 
         // If it has been 20 seconds break out of the loop
-        if (millis() >= (startMillis + WAIT_TIME_MS)) {
+        if ((uint32_t)(millis() - startMillis) >= WAIT_TIME_MS) {
             break;
         }
     }
@@ -67,19 +76,13 @@ void Manager::beginSerial(bool waitForSerial) {
 void Manager::measure() {
     FUNCTION_START;
 
-    char noInitLog[50];
     if (hasInitialized) {
         LOG(F("** Measuring **"));
-        for (int i = 0; i < modules.size(); i++) {
-            if (modules[i].second->moduleInitialized)
-                modules[i].second->measure();
-            else {
-
-                /* Converted warning from printModuleName to logger*/
-                memset(noInitLog, '\0', 50);
-                snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
-                WARNING(noInitLog);
-            }
+        for (size_t i = 0; i < modules.size(); i++) {
+            if (modules[i]->moduleInitialized)
+                modules[i]->measure();
+            else
+                WARNINGF("%s Not initialized!", modules[i]->getModuleName());
             // TIMER_RESET;
         }
     } else {
@@ -94,7 +97,6 @@ void Manager::measure() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::package() {
     FUNCTION_START;
-    char noInitLog[50];
 
     LOG(F("** Packaging **"));
 
@@ -113,16 +115,18 @@ void Manager::package() {
     JsonObject json = get_data_object("Packet");
     json["Number"] = packetNumber;
 
-    for (int i = 0; i < modules.size(); i++) {
-        if (modules[i].second->moduleInitialized) {
-            modules[i].second->package();
+    for (size_t i = 0; i < modules.size(); i++) {
+        if (modules[i]->moduleInitialized) {
+            modules[i]->package();
         } else {
-            /* Converted warning from printModuleName to logger*/
-            memset(noInitLog, '\0', 50);
-            snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
-            WARNING(noInitLog);
+            WARNINGF("%s Not initialized!", modules[i]->getModuleName());
         }
         // TIMER_RESET;
+    }
+
+    if (doc.overflowed()) {
+        ERRORF("JSON document overflowed its %u-byte capacity; this packet is incomplete.",
+               (unsigned int)doc.capacity());
     }
     packetNumber++;
 
@@ -133,18 +137,21 @@ void Manager::package() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 JsonObject Manager::get_data_object(const char *moduleName) {
+    const char *safeModuleName = moduleName ? moduleName : "";
+
     // Check if the key already exists in the array
     for (JsonVariant value : contentsArray) {
 
         // If the data already exists
-        if (strcmp(value.as<JsonObject>()["module"].as<const char *>(), moduleName) == 0) {
+        const char *existingName = value.as<JsonObject>()["module"].as<const char *>();
+        if (existingName != nullptr && strcmp(existingName, safeModuleName) == 0) {
             return value.as<JsonObject>()["data"];
         }
     }
 
     // If it doesn't already exist create a new object
     JsonObject json = contentsArray.createNestedObject();
-    json["module"] = moduleName;
+    json["module"] = safeModuleName;
     return json.createNestedObject("data");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -153,20 +160,16 @@ JsonObject Manager::get_data_object(const char *moduleName) {
 void Manager::power_up() {
     FUNCTION_START;
     WD_TIMER_ENABLE;
-    char noInitLog[50];
-    for (int i = 0; i < modules.size(); i++) {
+    for (size_t i = 0; i < modules.size(); i++) {
         WD_TIMER_RESET;
-        if (modules[i].second->moduleInitialized) {
+        if (modules[i]->moduleInitialized || modules[i]->retryPowerUpWhenUninitialized()) {
             // If we are about to power up the LTE we should turn off the watchdog
-            if (strcmp(modules[i].second->getModuleName(), "LTE") == 0) {
+            if (strcmp(modules[i]->getModuleName(), "LTE") == 0) {
                 WD_TIMER_DISABLE;
             }
-            modules[i].second->power_up();
+            modules[i]->power_up();
         } else {
-            /* Converted warning from printModuleName to logger*/
-            memset(noInitLog, '\0', 50);
-            snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
-            WARNING(noInitLog);
+            WARNINGF("%s Not initialized!", modules[i]->getModuleName());
         }
         WD_TIMER_RESET;
     }
@@ -180,16 +183,11 @@ void Manager::power_up() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::power_down() {
     FUNCTION_START;
-    char noInitLog[50];
-    for (int i = 0; i < modules.size(); i++) {
-        if (modules[i].second->moduleInitialized)
-            modules[i].second->power_down();
-        else {
-            /* Converted warning from printModuleName to logger*/
-            memset(noInitLog, '\0', 50);
-            snprintf(noInitLog, 50, "%s Not initialized!", modules[i].second->getModuleName());
-            WARNING(noInitLog);
-        }
+    for (size_t i = 0; i < modules.size(); i++) {
+        if (modules[i]->moduleInitialized)
+            modules[i]->power_down();
+        else
+            WARNINGF("%s Not initialized!", modules[i]->getModuleName());
         // TIMER_RESET;
     }
     FUNCTION_END;
@@ -198,18 +196,19 @@ void Manager::power_down() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::display_data() {
-    char jsonStr[MAX_JSON_SIZE];
     FUNCTION_START;
     if (!doc.isNull()) {
 
         // Display data for modules that support it
-        for (int i = 0; i < modules.size(); i++) {
-            modules[i].second->display_data();
+        for (size_t i = 0; i < modules.size(); i++) {
+            modules[i]->display_data();
         }
 
-        serializeJsonPretty(doc, jsonStr, MAX_JSON_SIZE);
-        LOG(F("Data Json: \n"));
-        LOG_LONG(jsonStr);
+        LOG(F("Data Json:"));
+        // ArduinoJson can serialize to Print directly. Avoid a 2 KB stack array and avoid
+        // duplicating the full payload into the optional SD debug log.
+        serializeJsonPretty(doc, Serial);
+        Serial.println();
     } else {
         LOG(F("JSON Document is Null there is no data to display"));
     }
@@ -231,8 +230,8 @@ void Manager::initialize() {
 
     LOG(F("** Initializing Modules **"));
     read_serial_num();
-    for (int i = 0; i < modules.size(); i++) {
-        modules[i].second->initialize();
+    for (size_t i = 0; i < modules.size(); i++) {
+        modules[i]->initialize();
     }
     hasInitialized = true;
     LOG(F("** Setup Complete ** "));
@@ -244,7 +243,7 @@ void Manager::initialize() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::getJSONString(char array[MAX_JSON_SIZE]) {
-    size_t jsonSize = measureJson(doc) + 1;
+    // size_t jsonSize = measureJson(doc) + 1; // Retained for callers that need a measured size.
     serializeJson(doc, array, MAX_JSON_SIZE);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -262,7 +261,8 @@ void Manager::read_serial_num() {
     // Take these raw values and convert them into a string of hex characters
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
-            snprintf_P(serial_no + (i * 8) + (j * 2), 33, PSTR("%02X"),
+            const size_t offset = static_cast<size_t>(i * 8 + j * 2);
+            snprintf_P(serial_no + offset, sizeof(serial_no) - offset, PSTR("%02X"),
                        (uint8_t)(sn_words[i] >> ((3 - j) * 8)));
         }
     }
@@ -275,8 +275,8 @@ void Manager::read_serial_num() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::pause(const uint32_t ms) const {
     // TIMER_DISABLE;
-    int waitTime = millis() + ms;
-    while (millis() < waitTime)
+    const uint32_t startTime = millis();
+    while ((uint32_t)(millis() - startTime) < ms)
         ;
     // TIMER_ENABLE;
 }

@@ -21,10 +21,11 @@ class Actuator : public Module {
     void package() override {};
 
   public:
-    Actuator(ACTUATOR_TYPE actType, int instance) : Module("Actuator") {
-        type = actType;
-        instance_num = instance;
-        snprintf(moduleName, 100, "%s%i", typeToString(), instance_num);
+    Actuator(ACTUATOR_TYPE actType, int instance)
+        : Module("Actuator"), instance_num(instance), type(actType) {
+        char name[MODULE_NAME_SIZE];
+        snprintf(name, sizeof(name), "%s%i", typeToString(), instance_num);
+        setModuleName(name);
     };
 
     // Initializer
@@ -38,15 +39,14 @@ class Actuator : public Module {
     virtual void control(JsonArray json) = 0;
 
     void printModuleName(const char *message) override {
-        char output[50];
-        snprintf(output, 50, "[%s] %s", moduleName, message);
-        Serial.print(output);
+        Serial.print("[");
+        Serial.print(getModuleName());
+        Serial.print("] ");
+        Serial.print(message ? message : "");
     };
 
-    const char *getModuleName() override { return moduleName; };
-
     /**
-     * Convert the type of actuator to a String
+     * Convert the actuator type to its retained text label.
      */
     const char *typeToString() {
         switch (type) {
@@ -59,6 +59,7 @@ class Actuator : public Module {
         case NEOPIXEL:
             return "Neopixel";
         }
+        return "Unknown";
     };
 
     /**
@@ -69,6 +70,4 @@ class Actuator : public Module {
   private:
     int instance_num;   // Instance number of the Actuator
     ACTUATOR_TYPE type; // Type of actuator
-
-    char moduleName[100];
 };
