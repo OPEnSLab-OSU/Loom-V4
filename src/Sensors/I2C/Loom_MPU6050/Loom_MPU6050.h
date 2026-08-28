@@ -33,7 +33,7 @@ class Loom_MPU6050 : public I2CDevice {
     MPU6050 mpu;      // Instance of the MPU sensor library
     bool autoCali;    // Whether or not to auto calibrate on startup
 
-    float acc[3];   // Acceleration of the gyroscope
-    float rate[3];  // Rate of rotation in degrees/second
-    float angle[3]; // Angle of the gyroscope
+    float acc[3] = {};   // Acceleration of the gyroscope
+    float rate[3] = {};  // Rate of rotation in degrees/second
+    float angle[3] = {}; // Angle of the gyroscope
 };
