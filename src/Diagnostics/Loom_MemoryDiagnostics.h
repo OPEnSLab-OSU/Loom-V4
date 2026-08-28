@@ -92,8 +92,7 @@ class Loom_MemoryDiagnostics {
      */
     void addToPacket(Manager &manager, int currentBatch) {
         DynamicJsonDocument &document = manager.getDocument();
-        const uint32_t jsonUsedBeforeDiagnostics =
-            static_cast<uint32_t>(document.memoryUsage());
+        const uint32_t jsonUsedBeforeDiagnostics = static_cast<uint32_t>(document.memoryUsage());
         const bool overflowedBeforeDiagnostics = document.overflowed();
 
         manager.addData("Memory", "cycle", cycle);

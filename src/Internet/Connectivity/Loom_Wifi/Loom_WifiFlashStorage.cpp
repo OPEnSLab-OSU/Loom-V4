@@ -49,8 +49,8 @@ Loom_WifiFlash::Loom_WifiFlash(const void *address, uint32_t size)
 
 bool Loom_WifiFlash::write(const volatile void *flashPointer, const void *data, uint32_t size) {
     uint32_t bytesRemaining = size;
-    volatile uint32_t *destination = static_cast<volatile uint32_t *>(
-        const_cast<volatile void *>(flashPointer));
+    volatile uint32_t *destination =
+        static_cast<volatile uint32_t *>(const_cast<volatile void *>(flashPointer));
     const uint8_t *source = static_cast<const uint8_t *>(data);
 
     NVMCTRL->CTRLB.bit.MANW = 1;
@@ -77,8 +77,7 @@ bool Loom_WifiFlash::write(const volatile void *flashPointer, const void *data, 
 }
 
 bool Loom_WifiFlash::erase(const volatile void *flashPointer, uint32_t size) {
-    const uint8_t *address = static_cast<const uint8_t *>(
-        const_cast<const void *>(flashPointer));
+    const uint8_t *address = static_cast<const uint8_t *>(const_cast<const void *>(flashPointer));
     while (size > SAMD21_ROW_SIZE) {
         if (!eraseRow(address)) {
             return false;

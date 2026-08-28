@@ -31,9 +31,7 @@ template <class T> class Loom_WifiFlashStorage {
   public:
     explicit Loom_WifiFlashStorage(const void *flashAddress) : flash(flashAddress, sizeof(T)) {}
 
-    bool write(const T &data) {
-        return flash.erase() && flash.write(&data);
-    }
+    bool write(const T &data) { return flash.erase() && flash.write(&data); }
 
     T read() {
         T data = {};
