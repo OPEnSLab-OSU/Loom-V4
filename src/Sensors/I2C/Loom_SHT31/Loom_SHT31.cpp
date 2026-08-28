@@ -20,6 +20,8 @@ void Loom_SHT31::initialize() {
         moduleInitialized = false;
     } else {
         LOG(F("Successfully initialized SHT31!"));
+        moduleInitialized = true;
+        needsReinit = false;
     }
     FUNCTION_END;
 }

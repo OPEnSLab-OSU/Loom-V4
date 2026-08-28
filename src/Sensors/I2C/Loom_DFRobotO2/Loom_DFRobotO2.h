@@ -32,5 +32,5 @@ class Loom_DFRobotO2 : public I2CDevice {
     DFRobot_OxygenSensor oxygen; // Instance of the DFRobot Oxygen sensor library
     int collectNumber;           // Number of data points to collect; default is 10
 
-    float oxygenConcentration; // Oxygen Concentration
+    float oxygenConcentration = 0.0f; // Oxygen Concentration
 };

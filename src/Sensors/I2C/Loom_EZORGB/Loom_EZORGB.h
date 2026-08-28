@@ -37,5 +37,5 @@ class Loom_EZORGB : public EZOSensor {
     Manager *manInst; // Instance of the manager
 
     uint8_t rgb[3] = {0, 0, 0};             // RGB readings
-    void parseData(const char *sensorData); // Parse data into a separated format
+    bool parseData(const char *sensorData); // Parse data into a separated format
 };

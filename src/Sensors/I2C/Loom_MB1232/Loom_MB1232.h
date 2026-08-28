@@ -45,5 +45,5 @@ class Loom_MB1232 : public I2CDevice {
     Manager *manInst; // Instance of the manager
     int address;
 
-    uint16_t range; // Measure distance in cm
+    uint16_t range = 0; // Measure distance in cm
 };

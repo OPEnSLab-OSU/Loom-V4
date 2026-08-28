@@ -40,7 +40,7 @@ class Loom_EZODO : public EZOSensor {
   private:
     Manager *manInst; // Instance of the manager
 
-    float oxygen;     // Reading for the DO value
-    float saturation; // Get the percent saturation
-    void parseResponse(const char *response);
+    float oxygen = 0.0f;     // Reading for the DO value
+    float saturation = 0.0f; // Get the percent saturation
+    bool parseResponse(const char *response);
 };

@@ -23,7 +23,7 @@ class Loom_AS7263 : public I2CDevice {
 
   public:
     /**
-     * Constructs a new TSL2591 sensor
+     * Constructs a new AS7263 sensor
      * @param man Reference to the manager that is used to universally package all data
      * @param useMux If this module will be using the mux
      * @param address I2C address that is assigned to the sensor
@@ -39,7 +39,7 @@ class Loom_AS7263 : public I2CDevice {
     Manager *manInst; // Instance of the manager
     AS726X asInst;    // Instance of the AS7263
 
-    uint16_t nir[6]; // Measured near-infra-red bands values. Units: counts / (μW/cm^2)
+    uint16_t nir[6]{}; // Measured near-infra-red bands values. Units: counts / (μW/cm^2)
 
     uint8_t gain;             // Gain setting
     uint8_t mode;             // Sensor mode

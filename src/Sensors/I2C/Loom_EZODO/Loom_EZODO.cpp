@@ -25,7 +25,9 @@ void Loom_EZODO::measure() {
         }
 
         // Parse the constructed string
-        parseResponse(getSensorData());
+        if (!parseResponse(getSensorData())) {
+            ERROR(F("Malformed dissolved oxygen response"));
+        }
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -51,17 +53,29 @@ void Loom_EZODO::power_down() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_EZODO::parseResponse(const char *response) {
-    char *splitResponse;
-    char internalResponse[33];
-    strncpy(internalResponse, response, 33);
+bool Loom_EZODO::parseResponse(const char *response) {
+    if (!response) {
+        return false;
+    }
+
+    char internalResponse[33] = {};
+    strncpy(internalResponse, response, sizeof(internalResponse) - 1);
 
     // Split response at , and store the first half in oxygen
-    splitResponse = strtok(internalResponse, ",");
-    oxygen = atof(splitResponse);
+    char *splitResponse = strtok(internalResponse, ",");
+    if (!splitResponse) {
+        return false;
+    }
+    const float parsedOxygen = atof(splitResponse);
 
     // And the second half in saturation
     splitResponse = strtok(NULL, ",");
+    if (!splitResponse) {
+        return false;
+    }
+
+    oxygen = parsedOxygen;
     saturation = atof(splitResponse);
+    return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

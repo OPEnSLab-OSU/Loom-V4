@@ -42,6 +42,6 @@ class Loom_STEMMA : public I2CDevice {
     Adafruit_seesaw stemma; // Adafruit STEMMA Sensor Object
     int address;
 
-    float temperature; // Soil temperature
-    uint16_t cap;      // Soil capacitive
+    float temperature = 0.0f; // Soil temperature
+    uint16_t cap = 0;          // Soil capacitive
 };

@@ -39,7 +39,7 @@ class Loom_AS7262 : public I2CDevice {
     Manager *manInst; // Instance of the manager
     AS726X asInst;    // Instance of the AS7262
 
-    uint16_t color[6]; // Measured color bands values. Units: counts / (μW/cm^2)
+    uint16_t color[6]{}; // Measured color bands values. Units: counts / (μW/cm^2)
 
     uint8_t gain;             // Gain setting
     uint8_t mode;             // Sensor mode

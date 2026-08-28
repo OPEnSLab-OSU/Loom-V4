@@ -15,14 +15,12 @@ Loom_STEMMA::Loom_STEMMA(Manager &man, int addr, bool useMux)
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::initialize() {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
     if (!stemma.begin(address)) {
         LOG(F("Failed to initialize STEMMA! Check connections and try again..."));
         moduleInitialized = false;
     } else {
-        snprintf(output, OUTPUT_SIZE, "Successfully initialized STEMMA Version: %u",
-                 stemma.getVersion());
-        LOG(output);
+        LOGF("Successfully initialized STEMMA Version: %lu",
+             static_cast<unsigned long>(stemma.getVersion()));
     }
     FUNCTION_END;
 }

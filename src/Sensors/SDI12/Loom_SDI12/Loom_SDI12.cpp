@@ -1,6 +1,26 @@
 #include "Loom_SDI12.h"
 #include "Logger.h"
 
+namespace {
+bool parseFloatToken(char *&context, float &value) {
+    char *token = strtok_r(nullptr, "+", &context);
+    if (token == nullptr)
+        return false;
+
+    char *end = nullptr;
+    const float parsed = strtof(token, &end);
+    if (end == token)
+        return false;
+    while (*end == ' ' || *end == '\t' || *end == '\r')
+        ++end;
+    if (*end != '\0')
+        return false;
+
+    value = parsed;
+    return true;
+}
+} // namespace
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_SDI12::Loom_SDI12(Manager &man, const int pinNumber)
     : Module("SDI12"), sdiInterface(pinNumber) {
@@ -27,16 +47,14 @@ void Loom_SDI12::initialize() {
     // Create a list of addresses that have a sensor connected to them
     inUseAddresses = scanAddressSpace();
 
-    // Request the sensor data from all connected devices to pull the sensor name
-    for (int i = 0; i < inUseAddresses.size(); i++) {
-        char *response = (char *)malloc(sizeof(char) * RESPONSE_SIZE);
-        memset(response, '\0', RESPONSE_SIZE);
-        requestSensorInfo(response, inUseAddresses[i]);
-        addressToType.insert(std::pair<char, const char *>(inUseAddresses[i], response));
-
-        // Allocate string of size 100 for each SDI device to store a name
-        sensorNames.push_back((char *)malloc(sizeof(char) * 100));
-        memset(sensorNames[i], '\0', 100);
+    // Store all persistent sensor state in one vector allocation. The former map plus two
+    // mallocs per sensor fragmented the 32 KB SAMD21 heap and leaked on repeated initialize().
+    sensors.clear();
+    sensors.reserve(inUseAddresses.size());
+    for (char address : inUseAddresses) {
+        SensorRecord sensor;
+        requestSensorInfo(sensor.type, address);
+        sensors.push_back(sensor);
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -49,7 +67,7 @@ void Loom_SDI12::measure() {
     delay(30);
 
     // Populate the variables that will be used to package data
-    for (int i = 0; i < inUseAddresses.size(); i++) {
+    for (size_t i = 0; i < inUseAddresses.size(); i++) {
         getData(inUseAddresses[i]);
     }
 }
@@ -58,24 +76,27 @@ void Loom_SDI12::measure() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::package() {
 
-    for (int i = 0; i < inUseAddresses.size(); i++) {
-        if (strstr(getSensorInfo(inUseAddresses[i]), "GS3") != NULL) {
-            if (strlen(sensorNames[i]) <= 0) {
-                snprintf(sensorNames[i], 100, "GS3_%i", i);
+    for (size_t i = 0; i < inUseAddresses.size() && i < sensors.size(); i++) {
+        SensorRecord &sensor = sensors[i];
+        if (strstr(sensor.type, "GS3") != nullptr) {
+            if (sensor.name[0] == '\0') {
+                snprintf(sensor.name, sizeof(sensor.name), "GS3_%u",
+                         static_cast<unsigned int>(i));
             }
-            JsonObject json = manInst->get_data_object(sensorNames[i]);
-            json["Temperature"] = sensorData[0];
-            json["Dielectric_Permittivity"] = sensorData[1];
-            json["Conductivity"] = sensorData[2];
-        } else if (strstr(getSensorInfo(inUseAddresses[i]), "TER") != NULL) {
-            if (strlen(sensorNames[i]) <= 0) {
-                snprintf(sensorNames[i], 100, "TER_%i", i);
+            JsonObject json = manInst->get_data_object(sensor.name);
+            json["Temperature"] = sensor.data[0];
+            json["Dielectric_Permittivity"] = sensor.data[1];
+            json["Conductivity"] = sensor.data[2];
+        } else if (strstr(sensor.type, "TER") != nullptr) {
+            if (sensor.name[0] == '\0') {
+                snprintf(sensor.name, sizeof(sensor.name), "TER_%u",
+                         static_cast<unsigned int>(i));
             }
-            JsonObject json = manInst->get_data_object(sensorNames[i]);
-            json["Temperature"] = sensorData[0];
-            json["Volumetric_Water_Content"] = sensorData[1];
-            if (strstr(getSensorInfo(inUseAddresses[i]), "TER12") != NULL)
-                json["Conductivity"] = sensorData[2];
+            JsonObject json = manInst->get_data_object(sensor.name);
+            json["Temperature"] = sensor.data[0];
+            json["Volumetric_Water_Content"] = sensor.data[1];
+            if (strstr(sensor.type, "TER12") != nullptr)
+                json["Conductivity"] = sensor.data[2];
         }
     }
 }
@@ -96,12 +117,11 @@ void Loom_SDI12::power_down() { sdiInterface.end(); }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 std::vector<char> Loom_SDI12::scanAddressSpace() {
     std::vector<char> activeSensors;
-    char output[OUTPUT_SIZE];
 
     // Print the module name followed by the message saying please wait
     LOG(F("Scanning SDI-12 Address Space this make take a little while..."));
 
-    // Scan over the characters that can be used as addresses for refrencing the sensors
+    // Scan over the characters that can be used as addresses for referencing the sensors
     for (char i = '0'; i <= '9'; i++) {
         if (checkActive(i)) {
             activeSensors.push_back(i);
@@ -124,9 +144,8 @@ std::vector<char> Loom_SDI12::scanAddressSpace() {
     if (activeSensors.size() > 0) {
         // Print the module name followed by the message saying please wait
         LOG(F("== We found the following active Addresses =="));
-        for (int i = 0; i < activeSensors.size(); i++) {
-            snprintf(output, OUTPUT_SIZE, "    Address: %c", activeSensors[i]);
-            LOG(output);
+        for (size_t i = 0; i < activeSensors.size(); i++) {
+            LOGF("    Address: %c", activeSensors[i]);
         }
     } else {
         LOG(F("== No SDI-12 Devices Were Discovered == "));
@@ -157,11 +176,26 @@ std::vector<char> Loom_SDI12::getInUseAddresses() { return inUseAddresses; }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-const char *Loom_SDI12::getSensorInfo(char addr) { return addressToType[addr]; }
+const char *Loom_SDI12::getSensorInfo(char addr) {
+    const int index = findSensorIndex(addr);
+    return index >= 0 ? sensors[static_cast<size_t>(index)].type : "";
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+int Loom_SDI12::findSensorIndex(char addr) const {
+    for (size_t i = 0; i < inUseAddresses.size() && i < sensors.size(); ++i)
+        if (inUseAddresses[i] == addr)
+            return static_cast<int>(i);
+    return -1;
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::sendCommand(char response[RESPONSE_SIZE], char addr, const char *command) {
+    if (response == nullptr || command == nullptr)
+        return;
+
     // Send a request to the sensor at the given address and then wait 30ms before continuing
     char output[25];
     memset(output, '\0', 25);
@@ -174,7 +208,10 @@ void Loom_SDI12::sendCommand(char response[RESPONSE_SIZE], char addr, const char
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::readResponse(char response[RESPONSE_SIZE]) {
-    int index = 0;
+    if (response == nullptr)
+        return;
+
+    size_t index = 0;
     memset(response, '\0', RESPONSE_SIZE);
     // While data is available to be read read until an end line character appears.
     while (sdiInterface.available()) {
@@ -182,23 +219,19 @@ void Loom_SDI12::readResponse(char response[RESPONSE_SIZE]) {
 
         // Command responses terminate with an endline so we should stop when we see this
         if (c == '\n') {
-            response[index] = '\0';
             break;
         }
 
-        // If we are under 30 then add the data to the array
-        if (index < RESPONSE_SIZE) {
-            response[index] = c;
-        }
-
-        index++;
+        if (index < RESPONSE_SIZE - 1)
+            response[index++] = c;
         delay(20); // SDI-12 is slow so we need to wait after each character
     }
+    response[index] = '\0';
 
     // Replace the carriage return with a null-byte
     char *pch = strstr(response, "\r");
     if (pch != NULL) {
-        response[pch - response] == '\0';
+        response[pch - response] = '\0';
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -211,8 +244,8 @@ void Loom_SDI12::requestSensorInfo(char response[RESPONSE_SIZE], char addr) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SDI12::getData(char addr) {
-    char buf[20];
-    char *p;
+    // char buf[20]; // Reserved for the former manual response parser.
+    // char *p;      // The first token only advances strtok state; it is not otherwise needed.
     char response[RESPONSE_SIZE];
 
     // Request a measurement from the sensor at the given address
@@ -240,32 +273,37 @@ void Loom_SDI12::getData(char addr) {
         }
     }
 
-    // Check if there is actually data to store in the variables
-    if (strlen(response) > 1) {
-        // If the sensor is a copy the used values an
-        if (strstr(getSensorInfo(addr), "GS3") != NULL) {
-            // Read out the results and parse out each of the data readings and pares them to floats
-            p = strtok(response, "+");
-
-            sensorData[1] = (atof(strtok(NULL, "+")));
-            sensorData[0] = (atof(strtok(NULL, "+")));
-            sensorData[2] = (atof(strtok(NULL, "+")));
-        }
-
-        // Teros
-        else if (strstr(getSensorInfo(addr), "TER") != NULL) {
-            // Read out the results and parse out each of the data readings and pares them to floats
-            p = strtok(response, "+");
-
-            sensorData[1] = (atof(strtok(NULL, "+")));
-            sensorData[0] = (atof(strtok(NULL, "+")));
-
-            // If we are on the Teros 12
-            if (strstr(getSensorInfo(addr), "12") != NULL)
-                sensorData[2] = (atof(strtok(NULL, "+")));
-        }
-    } else {
+    const int sensorIndex = findSensorIndex(addr);
+    if (strlen(response) <= 1 || sensorIndex < 0) {
         ERROR(F("Failed to record new data! Using previous valid information!"));
+        return;
     }
+
+    SensorRecord &sensor = sensors[static_cast<size_t>(sensorIndex)];
+    std::array<float, 3> parsed = sensor.data;
+    char *context = nullptr;
+    if (strtok_r(response, "+", &context) == nullptr) {
+        ERROR(F("Malformed SDI-12 response; using previous valid information."));
+        return;
+    }
+
+    bool valid = false;
+    if (strstr(sensor.type, "GS3") != nullptr) {
+        valid = parseFloatToken(context, parsed[1]) && parseFloatToken(context, parsed[0]) &&
+                parseFloatToken(context, parsed[2]);
+    } else if (strstr(sensor.type, "TER") != nullptr) {
+        valid = parseFloatToken(context, parsed[1]) && parseFloatToken(context, parsed[0]);
+        if (valid && strstr(sensor.type, "12") != nullptr)
+            valid = parseFloatToken(context, parsed[2]);
+    }
+
+    if (!valid) {
+        ERROR(F("Malformed SDI-12 numeric data; using previous valid information."));
+        return;
+    }
+
+    sensor.data = parsed;
+    for (size_t i = 0; i < parsed.size(); ++i)
+        sensorData[i] = parsed[i];
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

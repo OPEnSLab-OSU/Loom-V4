@@ -1,19 +1,19 @@
 #pragma once
 
-#include <map>
+#include <algorithm>
 #include <vector>
 
 #include "Loom_Manager.h"
 #include "Module.h"
 
 /**
- * Used to read Analog voltages from the analog pins on the feather M0
+ * Used to read digital states from pins on the Feather M0
  *
  * @author Will Richards
  */
 class Loom_Digital : public Module {
   protected:
-    /* These aren't used by Analog */
+    /* These aren't used by Digital */
     void power_up() override {};
     void power_down() override {};
     void initialize() override {};
@@ -27,12 +27,15 @@ class Loom_Digital : public Module {
      */
     template <typename T, typename... Args>
     Loom_Digital(Manager &man, int pinState, T firstPin, Args... additionalPins)
-        : Module("Digital") {
+        : Module("Digital"), manInst(&man) {
+        digitalPins.reserve(sizeof...(additionalPins) + 1);
         get_variadic_parameters(firstPin, additionalPins...);
-        manInst = &man;
+        std::sort(digitalPins.begin(), digitalPins.end());
+        digitalPins.erase(std::unique(digitalPins.begin(), digitalPins.end()), digitalPins.end());
+        pinData.resize(digitalPins.size());
 
         // Set pin mode on digital pins
-        for (int i = 0; i < digitalPins.size(); i++) {
+        for (size_t i = 0; i < digitalPins.size(); i++) {
             pinMode(digitalPins[i], pinState);
         }
 
@@ -45,11 +48,13 @@ class Loom_Digital : public Module {
      * @param man Reference to the manager
      * @param firstPin First digital pin we want to read from
      */
-    template <typename T> Loom_Digital(Manager &man, int pinState, T firstPin) : Module("Digital") {
+    template <typename T>
+    Loom_Digital(Manager &man, int pinState, T firstPin) : Module("Digital"), manInst(&man) {
+        digitalPins.reserve(1);
         digitalPins.push_back(firstPin);
-        manInst = &man;
+        pinData.resize(1);
 
-        for (int i = 0; i < digitalPins.size(); i++) {
+        for (size_t i = 0; i < digitalPins.size(); i++) {
             pinMode(digitalPins[i], pinState);
         }
 
@@ -63,7 +68,7 @@ class Loom_Digital : public Module {
   private:
     Manager *manInst;             // Instance of the manager
     std::vector<int> digitalPins; // Holds a list of the digital pins we want to read
-    std::map<int, int> pinToData; // Map pin number to pin data
+    std::vector<int> pinData;     // Values aligned one-to-one with digitalPins
 
     /**
      *   The following two functions are some sorcery to get the variadic parameters without the

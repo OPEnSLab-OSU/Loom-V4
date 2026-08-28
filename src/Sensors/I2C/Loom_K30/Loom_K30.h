@@ -45,7 +45,7 @@ class Loom_K30 : public I2CDevice {
 
     int addr; // Address of the I2C sensor
 
-    int CO2Levels; // Current CO2 levels of the sensor
+    int CO2Levels = 0; // Current CO2 levels of the sensor
 
     int valMult; // Return value multiplier
     bool warmUp; // Should we wait 6 mins for warm up to get accurate results

@@ -2,12 +2,10 @@
 
 #include "SensirionI2cSen66.h"
 #include <Wire.h>
-#include <bitset>
 
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
 
-#define PM_AVERAGE_COUNT 10    // Number of times to read the pm values then average them over
 #define SEN66_I2C_ADDRESS 0x6B // Standard I2C address for SEN66
 
 /**
@@ -23,8 +21,9 @@ class Loom_SEN66 : public I2CDevice {
     // Manager controlled functions
     void measure() override;
     void initialize() override;
-    void power_up() override {};
+    void power_up() override;
     void power_down() override {};
+    bool retryPowerUpWhenUninitialized() const override { return true; }
     void package() override;
 
   public:
@@ -95,6 +94,7 @@ class Loom_SEN66 : public I2CDevice {
     void resetValuesForMeasure();
 
   private:
+    static constexpr uint8_t SAMPLE_COUNT = 10;
     Manager *manInst;        // Instance of the manager
     SensirionI2cSen66 sen66; // Instance of the SEN66 driver object
 
@@ -102,20 +102,20 @@ class Loom_SEN66 : public I2CDevice {
     bool readNumVals; // Do we want to read the number concentration?
 
     /* Sensor readings */
-    float massConcentrationPm1p0;
-    float massConcentrationPm2p5;
-    float massConcentrationPm4p0;
-    float massConcentrationPm10p0;
-    float ambientHumidity;
-    float ambientTemperature;
-    float vocIndex;
-    float noxIndex;
-    uint16_t co2;
+    float massConcentrationPm1p0 = 0.0f;
+    float massConcentrationPm2p5 = 0.0f;
+    float massConcentrationPm4p0 = 0.0f;
+    float massConcentrationPm10p0 = 0.0f;
+    float ambientHumidity = 0.0f;
+    float ambientTemperature = 0.0f;
+    float vocIndex = 0.0f;
+    float noxIndex = 0.0f;
+    uint16_t co2 = 0;
 
     /* PM number readings */
-    float numConcentrationPm0p5;
-    float numConcentrationPm1p0;
-    float numConcentrationPm2p5;
-    float numConcentrationPm4p0;
-    float numConcentrationPm10p0;
+    float numConcentrationPm0p5 = 0.0f;
+    float numConcentrationPm1p0 = 0.0f;
+    float numConcentrationPm2p5 = 0.0f;
+    float numConcentrationPm4p0 = 0.0f;
+    float numConcentrationPm10p0 = 0.0f;
 };

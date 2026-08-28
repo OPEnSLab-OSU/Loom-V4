@@ -20,6 +20,8 @@ void Loom_VEML6075::initialize() {
         moduleInitialized = false;
     } else {
         LOG(F("Successfully initialized VEML6075!"));
+        moduleInitialized = true;
+        needsReinit = false;
     }
     FUNCTION_END;
 }
@@ -28,7 +30,6 @@ void Loom_VEML6075::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_VEML6075::measure() {
     FUNCTION_START;
-    printf("VEML6075 Measure\n");
     if (moduleInitialized) {
         // Get the current connection status
         bool connectionStatus = checkDeviceConnection();
@@ -65,9 +66,6 @@ void Loom_VEML6075::package() {
         json["UltravioletB_counts/(µW/cm^-2)"] = UVB;
         json["UltravioletIndex"] = UVI;
     }
-    Serial.println(UVA);
-    Serial.println(UVB);
-    Serial.println(UVI);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

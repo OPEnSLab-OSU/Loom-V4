@@ -46,6 +46,4 @@ class Loom_VCNL4010 : public I2CDevice {
                                // address of the sensor
     uint16_t ambientLight = 0; // ambient light value
     uint16_t proximity = 0;    // proximity value
-
-    bool initialized = true; // True until set to false
 };

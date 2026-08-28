@@ -1,13 +1,13 @@
 #include "Loom_MMA8451.h"
 #include "Logger.h"
 
-uint8_t Loom_MMA8451::interruptPin;
+int Loom_MMA8451::interruptPin = -1;
 InterruptCallbackFunction Loom_MMA8451::isr;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MMA8451::Loom_MMA8451(Manager &man, int addr, bool useMux, mma8451_range_t range, int intPin,
                            uint8_t sensitivity)
-    : I2CDevice("MMA8451"), manInst(&man), address(addr), range(range), sensitivity(sensitivity) {
+    : I2CDevice("MMA8451"), manInst(&man), range(range), address(addr), sensitivity(sensitivity) {
     module_address = addr;
     interruptPin = intPin;
 
@@ -28,14 +28,11 @@ void Loom_MMA8451::initialize() {
     } else {
         LOG(F("Successfully initialized MMA8451!"));
         mma.setRange(range);
+        moduleInitialized = true;
+        needsReinit = false;
     }
 
-    // If we actually set an interrupt pin we want to enable the functionality
-    // INT PIN cannot be negative 1 WARNS that this will always be true.
-    /*
-      Loom_MMA8451.cpp:41:21: warning: comparison is always true due to limited range of data type
-      [-Wtype-limits] if(interruptPin != -1){
-    */
+    // If an interrupt pin was configured, enable the interrupt functionality.
     if (interruptPin != -1) {
         pinMode(interruptPin, INPUT_PULLUP);
 
@@ -89,37 +86,41 @@ void Loom_MMA8451::measure() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MMA8451::package() {
-    char orientationString[25];
     if (moduleInitialized) {
         JsonObject json = manInst->get_data_object(getModuleName());
         json["X_Acc_g"] = accel[2];
         json["Y_Acc_g"] = accel[0];
         json["Z_Acc_g"] = accel[1];
 
+        // Link a static string literal into ArduinoJson instead of copying a mutable 25-byte
+        // stack buffer into the document. The default also makes an unexpected orientation safe.
+        const char *orientationString = "Unknown";
         switch (orientation) {
         case MMA8451_PL_PUF:
-            strncpy(orientationString, "Portrait_Up_Front\0", 25);
+            orientationString = "Portrait_Up_Front";
             break;
         case MMA8451_PL_PUB:
-            strncpy(orientationString, "Portrait_Up_Back\0", 25);
+            orientationString = "Portrait_Up_Back";
             break;
         case MMA8451_PL_PDF:
-            strncpy(orientationString, "Portrait_Down_Front\0", 25);
+            orientationString = "Portrait_Down_Front";
             break;
         case MMA8451_PL_PDB:
-            strncpy(orientationString, "Portrait_Down_Back\0", 25);
+            orientationString = "Portrait_Down_Back";
             break;
         case MMA8451_PL_LRF:
-            strncpy(orientationString, "Landscape_Right_Front\0", 25);
+            orientationString = "Landscape_Right_Front";
             break;
         case MMA8451_PL_LRB:
-            strncpy(orientationString, "Landscape_Right_Back\0", 25);
+            orientationString = "Landscape_Right_Back";
             break;
         case MMA8451_PL_LLF:
-            strncpy(orientationString, "Landscape_Left_Front\0", 25);
+            orientationString = "Landscape_Left_Front";
             break;
         case MMA8451_PL_LLB:
-            strncpy(orientationString, "Landscape_Left_Back\0", 25);
+            orientationString = "Landscape_Left_Back";
+            break;
+        default:
             break;
         }
 
@@ -142,7 +143,9 @@ void Loom_MMA8451::power_up() {
 void Loom_MMA8451::IMU_ISR() {
     // Detach and reattach and call the user defined function
     detachInterrupt(digitalPinToInterrupt(interruptPin));
-    isr();
+    if (isr) {
+        isr();
+    }
     attachInterrupt(digitalPinToInterrupt(interruptPin), IMU_ISR, FALLING);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

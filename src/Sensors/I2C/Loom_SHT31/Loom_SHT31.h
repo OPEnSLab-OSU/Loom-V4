@@ -45,5 +45,4 @@ class Loom_SHT31 : public I2CDevice {
 
     float sensorData[2] = {0, 0}; // Array of size 2 to hold the temp and humidity data
 
-    bool initialized = true;
 };

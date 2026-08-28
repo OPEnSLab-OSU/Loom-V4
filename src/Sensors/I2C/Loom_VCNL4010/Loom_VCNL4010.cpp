@@ -20,6 +20,8 @@ void Loom_VCNL4010::initialize() {
         moduleInitialized = false;
     } else {
         LOG(F("Successfully initialized VCNL4010!"));
+        moduleInitialized = true;
+        needsReinit = false;
     }
     FUNCTION_END;
 }
@@ -28,7 +30,6 @@ void Loom_VCNL4010::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_VCNL4010::measure() {
     FUNCTION_START;
-    printf("VCNL4010 Measure\n");
     if (moduleInitialized) {
         // Get the current connection status
         bool connectionStatus = checkDeviceConnection();
@@ -63,8 +64,6 @@ void Loom_VCNL4010::package() {
         json["Ambient Light_counts"] = ambientLight;
         json["Proximity_mm"] = proximity;
     }
-    Serial.println(ambientLight);
-    Serial.println(proximity);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

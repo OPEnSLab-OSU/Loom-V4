@@ -42,7 +42,5 @@ class Loom_MS5803 : public I2CDevice {
     Manager *manInst; // Instance of the manager
     MS_5803 inst;     // Instance of the MS5803
 
-    float sensorData[2]; // Stores the temperature and pressure collected by the sensor
-
-    bool initialized = true; // True until set to false
+    float sensorData[2] = {}; // Stores the temperature and pressure collected by the sensor
 };

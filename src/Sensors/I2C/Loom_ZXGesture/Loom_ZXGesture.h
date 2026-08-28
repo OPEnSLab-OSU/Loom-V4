@@ -62,9 +62,8 @@ class Loom_ZXGesture : public I2CDevice {
     ZX_Sensor zx;     // ZX sensor instance
 
     Mode mode;    // Current mode of the sensor
-    Position pos; // Position measured by the sensor (X and Y) in mm
+    Position pos = {255, 255}; // Position measured by the sensor (X and Z) in mm
 
-    GestureType gesture;    // Last measured gesture
-    char gestureString[10]; // String name of the last gesture
-    uint8_t gestureSpeed;   // The speed at which the gesture was preformed
+    const char *gestureString = "No Gesture"; // Static name of the last gesture
+    uint8_t gestureSpeed = 0;                 // The speed at which the gesture was performed
 };

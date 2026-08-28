@@ -1,16 +1,81 @@
+
 #include "Loom_DFMultiGasSensor.h"
 #include "Logger.h"
 #include "Wire.h"
+
+namespace {
+const char *gasTypeText(uint8_t type) {
+    switch (type) {
+    case DFRobot_GAS::O2:
+        return "O2";
+    case DFRobot_GAS::CO:
+        return "CO";
+    case DFRobot_GAS::H2S:
+        return "H2S";
+    case DFRobot_GAS::NO2:
+        return "NO2";
+    case DFRobot_GAS::O3:
+        return "O3";
+    case DFRobot_GAS::CL2:
+        return "CL2";
+    case DFRobot_GAS::NH3:
+        return "NH3";
+    case DFRobot_GAS::H2:
+        return "H2";
+    case DFRobot_GAS::HCL:
+        return "HCL";
+    case DFRobot_GAS::SO2:
+        return "SO2";
+    case DFRobot_GAS::HF:
+        return "HF";
+    case DFRobot_GAS::_PH3:
+        return "PH3";
+    default:
+        return "";
+    }
+}
+} // namespace
+
+bool Loom_DFGasI2C::hasValidResponse(const uint8_t response[9], uint8_t command) {
+    // Match the checksum used by the packaged DFRobot sensor firmware/library. It skips the 0xFF
+    // header and covers the same six response bytes as the vendor implementation.
+    uint8_t checksum = 0;
+    for (uint8_t index = 1; index < 7; ++index)
+        checksum += response[index];
+    checksum = static_cast<uint8_t>(~checksum + 1);
+
+    return response[0] == 0xFF && response[1] == command && response[8] == checksum;
+}
+
+bool Loom_DFGasI2C::dataIsAvailable() {
+    uint8_t request[6] = {CMD_GET_ALL_DTTA, 0, 0, 0, 0, 0};
+    uint8_t response[9] = {};
+    sProtocol_t protocol = pack(request, sizeof(request));
+    writeData(0, &protocol, sizeof(protocol));
+    delay(10);
+    readData(0, response, sizeof(response));
+    return hasValidResponse(response, CMD_GET_ALL_DTTA);
+}
+
+const char *Loom_DFGasI2C::queryGasTypeFixed() {
+    uint8_t request[6] = {CMD_GET_GAS_CONCENTRATION, 0, 0, 0, 0, 0};
+    uint8_t response[9] = {};
+    sProtocol_t protocol = pack(request, sizeof(request));
+    writeData(0, &protocol, sizeof(protocol));
+    delay(10);
+    readData(0, response, sizeof(response));
+    return hasValidResponse(response, CMD_GET_GAS_CONCENTRATION) ? gasTypeText(response[4])
+                                                                 : "NO GAS";
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_DFMultiGasSensor::Loom_DFMultiGasSensor(Manager &man, uint8_t address,
                                              uint8_t initializationRetyLimit, bool sensorPowersDown,
                                              bool useMux)
-    : I2CDevice("DFR_MultiGasSensor"), manInst(&man), retryLimit(initializationRetyLimit),
-      gasSensor(&Wire, address) {
+    : I2CDevice("DFR_MultiGasSensor"), manInst(&man), gasSensor(&Wire, address),
+      retryLimit(initializationRetyLimit > 0 ? initializationRetyLimit : 1),
+      powersDown(sensorPowersDown) {
     module_address = address;
-
-    powersDown = sensorPowersDown;
 
     // Register the module with the manager
     if (!useMux)
@@ -21,27 +86,25 @@ Loom_DFMultiGasSensor::Loom_DFMultiGasSensor(Manager &man, uint8_t address,
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_DFMultiGasSensor::initialize() {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
 
     LOG(F("Begin DFRobot Multi Gas Sensor Initialization..."));
 
-    uint8_t addr = findGasBoard();
-    if (addr == -1) {
-        ERROR(F("No gas board found on this channel."));
+    Wire.begin();
+    if (!checkDeviceConnection()) {
+        ERRORF("No gas board found at configured address 0x%02X.", module_address);
         moduleInitialized = false;
-        // return false;
+        FUNCTION_END;
+        return;
     }
 
-    snprintf(output, OUTPUT_SIZE,
-             " Gas sensor present at 0x%02X attempting to initialize. Retry limit: %d", addr,
-             retryLimit);
-    LOG(output);
+    LOGF("Gas sensor present at 0x%02X attempting to initialize. Retry limit: %d", module_address,
+         retryLimit);
 
     // The result of this determines if we are good to go
     moduleInitialized = attemptConnectionToSensor();
 
     if (moduleInitialized) {
-        LOG(F("No acknowledge received from DFRobot Multi Gas Sensor."));
+        LOG(F("DFRobot Multi Gas Sensor acknowledged and initialized."));
         // Configure in passive mode with temperature compenstation off (default)
         configureSensorProperties();
     } else {
@@ -57,17 +120,12 @@ void Loom_DFMultiGasSensor::measure() {
     FUNCTION_START;
     if (moduleInitialized) {
         if (checkDeviceConnection()) {
-
-            // Update the current gas type
-            currentGasType = gasSensor.queryGasTypeCstr();
-            if (strlen(currentGasType) <= 0) {
-                currentGasType = "INV_TYPE";
-            }
-
             if (gasSensor.dataIsAvailable()) {
                 LOG(F("Sensor has data availible. Reading ..."));
             } else {
-                LOG(F("Sensor Data not availible yet!"));
+                LOG(F("Sensor data not available yet; retaining the previous reading."));
+                FUNCTION_END;
+                return;
             }
 
             // Read the concentration
@@ -99,22 +157,24 @@ void Loom_DFMultiGasSensor::package() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_DFMultiGasSensor::power_up() {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
 
-    if (powersDown) {
+    bool reconnected = false;
+    if (powersDown || !moduleInitialized) {
         // If we are unable to connect to the sensor in power up this should disable the module for
         // atleast this run, decide if we want to do this or not
         moduleInitialized = attemptConnectionToSensor();
+        reconnected = moduleInitialized;
     } else {
         // Module assumed to be initialized and to have called .begin() if never powered down
         // Prevents too many duplicate .begin() calls
         // moduleInitialized = checkDeviceConnection();
-        moduleInitialized = true;
+        moduleInitialized = checkDeviceConnection();
     }
 
     if (moduleInitialized) {
-        // Configure in passive mode with temperature compenstation off (default)
-        // configureSensorProperties();
+        // A power-cycled/reconnected board loses its acquisition settings.
+        if (reconnected)
+            configureSensorProperties();
         LOG(F("DFRobot Multi Gas sensor powered on successfully!"));
     } else {
         ERROR(F("DFRobot Multi Gas sensor failed to power on and has been disabled."));
@@ -127,11 +187,10 @@ void Loom_DFMultiGasSensor::power_up() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_DFMultiGasSensor::attemptConnectionToSensor() {
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
 
     /* Attempt a set number of times to initialize the sensor */
     for (uint8_t retryCount = 0; retryCount < retryLimit; retryCount++) {
-        LOGF("Attempting to connect to sensor... Attempt %u / %u ", retryCount + 1, retryLimit + 1);
+        LOGF("Attempting to connect to sensor... Attempt %u / %u ", retryCount + 1, retryLimit);
 
         // If we do successfully begin the sensor we want to stop the loop immediatly and move on to
         // the next part of initialization
@@ -145,8 +204,7 @@ bool Loom_DFMultiGasSensor::attemptConnectionToSensor() {
         // If we have reached the max number of retries, then we want to just stop and disable the
         // module
         if (retryCount == retryLimit - 1) {
-            ERRORF("Failed to connect to DFRobot Multi Gas Sensor after %u retries. ",
-                   retryLimit + 1);
+            ERRORF("Failed to connect to DFRobot Multi Gas Sensor after %u attempts. ", retryLimit);
             FUNCTION_END;
             return false;
         }
@@ -180,19 +238,16 @@ void Loom_DFMultiGasSensor::configureSensorProperties(DFRobot_GAS::eMethod_t aqu
     gasSensor.setTempCompensation(gasCompMode);
     delay(1000);
     LOGF("Temp compensation set to %hs", gasCompMode == gasSensor.OFF ? "OFF" : "ON");
+
+    // Gas type is a board property, not a sample. Cache the allocation-free protocol result once
+    // for this sensor instance.
+    if (currentGasType[0] == '\0') {
+        const char *gasType = gasSensor.queryGasTypeFixed();
+        if (gasType == nullptr || gasType[0] == '\0')
+            strncpy(currentGasType, "INV_TYPE", sizeof(currentGasType));
+        else
+            strncpy(currentGasType, gasType, sizeof(currentGasType) - 1);
+        currentGasType[sizeof(currentGasType) - 1] = '\0';
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-
-uint8_t findGasBoard(void) {
-
-    char output[OUTPUT_SIZE];
-    for (uint8_t addr = 0x70; addr <= 0x77; ++addr) { // only range that matters
-        Wire.beginTransmission(addr);
-        if (Wire.endTransmission() == 0) {
-            snprintf(output, OUTPUT_SIZE, "Found addr: %x", addr);
-            LOG(output);
-            return addr; // found it
-        }
-    }
-    return -1; // none found
-}

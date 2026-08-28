@@ -1,6 +1,13 @@
 #include "Loom_AS7262.h"
 #include "Logger.h"
 
+namespace {
+// The upstream takeMeasurements() implementation polls forever. A full six-channel one-shot at
+// the maximum integration setting takes about 1.5 seconds, so 2.5 seconds leaves ample margin
+// without allowing a disconnected or wedged sensor to hang the entire stack.
+constexpr uint32_t MEASUREMENT_TIMEOUT_MS = 2500;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_AS7262::Loom_AS7262(Manager &man, bool useMux, int addr, uint8_t gain, uint8_t mode,
                          uint8_t integration_time)
@@ -49,9 +56,18 @@ void Loom_AS7262::measure() {
             return;
         }
 
-        // Take a measurement and wait for it to be ready
-        asInst.takeMeasurements();
+        // Start the same one-shot conversion as AS726X::takeMeasurements(), but keep the wait
+        // bounded. The dependency's implementation has no timeout and can otherwise block the
+        // whole stack forever if the sensor stops responding after the connection check.
+        asInst.clearDataAvailable();
+        asInst.setMeasurementMode(3);
+        const uint32_t measurementStart = millis();
         while (!asInst.dataAvailable()) {
+            if (millis() - measurementStart >= MEASUREMENT_TIMEOUT_MS) {
+                ERROR(F("AS7262 measurement timed out"));
+                return;
+            }
+            TIMER_RESET;
             delay(5);
         }
 
