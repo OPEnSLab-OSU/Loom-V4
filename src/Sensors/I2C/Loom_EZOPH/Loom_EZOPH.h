@@ -34,5 +34,5 @@ class Loom_EZOPH : public EZOSensor {
   private:
     Manager *manInst; // Instance of the manager
 
-    float ph;
+    float ph = 0.0f;
 };

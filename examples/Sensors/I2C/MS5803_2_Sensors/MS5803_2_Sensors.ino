@@ -12,20 +12,24 @@
 
 #include <Sensors/I2C/Loom_MS5803/Loom_MS5803.h>
 
+
 Manager manager("Device", 1);
 
-Loom_MS5803 ms_water(manager, 0x77, false); // MS5803 CSB pin tied to VCC i2c addr 0x77
-Loom_MS5803 ms_air(manager, 0x76, false); // MS5803 CSB pin tied to VCC i2c addr 0x76
+Loom_MS5803 ms_water(manager, 119, false); // MS5803 CSB pin tied to VCC i2c addr 0x77
+
+Loom_MS5803 ms_air(manager, 118, false); // MS5803 CSB pin tied to VCC i2c addr 0x76
 
 
 /* Calculate the water height based on the difference of pressures*/
-float calculateWaterHeight(){
+float calculateWaterHeight()
+{
   // ((Water Pressure - Air Pressure) * 100 (conversion to pascals)) / (Water Density * Gravity)
   return (((ms_water.getPressure()-ms_air.getPressure()) * 100) / (997.77 * 9.81));
 }
 
-void setup() {
 
+void setup() 
+{
   // Start the serial interface
   manager.beginSerial();
 
@@ -34,7 +38,9 @@ void setup() {
   
 }
 
-void loop() {
+
+void loop() 
+{
   // Measure and package the data from the sensors
   manager.measure();
   

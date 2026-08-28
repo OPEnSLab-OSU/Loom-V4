@@ -69,7 +69,7 @@ uint32_t AS5311::bitbang(bool angleData = true) {
 
         auto readval = digitalRead(DO_PIN);
         if (readval == HIGH) {
-            data |= 1 << (BITS - 1) - i;
+            data |= 1UL << ((BITS - 1) - i);
         }
     }
 

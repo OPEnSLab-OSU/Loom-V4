@@ -15,7 +15,7 @@ Manager manager("Device", 0);
 // Do we want to use the instance number as the LoRa address
 Loom_LoRa loRa(manager, 0);
 Loom_LTE lte(manager, NETWORK_NAME, NETWORK_USER, NETWORK_PASS);
-Loom_MongoDB mqtt(manager, lte.getClient(), SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
+Loom_MongoDB mqtt(manager, lte, SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
 
 void setup() {
 
@@ -26,7 +26,7 @@ void setup() {
 void loop() {
 
   // Wait 5 seconds for a message
-  if(loRa.receive(5000)){
+  if(loRa.receive(5000, true)){
 
     // If a message was received display the JSON document and transmit it over MQTT
     manager.display_data();

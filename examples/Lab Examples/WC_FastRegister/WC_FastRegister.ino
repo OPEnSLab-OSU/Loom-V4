@@ -6,7 +6,7 @@
 
 /** !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Before doing anything make sure to uncomment one of the following to enable the specific carrier !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!**/
 //#define USE_ROGERS
-//#define USE_ATT
+#define USE_ATT
 
 #include <SparkFun_LTE_Shield_Arduino_Library.h>
 
@@ -52,7 +52,7 @@ const String APN = "hologram";
 #define DEBUG_PASSTHROUGH_ENABLED
 
 void setup() {
-  int opsAvailable;
+  // int opsAvailable;
   struct operator_stats op;
   String currentOperator = "";
   bool newConnection = true;

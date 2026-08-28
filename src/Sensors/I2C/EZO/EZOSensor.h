@@ -45,57 +45,65 @@ class EZOSensor : public I2CDevice {
      * @return Whether or not the read was successfully
      * */
     bool readSensor(int waitTime) {
-        char output[OUTPUT_SIZE];
-        int i;
-        if (moduleInitialized) {
-            // Clear the sensorData received previously
-            memset(sensorData, '\0', 32);
-
-            // Attempt to send a read command to the device
-            if (!sendTransmission("r")) {
-                ERROR(F("Failed to send 'read' command to device"));
-                return false;
-            }
-
-            // Wait the desired warm-up period
-            delay(waitTime);
-
-            // Request 32 bytes of data from the device
-            Wire.requestFrom(module_address, 32, 1);
-
-            // Check if the I2C code was not valid
-            code = Wire.read();
-
-            if (code != 1) {
-                snprintf(output, OUTPUT_SIZE, "Unsuccessful Response Code Received: %s",
-                         responseCodes[code - 1]);
-                ERROR(output);
-                return false;
-            }
-
-            // Read out only the next 32 bytes
-            for (i = 0; i < 32; i++) {
-                currentChar = (char)Wire.read();
-                // If a null char was received break out of the loop
-                if (currentChar == '\0')
-                    break;
-
-                // If not append the current char to the string
-                strncat(sensorData, &currentChar, 32);
-            }
-            strncat(sensorData, "\0", 32);
+        if (!moduleInitialized) {
+            return false;
         }
 
-        return true;
+        // Clear the previous sample so a failed/short transaction cannot expose stale bytes.
+        memset(sensorData, 0, sizeof(sensorData));
+
+        if (!sendTransmission("r")) {
+            ERROR(F("Failed to send 'read' command to device"));
+            return false;
+        }
+
+        delay(waitTime);
+
+        // EZO responses contain one status byte followed by a null-terminated payload. Copy each
+        // byte directly and bound the read; a one-byte response character is not itself a C
+        // string.
+        const uint8_t received = Wire.requestFrom(module_address, 32, 1);
+        if (received == 0 || Wire.available() < 1) {
+            ERROR(F("No response received from EZO device"));
+            return false;
+        }
+
+        const int responseCode = Wire.read();
+        if (responseCode != 1) {
+            ERRORF("Unsuccessful Response Code Received: %s", responseCodeText(responseCode));
+            return false;
+        }
+
+        size_t length = 0;
+        while (Wire.available() > 0 && length < sizeof(sensorData) - 1) {
+            const int value = Wire.read();
+            if (value < 0 || value == '\0') {
+                break;
+            }
+            sensorData[length++] = static_cast<char>(value);
+        }
+        sensorData[length] = '\0';
+        return length > 0;
     };
 
     /* Get the most recently collected sensor data */
     const char *getSensorData() { return sensorData; };
 
   private:
-    int8_t code = 0;  // I2C Response Code
-    char currentChar; // Current character we have read in
-    const char *responseCodes[4] = {"Success", "Failed", "Pending",
-                                    "No Data"}; // Stringified I2C Response codes
-    char sensorData[33]; // Convert the char array to a string to improve parse-ability
+    static const char *responseCodeText(const int code) {
+        switch (code) {
+        case 1:
+            return "Success";
+        case 2:
+            return "Failed";
+        case 254:
+            return "Pending";
+        case 255:
+            return "No Data";
+        default:
+            return "Unknown";
+        }
+    }
+
+    char sensorData[33] = {}; // Null-terminated EZO payload
 };

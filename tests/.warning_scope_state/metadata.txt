@@ -1,0 +1,65 @@
+Created: 2026-07-15T13:26:52.8169417-07:00
+Loom root: C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom
+Instrumented files: 58
+Removed marker lines: 188
+Patch SHA256: 6B7247823C429BFDC6F74D514E683AD9EED9632E4C260DCBD995A2AD3E8F7A93
+
+Files:
+src\Actuators.h
+src\Hardware\Actuators\Loom_Neopixel\Loom_Neopixel.h
+src\Hardware\Actuators\Loom_Servo\Loom_Servo.h
+src\Hardware\Actuators\Loom_Stepper\Loom_Stepper.h
+src\Hardware\Loom_Hypnos\Loom_Hypnos.h
+src\Hardware\Loom_Hypnos\SDManager.h
+src\Hardware\Loom_Multiplexer\Loom_Multiplexer.cpp
+src\Hardware\Loom_Multiplexer\Loom_Multiplexer.h
+src\Hardware\Loom_OLED\Loom_OLED.cpp
+src\Hardware\Loom_OLED\Loom_OLED.h
+src\Hardware\Loom_TippingBucket\Loom_TippingBucket.h
+src\Internet\Communication\Loom_Max\Loom_Max.h
+src\Internet\Connectivity\Loom_Ethernet\Loom_Ethernet.cpp
+src\Internet\Connectivity\Loom_Ethernet\Loom_Ethernet.h
+src\Internet\Connectivity\Loom_LTE\Loom_LTE.h
+src\Internet\Connectivity\Loom_LTE\Loom_LTE_SaraR4.cpp
+src\Internet\Connectivity\Loom_LTE\Loom_LTE_SaraR5.cpp
+src\Internet\Connectivity\Loom_Wifi\Loom_Wifi.cpp
+src\Internet\Connectivity\Loom_Wifi\Loom_Wifi.h
+src\Internet\Connectivity\NetworkComponent.h
+src\Internet\Logging\Loom_MongoDB\Loom_MongoDB.h
+src\Internet\Logging\Loom_ThingSpeak\Loom_ThingSpeak.h
+src\Internet\Logging\MQTTComponent\MQTTComponent.h
+src\Logger.h
+src\Loom_Manager.h
+src\Module.h
+src\Radio\Loom_Freewave\Loom_Freewave.h
+src\Radio\Loom_LoRa\Loom_LoRa.cpp
+src\Radio\Loom_LoRa\Loom_LoRa.h
+src\Radio\Radio.h
+src\Sensors\I2C\EZO\EZOSensor.h
+src\Sensors\I2C\Loom_ADS1115\Loom_ADS1115.h
+src\Sensors\I2C\Loom_AS7262\Loom_AS7262.h
+src\Sensors\I2C\Loom_AS7263\Loom_AS7263.h
+src\Sensors\I2C\Loom_AS7265X\Loom_AS7265X.h
+src\Sensors\I2C\Loom_DFMultiGasSensor\Loom_DFMultiGasSensor.cpp
+src\Sensors\I2C\Loom_DFMultiGasSensor\Loom_DFMultiGasSensor.h
+src\Sensors\I2C\Loom_DFRobotO2\Loom_DFRobotO2.h
+src\Sensors\I2C\Loom_K30\Loom_K30.h
+src\Sensors\I2C\Loom_MB1232\Loom_MB1232.h
+src\Sensors\I2C\Loom_MMA8451\Loom_MMA8451.h
+src\Sensors\I2C\Loom_MPU6050\Loom_MPU6050.h
+src\Sensors\I2C\Loom_MS5803\Loom_MS5803.h
+src\Sensors\I2C\Loom_SEN55\Loom_SEN55.h
+src\Sensors\I2C\Loom_SEN66\Loom_SEN66.h
+src\Sensors\I2C\Loom_SHT31\Loom_SHT31.h
+src\Sensors\I2C\Loom_STEMMA\Loom_STEMMA.h
+src\Sensors\I2C\Loom_T6793\Loom_T6793.h
+src\Sensors\I2C\Loom_TSL2591\Loom_TSL2591.h
+src\Sensors\I2C\Loom_VCNL4010\Loom_VCNL4010.h
+src\Sensors\I2C\Loom_VCNL4020\Loom_VCNL4020.h
+src\Sensors\I2C\Loom_VEML6075\Loom_VEML6075.h
+src\Sensors\I2C\Loom_ZXGesture\Loom_ZXGesture.h
+src\Sensors\SDI12\Loom_SDI12\Loom_SDI12.h
+src\Sensors\Serial\Loom_NOVASDS\Loom_NOVASDS.h
+src\Sensors\SPI\Loom_ADS1232\ADS1232_Lib_Fixed.h
+src\Sensors\SPI\Loom_MAX318XX\Loom_MAX31856.h
+src\Sensors\SPI\Loom_MAX318XX\Loom_MAX31865.h

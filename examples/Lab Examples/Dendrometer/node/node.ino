@@ -1,4 +1,5 @@
 #include <Loom_Manager.h> //4.6
+#include <Diagnostics/Loom_MemoryDiagnostics.h>
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Hardware/Actuators/Loom_Neopixel/Loom_Neopixel.h>
 #include <Sensors/Loom_Analog/Loom_Analog.h>
@@ -51,6 +52,8 @@ Loom_LoRa lora(manager, NODE_NUMBER);
 #warning Wireless communication disabled!
 #endif
 
+Loom_MemoryDiagnostics memoryDiagnostics;
+
 // Global Variables
 volatile bool buttonPressed = false; // Check to see if button was pressed
 
@@ -79,12 +82,15 @@ void setup()
     delay(10);      // hold down device button to reset time 
     bool userInput = !digitalRead(BUTTON_PIN); // wait for serial connection ONLY if button is pressed (low reading)
     manager.beginSerial(userInput);            // wait for serial connection ONLY if button is pressed
+    memoryDiagnostics.checkpoint(F("post_global_ctor"), manager.getDocument(), -1);
     
     hypnos.setLogName("NodeName_1data"); //SD card CSV file name
     hypnos.enable();
     sleepInterval = hypnos.getConfigFromSD("HypnosConfig.json");
 
+    memoryDiagnostics.checkpoint(F("pre_initialize"), manager.getDocument(), -1);
     manager.initialize();
+    memoryDiagnostics.checkpoint(F("post_initialize"), manager.getDocument(), -1);
     setRTC(userInput);
 
     checkMagnetSensor();
@@ -98,7 +104,10 @@ void setup()
  */
 void loop()
 {
+    memoryDiagnostics.beginCycle();
+    memoryDiagnostics.checkpoint(F("loop_start"), manager.getDocument(), -1);
     measure();
+    memoryDiagnostics.checkpoint(F("post_measure_sd"), manager.getDocument(), -1);
     if (buttonPressed) // if interrupt button was pressed, display staus of magnet sensor
     {
         displayMagnetStatus(magnetSensor.getMagnetStatus());
@@ -107,7 +116,10 @@ void loop()
         buttonPressed = false;
     }
     transmit();
+    memoryDiagnostics.checkpoint(F("post_transmit"), manager.getDocument(), -1);
+    memoryDiagnostics.checkpoint(F("pre_sleep"), manager.getDocument(), -1);
     sleepCycle();
+    memoryDiagnostics.checkpoint(F("post_wake"), manager.getDocument(), -1);
 }
 
 /**
@@ -261,7 +273,7 @@ bool checkStableAlignment()
     magnetStatus status;
     bool aligned = true;
 
-    for (int i = 0; i < (CHECK_TIME / 100); i++)
+    for (unsigned int i = 0; i < (CHECK_TIME / 100); i++)
     {
         // Watchdog.reset();
         status = magnetSensor.getMagnetStatus();

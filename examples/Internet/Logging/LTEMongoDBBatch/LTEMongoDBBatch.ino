@@ -5,10 +5,15 @@
  */
 
 #include "arduino_secrets.h"
+
 #include <Loom_Manager.h>
+
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
+
 #include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
+
 #include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h>
+
 #include <Sensors/Loom_Analog/Loom_Analog.h>
 
 
@@ -20,10 +25,10 @@ Loom_LTE lte(manager, NETWORK_NAME, NETWORK_USER, NETWORK_PASS);
 
 Loom_MongoDB mqtt(manager, lte, SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS, PROJECT);
 
-Loom_Analog analog(manager);
+Loom_BatchSD batchSD(hypnos, 15);   // Enables batch logging with a batch size of 15
 
-// Enables batch logging with a batch size of 15
-Loom_BatchSD batchSD(hypnos, 15);
+Loom_Analog analog(manager);    // Enables read for battery voltage
+
 
 
 // Called when the interrupt is triggered 
@@ -71,10 +76,11 @@ void loop()
 
   // Pass batch SD along to the MQTT module
   mqtt.publish(batchSD);
-  
+
   // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
   hypnos.reattachRTCInterrupt();
 
   // Wait 5 seconds
   hypnos.sleep();
 }
+
