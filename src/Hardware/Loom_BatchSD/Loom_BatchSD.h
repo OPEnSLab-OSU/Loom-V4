@@ -26,14 +26,21 @@ class Loom_BatchSD {
     File &getBatch();
 
     /**
+     * Clear records after a complete successful publish.
+     *
+     * @return true when the file was truncated and the counter reset
+     */
+    bool markPublished();
+
+    /**
      * Get the specified size of the batch
      */
-    int getBatchSize() { return batchSize; };
+    int getBatchSize() const { return batchSize; };
 
     /**
      * Get the current batch we are on
      */
-    int getCurrentBatch() { return sdMan->getCurrentBatch(); };
+    int getCurrentBatch() const { return sdMan != nullptr ? sdMan->getCurrentBatch() : 0; };
 
   private:
     SDManager *sdMan = nullptr; // Pointer to the SD manager
