@@ -322,7 +322,7 @@ bool Loom_Hypnos::networkTimeUpdate(){
     if(networkComponent != nullptr && networkComponent->isConnected()){
         char output[OUTPUT_SIZE];
         int year, month, day, hour, minute, second = 0;
-        float tz = timezone;
+        float tz = 0;
 
         /* Try twice to set the time if it works break out if not we just og again*/
         for(int i = 0; i < 2; i++){
@@ -330,7 +330,9 @@ bool Loom_Hypnos::networkTimeUpdate(){
 
             // Attempt to retrieve the current time from our network component
             if(networkComponent->getNetworkTime(&year, &month, &day, &hour, &minute, &second, &tz)){
-                RTC_DS.adjust(DateTime(year, month, day, hour, minute, second));
+                TimeSpan tzToSeconds = tz*3600;
+                DateTime UTC = DateTime(year,month,day,hour,minute,second) - tzToSeconds;
+                RTC_DS.adjust(UTC);
                 snprintf(output, OUTPUT_SIZE, "Network time successfully set to: %s", getCurrentTime().text());
                 LOG(output);
                 break;
