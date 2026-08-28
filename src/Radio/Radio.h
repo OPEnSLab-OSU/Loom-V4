@@ -24,9 +24,6 @@ class Radio : public Module {
     uint8_t retryCount;    // Number transmission retries allowed
     uint16_t retryTimeout; // Delay between retries (MS)
 
-    StaticJsonDocument<1000> recvDoc; // Individual Document Representing what is being received
-    StaticJsonDocument<1000> sendDoc; // Individual Document Representing what is being sent
-
     /**
      * Get this device's address
      */
@@ -54,16 +51,19 @@ class Radio : public Module {
     /**
      * Convert the message pack to json
      */
-    bool bufferToJson(uint8_t *buffer) {
-        char output[OUTPUT_SIZE];
-
-        DeserializationError error =
-            deserializeMsgPack(recvDoc, (const char *)buffer, maxMessageLength);
+    bool bufferToJson(JsonDocument &destination, const uint8_t *buffer, size_t length) {
+        DeserializationError error = deserializeMsgPack(destination, buffer, length);
 
         // Check if an error occurred
         if (error != DeserializationError::Ok) {
-            snprintf(output, OUTPUT_SIZE, "Error occurred parsing MsgPack: %s", error.c_str());
-            ERROR(output);
+            ERRORF("Error occurred parsing MsgPack: %s", error.c_str());
+            destination.clear();
+            return false;
+        }
+
+        if (destination.overflowed()) {
+            ERROR(F("Received MsgPack exceeds the Manager JSON capacity"));
+            destination.clear();
             return false;
         }
 
@@ -74,9 +74,7 @@ class Radio : public Module {
      * Convert the json to a message pack
      */
     bool jsonToBuffer(uint8_t *buffer, JsonObjectConst json) {
-        bool status = serializeMsgPack(json, buffer, maxMessageLength);
-
-        return status;
+        return serializeMsgPack(json, buffer, maxMessageLength) > 0;
     };
 
   public:
@@ -85,5 +83,7 @@ class Radio : public Module {
      * @param moduleName Name of the module
      * @param maxLength The maximum length a packet can be
      */
-    Radio(const char *moduleName) : Module(moduleName){};
+    Radio(const char *moduleName)
+        : Module(moduleName), deviceAddress(0), maxMessageLength(0), signalStrength(0),
+          powerLevel(0), retryCount(0), retryTimeout(0) {};
 };
