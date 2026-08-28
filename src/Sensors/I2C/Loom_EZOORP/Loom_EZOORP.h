@@ -34,5 +34,5 @@ class Loom_EZOORP : public EZOSensor {
   private:
     Manager *manInst; // Instance of the manager
 
-    float orp; // RGB readings
+    float orp = 0.0f; // ORP reading
 };
