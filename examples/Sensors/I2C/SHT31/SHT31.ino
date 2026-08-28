@@ -3,16 +3,16 @@
  * 
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
-
 #include <Loom_Manager.h>
+
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
+
 #include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h>
 
 
 Manager manager("Device", 1);
 
-// Create a new Hypnos object setting the version to determine the SD Chip select pin
-Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, false, false);
+Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, false, false);    // Create a new Hypnos object setting the version to determine SD Chip select pin
 
 Loom_SHT31 sht(manager);
 

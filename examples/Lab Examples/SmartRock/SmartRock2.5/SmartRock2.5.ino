@@ -33,12 +33,13 @@ void setup() {
 
   // Wait 20 seconds for the serial console to open
   manager.beginSerial();
+  hypnos.setCompileTime(__DATE__, __TIME__);
 
   // Enable the hypnos rails
   hypnos.enable();
   manager.initialize();
 
-  sleepInterval = hypnos.getSleepIntervalFromSD("SD_config.json");
+  sleepInterval = hypnos.getConfigFromSD("SD_config.json");
   // Register the ISR and attach to the interrupt
   hypnos.registerInterrupt(isrTrigger);
 }

@@ -5,15 +5,15 @@
  */
 
 #include "arduino_secrets.h"
+
 #include <Loom_Manager.h>
+
 #include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
+
 #include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h>
-#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 
 
 Manager manager("Device", 1);
-
-Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 
 Loom_WIFI wifi(manager, CommunicationMode::CLIENT, SECRET_SSID, SECRET_PASS);
 
@@ -24,8 +24,6 @@ void setup()
 {
   manager.beginSerial();
 
-  hypnos.enable();
-
   manager.initialize();
 }
 
@@ -35,10 +33,11 @@ void loop()
   manager.measure();
 
   manager.package();
-  
+
   manager.display_data();
 
   mqtt.publish();
 
   manager.pause(5000);
 }
+

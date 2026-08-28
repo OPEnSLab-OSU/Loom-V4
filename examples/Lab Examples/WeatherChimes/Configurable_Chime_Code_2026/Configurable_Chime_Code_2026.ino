@@ -1,7 +1,8 @@
 /** * In lab use case example for the WeatherChimes project *
  * This project uses SHT31, Teros10, TippingBucket, TSL2591, and two MS5803 sensors to log environment data and logs it to both the SD card and also MQTT/MongoDB *
   * MANAGER MUST BE INCLUDED FIRST IN ALL CODE */ 
-  #include <Loom_Manager.h> 
+// Configurable WeatherChimes 2026 sketch.
+#include <Loom_Manager.h>
   #include <Logger.h> 
   #include <Hardware/Loom_Hypnos/Loom_Hypnos.h> 
   #include <Sensors/Loom_Analog/Loom_Analog.h> 

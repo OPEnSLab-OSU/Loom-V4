@@ -6,30 +6,23 @@
  */
 
 #include <Loom_Manager.h>
+
 #include <Sensors/Loom_Analog/Loom_Analog.h>
-#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 
 
 Manager manager("Device", 1);
 
-Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
+Loom_Analog analog(manager);            // Reads the battery voltage
 
-// Reads the battery voltage
-Loom_Analog analog(manager);
+//Loom_Analog analog(manager, A2);      // Read the battery voltage and A2
 
-// Read the battery voltage and A2
-//Loom_Analog analog(manager, A2);
-
-// Read the battery voltage, A2 and A4
-//Loom_Analog analog(manager, A2, A4);
+//Loom_Analog analog(manager, A2, A4);  // Read the battery voltage, A2 and A4
 
 
 void setup() 
 {
   // Start the serial interface
   manager.beginSerial();
-
-  hypnos.enable();
 
   // Initialize the manager
   manager.initialize();
