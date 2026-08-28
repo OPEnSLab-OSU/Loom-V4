@@ -3,5 +3,8 @@
 .clang-format
 .clangd
 .justfile
-build/
-shell.nix
+
+# Credentials/secrets
+**/arduino_secrets.h
+**/wifi_creds.json
+**/mqtt_creds.json
