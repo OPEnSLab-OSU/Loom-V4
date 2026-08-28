@@ -7,14 +7,10 @@
 
 #include <Loom_Manager.h>
 
-#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
-
 #include <Sensors/SPI/Loom_MAX318XX/Loom_MAX31865.h>
 
 
 Manager manager("Device", 1);
-
-Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 
 Loom_MAX31865 max65(manager);   // Reads the temperature
 
@@ -23,8 +19,6 @@ void setup()
 {
   // Start the serial interface
   manager.beginSerial();
-
-  hypnos.enable();
 
   // Initialize the manager
   manager.initialize();

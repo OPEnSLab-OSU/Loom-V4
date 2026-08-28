@@ -3,7 +3,7 @@
 #include "Loom_Manager.h"
 #include "Module.h"
 
-#include <ADS1232_Lib.h>
+#include "ADS1232_Lib_Fixed.h"
 
 /**
  * ADS1232 Weight Sensor
@@ -14,6 +14,7 @@ class Loom_ADS1232 : public Module {
   protected:
   public:
     Loom_ADS1232(Manager &man, int num_samples = 1, long offset = 8403613, float scale = 2041.46);
+    bool retryPowerUpWhenUninitialized() const override { return true; }
 
     void initialize() override;
     void power_up() override;
@@ -35,9 +36,9 @@ class Loom_ADS1232 : public Module {
   private:
     Manager *manInst; // Instance of the Manager
 
-    ADS1232_Lib inst; // Instance of the library
+    ADS1232_Lib_Fixed inst; // Instance of the bounded ADS1232 driver
 
-    float weight; // Weight output
+    float weight = 0.0f; // Weight output
 
     long offset;     // Calibration offset
     float scale;     // Calibration scale
