@@ -10,12 +10,13 @@
 #include <Sensors/SDI12/Loom_SDI12/Loom_SDI12.h>
 
 
-// Manager handles all loom simplicity 
-Manager manager("Device", 1);
+Manager manager("Device", 1);   // Manager handles all loom simplicity 
 
 Loom_SDI12 sdi(manager, 11);
 
-void setup() {
+
+void setup() 
+{
 
   // Start the serial interface
   manager.beginSerial();
@@ -24,7 +25,9 @@ void setup() {
   manager.initialize();
 }
 
-void loop() {
+
+void loop() 
+{
   // put your main code here, to run repeatedly:
 
   // Measure the data from the sensors

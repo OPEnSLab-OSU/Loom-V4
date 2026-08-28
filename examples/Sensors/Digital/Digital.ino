@@ -5,18 +5,18 @@
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 
-
 #include <Loom_Manager.h>
 
 #include <Sensors/Loom_Digital/Loom_Digital.h>
 
+
 Manager manager("Device", 1);
 
-// Sets the pinMode of pin 12 and 11 to INPUT_PULLUP and then reads values from the pins
-Loom_Digital digital(manager, INPUT_PULLUP, 12, 11);
+Loom_Digital digital(manager, INPUT_PULLUP, 12, 11);    // Sets the pinMode of pin 12 and 11 to INPUT_PULLUP, then reads values from the pins
 
-void setup() {
 
+void setup() 
+{
   // Start the serial interface
   manager.beginSerial();
 
@@ -24,8 +24,9 @@ void setup() {
   manager.initialize();
 }
 
-void loop() {
 
+void loop() 
+{
   // Measure the data from the sensors
   manager.measure();
 
