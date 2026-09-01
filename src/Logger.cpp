@@ -1,6 +1,5 @@
 #include "Logger.h"
 
-Logger *Logger::instance = nullptr;
 
 char Logger::logFile[100] = {};
 char Logger::activeFile[260] = {};
