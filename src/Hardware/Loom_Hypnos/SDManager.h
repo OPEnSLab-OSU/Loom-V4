@@ -66,11 +66,23 @@ class SDManager : public Module {
     };
 
     /**
+     * Open an independent read handle.
+     *
+     * Callers that retain a file while other Loom code may log to SD must use an independent
+     * handle. The ordinary logger opens its own debug file and must not replace a retained batch
+     * reader through SDManager::myFile.
+     */
+    File openFile(const char *fileName) { return sd.open(fileName); };
+
+    /**
      * Write a single line to a file
      * @param filename File to write to
      * @param content String to write to the line
      */
     bool writeLineToFile(const char *filename, const char *content);
+
+    /** Enable direct-Serial phase markers around single-line SD writes for beta diagnosis. */
+    void setWriteDebug(bool enabled = true) { writeDebug = enabled; };
 
     /**
      * Get the default SD card file name
@@ -156,6 +168,7 @@ class SDManager : public Module {
 
     bool sdInitialized = false;   // Whether the card is reachable for the current operation
     bool logFileSelected = false; // Whether this MCU boot session already chose its CSV filename
+    bool writeDebug = false;      // Direct-Serial beta trace; never written through Logger
 
     void logBatch(); // Append one JSON record to the batch file
 

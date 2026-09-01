@@ -492,7 +492,7 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
         return true;
     }
 
-    File fileOutput = batchSD->getBatch();
+    File fileOutput = batchSD->openBatch();
     if (!fileOutput) {
         ERROR(F("Unable to open the BatchSD file"));
         return false;

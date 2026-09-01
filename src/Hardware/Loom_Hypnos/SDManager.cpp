@@ -72,20 +72,40 @@ bool SDManager::writeLineToFile(const char *filename, const char *content) {
 
     // Check if the SD card is actually functional
     if (sdInitialized) {
+        if (writeDebug) {
+            Serial.print(F("[SD DEBUG] open "));
+            Serial.println(filename);
+        }
+
         // Open the given file for writing
-        myFile = sd.open(filename, O_RDWR | O_CREAT | O_APPEND);
+        // Keep this handle local. A batch publisher may concurrently retain SDManager::myFile for
+        // streaming; reassigning that shared object here invalidates the reader.
+        File outputFile = sd.open(filename, O_RDWR | O_CREAT | O_APPEND);
 
         // Check if the file was actually opened, if so write the content to the file
-        if (myFile) {
+        if (outputFile) {
+            if (writeDebug)
+                Serial.println(F("[SD DEBUG] write"));
+
+            outputFile.clearWriteError();
             const size_t contentLength = strlen(content);
-            const bool wroteContent = myFile.print(content) == contentLength;
-            const bool wroteNewline = myFile.println() > 0;
-            myFile.close();
-            if (wroteContent && wroteNewline)
+            const bool wroteContent = outputFile.print(content) == contentLength;
+            const bool wroteNewline = outputFile.println() > 0;
+            const bool writeComplete = wroteContent && wroteNewline && !outputFile.getWriteError();
+
+            if (writeDebug)
+                Serial.println(F("[SD DEBUG] close"));
+            outputFile.close();
+            if (writeDebug)
+                Serial.println(F("[SD DEBUG] done"));
+
+            if (writeComplete)
                 return true;
             printModuleName("Failed while writing file contents!");
             return false;
         }
+        if (writeDebug)
+            Serial.println(F("[SD DEBUG] open failed"));
         printModuleName("Failed to Open File!");
         return false;
     }

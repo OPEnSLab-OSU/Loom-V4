@@ -154,7 +154,9 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
                 return false;
 
             /* Get the file containing our batch of data */
-            File &fileOutput = batchSD.getBatch();
+            // Retain a small independent SdFat handle. Ordinary timestamped LOG calls also append
+            // to SD and must not replace or close the batch reader while it is being streamed.
+            File fileOutput = batchSD.openBatch();
             if (!fileOutput) {
                 ERROR(F("Unable to open the BatchSD file."));
                 FUNCTION_END;

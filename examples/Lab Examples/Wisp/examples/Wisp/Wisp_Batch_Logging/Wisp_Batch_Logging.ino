@@ -62,9 +62,11 @@ Loom_MemoryDiagnostics memoryDiagnostics;
 #define WISP_DIAGNOSTIC_CHECKPOINT(phaseLabel)                                      \
   memoryDiagnostics.checkpoint(F(phaseLabel), manager.getDocument(),                \
                                batchSD.getCurrentBatch())
+#define WISP_DIAGNOSTIC_ENABLE_SD_TRACE() hypnos.getSDManager()->setWriteDebug(true)
 #else
 #define WISP_DIAGNOSTIC_BEGIN_CYCLE() do { } while (false)
 #define WISP_DIAGNOSTIC_CHECKPOINT(phaseLabel) do { } while (false)
+#define WISP_DIAGNOSTIC_ENABLE_SD_TRACE() do { } while (false)
 #endif
 // END LOOM_BETA_DIAGNOSTICS
 
@@ -75,12 +77,12 @@ void isrTrigger()
 
 
 void setup() {
-  // Keep ordinary debug logs on Serial only. Sensor CSV and batch JSON still use hypnos.logToSD().
-  // This removes hundreds of avoidable SD opens and RTC reads during an endurance deployment.
-  DISABLE_RTC_LOG_TIMESTAMPS;
+  // Preserve the canonical timestamped debug log in /debug/output_N.log.
+  ENABLE_SD_LOGGING;
 
   // Wait 20 seconds for the serial console to open
   manager.beginSerial();
+  WISP_DIAGNOSTIC_ENABLE_SD_TRACE(); // LOOM_BETA_DIAGNOSTIC
   WISP_DIAGNOSTIC_CHECKPOINT("post_global_ctor"); // LOOM_BETA_DIAGNOSTIC
 
   // Set the LTE board to only powerup when a batch is ready to be sent

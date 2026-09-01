@@ -228,6 +228,8 @@ void Loom_Multiplexer::debugScan() {
                 continue;
             }
 
+            // Emit before entering Wire so a lower-core stall still leaves an exact location.
+            debugLogFormatted("Debug scan probing mux port %i at address 0x%02X", port, addr);
             uint8_t result = probeAddress(addr);
 
             if (result == 0) {
@@ -383,6 +385,8 @@ void Loom_Multiplexer::scanAndLoadSensors() {
                 continue;
             }
 
+            // Emit before entering Wire so a lower-core stall still leaves an exact location.
+            debugLogFormatted("Probing mux port %i at address 0x%02X", port, addr);
             uint8_t result = probeAddress(addr);
 
             if (result == 0) {
@@ -425,6 +429,8 @@ void Loom_Multiplexer::scanAndLoadSensors() {
 
         if (!foundOnPort)
             debugLogFormatted("No known devices found on mux port %i", port);
+
+        debugLogFormatted("Finished scanning mux port %i", port);
     }
 
     FUNCTION_END;

@@ -26,6 +26,11 @@ class Loom_BatchSD {
     File &getBatch();
 
     /**
+     * Open an independent batch reader that ordinary SD logging cannot replace or close.
+     */
+    File openBatch();
+
+    /**
      * Clear records after a complete successful publish.
      *
      * @return true when the file was truncated and the counter reset

@@ -36,6 +36,46 @@ The packaged DFRobot multi-gas driver does update a global Arduino `String` from
 check and literal gas-type mapping, preserving the existing gas field names without entering that
 vendor String path.
 
+## WISP SEN66/mux trace update — 2026-09-01
+
+The final reported lines were:
+
+```text
+SEN66 Started. Waiting 5s for fan spin-up...
+Loaded sensor SEN66_5 on port 5
+```
+
+Their five-second timestamp separation proves the spin-up delay completed, `SEN66::initialize()`
+returned, the sensor was marked initialized, and the mux retained the object. This is still inside
+`manager.initialize()` and before `manager.measure()` or `SEN66::measure()`.
+
+The final Serial line does **not** prove that its `LOGF` call returned. `Logger::log()` prints the
+message to Serial first and, when `ENABLE_SD_LOGGING` is active, subsequently opens, appends, and
+closes `/debug/output_N.log`. WISP requires that path and the guarded sketches retain it. Only after
+this SD append returns does mux discovery continue to its next operation: for the WISP v2 address order, a
+probe of address `0x44` on mux port 5, followed by the configured probes on ports 6 and 7. The
+reported trace contains neither the current memory checkpoints nor the current direct SD/mux-debug
+lines, so it came from a build that predates the present diagnostic instrumentation.
+
+The external driver is the unmodified Sensirion `arduino-i2c-sen66` 1.2.0 package. The recent Loom
+change was only in `Loom_SEN66`: its bounded ten-sample loop resets an already-enabled watchdog
+between one-second samples. That code was not reached by this trace.
+
+The WISP watchdog is intentionally not enabled across `manager.initialize()` because valid LTE
+initialization can exceed the SAMD21 watchdog's maximum interval. Consequently, an official-core
+Wire wait during mux discovery can hang without producing either a Wire error or a watchdog reset.
+Beta WISP mux sketches now enable direct-Serial mux diagnostics, and the mux emits a line before
+every port/address probe. The diagnostic sequence distinguishes the two remaining paths:
+
+- `[SD DEBUG] open`, `write`, `close`, and `done` identify the exact phase of the ordinary SD log;
+- a normal timestamped `Loaded sensor ...` line without `[SD DEBUG] done` and the following
+  `[MUX DEBUG] Loaded sensor ...` means that the ordinary logger did not return;
+- `[MUX DEBUG] Loaded sensor ...` followed by `[MUX DEBUG] Probing mux port ...`, but no later
+  result, means the identified official-Wire probe did not return.
+
+These lines are gated with the other beta diagnostics and do not alter JSON, CSV, SD, or MQTT
+output.
+
 ## Forensic update — 2026-08-27 (current 90-minute report)
 
 This section supersedes the pre-hardening RAM sizes, stack frames, and first-batch timing diagnosis
@@ -86,8 +126,8 @@ current explanation.
 
 ### Why the ordinary logger was the strongest 90-minute timing match
 
-Before the minimum-change safeguards, the WISP sketches called `ENABLE_SD_LOGGING`. A healthy
-direct-sensor cycle executed roughly 17–18 ordinary `LOG` calls; mux gas boards added more. Each
+The WISP sketches intentionally call `ENABLE_SD_LOGGING`. A healthy direct-sensor cycle executes
+roughly 17–18 ordinary `LOG` calls; mux gas boards add more. Each
 call did all of the following:
 
 1. formats into a bounded 256-byte stack buffer;
@@ -97,8 +137,16 @@ call did all of the following:
 At cycle 16–18 this was already hundreds of extra RTC reads and SD open/append/close operations,
 and commonly tens of kilobytes of debug-file growth. A filesystem allocation boundary, marginal
 card, marginal I2C device, or stuck SDA/SCL state can therefore produce a repeatable-looking
-90-minute failure without any elapsed-time bug or heap leak. The guarded beta removes this extra
-SD/RTC debug path while leaving normal sensor CSV and batch JSON logging enabled.
+90-minute failure without any elapsed-time bug or heap leak. Because timestamped SD debug logs are
+required WISP output, the guarded beta retains them and adds direct-Serial SD phase markers rather
+than suppressing the feature.
+
+The RAM rewrite also introduced a separate, definite ownership defect in the six-hour batch path.
+MongoDB retained a reference to `SDManager::myFile` while streaming a batch, then emitted
+`Publishing Packet ...` through the ordinary logger. With SD logging enabled, that log reassigned
+and closed the same shared `File`, invalidating the active batch reader. Batch replay now opens a
+small independent SdFat handle, and `writeLineToFile()` uses its own local handle. This preserves
+streaming and avoids restoring the former 2 KB line buffer.
 
 This checkout deliberately uses the official Loom 4.9 SAMD core. Its `Wire`/`SERCOM` master waits
 for bus ownership, address completion, receive data, and synchronization with unbounded `while`
@@ -150,10 +198,12 @@ down much more strongly than a single free-RAM number.
 The diagnosis-driven safeguards are now applied to all three canonical WISP sketches and their
 packaged mirrors:
 
-- ordinary Logger output is Serial-only in these endurance sketches; `hypnos.logToSD()` remains
-  enabled, so sensor CSV and batch JSON filenames, keys, labels, and byte formats are unchanged;
-- RTC timestamps are disabled only for ordinary WISP Logger messages, eliminating an RTC I2C read
-  for every debug line while leaving packet timestamps unchanged;
+- ordinary Logger output remains timestamped on Serial and in `/debug/output_N.log`, preserving
+  the expected WISP diagnostic record;
+- single-line debug writes use a local `File`, while batch replay uses a separate local read
+  handle, preventing the logger from replacing or closing a live batch stream;
+- beta-only direct-Serial SD markers identify `open`, `write`, `close`, and `done` without
+  recursively entering Logger or changing the saved debug line;
 - a 16-second SAMD21 watchdog covers steady-state measurement, packaging, display, CSV/batch SD,
   below-threshold batch checks, RTC programming, and the explicit interrupt reattach;
 - SEN55, SEN66, and DFRobot retry loops feed an already-enabled watchdog between bounded units of
@@ -167,16 +217,15 @@ packaged mirrors:
   `LOOM_BETA_DIAGNOSTIC` for mechanical canonical cleanup;
 - official `Wire` and `SERCOM` remain unchanged.
 
-The final exact Feather M0 builds remain at 7,928 B, 7,912 B, and 7,800 B of static SRAM. All three
-compile successfully. The first soak comparison should use these guarded sketches against the
-previous field binary; re-enable ordinary SD debug logging only in a deliberately short diagnostic
-run.
+The first soak comparison should use these guarded sketches against the previous field binary with
+ordinary timestamped SD debug logging enabled in both builds.
 
 ## Historical pre-fix diagnosis (retained for traceability)
 
 The remainder of this section records the baseline risks that motivated the hardening work. Its
-RTClib, 2 KB MQTT payload allocation, long LTE retry, large stack-frame, and ordinary SD-debug
-logger descriptions are historical; they are not claims about the guarded current build. The
+RTClib, 2 KB MQTT payload allocation, long LTE retry, and large stack-frame descriptions are
+historical; they are not claims about the guarded current build. The ordinary SD-debug logger is
+retained intentionally and its current handling is documented above. The
 current diagnosis and implemented safeguards are documented above and in
 `docs/RAM_OPTIMIZATION_REPORT.md`.
 
@@ -403,11 +452,12 @@ The handshake retry loops are mostly bounded. One retry delay uses `currentTime 
 Confidence: **high that the load exists; medium that it contributes to the reported SD failures**
 
 This was originally diagnosed when both SD logging and function summaries were enabled and display
-copied the full JSON packet. The current sketches keep function summaries disabled and stream
-display/CSV/batch output, so the former 2 KB transient buffers are gone. Ordinary SD logging is
-still enabled, however. Every `LOG` still reads the RTC and separately opens, appends, and closes
-the debug-output file. The current risk is transaction count and unbounded peripheral waits, not a
-large logger stack frame.
+copied the full JSON packet. The current guarded WISP sketches keep function summaries disabled and
+stream display/CSV/batch output, so the former multi-kilobyte stack frames remain removed. They do
+retain `ENABLE_SD_LOGGING` and RTC timestamps as required functionality. Every `LOG` therefore
+performs an RTC read plus a separate SD open, append, and close. The current risk is transaction
+count, independent file-handle correctness, and unbounded peripheral waits—not a large logger
+stack frame.
 
 ## Why the SEN55 fix was necessary but is no longer the leading 90-minute theory
 

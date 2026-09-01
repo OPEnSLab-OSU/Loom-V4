@@ -31,6 +31,7 @@ foreach ($relativePath in $sketches) {
     $endCount = 0
     $taggedCallCount = 0
     $hasWatchdog = $false
+    $sdLoggingCount = 0
 
     for ($index = 0; $index -lt $lines.Length; $index++) {
         $line = $lines[$index]
@@ -59,8 +60,12 @@ foreach ($relativePath in $sketches) {
             $hasWatchdog = $true
         }
 
-        if ($line.Contains('ENABLE_SD_LOGGING')) {
-            Report-Failure $relativePath $lineNumber 'ordinary per-log SD debug output is enabled'
+        if ($line.Trim() -eq 'ENABLE_SD_LOGGING;') {
+            $sdLoggingCount++
+        }
+
+        if ($line.Contains('DISABLE_RTC_LOG_TIMESTAMPS')) {
+            Report-Failure $relativePath $lineNumber 'canonical timestamped debug-log format is disabled'
         }
 
         if (-not $insideBlock -and $line.Contains('memoryDiagnostics')) {
@@ -98,6 +103,9 @@ foreach ($relativePath in $sketches) {
     }
     if (-not $hasWatchdog) {
         Report-Failure $relativePath 0 'production watchdog coverage is missing'
+    }
+    if ($sdLoggingCount -ne 1) {
+        Report-Failure $relativePath 0 "expected one ENABLE_SD_LOGGING call; found ${sdLoggingCount}"
     }
 
     if (-not $failed) {
