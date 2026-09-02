@@ -327,22 +327,7 @@ Client* Loom_LTE::getClient() { return (Client*)&client; }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) {
-    // Get the timezone that we are in converted to an int
-    int tzInt = (int)*tz;
-
-    // Pull the current values from the GSM
-    if(modem.getNetworkTime(year, month, day, hour, minute, second, tz)){
-        // Create a date time object and then add the TimeZone back to get UTC time
-        DateTime time = DateTime(*year, *month, *day, *hour, *minute, *second) + TimeSpan(0,((int)(*tz))*(-1),0,0);
-        *year = time.year();
-        *month = time.month();
-        *day = time.day();
-        *hour = time.hour();
-        *minute = time.minute();
-        *second = time.second();
-        return true;
-    }
-    return false;
+    return (modem.getNetworkTime(year,month,day,hour,minute,second,tz));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
