@@ -277,6 +277,17 @@ class Loom_Hypnos : public Module{
          * @param state The new state teh device is entering
          */
         bool is5VDisabled(DEVICE_STATE deviceState);
+
+        /**
+         * Checks DST against day of the week and month. 
+         */
+        bool isDaylightSavingsForDate(const DateTime &now, TIME_ZONE zone);
+
+        /**
+         * Checks which weekday and month it is for DST. Ex. DST in the states starts 
+         * the second Sunday of March and the first Sunday of November. 
+         */
+        DateTime nthWeekdayOfMonth(int year, int month, int dow, int week, int hour);
     
 
         /* SD configuration */
