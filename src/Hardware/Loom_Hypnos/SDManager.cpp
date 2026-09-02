@@ -188,7 +188,7 @@ bool SDManager::begin(){
     printModuleName("Initializing SD Card...");
 
     // Start the SD card with the fastest SPI speed
-    if(!sd.begin(chip_select, SD_SCK_MHZ(50))){
+    if(!sd.begin(chip_select, SD_SCK_MHZ(4))){
         printModuleName("Failed to Initialize SD Card! SD Card functionality will be disabled, is there an SD card inserted into the device?");
         return false;
     }
