@@ -293,15 +293,63 @@ DateTime Loom_Hypnos::getLocalTime(DateTime time){
 /////////////////////////////////////// ///////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_Hypnos::isDaylightSavings(){
-    // Timezones that observe daylight savings
-    if(timezone == AST || timezone == EST || timezone == CST || timezone == AST || timezone == PST || timezone == AKST){
-        int currMonth = getCurrentTime().month();
-
-        // If we are in the months where daylight savings is in affect
-        return (currMonth >= 3 && currMonth < 11);
+bool Loom_Hypnos::isDaylightSavingsForDate(const DateTime &now, TIME_ZONE zone) {
+    // Timezones that observe US daylight savings (added MST)
+    switch (zone) {
+    case AST:
+    case EST:
+    case CST:
+    case MST:
+    case PST:
+    case AKST:
+        break;
+    default:
+        return false;
     }
-    return false;
+
+    int year = now.year();
+
+    DateTime dstStartLocalStd = nthWeekdayOfMonth(year, 3, 0, 2, 2); // 2nd Sun of March
+    DateTime dstEndLocalDst = nthWeekdayOfMonth(year, 11, 0, 1, 2);  // 1st Sun of November
+
+    int standardOffsetHours = (int)zone;
+    int daylightOffsetHours = standardOffsetHours + 1;
+
+    // Convert each boundary to UTC using its own fixed offset
+    uint32_t dstStartUTC = dstStartLocalStd.unixtime() - (int32_t)standardOffsetHours * 3600;
+    uint32_t dstEndUTC = dstEndLocalDst.unixtime() - (int32_t)daylightOffsetHours * 3600;
+
+    uint32_t nowUTC = now.unixtime();
+
+    return (nowUTC >= dstStartUTC) && (nowUTC < dstEndUTC);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::isDaylightSavings() {
+
+    return isDaylightSavingsForDate(getCurrentTime(), timezone);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+DateTime Loom_Hypnos::nthWeekdayOfMonth(int year, int month, int dow, int week, int hour) {
+    DateTime firstOfMonth(year, month, 1, 0, 0, 0);
+    int firstDow = firstOfMonth.dayOfTheWeek();
+    int day = 1 + ((dow - firstDow + 7) % 7);
+
+    if (week == 0) {
+        // first day of week: step forward a week at a time while still in month
+        static const int daysInMonthTable[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+        int dim = daysInMonthTable[month - 1];
+        if (month == 2 && ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0))
+            dim = 29;
+        while (day + 7 <= dim)
+            day += 7;
+    } else {
+        day += (week - 1) * 7;
+    }
+    return DateTime(year, month, day, hour, 0, 0);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
