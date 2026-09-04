@@ -28,7 +28,7 @@ class Loom_LTE : public NetworkComponent{
     protected:
         /* These aren't used with the Wifi manager */
         void measure() override {};
-
+        void power_down() override {};
         bool isConnected() override { return modem.isGprsConnected(); };
 
     public:
@@ -63,7 +63,7 @@ class Loom_LTE : public NetworkComponent{
         void power_up() override;
 
         // Disconnect from the network
-        void power_down() override;
+        // void power_down() override;
 
         // Signal Strength
         void package() override;

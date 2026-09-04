@@ -118,6 +118,9 @@ void Loom_LTE::initialize(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::power_up(){
     FUNCTION_START;
+    if(powered && modem.isNetworkConnected())
+        return;
+ 
     // If the batch_sd is initialized and the current batch is one less than the maximum so we turn on the device before the last batch
     if(batch_sd != nullptr && !firstInit){
         if(batch_sd->getCurrentBatch() != batch_sd->getBatchSize()-1){
@@ -159,19 +162,19 @@ void Loom_LTE::power_up(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LTE::power_down(){
-    FUNCTION_START;
-    if(moduleInitialized && powerUp){
-        LOG(F("Powering down GPRS Modem. This should take about 5 seconds..."));
-        modem.poweroff();
-        // // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release the pin state
-        // pull();
-        powered = false;
+// void Loom_LTE::power_down(){
+//     FUNCTION_START;
+//     if(moduleInitialized && powerUp){
+//         LOG(F("Powering down GPRS Modem. This should take about 5 seconds..."));
+//         modem.poweroff();
+//         // // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release the pin state
+//         // pull();
+//         powered = false;
 
-        LOG(F("Powering down complete!"));
-    }
-    FUNCTION_END;
-}
+//         LOG(F("Powering down complete!"));
+//     }
+//     FUNCTION_END;
+// }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
