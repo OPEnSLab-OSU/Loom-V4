@@ -118,8 +118,13 @@ void Loom_LTE::initialize(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::power_up(){
     FUNCTION_START;
-    if(powered && modem.isNetworkConnected())
+    if(powered && modem.isNetworkConnected()){
+        LOG(F("Device remained connected during sleep. Skipping reset and reconnect"));
         return;
+    }
+    else{
+        LOG(F("Powering up and establishing connection"));
+    }
  
     // If the batch_sd is initialized and the current batch is one less than the maximum so we turn on the device before the last batch
     if(batch_sd != nullptr && !firstInit){
