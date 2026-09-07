@@ -119,10 +119,11 @@ void Loom_LTE::initialize(){
 void Loom_LTE::power_up(){
     FUNCTION_START;
     if(powered && modem.isNetworkConnected()){
-        LOG(F("Device remained connected during sleep. Skipping reset and reconnect"));
+        LOG(F("Device remained connected during sleep. Skipping reset and connect"));
         return;
     }
     else{
+        powered = false;
         LOG(F("Powering up and establishing connection"));
     }
  
