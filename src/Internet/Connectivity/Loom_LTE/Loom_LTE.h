@@ -28,7 +28,6 @@ class Loom_LTE : public NetworkComponent{
     protected:
         /* These aren't used with the Wifi manager */
         void measure() override {};
-        void power_down() override {};
         bool isConnected() override { return modem.isGprsConnected(); };
 
     public:
@@ -61,6 +60,9 @@ class Loom_LTE : public NetworkComponent{
 
         // Reconnect to the network
         void power_up() override;
+        
+        // Put LTE into idle mode
+        void power_down() override;
 
         // Disconnect from the network
         // void power_down() override;
@@ -91,7 +93,7 @@ class Loom_LTE : public NetworkComponent{
         /**
          * Disconnect from the cellular network
          */
-        void disconnect();
+        bool disconnect();
 
         /**
          * Attempt to connect to something remote to see if we actually have an internet connection
@@ -151,7 +153,8 @@ class Loom_LTE : public NetworkComponent{
             CONNECTING,
             CONNECTED,
             DISCONNECTED,
-            ERROR
+            ERROR,
+            SLEEPING
         };
 
         LTEState currState = LTEState::OFF;

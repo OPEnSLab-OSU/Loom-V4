@@ -106,10 +106,11 @@ void Loom_LTE::initialize(){
         LOG(output);
 
         if(verifyConnection()){
-        currState = LTEState::CONNECTED;
-        LOG(F("Module successfully initialized!"));
+            currState = LTEState::CONNECTED;
+            LOG(F("Module successfully connected!"));
         }else{
-            ERROR(F("Module failed to initialize"));
+            ERROR(F("Module failed GET request"));
+            currState = LTEState::DISCONNECTED;
         }
     }
     else{
@@ -138,14 +139,12 @@ void Loom_LTE::power_up(){
     // If the batch_sd is initialized and the current batch is one less than the maximum so we turn on the device before the last batch
     if(batch_sd != nullptr && !firstInit){
         if(batch_sd->getCurrentBatch() != batch_sd->getBatchSize()-1){
-            currState = LTEState::DISCONNECTED;
+            currState = LTEState::SLEEPING;
             FUNCTION_END;
             return;
         }else{
             currState = LTEState::DISCONNECTED;
         }
-    }else if(firstInit){
-        currState = LTEState::POWERING_ON;
     }
 
     // If not connected to a network we want to connect
@@ -158,14 +157,24 @@ void Loom_LTE::power_up(){
         // Delay an additional one second to allow communication to open up
         SerialAT.begin(9600);
         delay(1000);
-        modem.restart();
-        LOG(F("Powering up complete!"));
-        currState = LTEState::DISCONNECTED;
+        bool restarted = modem.restart();
+        if(restarted){
+            LOG(F("Powering up complete!"));
+            currState = LTEState::DISCONNECTED;
+        }else{
+            ERROR(F("Modem did not power on."))
+            currState = LTEState::POWERING_ON;
+        }
         TIMER_ENABLE;
     }
     
     if(!firstInit && moduleInitialized && currState == LTEState::DISCONNECTED)
-        connect();
+        bool connected = connect();
+        if(!connected){
+            currState = LTEState::DISCONNECTED;
+        }else{
+            currState = LTEState::CONNECTED;
+        }
 
     FUNCTION_END;
 
@@ -173,19 +182,22 @@ void Loom_LTE::power_up(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-// void Loom_LTE::power_down(){
-//     FUNCTION_START;
-//     if(moduleInitialized && powerUp){
-//         LOG(F("Powering down GPRS Modem. This should take about 5 seconds..."));
-//         modem.poweroff();
-//         // // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release the pin state
-//         // pull();
-//         currState = LTEState::OFF;
+void Loom_LTE::power_down(){
+    FUNCTION_START;
+    if(moduleInitialized && currState != OFF){
+        LOG(F("Putting GPRS modem into idle mode. This should take about 5 seconds..."));
+        if(disconnect()){
+            currState = LTEState::SLEEPING;
+        } else{
+            currState = LTEState::DISCONNECTED;
+        }
+        // // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release the pin state
+        // pull();
 
-//         LOG(F("Powering down complete!"));
-//     }
-//     FUNCTION_END;
-// }
+        LOG(F("Powering down complete!"));
+    }
+    FUNCTION_END;
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -204,27 +216,23 @@ bool Loom_LTE::connect(){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     uint8_t attemptCount = 1; // Tracks number of attempts, 5 is a fail
-    currState = LTEState::REGISTERING;
 
     TIMER_DISABLE;
     do{
         LOG(F("Waiting for network..."));
         if(!modem.waitForNetwork()){
             ERROR(F("No Response from network!"));
-            currState = LTEState::DISCONNECTED;
             FUNCTION_END;
             return false;
         }
 
         if(!modem.isNetworkConnected()){
             ERROR(F("No connection to network!"));
-            currState = LTEState::DISCONNECTED;
             FUNCTION_END;
             return false;
         }
 
         LOG(F("Registered to carrier!"));
-        currState = LTEState::CONNECTING;
 
         // Connect to lte network
         snprintf(output, OUTPUT_SIZE, "Attempting to connect to LTE Network: %s", APN);
@@ -248,7 +256,6 @@ bool Loom_LTE::connect(){
             ERROR(F("Connection reattempts exceeded 5 tries. Connection Failed"));
             FUNCTION_END;
             TIMER_ENABLE;
-            currState = LTEState::DISCONNECTED;
 
             FUNCTION_END;
             return false;
@@ -260,14 +267,21 @@ bool Loom_LTE::connect(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LTE::disconnect(){
+bool Loom_LTE::disconnect(){
     FUNCTION_START;
-    if(moduleInitialized){
-        modem.gprsDisconnect();
-        delay(200);
-        currState = LTEState::DISCONNECTED;
+    bool disconnected;
+    if(moduleInitialized && batch_sd != nullptr){
+        if(disconnected = modem.gprsDisconnect()){
+            delay(200);
+        }else{
+            ERROR(F("Could not succesfully put modem to sleep"))
+        }
+    }
+    else{
+        
     }
     FUNCTION_END;
+    return disconnected;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -280,7 +294,6 @@ bool Loom_LTE::verifyConnection(){
     if(!client.connect("vsh.pp.ua", 80)){
         ERROR(F("Failed to contact TinyGSM example your internet connection may not be completely established!"));
         client.stop();
-        currState = LTEState::DISCONNECTED;
         FUNCTION_END;
         return false;
     }
@@ -304,7 +317,6 @@ bool Loom_LTE::verifyConnection(){
         }
         Serial.println();
         client.stop();
-        currState = LTEState::CONNECTED;
         TIMER_RESET;
         FUNCTION_END;
         return true;
