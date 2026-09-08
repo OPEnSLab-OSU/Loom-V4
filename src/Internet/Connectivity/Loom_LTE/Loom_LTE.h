@@ -139,10 +139,21 @@ class Loom_LTE : public NetworkComponent{
         TinyGsm modem;                      // LTE Modem
         TinyGsmClient client;               // LTE Client
 
-        bool powerUp = true;
         bool firstInit = true;              // First time it was initialized
         Loom_BatchSD* batch_sd = nullptr;   // If we are using batch publish
 
-        bool powered = false;               // Device power status
+
+        enum class LTEState {               // device state
+            OFF,
+            POWERING_ON,
+            INITIALIZING,
+            REGISTERING,
+            CONNECTING,
+            CONNECTED,
+            DISCONNECTED,
+            ERROR
+        };
+
+        LTEState currState = LTEState::OFF;
 
 };
