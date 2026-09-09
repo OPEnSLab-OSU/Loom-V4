@@ -191,7 +191,6 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
         }
         else{
             attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
-            attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
             LOG(F("Interrupt successfully attached!"));
         }
         // Add the interrupt to the list of pin to interrupts
@@ -238,6 +237,7 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::wakeup(){
     detachInterrupt(pinToInterrupt.begin()->first);     // Detach the interrupt so it doesn't trigger again
+    RTC_DS.clearAlarm();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -508,9 +508,6 @@ void Loom_Hypnos::pre_sleep(){
     Serial.end();
     USBDevice.detach();
 
-    // Reattach the interrupt to the RTC interrupt pin
-    attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
-
     // Disable the power rails
     disable(disable33, disable5);
 }
@@ -540,10 +537,6 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
         Watchdog.reset();
 
         LOG(F("Device has awoken from sleep!"));
-        Watchdog.reset();
-
-        // Clear any pending RTC alarms
-        RTC_DS.clearAlarm();
         Watchdog.reset();
 
         // Re-init the modules that need it
