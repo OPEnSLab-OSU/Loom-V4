@@ -562,6 +562,9 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
         manInst->power_up();
 
         //this version doesn't clear pending alarms here?
+        // Clear any pending alarms
+        RTC_DS.clearAlarm(1);
+        RTC_DS.clearAlarm(2);
 
         // We want to wait for the user to re-open the serial monitor before continuing to see readouts
         if(waitForSerial){
