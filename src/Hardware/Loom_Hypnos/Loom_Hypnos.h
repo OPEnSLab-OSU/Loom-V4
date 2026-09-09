@@ -170,7 +170,7 @@ class Loom_Hypnos : public Module{
          * @param interruptType Type of the interrupt to register (SLEEP or OTHER)
          * @param triggerState When the interrupt should trigger
          */
-        bool registerInterrupt(InterruptCallbackFunction isrFunc = nullptr, int interruptPin = 12, HypnosInterruptType interruptType = SLEEP, int triggerState = LOW);
+        bool registerInterrupt(InterruptCallbackFunction isrFunc = nullptr, int interruptPin = 12, HypnosInterruptType interruptType = SLEEP, int triggerState = FALLING);
 
         /**
          * Called when the user wants to wake the Hypnos back out of the sleep state
