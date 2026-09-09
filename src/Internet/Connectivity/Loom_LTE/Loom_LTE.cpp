@@ -124,6 +124,7 @@ void Loom_LTE::initialize(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::power_up(){
     FUNCTION_START;
+    char output[OUTPUT_SIZE];
  
     // If the batch_sd is initialized and the current batch is one less than the maximum so we turn on the device before the last batch
     if(batch_sd != nullptr && !firstInit){
@@ -132,7 +133,7 @@ void Loom_LTE::power_up(){
             FUNCTION_END;
             return;
         }else{
-            currState = LTEState::DISCONNECTED;
+            currState = LTEState::OFF;
         }
     }
 
@@ -147,9 +148,10 @@ void Loom_LTE::power_up(){
         SerialAT.begin(9600);
         delay(1000);
         bool init = false;
-        int retries = 0;
-        for(retries; retries < 5; retries++){
-            LOG(F("Attempt %d of powering on modem"));
+        int retries = 1;
+        for(retries; retries < 6; retries++){
+            snprintf(output, OUTPUT_SIZE, "Attempt %d of powering on modem", retries);
+            LOG(output);
             if(modem.init()){
                 init = true;
                 break;
@@ -193,7 +195,13 @@ void Loom_LTE::power_down(){
                 currState = LTEState::OFF;
             }
         }
+        else{
+            LOG(F("Device did not disconnect from the network. "));
+        }
 
+    }
+    else{
+        ERROR(F("Device is currently not connected, or was not turned on"));
     }
     FUNCTION_END;
 }
@@ -269,13 +277,12 @@ bool Loom_LTE::connect(){
 bool Loom_LTE::disconnect(){
     FUNCTION_START;
     bool disconnected;
-    if(moduleInitialized && batch_sd != nullptr){
-        if(disconnected == modem.gprsDisconnect()){
-            delay(200);
-            LOG(F("Succressfully disconnected the modem from the network"));
-        }else{
-            ERROR(F("Could not succesfully disconnect modem from network"));
-        }
+
+    if(disconnected = modem.gprsDisconnect()){
+        delay(200);
+        LOG(F("Succressfully disconnected the modem from the network"));
+    }else{
+        ERROR(F("Could not succesfully disconnect modem from network"));
     }
 
     FUNCTION_END;
