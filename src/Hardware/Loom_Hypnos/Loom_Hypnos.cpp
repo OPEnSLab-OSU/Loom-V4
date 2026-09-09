@@ -562,10 +562,6 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
         LOG(F("Device has awoken from sleep!"));
         Watchdog.reset();
 
-        // Clear any pending RTC alarms
-        RTC_DS.clearAlarm();
-        Watchdog.reset();
-
         // Re-init the modules that need it
         manInst->power_up();
 
