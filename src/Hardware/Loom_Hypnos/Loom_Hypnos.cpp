@@ -264,14 +264,19 @@ void Loom_Hypnos::initializeRTC(){
 	}
 
 	// Clear any pending alarms
-	RTC_DS.clearAlarm();
+	RTC_DS.clearAlarm(1);
+    RTC_DS.clearAlarm(2);
+
 
     RTC_DS.writeSqwPinMode(DS3231_OFF);
 
     // We successfully started the RTC
     LOG(F("DS3231 Real-Time Clock Initialized Successfully!"));
     RTC_initialized = true;
-    snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
+    DateTime t = getCurrentTime();
+    char tbuf[21];
+    dateTime_toString(t, tbuf);
+    snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", tbuf);
     LOG(output);
     FUNCTION_END;
 
@@ -329,7 +334,10 @@ bool Loom_Hypnos::networkTimeUpdate(){
             // Attempt to retrieve the current time from our network component
             if(networkComponent->getNetworkTimeUtc(&timeUtc)){
                 RTC_DS.adjust(timeUtc);
-                snprintf(output, OUTPUT_SIZE, "Network time successfully set to: %s", getCurrentTime().text());
+                DateTime t = getCurrentTime();
+                char tbuf[21];
+                dateTime_toString(t, tbuf);
+                snprintf(output, OUTPUT_SIZE, "Network time successfully set to: %s", tbuf);
                 LOG(output);
                 break;
             }else{
@@ -431,8 +439,11 @@ void Loom_Hypnos::set_custom_time(){
     RTC_initialized = true;
 
     // Output
-    snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", getCurrentTime().text());
-	LOG(output);
+    DateTime t = getCurrentTime();
+    char tbuf[21];
+    dateTime_toString(t, tbuf);
+    snprintf(output, OUTPUT_SIZE, "Custom time successfully set to: %s", tbuf);
+    LOG(output);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -440,15 +451,18 @@ void Loom_Hypnos::set_custom_time(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
     FUNCTION_START;
-    char output[OUTPUT_SIZE];
-
     // The time in the future that the alarm will be set for
     timeAlarm = RTC_DS.now() + duration;
-    RTC_DS.setAlarm(timeAlarm);
+    RTC_DS.setAlarm1(timeAlarm, DS3231_A1_Date);
 
     // Print the time that the next interrupt is set to trigger
-    LOGF("Current Time (UTC): %s", RTC_DS.now().text());
-    LOGF("Next interrupt alarm set for: %s", timeAlarm.text());
+    DateTime t = getLocalTime(RTC_DS.now());
+    char tbuf[21];
+    dateTime_toString(t, tbuf);
+    LOGF("Current Time (Local): %s", tbuf, true);
+    t = getLocalTime(timeAlarm);
+    dateTime_toString(t, tbuf);
+    LOGF("Next interrupt alarm set for: %s", tbuf, true);
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -464,8 +478,14 @@ void Loom_Hypnos::sleep(bool waitForSerial){
         manInst->power_down();
 
         // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
-        uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
-        uint32_t currentTime = RTC_DS.now().unixtime();
+        // this means that the alarm may have already triggered Adafruit getAlarm1() returns alarm
+        // day/hour/min/sec with placeholder year/month; build comparable time from current date
+        DateTime now = RTC_DS.now();
+        DateTime alarmReg = RTC_DS.getAlarm1();
+        DateTime alarmDateTime(now.year(), now.month(), alarmReg.day(), alarmReg.hour(),
+                               alarmReg.minute(), alarmReg.second());
+        uint32_t alarmedTime = alarmDateTime.unixtime();
+        uint32_t currentTime = now.unixtime();
         hasAlarmTriggered = alarmedTime <= currentTime;
         
         // 50ms delay allows this last message to be sent before the bus disconnects
@@ -548,6 +568,8 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
 
         // Re-init the modules that need it
         manInst->power_up();
+
+        //this version doesn't clear pending alarms here?
 
         // We want to wait for the user to re-open the serial monitor before continuing to see readouts
         if(waitForSerial){
