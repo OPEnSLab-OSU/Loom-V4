@@ -26,7 +26,6 @@ Loom_LTE::Loom_LTE(Manager& man) : NetworkComponent("LTE"), manInst(&man), modem
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::powerBoardOn(){
 
-    currState = LTEState::POWERING_ON;
     // Handle powering on the parkfun board
     if(lteBoardVersion == SPARKFUN){
         int16_t waitMs = 3000;
@@ -68,11 +67,10 @@ void Loom_LTE::initialize(){
     pinMode(powerPin, INPUT);
 
     // Start up the module
-    currState = LTEState::POWERING_ON;
     power_up();
 
-        // Get the modem info
-        char const* modemInfo = modem.getModemName().c_str();
+    // Get the modem info
+    char const* modemInfo = modem.getModemName().c_str();
 
     // If no LTE shield is found we should not initialize the module
     if(modemInfo == NULL){
@@ -126,15 +124,6 @@ void Loom_LTE::initialize(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::power_up(){
     FUNCTION_START;
-    if((currState == LTEState::CONNECTED) && verifyConnection()){
-        LOG(F("Device remained connected during sleep. Skipping reset and connect"));
-        FUNCTION_END;
-        return;
-    }
-    else if (!firstInit && currState == LTEState::CONNECTED){
-        currState = LTEState::DISCONNECTED;
-        LOG(F("Reconnecting to network"));
-    }
  
     // If the batch_sd is initialized and the current batch is one less than the maximum so we turn on the device before the last batch
     if(batch_sd != nullptr && !firstInit){
@@ -148,7 +137,7 @@ void Loom_LTE::power_up(){
     }
 
     // If not connected to a network we want to connect
-    if(moduleInitialized && (currState == LTEState::POWERING_ON)){
+    if(moduleInitialized && (currState == LTEState::OFF)){
         LOG(F("Powering up GPRS Modem. This should take about 10 seconds..."));
         TIMER_DISABLE;
         // Power on whatever the currently used LTE board is
@@ -157,24 +146,34 @@ void Loom_LTE::power_up(){
         // Delay an additional one second to allow communication to open up
         SerialAT.begin(9600);
         delay(1000);
-        bool restarted = modem.restart();
-        if(restarted){
+        bool init = false;
+        int retries = 0;
+        for(retries; retries < 5; retries++){
+            LOG(F("Attempt %d of powering on modem"));
+            if(modem.init()){
+                init = true;
+                break;
+            }
+            delay(500);
+        }
+        if(init){
             LOG(F("Powering up complete!"));
             currState = LTEState::DISCONNECTED;
         }else{
-            ERROR(F("Modem did not power on."))
-            currState = LTEState::POWERING_ON;
+            ERROR(F("Modem did not power on."));
+            currState = LTEState::OFF;
         }
         TIMER_ENABLE;
     }
     
-    if(!firstInit && moduleInitialized && currState == LTEState::DISCONNECTED)
+    if(!firstInit && moduleInitialized && currState == LTEState::DISCONNECTED){
         bool connected = connect();
         if(!connected){
             currState = LTEState::DISCONNECTED;
         }else{
             currState = LTEState::CONNECTED;
         }
+    }
 
     FUNCTION_END;
 
@@ -184,17 +183,17 @@ void Loom_LTE::power_up(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::power_down(){
     FUNCTION_START;
-    if(moduleInitialized && currState != OFF){
-        LOG(F("Putting GPRS modem into idle mode. This should take about 5 seconds..."));
+    if (moduleInitialized && currState != LTEState::OFF) {
+        LOG(F("Powering down GPRS Modem. This should take about 5 seconds..."));
         if(disconnect()){
-            currState = LTEState::SLEEPING;
-        } else{
+            LOG(F("Modem succesfully disconnected from the internet"));
             currState = LTEState::DISCONNECTED;
+            if(modem.poweroff()){
+                LOG(F("Powering down complete!"));
+                currState = LTEState::OFF;
+            }
         }
-        // // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release the pin state
-        // pull();
 
-        LOG(F("Powering down complete!"));
     }
     FUNCTION_END;
 }
@@ -271,15 +270,14 @@ bool Loom_LTE::disconnect(){
     FUNCTION_START;
     bool disconnected;
     if(moduleInitialized && batch_sd != nullptr){
-        if(disconnected = modem.gprsDisconnect()){
+        if(disconnected == modem.gprsDisconnect()){
             delay(200);
+            LOG(F("Succressfully disconnected the modem from the network"));
         }else{
-            ERROR(F("Could not succesfully put modem to sleep"))
+            ERROR(F("Could not succesfully disconnect modem from network"));
         }
     }
-    else{
-        
-    }
+
     FUNCTION_END;
     return disconnected;
 }
