@@ -2,7 +2,7 @@
 
 #include <SPI.h>
 #include <SdFat.h>
-#include <OPEnS_RTC.h>
+#include <RTClib.h>
 
 #include "../../Module.h"
 #include "../../Loom_Manager.h"
