@@ -254,6 +254,8 @@ class Loom_Hypnos : public Module{
         /* Return initialization state of the RTC */
         bool isRTCInitialized() { return RTC_initialized; };
 
+        DateTime getLocalTime(DateTime time);                                               // Convert a given UTC time to local time
+
     private:
 
         Manager* manInst = nullptr;                                                         // Instance of the manager
@@ -315,7 +317,6 @@ class Loom_Hypnos : public Module{
         void createTimezoneMap();                                                           // Map Timezone Strings to Timezone enum
         std::map<const char*, TIME_ZONE, cmp_str> timezoneMap;                              // String to Timezone enum, use custom compare to ensure that strings are compared correctly
 
-        DateTime getLocalTime(DateTime time);                                               // Convert a given UTC time to local time
         TIME_ZONE timezone;                                                                 // Timezone the RTC was set to
 
         DateTime time;                                                                      // UTC time

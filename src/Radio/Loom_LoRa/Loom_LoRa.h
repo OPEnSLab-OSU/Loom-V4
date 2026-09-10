@@ -238,4 +238,3 @@ private:
     
     uint expectedOutstandingPackets;   // estimated number of outstanding packets
 };
-
