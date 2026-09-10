@@ -86,6 +86,10 @@ class Loom_LTE : public NetworkComponent{
         void setBatchSD(Loom_BatchSD& batch) { batch_sd = &batch; };
 
         /**
+         * If MCU interrupted and LTE board left in bad state, attempt different reset techniques
+         */
+        void reset();
+        /**
          * Connect to the cellular network
          */
         bool connect();
