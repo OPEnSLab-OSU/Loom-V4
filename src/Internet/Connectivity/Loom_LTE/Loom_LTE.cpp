@@ -82,6 +82,7 @@ void Loom_LTE::initialize(){
         return;
     }
 
+    firstInit = false;
     FUNCTION_END;
 
 }
