@@ -28,7 +28,6 @@ class Loom_LTE : public NetworkComponent{
     protected:
         /* These aren't used with the Wifi manager */
         void measure() override {};
-
         bool isConnected() override { return modem.isGprsConnected(); };
 
     public:
@@ -61,9 +60,12 @@ class Loom_LTE : public NetworkComponent{
 
         // Reconnect to the network
         void power_up() override;
+        
+        // Put LTE into idle mode
+        void power_down() override;
 
         // Disconnect from the network
-        void power_down() override;
+        // void power_down() override;
 
         // Signal Strength
         void package() override;
@@ -84,6 +86,10 @@ class Loom_LTE : public NetworkComponent{
         void setBatchSD(Loom_BatchSD& batch) { batch_sd = &batch; };
 
         /**
+         * If MCU interrupted and LTE board left in bad state, attempt different reset techniques
+         */
+        void reset();
+        /**
          * Connect to the cellular network
          */
         bool connect();
@@ -91,7 +97,7 @@ class Loom_LTE : public NetworkComponent{
         /**
          * Disconnect from the cellular network
          */
-        void disconnect();
+        bool disconnect();
 
         /**
          * Attempt to connect to something remote to see if we actually have an internet connection
@@ -139,10 +145,22 @@ class Loom_LTE : public NetworkComponent{
         TinyGsm modem;                      // LTE Modem
         TinyGsmClient client;               // LTE Client
 
-        bool powerUp = true;
         bool firstInit = true;              // First time it was initialized
         Loom_BatchSD* batch_sd = nullptr;   // If we are using batch publish
 
-        bool powered = false;               // Device power status
+
+        enum class LTEState {               // device state
+            OFF,
+            POWERING_ON,
+            INITIALIZING,
+            REGISTERING,
+            CONNECTING,
+            CONNECTED,
+            DISCONNECTED,
+            ERROR,
+            SLEEPING
+        };
+
+        LTEState currState = LTEState::OFF;
 
 };

@@ -8,6 +8,7 @@ Loom_LTE::Loom_LTE(Manager& man, const char* apn, const char* user, const char* 
     strncpy(this->gprsPass, pass, 100);
     this->powerPin = pin;
 
+
     lteBoardVersion = version;
     manInst->registerModule(this);
 }
@@ -61,55 +62,26 @@ void Loom_LTE::powerBoardOff(){
 void Loom_LTE::initialize(){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
-    char ip[16];
     // Set the pin to output so we can write to it
     pinMode(powerPin, INPUT);
 
     // Start up the module
     power_up();
 
+    moduleInitialized = currState == LTEState::CONNECTED;
+
     // Get the modem info
-    char const* modemInfo = modem.getModemInfo().c_str();
+    char const* modemInfo = modem.getModemName().c_str();
 
     // If no LTE shield is found we should not initialize the module
     if(modemInfo == NULL){
         ERROR(F("LTE shield not detected! This can also be triggered if there isn't a SIM card in the board"));
+        currState = LTEState::ERROR;
         moduleInitialized = false;
         FUNCTION_END;
         return;
     }
-    else{
-        snprintf(output, OUTPUT_SIZE, "Modem Information: %s", modemInfo);
-    }
 
-    // Connect to the LTE network
-    moduleInitialized = connect();
-
-    // If we successfully connected to the LTE network print out some information
-    if(moduleInitialized){
-        LOG(F("Connected!"));
-
-        // Print APN
-        snprintf(output, OUTPUT_SIZE, "APN: %s", APN);
-        LOG(output);
-
-        // Signal Quality
-        snprintf(output, OUTPUT_SIZE, "Signal State: %i", modem.getSignalQuality());
-        LOG(output);
-
-        // Log IP address
-        ipToString(modem.localIP(), ip);
-        snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
-        LOG(output);
-
-        //verifyConnection();
-        LOG(F("Module successfully initialized!"));
-    }
-    else{
-        ERROR(F("Module failed to initialize"));
-    }
-
-    firstInit = false;
     FUNCTION_END;
 
 }
@@ -118,40 +90,80 @@ void Loom_LTE::initialize(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::power_up(){
     FUNCTION_START;
+    char output[OUTPUT_SIZE];
+    char ip[16];
+
+    if(currState == LTEState::ERROR){
+        reset();
+    }
+ 
     // If the batch_sd is initialized and the current batch is one less than the maximum so we turn on the device before the last batch
     if(batch_sd != nullptr && !firstInit){
         if(batch_sd->getCurrentBatch() != batch_sd->getBatchSize()-1){
-            powerUp = false;
+            currState = LTEState::SLEEPING;
             FUNCTION_END;
             return;
         }else{
-            powerUp = true;
+            currState = LTEState::OFF;
         }
     }
 
     // If not connected to a network we want to connect
-    if(moduleInitialized){
+    if(currState == LTEState::OFF){
         LOG(F("Powering up GPRS Modem. This should take about 10 seconds..."));
         TIMER_DISABLE;
-
         // Power on whatever the currently used LTE board is
         powerBoardOn();
 
         // Delay an additional one second to allow communication to open up
         SerialAT.begin(9600);
         delay(1000);
-        modem.restart();
-        LOG(F("Powering up complete!"));
-        powered = true;
+        bool init = false;
+        for(int retries = 1; retries < 6; retries++){
+            snprintf(output, OUTPUT_SIZE, "Attempt %d of powering on modem", retries);
+            LOG(output);
+            if(modem.init()){
+                init = true;
+                break;
+            }
+            delay(500);
+        }
+        if(init){
+            LOG(F("Powering up complete!"));
+            currState = LTEState::DISCONNECTED;
+        }else{
+            ERROR(F("Modem did not power on. Attempting recovery."));
+            currState = LTEState::ERROR;
+            reset();
+        }
         TIMER_ENABLE;
     }
-    // If the module isn't initialized we want to try again
-    else{
-        initialize();
-    }
     
-    if(!firstInit && moduleInitialized)
-            connect();
+    if(currState == LTEState::DISCONNECTED){
+        connect();
+        if(currState == LTEState::CONNECTING){
+            // Print APN
+            snprintf(output, OUTPUT_SIZE, "APN: %s", APN);
+            LOG(output);
+
+            // Signal Quality
+            snprintf(output, OUTPUT_SIZE, "Signal State: %i", modem.getSignalQuality());
+            LOG(output);
+
+            // Log IP address
+            ipToString(modem.localIP(), ip);
+            snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
+            LOG(output);
+
+            if(verifyConnection()){
+                currState = LTEState::CONNECTED;
+                LOG(F("Module successfully connected!"));
+            }else{
+                ERROR(F("Module could not reach server"));
+                currState = LTEState::DISCONNECTED;
+            }
+        }
+    }
 
     FUNCTION_END;
 
@@ -161,17 +173,78 @@ void Loom_LTE::power_up(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::power_down(){
     FUNCTION_START;
-    if(moduleInitialized && powerUp){
+    if (currState == LTEState::CONNECTED) {
         LOG(F("Powering down GPRS Modem. This should take about 5 seconds..."));
-        modem.poweroff();
-        // // We must pull the power pin low for 3.5 seconds to trigger a power on, and then release the pin state
-        // pull();
-        powered = false;
+        TIMER_ENABLE;
+        if(disconnect()){
+            TIMER_DISABLE;
+            LOG(F("Modem succesfully disconnected from the internet"));
+            currState = LTEState::DISCONNECTED;
+            if(modem.poweroff()){
+                LOG(F("Powering down complete!"));
+                currState = LTEState::OFF;
+            }
+        }
+        else{
+            TIMER_DISABLE;
+            LOG(F("Device did not disconnect from the network. "));
+        }
 
-        LOG(F("Powering down complete!"));
     }
+    else{
+        ERROR(F("Device is not currently connected. Shutting down"));
+        TIMER_ENABLE;
+        if(modem.poweroff()){
+            TIMER_DISABLE;
+            LOG(F("Powering down complete!"));
+            currState = LTEState::OFF;
+        }
+    }
+    TIMER_DISABLE;
     FUNCTION_END;
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LTE::reset(){
+    FUNCTION_START;
+    TIMER_DISABLE;
+    LOG("Attempting LTE recovery. This may take up to 5 seconds.");
+    // tells modem to leave data mode and enter command mode
+    delay(1100);                  
+    SerialAT.print("+++");        
+    delay(1100);  
+    TIMER_ENABLE;
+    if(modem.init()){
+        LOG("Successfully recovered");
+        currState = LTEState::DISCONNECTED;
+        FUNCTION_END;
+        return;
+    }
+
+    TIMER_DISABLE;
+    LOG("Recovery failed. Attempting LTE software reset. This may take up to 20 seconds");
+
+    // Manually force a soft reset command down the line 
+    SerialAT.println("AT+CFUN=15"); 
+    
+    // Give the u-blox operating system 15-20 seconds to log off and reboot cleanly
+    delay(20000); 
+    
+    TIMER_ENABLE;
+    // Try initializing one final time
+    if (modem.init()) {
+        Serial.println("Modem recovered via software reboot!");
+        currState = LTEState::DISCONNECTED;
+        FUNCTION_END;
+        return;
+    }
+
+    FUNCTION_END;
+}
+
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -190,23 +263,25 @@ bool Loom_LTE::connect(){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     uint8_t attemptCount = 1; // Tracks number of attempts, 5 is a fail
-
+    currState = LTEState::REGISTERING;
     TIMER_DISABLE;
     do{
         LOG(F("Waiting for network..."));
         if(!modem.waitForNetwork()){
             ERROR(F("No Response from network!"));
+            TIMER_ENABLE;
             FUNCTION_END;
             return false;
         }
-
         if(!modem.isNetworkConnected()){
             ERROR(F("No connection to network!"));
+            TIMER_ENABLE;
             FUNCTION_END;
             return false;
         }
 
-        LOG(F("Connected to network!"));
+        LOG(F("Registered to carrier!"));
+        currState = LTEState::CONNECTING;
 
         // Connect to lte network
         snprintf(output, OUTPUT_SIZE, "Attempting to connect to LTE Network: %s", APN);
@@ -214,12 +289,12 @@ bool Loom_LTE::connect(){
         if(modem.gprsConnect(APN, gprsUser, gprsPass)){
             LOG(F("Successfully Connected!"));
             delay(6000);
-            FUNCTION_END;
             TIMER_ENABLE;
+            FUNCTION_END;
             return true;
         }
         else{
-            snprintf(output, OUTPUT_SIZE, "Connection failed %u / 10. Retrying...", attemptCount);
+            snprintf(output, OUTPUT_SIZE, "Connection failed %u / 5. Retrying...", attemptCount);
             WARNING(output);
             delay(10000);
             attemptCount++;
@@ -227,31 +302,34 @@ bool Loom_LTE::connect(){
 
         // If the last attempt was the 5th attempt then stop
         if(attemptCount > 5){
-            ERROR(F("Connection reattempts exceeded 10 tries. Connection Failed"));
-            FUNCTION_END;
+            ERROR(F("Connection reattempts exceeded 5 tries. Connection Failed"));
             TIMER_ENABLE;
+            FUNCTION_END;
             return false;
+            
         }
     }while(!isConnected());
-    FUNCTION_END;
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LTE::disconnect(){
+bool Loom_LTE::disconnect(){
     FUNCTION_START;
-    if(moduleInitialized){
-        modem.gprsDisconnect();
+    bool disconnected;
+
+    if(disconnected = modem.gprsDisconnect()){
         delay(200);
     }
+
     FUNCTION_END;
+    return disconnected;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::verifyConnection(){
     FUNCTION_START;
-    bool returnStatus =  false;
     LOG(F("Attempting to verify internet connection..."));
 
     // Connect to TinyGSM's creator's website
@@ -269,23 +347,24 @@ bool Loom_LTE::verifyConnection(){
         client.print("Connection: close\r\n\r\n");
         client.println();
 
-        // Print logo to screen
+        // dont care about what the response is, as long as we got a response.
         uint32_t timeout = millis();
-        while (client.connected() && millis() - timeout < 10000L) {
-            // Print available data
-            while (client.available() && millis() - timeout < 10000L) {
-                char c = client.read();
-                Serial.print(c);
-                timeout = millis();
+        while (client.connected() && millis() - timeout < 10000) {
+            if (client.available()) {
+                client.stop();
+
+                LOG(F("Internet connection verified"));
+                TIMER_RESET;
+                FUNCTION_END;
+                return true;
             }
         }
-        Serial.println();
         client.stop();
-        returnStatus = true;
+        LOG(F("Connected to server but received no response"));
+        TIMER_RESET;
+        FUNCTION_END;
+        return false;
     }
-    TIMER_RESET;
-    FUNCTION_END;
-    return true;
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -300,8 +379,9 @@ void Loom_LTE::loadConfigFromJSON(char* json){
 
     // Check if an error occurred and if so print it
     if(deserialError != DeserializationError::Ok){
-        snprintf(output, OUTPUT_SIZE, "There was an error reading the WIFI credentials from SD: %s", deserialError.c_str());
+        snprintf(output, OUTPUT_SIZE, "There was an error reading the LTE credentials from SD: %s", deserialError.c_str());
         ERROR(output);
+        return;
     }
 
     // Check if apn is null
