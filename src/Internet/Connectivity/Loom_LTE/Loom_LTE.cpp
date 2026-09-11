@@ -184,12 +184,20 @@ void Loom_LTE::power_down(){
             if(modem.poweroff()){
                 LOG(F("Powering down complete!"));
                 currState = LTEState::OFF;
+                FUNCTION_END;
+                return;
             }
         }
         else{
             TIMER_DISABLE;
             LOG(F("Device did not disconnect from the network. "));
         }
+
+    }
+    if(currState == LTEState::SLEEPING){
+        LOG(F("Device is already powered off. Continuing"));
+        FUNCTION_END;
+        return;
 
     }
     else{
@@ -240,6 +248,9 @@ void Loom_LTE::reset(){
         currState = LTEState::DISCONNECTED;
         FUNCTION_END;
         return;
+    }
+    else{
+        moduleInitialized = false;
     }
 
     FUNCTION_END;
