@@ -198,6 +198,20 @@ class Logger {
      */
     void logLong(char *message, bool silent) { log(message, silent); };
 
+    // Preserve LOG_LONG's unprefixed pretty-JSON payload on both destinations without
+    // allocating MAX_JSON_SIZE bytes on the Feather M0 stack.
+    void logDocument(const DynamicJsonDocument &document) {
+        serializeJsonPretty(document, Serial);
+        Serial.println();
+        if (sdInst != nullptr && enableSDLogging && sdInst->hasSDInitialized()) {
+            char filePath[32];
+            snprintf_P(filePath, sizeof(filePath), PSTR("/debug/output_%i.log"),
+                       sdInst->getCurrentFileNumber());
+            if (!sdInst->writeJsonToFile(filePath, document))
+                Serial.println(F("Could not save JSON to the SD debug log!"));
+        }
+    }
+
     /* Enable function summaries to view memory usage */
     void enableSummaries() { enableFunctionSummaries = true; };
 

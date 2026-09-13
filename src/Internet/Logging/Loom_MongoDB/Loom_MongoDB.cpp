@@ -1,6 +1,7 @@
 #include "Loom_MongoDB.h"
 #include "../../../Sensors/Loom_Analog/Loom_Analog.h"
 #include "Logger.h"
+#include "Utilities/Loom_SDUtils.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MongoDB::Loom_MongoDB(Manager &man, NetworkComponent &internet_client,
@@ -33,6 +34,11 @@ Loom_MongoDB::Loom_MongoDB(Manager &man, NetworkComponent &internet_client)
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_MongoDB::publish() {
     FUNCTION_START;
+
+    if (!manInst->isPacketValid()) {
+        ERROR(F("Refusing to publish an empty or overflowed JSON packet."));
+        return false;
+    }
 
     if (moduleInitialized) {
 
@@ -167,44 +173,47 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
 
             // MQTT requires the payload length before the body. Scan each line once for its length,
             // seek back, and then stream it in small chunks instead of reserving 2 KB on the stack.
-            while (fileOutput.available()) {
-                int value = fileOutput.read();
-                if (value == '\r' || value == '\n')
-                    continue;
-
-                const uint32_t lineStart = fileOutput.curPosition() - 1;
-                size_t lineLength = 1;
-                bool lineTooLong = false;
-                while (fileOutput.available()) {
-                    value = fileOutput.read();
-                    if (value == '\r' || value == '\n')
-                        break;
-                    ++lineLength;
-                    if (lineLength >= MAX_JSON_SIZE)
-                        lineTooLong = true;
+            while (true) {
+                uint32_t lineStart = 0;
+                size_t lineLength = 0;
+                const loomSD::RecordResult result =
+                    loomSD::nextRecord(fileOutput, lineStart, lineLength, MAX_JSON_SIZE);
+                if (result == loomSD::RecordResult::End)
+                    break;
+                if (result != loomSD::RecordResult::Ready) {
+                    ERROR(result == loomSD::RecordResult::ReadError
+                              ? F("SD read failed during batch scan; retaining the batch.")
+                              : F("Batch packet exceeds MAX_JSON_SIZE; retaining the batch."));
+                    allDataSuccess = false;
+                    break;
                 }
 
                 ++packetNumber;
-                if (lineTooLong) {
-                    ERROR(F("Batch packet exceeds MAX_JSON_SIZE and was skipped."));
-                    allDataSuccess = false;
-                    continue;
-                }
-
                 LOGF("Publishing Packet %i of %i", packetNumber, batchSD.getCurrentBatch());
-                if (!fileOutput.seekSet(lineStart) ||
-                    !publishStream(topic, fileOutput, lineLength)) {
+                if (!fileOutput.seekSet(lineStart)) {
+                    ERROR(F("SD seek failed before batch publish; retaining the batch."));
+                    allDataSuccess = false;
+                    break;
+                }
+                if (!publishStream(topic, fileOutput, lineLength)) {
                     WARNINGF("Failed to publish packet #%i", packetNumber);
                     allDataSuccess = false;
                 }
                 // On a partial network write, restore the cursor to the end of this record so its
                 // remainder cannot be mistaken for a new packet.
-                fileOutput.seekSet(lineStart + lineLength);
+                if (!fileOutput.seekSet(lineStart + lineLength)) {
+                    ERROR(F("SD seek failed after batch publish; retaining the batch."));
+                    allDataSuccess = false;
+                    break;
+                }
                 // publishStream leaves the cursor just before the delimiter. The next outer
                 // iteration consumes CR, LF, or both.
                 delay(500);
             }
             fileOutput.close();
+
+            if (!allDataSuccess)
+                return false;
 
             if (packetNumber == 0) {
                 ERROR(F("BatchSD counter is ready, but the batch file contains no records."));

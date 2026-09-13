@@ -1,5 +1,6 @@
 #include "MQTTComponent.h"
 #include "Logger.h"
+#include "Utilities/Loom_JsonUtils.h"
 
 namespace {
 constexpr uint32_t RETAINED_MESSAGE_TIMEOUT_MS = 2000;
@@ -130,6 +131,11 @@ bool MQTTComponent::publishMessage(const char *topic, const char *message, bool 
 bool MQTTComponent::publishDocument(const char *topic, const DynamicJsonDocument &document,
                                     bool retain, int qos) {
     FUNCTION_START;
+
+    if (!loomJsonIsComplete(document)) {
+        ERROR(F("Refusing to publish an empty or overflowed JSON document."));
+        return false;
+    }
 
     if (!moduleInitialized || !internetClient.moduleInitialized) {
         ERROR(F("Module or NetworkComponent not initialized!"));

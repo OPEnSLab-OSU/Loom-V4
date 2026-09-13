@@ -1,5 +1,28 @@
 # Loom compile tests
 
+## Data safety regression tests
+
+Run `./verify_data_safety.ps1` on Windows with Visual Studio C++ Build Tools installed.
+It uses the package's ArduinoJson headers and writes compiler products only to a new temporary
+directory. These host tests inject failed SD reads and closes into the production helpers and
+cover sparse/orphaned filenames, case-insensitive matching, length/counter boundaries, JSON
+overflow and recovery, and equivalence of buffered versus streamed pretty JSON.
+They do not emulate SD hardware, MQTT transport, or prove that a board cannot freeze.
+
+On a host with GCC, the same tests can be run with:
+
+```sh
+g++ -std=c++11 -Wall -Wextra -Isrc -I../ArduinoJson/src tests/data_safety_regression.cpp -o /tmp/loom-data-safety
+/tmp/loom-data-safety
+```
+
+Hardware acceptance checks: remove/fault the SD card during batch replay, test failed debug-log
+flushes, reboot with a sparse set of numbered files, and force JSON overflow before `logToSD()`
+and `publish()`. Failed packets must not enter CSV/batch output or be published; the next valid
+packet must work. Confirm `/debug/output_N.log` again includes the pretty JSON payload.
+
+## Board-package verification
+
 Before building a board-package release, run `verify_patched_dependencies.ps1`. It compares the
 installed package-level OPEnS_RTC, SparkFun AS726X, and SparkFun AS7265X build inputs against the
 authoritative copies under `Loom/dependencies`. It also verifies that active SAMD21 SERCOM/Wire

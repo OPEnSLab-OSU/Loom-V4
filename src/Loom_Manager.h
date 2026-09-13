@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "Module.h"
+#include "Utilities/Loom_JsonUtils.h"
 
 #define WAIT_TIME_MS 20000 // Time to wait for the serial interface to start
 #define BAUD_RATE 115200   // Serial interface baud rate
@@ -39,6 +40,9 @@ class Manager {
      * @return reference to the main JSON document
      */
     DynamicJsonDocument &getDocument(); // Returns a reference to the main JSON document storing
+
+    /** Check at the output boundary, including data added by a sketch after package(). */
+    bool isPacketValid() const { return loomJsonIsComplete(doc); }
 
     /**
      * Add a random piece of data to the overall JSON package in the given module name with a name

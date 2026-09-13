@@ -204,11 +204,8 @@ void Manager::display_data() {
             modules[i]->display_data();
         }
 
-        LOG(F("Data Json:"));
-        // ArduinoJson can serialize to Print directly. Avoid a 2 KB stack array and avoid
-        // duplicating the full payload into the optional SD debug log.
-        serializeJsonPretty(doc, Serial);
-        Serial.println();
+        LOG(F("Data Json: \n"));
+        Logger::getInstance()->logDocument(doc);
     } else {
         LOG(F("JSON Document is Null there is no data to display"));
     }

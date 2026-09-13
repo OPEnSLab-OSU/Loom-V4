@@ -449,6 +449,10 @@ bool Loom_LoRa::sendPacketHeader(JsonObject json, uint8_t destinationAddress) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::send(const uint8_t destinationAddress) {
+    if (!manager->isPacketValid()) {
+        ERROR(F("Refusing to send an empty or overflowed JSON packet."));
+        return false;
+    }
     return send(destinationAddress, manager->getDocument().as<JsonObject>());
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -508,14 +512,19 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
         const DeserializationError error = deserializeJson(manager->getDocument(), fileOutput);
         if (error != DeserializationError::Ok) {
             ERRORF("Failed to parse batch packet %i: %s", i + 1, error.c_str());
-            while (fileOutput.available() && fileOutput.read() != '\n') {
-            }
-            allSucceeded = false;
-            continue;
+            // A failed SD read may leave available() positive forever. Do not drain a
+            // damaged record; stop this replay and keep the batch for diagnosis/retry.
+            fileOutput.close();
+            return false;
         }
 
-        while (fileOutput.peek() == '\r' || fileOutput.peek() == '\n')
-            fileOutput.read();
+        while (fileOutput.peek() == '\r' || fileOutput.peek() == '\n') {
+            if (fileOutput.read() < 0) {
+                ERROR(F("SD read failed after batch packet; retaining the batch."));
+                fileOutput.close();
+                return false;
+            }
+        }
 
         attempted = true;
         const bool status = send(destinationAddress);

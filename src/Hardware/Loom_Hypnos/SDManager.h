@@ -81,6 +81,9 @@ class SDManager : public Module {
      */
     bool writeLineToFile(const char *filename, const char *content);
 
+    /** Append pretty JSON to the debug log without a document-sized RAM buffer. */
+    bool writeJsonToFile(const char *filename, const DynamicJsonDocument &document);
+
     /** Enable direct-Serial phase markers around single-line SD writes for beta diagnosis. */
     void setWriteDebug(bool enabled = true) { writeDebug = enabled; };
 
@@ -171,6 +174,8 @@ class SDManager : public Module {
     bool writeDebug = false;      // Direct-Serial beta trace; never written through Logger
 
     void logBatch(); // Append one JSON record to the batch file
+
+    bool finishDebugWrite(File &file, bool wroteAll);
 
     bool writeHeaders(); // Create the headers for the CSV file based off what info we are storing
     bool updateCurrentFileName(); // Update the current file name to log to based on files already

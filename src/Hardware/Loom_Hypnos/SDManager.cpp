@@ -1,5 +1,6 @@
 #include "SDManager.h"
 #include "Logger.h"
+#include "Utilities/Loom_SDUtils.h"
 
 namespace {
 constexpr size_t MAX_SD_READ_BYTES = 4999;
@@ -90,19 +91,9 @@ bool SDManager::writeLineToFile(const char *filename, const char *content) {
             outputFile.clearWriteError();
             const size_t contentLength = strlen(content);
             const bool wroteContent = outputFile.print(content) == contentLength;
-            const bool wroteNewline = outputFile.println() > 0;
+            const bool wroteNewline = outputFile.println() == 2;
             const bool writeComplete = wroteContent && wroteNewline && !outputFile.getWriteError();
-
-            if (writeDebug)
-                Serial.println(F("[SD DEBUG] close"));
-            outputFile.close();
-            if (writeDebug)
-                Serial.println(F("[SD DEBUG] done"));
-
-            if (writeComplete)
-                return true;
-            printModuleName("Failed while writing file contents!");
-            return false;
+            return finishDebugWrite(outputFile, writeComplete);
         }
         if (writeDebug)
             Serial.println(F("[SD DEBUG] open failed"));
@@ -119,6 +110,41 @@ bool SDManager::writeLineToFile(const char *filename, const char *content) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+bool SDManager::finishDebugWrite(File &file, bool wroteAll) {
+    if (writeDebug)
+        Serial.println(F("[SD DEBUG] close"));
+    const bool complete = loomSD::closeAfterWrite(file, wroteAll);
+    if (writeDebug)
+        Serial.println(complete ? F("[SD DEBUG] done") : F("[SD DEBUG] failed"));
+    if (!complete)
+        printModuleName("Failed while writing or closing debug file!");
+    return complete;
+}
+
+bool SDManager::writeJsonToFile(const char *filename, const DynamicJsonDocument &document) {
+    if (!sdInitialized || filename == nullptr || filename[0] == '\0')
+        return false;
+    if (writeDebug) {
+        Serial.print(F("[SD DEBUG] open "));
+        Serial.println(filename);
+    }
+    File outputFile = sd.open(filename, O_RDWR | O_CREAT | O_APPEND);
+    if (!outputFile) {
+        if (writeDebug)
+            Serial.println(F("[SD DEBUG] open failed"));
+        printModuleName("Failed to open JSON debug file!");
+        return false;
+    }
+    if (writeDebug)
+        Serial.println(F("[SD DEBUG] write"));
+    outputFile.clearWriteError();
+    const size_t expected = measureJsonPretty(document);
+    const size_t written = serializeJsonPretty(document, outputFile);
+    const bool newlineComplete = outputFile.println() == 2;
+    return finishDebugWrite(outputFile,
+                            written == expected && newlineComplete && !outputFile.getWriteError());
+}
+
 bool SDManager::writeHeaders() {
     // Preserve the legacy byte layout: the serial text contained an LF before println() added its
     // normal line ending, leaving the established blank separator without a 513-byte stack array.
@@ -163,6 +189,13 @@ bool SDManager::writeHeaders() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::log(DateTime currentTime) {
     bool logged = false;
+
+    // An overflowed ArduinoJson document still serializes to syntactically valid but incomplete
+    // JSON. Reject it before creating CSV headers, appending a row, or incrementing the batch.
+    if (!manInst->isPacketValid()) {
+        printModuleName("Refusing to save an empty or overflowed JSON packet!");
+        return false;
+    }
 
     if (sdInitialized) {
 
@@ -344,53 +377,35 @@ bool SDManager::begin() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::updateCurrentFileName() {
-    // uint16_t indexDir = 0; // Reserved for directory-index tracking.
     char f_name[LOG_FILENAME_SIZE];
-    char *strLocation;
-
-    // What number we need to append to the file name
+    const char *base = overrideFileName[0] ? overrideFileName : device_name;
     file_count = 0;
 
-    // While there is a next file to open, open it
+    // Select above the highest existing CSV OR batch number. Counting files reuses names
+    // after a deletion or a failed half-pair write, and mixes old records with a new RAM counter.
     while (scanningFile.openNext(&root)) {
-        scanningFile.getName(f_name, sizeof(f_name));
-
-        if (strlen(overrideFileName) > 0) {
-            // Check if the substring exists
-            strLocation = strstr(f_name, overrideFileName);
-        } else {
-            // Check if the substring exists
-            strLocation = strstr(f_name, device_name);
-        }
-
-        if (strLocation != NULL) {
-            // Increase the file count per loop to track what the next file should be
-            file_count++;
-        }
+        const bool named = scanningFile.getName(f_name, sizeof(f_name));
         scanningFile.close();
+        if (!named || !loomSD::advanceLogNumber(f_name, base, file_count)) {
+            printModuleName("Cannot safely select a new SD log number!");
+            return false;
+        }
     }
 
-    // Account for the batch files if we are using batch logging
-    if (batch_size > 0) {
-        file_count = file_count / 2;
-    }
-
-    if (strlen(overrideFileName) > 0) {
-        // Set all the fileNames with the override name
-        buildNumberedName(fileName, sizeof(fileName), overrideFileName, getCurrentFileNumber(),
-                          ".csv");
-        buildNumberedName(batchFileName, sizeof(batchFileName), overrideFileName,
-                          getCurrentFileNumber(), "-Batch.txt");
-
-    } else {
-        // Set all the fileNames
-        buildNumberedName(fileName, sizeof(fileName), device_name, getCurrentFileNumber(), ".csv");
-        buildNumberedName(batchFileName, sizeof(batchFileName), device_name,
-                          getCurrentFileNumber(), "-Batch.txt");
-    }
-
-    // Close the root file after we have decided what to name the next file
+    const bool scanFailed = root.getError() != 0 || scanningFile.getError() != 0;
     root.close();
+    if (scanFailed) {
+        printModuleName("SD directory read failed; log filename was not selected!");
+        return false;
+    }
+
+    buildNumberedName(fileName, sizeof(fileName), base, file_count, ".csv");
+    buildNumberedName(batchFileName, sizeof(batchFileName), base, file_count, "-Batch.txt");
+    if (sd.exists(fileName) || sd.exists(batchFileName)) {
+        printModuleName("Selected SD log name already exists; refusing to mix sessions!");
+        return false;
+    }
+    current_batch = 0;
 
     printModuleName("Data will be logged to:");
     printModuleName(fileName);

@@ -111,6 +111,10 @@ bool Loom_Freewave::receive(uint maxWaitTime) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Freewave::send(const uint8_t destinationAddress) {
+    if (!manInst->isPacketValid()) {
+        ERROR(F("Refusing to send an empty or overflowed JSON packet."));
+        return false;
+    }
     if (!moduleInitialized) {
         ERROR(F("Freewave radio is not initialized."));
         return false;
