@@ -84,7 +84,6 @@ class Loom_RemoteManager : public MQTTComponent{
         void updateDeviceStatus(bool onOff);
 
         /* Hypnos */
-        void updateHypnosInterval(char topic[MAX_TOPIC_LENGTH], char message[MAX_JSON_SIZE], StaticJsonDocument<MAX_JSON_SIZE> &json);
         void updateHypnosTime(char topic[MAX_TOPIC_LENGTH], char message[MAX_JSON_SIZE], StaticJsonDocument<MAX_JSON_SIZE> &json);
         
 };

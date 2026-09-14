@@ -51,9 +51,6 @@ bool Loom_RemoteManager::publish(){
     // Check if we are using a hypnos and then update the parameters about the hypnos
     if(hypnosInst != nullptr){
 
-        // Update the hypnos sleep interval if there is anything to update
-        updateHypnosInterval(topic, message, tempDoc);
-
         // Update the RTC time, if desired
         updateHypnosTime(topic, message, tempDoc);
         
@@ -101,39 +98,6 @@ void Loom_RemoteManager::loadConfigFromJSON(char* json){
     
     free(json);
     FUNCTION_END;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_RemoteManager::updateHypnosInterval(char topic[MAX_TOPIC_LENGTH], char message[MAX_JSON_SIZE], StaticJsonDocument<MAX_JSON_SIZE> &json){
-    // Clear message and topic and json
-    memset(topic, '\0', MAX_TOPIC_LENGTH);
-    memset(message, '\0', MAX_JSON_SIZE);
-    json.clear();
-
-    /* 
-        This is the topic that we need to publish to to change the sleep interval.
-        The packet published here by the remote management interface should be as follows
-        {
-            "days": 0, 
-            "hours": 0, 
-            "minutes": 0,
-            "seconds": 0
-        }
-    */
-    snprintf(topic, MAX_TOPIC_LENGTH, "RemoteManager/%s%i/Hypnos/setSleepInterval", manInst->get_device_name(), manInst->get_instance_num());
-    if(getCurrentRetained((const char*)topic, message)){
-
-        // Parse the incoming message into a JSON Document and then create a new date time from the values to update the current time in the Hypnos
-        deserializeJson(json, (const char*)message);
-        TimeSpan time = TimeSpan(json["days"].as<int>(), json["hours"].as<int>(), json["minutes"].as<int>(), json["seconds"].as<int>());
-        
-        // Set the new interrupt duration
-        hypnosInst->setInterruptDuration(time);
-        
-        // And then delete the current retained message so we don't update it again
-        deleteRetained((const char*) topic);
-    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
