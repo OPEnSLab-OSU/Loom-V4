@@ -157,25 +157,41 @@ JsonObject Manager::get_data_object(const char *moduleName) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Manager::power_up() {
+void Manager::power_up() { power_up(0); }
+
+void Manager::power_up(int wakeWatchdogMs) {
     FUNCTION_START;
-    WD_TIMER_ENABLE;
+    if (wakeWatchdogMs > 0)
+        Watchdog.enable(wakeWatchdogMs);
+    else {
+        WD_TIMER_ENABLE;
+    }
     for (size_t i = 0; i < modules.size(); i++) {
-        WD_TIMER_RESET;
+        loomResetWatchdogIfEnabled();
         if (modules[i]->moduleInitialized || modules[i]->retryPowerUpWhenUninitialized()) {
-            // If we are about to power up the LTE we should turn off the watchdog
-            if (strcmp(modules[i]->getModuleName(), "LTE") == 0) {
-                WD_TIMER_DISABLE;
+            // LTE startup may legitimately take minutes. Limit the exception to that call,
+            // then restore protection before the following sensor/SD module is touched.
+            const bool isLTE = strcmp(modules[i]->getModuleName(), "LTE") == 0;
+            if (isLTE) {
+                if (wakeWatchdogMs > 0)
+                    Watchdog.disable();
+                else {
+                    WD_TIMER_DISABLE;
+                }
             }
             modules[i]->power_up();
+            if (isLTE && wakeWatchdogMs > 0)
+                Watchdog.enable(wakeWatchdogMs);
         } else {
             WARNINGF("%s Not initialized!", modules[i]->getModuleName());
         }
-        WD_TIMER_RESET;
+        loomResetWatchdogIfEnabled();
     }
 
     // If we didn't already disable the timer from finding the LTE we should disable it now
-    WD_TIMER_DISABLE;
+    if (wakeWatchdogMs <= 0) {
+        WD_TIMER_DISABLE;
+    }
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

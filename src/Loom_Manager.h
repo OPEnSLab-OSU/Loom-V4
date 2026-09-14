@@ -83,6 +83,7 @@ class Manager {
      *  Calls the power_up function on each module to re-init after sleep
      */
     void power_up();
+    void power_up(int wakeWatchdogMs);
 
     /**
      *  Calls the power_down function on each module to safely enter sleep

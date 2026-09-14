@@ -22,7 +22,7 @@ Loom_BatchSD::Loom_BatchSD(Loom_Hypnos &hypnos, int batchSize) : batchSize(batch
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_BatchSD::shouldPublish() {
-    return sdMan != nullptr && batchSize > 0 && sdMan->getCurrentBatch() >= batchSize;
+    return sdMan != nullptr && batchSize > 0 && sdMan->batchReady();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

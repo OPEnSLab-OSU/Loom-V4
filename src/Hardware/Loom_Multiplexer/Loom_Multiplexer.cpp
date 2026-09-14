@@ -229,6 +229,7 @@ void Loom_Multiplexer::debugScan() {
             }
 
             // Emit before entering Wire so a lower-core stall still leaves an exact location.
+            loomResetWatchdogIfEnabled();
             debugLogFormatted("Debug scan probing mux port %i at address 0x%02X", port, addr);
             uint8_t result = probeAddress(addr);
 
@@ -409,6 +410,7 @@ void Loom_Multiplexer::scanAndLoadSensors() {
                 debugLogFormatted("Initializing sensor %s", sensor->getModuleName());
 
                 sensor->initialize();
+                loomResetWatchdogIfEnabled();
 
                 if (!sensor->moduleInitialized) {
                     ERRORF("Sensor %s failed initialization and will not be loaded",
@@ -515,6 +517,7 @@ void Loom_Multiplexer::power_up() {
         if (!std::get<1>(sensors[i])->moduleInitialized &&
             !std::get<1>(sensors[i])->retryPowerUpWhenUninitialized())
             continue;
+        loomResetWatchdogIfEnabled();
         debugLogFormatted("Powering up mux sensor %s on port %i",
                           std::get<1>(sensors[i])->getModuleName(), std::get<2>(sensors[i]));
 
@@ -522,6 +525,7 @@ void Loom_Multiplexer::power_up() {
             continue;
         delay(50);
         std::get<1>(sensors[i])->power_up();
+        loomResetWatchdogIfEnabled();
     }
 
     disableChannels();

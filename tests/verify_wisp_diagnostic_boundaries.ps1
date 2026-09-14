@@ -32,10 +32,18 @@ foreach ($relativePath in $sketches) {
     $taggedCallCount = 0
     $hasWatchdog = $false
     $sdLoggingCount = 0
+    $hasWakeGuard = $false
+    $hasRecoveryAwarePublish = $false
 
     for ($index = 0; $index -lt $lines.Length; $index++) {
         $line = $lines[$index]
         $lineNumber = $index + 1
+        if ($line.Contains('hypnos.setWakeWatchdogTimeout(ACTIVE_WATCHDOG_MS)')) {
+            $hasWakeGuard = $true
+        }
+        if ($line.Contains('const bool networkWindow = batchSD.shouldPublish()')) {
+            $hasRecoveryAwarePublish = $true
+        }
 
         if ($line.Contains('// BEGIN LOOM_BETA_DIAGNOSTICS')) {
             if ($insideBlock) {
@@ -106,6 +114,9 @@ foreach ($relativePath in $sketches) {
     }
     if ($sdLoggingCount -ne 1) {
         Report-Failure $relativePath 0 "expected one ENABLE_SD_LOGGING call; found ${sdLoggingCount}"
+    }
+    if (-not $hasWakeGuard -or -not $hasRecoveryAwarePublish) {
+        Report-Failure $relativePath 0 'wake watchdog or recovery-aware network window is missing'
     }
 
     if (-not $failed) {

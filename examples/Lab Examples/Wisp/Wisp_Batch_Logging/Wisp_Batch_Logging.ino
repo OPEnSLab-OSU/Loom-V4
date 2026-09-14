@@ -79,6 +79,7 @@ void isrTrigger()
 void setup() {
   // Preserve the canonical timestamped debug log in /debug/output_N.log.
   ENABLE_SD_LOGGING;
+  hypnos.setWakeWatchdogTimeout(ACTIVE_WATCHDOG_MS);
 
   // Wait 20 seconds for the serial console to open
   manager.beginSerial();
@@ -149,13 +150,24 @@ void loop() {
   // Log the data to the SD
   WISP_DIAGNOSTIC_CHECKPOINT("pre_sd"); // LOOM_BETA_DIAGNOSTIC
   Watchdog.reset();
-  hypnos.logToSD();
+  if (!hypnos.logToSD()) {
+    SDManager *sd = hypnos.getSDManager();
+    const SDLogResult result = sd->getLastLogResult();
+    if (result.csv == SDWriteStatus::Saved && result.batch == SDWriteStatus::Failed) {
+      Watchdog.reset();
+      // Only retry a confirmed rolled-back batch append, never the CSV or an uncertain write.
+      if (!sd->retryBatch())
+        WARNING(F("CSV saved, but the one batch-only retry failed."));
+    } else {
+      ERROR(F("SD logging incomplete; rejected/uncertain writes are not automatically retried."));
+    }
+  }
   Watchdog.reset();
   WISP_DIAGNOSTIC_CHECKPOINT("post_sd"); // LOOM_BETA_DIAGNOSTIC
 
   // Pass in the batchSD to the mqtt obj to check/ publish a batch of data if ready
   WISP_DIAGNOSTIC_CHECKPOINT("pre_mqtt"); // LOOM_BETA_DIAGNOSTIC
-  const bool networkWindow = batchSD.getCurrentBatch() >= batchSD.getBatchSize();
+  const bool networkWindow = batchSD.shouldPublish();
   if (networkWindow) {
     Watchdog.disable();
   }
@@ -191,6 +203,8 @@ void loop() {
   WISP_DIAGNOSTIC_CHECKPOINT("post_wake"); // LOOM_BETA_DIAGNOSTIC
 
   WISP_DIAGNOSTIC_CHECKPOINT("pre_time_sync"); // LOOM_BETA_DIAGNOSTIC
+  Watchdog.disable(); // Network time may exceed the active watchdog period.
   hypnos.networkTimeUpdate();
+  enableActiveWatchdog();
   WISP_DIAGNOSTIC_CHECKPOINT("post_time_sync"); // LOOM_BETA_DIAGNOSTIC
 }

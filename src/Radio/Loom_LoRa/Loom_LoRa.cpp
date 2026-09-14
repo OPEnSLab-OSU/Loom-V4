@@ -87,9 +87,7 @@ void Loom_LoRa::initialize() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LoRa::power_up() {
     if (batchSD) {
-        int currentBatch = batchSD->getCurrentBatch();
-        int batchSize = batchSD->getBatchSize();
-        poweredUp = batchSize > 0 && currentBatch >= batchSize - 1;
+        poweredUp = batchSD->shouldPowerModem();
     }
 
     if (poweredUp) {

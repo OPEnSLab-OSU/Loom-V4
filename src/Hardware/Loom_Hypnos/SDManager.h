@@ -10,6 +10,7 @@
 
 #include "../../Loom_Manager.h"
 #include "../../Module.h"
+#include "Utilities/Loom_SDUtils.h"
 
 /**
  * Class used to manage interaction with the SD card read/writer on the Hypnos board
@@ -46,6 +47,11 @@ class SDManager : public Module {
      * modified/created times for files
      */
     bool log(DateTime currentTime);
+
+    /** Independent outcomes. A false log() result can still mean the CSV row was saved. */
+    SDLogResult getLastLogResult() const { return lastLogResult; }
+    /** Retry only a rolled-back batch append for the same packaged sample; never writes CSV. */
+    bool retryBatch();
 
     /**
      * Read the contents of a given file on the SD card and return them as a string
@@ -116,7 +122,13 @@ class SDManager : public Module {
     /**
      * Get the current batch index
      */
-    int getCurrentBatch() { return current_batch; };
+    int getCurrentBatch() { return hasRecoveredBatch() ? recoveryCount : current_batch; };
+    bool hasRecoveredBatch() const { return recoveryFileName[0] != '\0'; }
+    bool batchReady(bool includeNextSample = false) const {
+        return sdInitialized && !batchClearPending && batch_size > 0 &&
+               (hasRecoveredBatch() || current_batch >= batch_size -
+                    (includeNextSample && !batchAppendBlocked ? 1 : 0));
+    }
 
     /**
      * Clear the pending batch only after every record has been delivered.
@@ -139,6 +151,11 @@ class SDManager : public Module {
         if (strcmp(overrideFileName, requestedName) != 0) {
             memcpy(overrideFileName, requestedName, sizeof(overrideFileName));
             logFileSelected = false;
+            recoveryFileName[0] = '\0';
+            recoveryScanPosition = 0;
+            recoveryScanPending = true;
+            batchClearPending = false;
+            batchAppendBlocked = false;
         }
     };
 
@@ -164,6 +181,14 @@ class SDManager : public Module {
     char batchFileName[LOG_FILENAME_SIZE];
     char fileName[LOG_FILENAME_SIZE];
     char overrideFileName[LOG_BASENAME_SIZE];
+    char recoveryFileName[LOG_FILENAME_SIZE] = {};
+    uint32_t recoveryScanPosition = 0;
+    int recoveryCount = 0;
+    bool recoveryScanPending = true;
+    bool batchClearPending = false; // Already acknowledged; retry clearing before further replay
+    bool batchAppendBlocked = false; // An uncertain rollback must not corrupt the next record
+    SDLogResult lastLogResult;
+    uint32_t lastLogPacket = 0;
 
     int batch_size = -1;   // How many packets to log per batch
     int current_batch = 0; // Current count of the batch
@@ -173,7 +198,9 @@ class SDManager : public Module {
     bool logFileSelected = false; // Whether this MCU boot session already chose its CSV filename
     bool writeDebug = false;      // Direct-Serial beta trace; never written through Logger
 
-    void logBatch(); // Append one JSON record to the batch file
+    bool logCsv(DateTime currentTime);
+    SDWriteStatus logBatch(); // Append one JSON record to the current session's batch file
+    bool findRecoveryBatch(); // Select another pre-boot batch without changing its bytes
 
     bool finishDebugWrite(File &file, bool wroteAll);
 

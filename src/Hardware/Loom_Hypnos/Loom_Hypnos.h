@@ -198,6 +198,11 @@ class Loom_Hypnos : public Module {
      */
     void sleep(bool waitForSerial = false);
 
+    /** Opt-in runtime protection of wake reinitialization; 0 preserves legacy behavior.
+     * Hypnos suspends this guard across standby and restores it before wake I/O.
+     */
+    void setWakeWatchdogTimeout(uint16_t milliseconds) { wakeWatchdogMs = milliseconds; }
+
     /**
      * Get the current time from the RTC
      */
@@ -313,6 +318,8 @@ class Loom_Hypnos : public Module {
 
     /* SD configuration */
     SDManager *sdMan = nullptr; // SD Manager
+    uint16_t wakeWatchdogMs = 0;
+    void enableWakeWatchdog();
     int sd_chip_select;         // Pin that the SD card will use to communicate with the Hypnos
     bool enableSD; // Specifies whether or not the SD card should be enabled on the Hypnos
 

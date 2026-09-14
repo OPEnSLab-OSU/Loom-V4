@@ -23,6 +23,43 @@ packet must work. Confirm `/debug/output_N.log` again includes the pretty JSON p
 
 ## Board-package verification
 
+### Recovery and wake acceptance
+
+The WISP sketches opt into `hypnos.setWakeWatchdogTimeout(ACTIVE_WATCHDOG_MS)`. The guard is
+restored before USB/SD/RTC/sensor wake work and between mux sensors. LTE startup and explicit
+network-time/publish windows remain exceptions because healthy network operations can exceed
+the SAMD21 watchdog interval. Initial setup is not covered by this opt-in wake guard.
+
+At boot, new data still goes into a new numbered CSV/batch pair. Older nonempty matching batch
+files are selected separately, one at a time in directory order, and their record count is rebuilt
+from SD. Even a recovered batch below the normal threshold is eligible for upload. No filenames,
+packet fields, CSV columns, or line formats are changed. Recovery adds fixed-size bookkeeping
+and one filename buffer, not a vector of files or an additional JSON document.
+
+Recovery checks record framing and length, not full JSON syntax. Unterminated or oversized files
+are left untouched, reported, and skipped for this boot so they cannot block the other files.
+They need manual inspection; no partial-tail truncation or guessed data repair is performed.
+The existing at-least-once delivery semantics remain: a reset after broker acknowledgement but
+before clearing the file can cause duplicate delivery.
+
+`logToSD()` now returns false when an enabled batch append fails, even if CSV succeeded.
+`getSDManager()->getLastLogResult()` distinguishes each output. WISP performs at most one
+`retryBatch()` for the same packaged sample following a confirmed rollback; it never retries
+the CSV row or an uncertain append. Uncertain writes block further appends to that active batch;
+CSV logging continues. A failed clear is retried on SD reinitialization or the next batch append
+before that file can be replayed/appended again. Reboot starts a fresh active file and rediscovers
+old batches.
+
+In addition to host fault tests, verify on a Feather M0:
+
+- Two old nonempty batches (including one below threshold) replay independently of new CSV data.
+- An empty old file is ignored; a torn/oversized old file is preserved and does not block others.
+- A power cut during upload/clear leaves data recoverable with at-least-once semantics.
+- A failed batch append followed by a successful batch-only retry produces one CSV row.
+- A packet that fits the JSON pool but exceeds encoded length stays in CSV, never the batch queue.
+- Forced stalls in SD wake initialization and mux sensor power-up reset the board; healthy LTE
+  startup does not. These hardware checks have not been substituted by the host helper tests.
+
 Before building a board-package release, run `verify_patched_dependencies.ps1`. It compares the
 installed package-level OPEnS_RTC, SparkFun AS726X, and SparkFun AS7265X build inputs against the
 authoritative copies under `Loom/dependencies`. It also verifies that active SAMD21 SERCOM/Wire

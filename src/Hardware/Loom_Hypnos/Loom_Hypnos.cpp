@@ -857,7 +857,7 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
             } else {
                 ERROR(F("Sleep aborted because the registered wake source was not ready."));
                 if (shouldPowerUp)
-                    manInst->power_up();
+                    manInst->power_up(wakeWatchdogMs);
                 return;
             }
         }
@@ -865,11 +865,14 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
 
     if (!hasAlarmTriggered) {
         shouldPowerUp = true;
+        if (wakeWatchdogMs > 0)
+            Watchdog.disable(); // SAMD21 WDT runs in standby; guard only the active phases.
         LowPower.sleep(); // Go to sleep and hang
-        WD_TIMER_ENABLE;
+        enableWakeWatchdog();
     }
     // If it has we want to trigger a resample which requires powering the sensors back up
     else {
+        enableWakeWatchdog();
         WARNING("Alarm triggered during sample, specified sample duration was too short! "
                 "Resampling...");
         RTC_DS.clearAlarm(1);
@@ -877,7 +880,7 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
         if (sleepInterruptPin >= 0)
             clearPendingExternalInterrupt(sleepInterruptPin);
         if (shouldPowerUp) {
-            manInst->power_up();
+            manInst->power_up(wakeWatchdogMs);
         }
         InterruptRegistration *registered = findInterruptRegistration(sleepInterruptPin);
         if (registered != nullptr && registered->callback != nullptr)
@@ -928,22 +931,22 @@ bool Loom_Hypnos::pre_sleep() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::post_sleep(bool waitForSerial) {
     // Enable the Watchdog timer when waking up
-    WD_TIMER_ENABLE;
-    WD_TIMER_RESET;
+    enableWakeWatchdog();
+    loomResetWatchdogIfEnabled();
 
     if (shouldPowerUp) {
         USBDevice.attach();
-        WD_TIMER_RESET;
+        loomResetWatchdogIfEnabled();
         Serial.begin(115200);
-        WD_TIMER_RESET;
+        loomResetWatchdogIfEnabled();
 
         enable();
-        WD_TIMER_RESET;
+        loomResetWatchdogIfEnabled();
         delay(1000);
-        WD_TIMER_RESET;
+        loomResetWatchdogIfEnabled();
 
         LOG(F("Device has awoken from sleep!"));
-        WD_TIMER_RESET;
+        loomResetWatchdogIfEnabled();
 
         // A full wake consumes any alarm scheduled by setInterruptDuration().
         // Use the alarm state rather than the registered pin: another interrupt
@@ -953,24 +956,33 @@ void Loom_Hypnos::post_sleep(bool waitForSerial) {
             RTC_DS.clearAlarm(2);
             alarmScheduled = false;
         }
-        WD_TIMER_RESET;
+        loomResetWatchdogIfEnabled();
 
         // Re-init the modules that need it
-        manInst->power_up();
+        manInst->power_up(wakeWatchdogMs);
 
         // We want to wait for the user to re-open the serial monitor before continuing to see
         // readouts
         if (waitForSerial) {
-            WD_TIMER_DISABLE;
             const uint32_t serialWaitStarted = millis();
             while (!Serial &&
                    static_cast<uint32_t>(millis() - serialWaitStarted) < WAIT_TIME_MS) {
+                loomResetWatchdogIfEnabled();
                 delay(1);
             }
-            WD_TIMER_ENABLE;
         }
     } else {
+        if (wakeWatchdogMs > 0)
+            Watchdog.disable();
         WD_TIMER_DISABLE;
+    }
+}
+
+void Loom_Hypnos::enableWakeWatchdog() {
+    if (wakeWatchdogMs > 0)
+        Watchdog.enable(wakeWatchdogMs);
+    else {
+        WD_TIMER_ENABLE;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

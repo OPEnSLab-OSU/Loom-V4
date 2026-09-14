@@ -188,6 +188,33 @@ bool SDManager::writeHeaders() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::log(DateTime currentTime) {
+    lastLogResult = SDLogResult{};
+    lastLogPacket = manInst->get_packet_number();
+    if (!manInst->isPacketValid()) {
+        lastLogResult.csv = SDWriteStatus::Rejected;
+        lastLogResult.batch = SDWriteStatus::Rejected;
+        printModuleName("Refusing to save an empty or overflowed JSON packet!");
+        return false;
+    }
+    if (!logCsv(currentTime)) {
+        lastLogResult.csv = SDWriteStatus::Failed;
+        return false;
+    }
+    lastLogResult.csv = SDWriteStatus::Saved;
+    if (batch_size <= 0)
+        return true;
+    lastLogResult.batch = logBatch();
+    return lastLogResult.batch == SDWriteStatus::Saved;
+}
+
+bool SDManager::retryBatch() {
+    if (!loomSD::canRetryBatch(lastLogResult, lastLogPacket, manInst->get_packet_number()))
+        return false;
+    lastLogResult.batch = logBatch();
+    return lastLogResult.batch == SDWriteStatus::Saved;
+}
+
+bool SDManager::logCsv(DateTime currentTime) {
     bool logged = false;
 
     // An overflowed ArduinoJson document still serializes to syntactically valid but incomplete
@@ -290,10 +317,6 @@ bool SDManager::log(DateTime currentTime) {
             printModuleName("Failed to open log file!");
         }
 
-        // If we want to log batch data do so
-        if (logged && batch_size > 0)
-            logBatch();
-
     } else {
         printModuleName("Failed to log! SD card not Initialized!");
     }
@@ -366,6 +389,11 @@ bool SDManager::begin() {
 
     sdInitialized = true;
 
+    if (batchClearPending)
+        clearBatch(); // Idempotent: no new records may be appended to this selected file yet.
+    if (batch_size > 0 && !batchClearPending && !hasRecoveredBatch() && recoveryScanPending)
+        findRecoveryBatch(); // Failure must not disable logging of new samples; retry next wake.
+
     if (recoveringExistingLog) {
         printModuleName("SD card recovered; resuming data log:");
         printModuleName(fileName);
@@ -416,7 +444,34 @@ bool SDManager::updateCurrentFileName() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 const char *SDManager::getBatchFilename() {
-    return batchFileName;
+    return hasRecoveredBatch() ? recoveryFileName : batchFileName;
+}
+
+bool SDManager::findRecoveryBatch() {
+    // One filename and a directory cursor, not a heap-resident list of files or records.
+    if (!root.open("/", O_RDONLY))
+        return false;
+    if (!root.seekSet(recoveryScanPosition)) {
+        root.close();
+        return false;
+    }
+    const char *base = overrideFileName[0] ? overrideFileName : device_name;
+    const loomSD::RecoveryResult result = loomSD::scanRecoveryFiles(
+        root, scanningFile, base, file_count, recoveryScanPosition, recoveryFileName,
+        recoveryCount, MAX_JSON_SIZE, loomResetWatchdogIfEnabled, [this](const char *name) {
+            printModuleName("Batch has incomplete/oversized records; preserved for inspection:");
+            printModuleName(name);
+        });
+    root.close();
+    if (result == loomSD::RecoveryResult::Done)
+        recoveryScanPending = false;
+    if (result == loomSD::RecoveryResult::Selected) {
+        printModuleName("Recovered pending batch:");
+        printModuleName(recoveryFileName);
+    }
+    if (result == loomSD::RecoveryResult::ReadError)
+        printModuleName("SD read failed during recovery; will retry on wake.");
+    return result != loomSD::RecoveryResult::ReadError;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -467,7 +522,22 @@ char *SDManager::readFile(const char *fileName) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void SDManager::logBatch() {
+SDWriteStatus SDManager::logBatch() {
+    if (!sdInitialized || batch_size <= 0)
+        return SDWriteStatus::Failed;
+    if (batchClearPending)
+        clearBatch(); // Also recover in always-awake sketches that do not call begin() again.
+    if (batchAppendBlocked || (batchClearPending && !hasRecoveredBatch())) {
+        printModuleName("Batch append blocked by an uncertain write or pending clear; CSV kept!");
+        return SDWriteStatus::Uncertain;
+    }
+    // Validate encoded bytes separately from the JSON pool before changing the queue.
+    if (!loomJsonFitsWire(manInst->getDocument(), MAX_JSON_SIZE)) {
+        printModuleName("Packet exceeds batch wire limit or is incomplete; CSV kept, batch rejected!");
+        return SDWriteStatus::Rejected;
+    }
+    if (current_batch == INT_MAX)
+        return SDWriteStatus::Rejected;
     // Never discard an unsent batch here. The publisher clears it explicitly, and only after
     // every record succeeds. If a network outage lasts for several samples, the file grows on SD
     // instead of consuming SRAM or silently dropping the older records.
@@ -475,28 +545,20 @@ void SDManager::logBatch() {
 
     // Check if the file has been opened properly and write the JSON packet to one line.
     if (myFile) {
-        const uint32_t recordStart = myFile.fileSize();
-        const size_t expectedJsonBytes = measureJson(manInst->getDocument());
-        myFile.clearWriteError();
-        const size_t jsonBytes = serializeJson(manInst->getDocument(), myFile);
-        const size_t newlineBytes = myFile.println();
-
-        // A partial record is worse than no record: it cannot be published and would make the
-        // following line ambiguous. Roll it back while the file is still open.
-        const bool complete = expectedJsonBytes > 0 && jsonBytes == expectedJsonBytes &&
-                              newlineBytes == 2 && !myFile.getWriteError() && myFile.sync();
-        const bool rolledBack = complete || myFile.truncate(recordStart);
-        myFile.close();
-
-        if (complete)
+        const loomSD::AppendResult result = loomSD::appendRecord(myFile, manInst->getDocument());
+        if (result.committed)
             current_batch++;
-        else if (rolledBack)
+        if (result.status == SDWriteStatus::Failed)
             printModuleName("Failed while writing batch data!");
-        else
-            printModuleName("Failed to roll back a partial batch record!");
+        if (result.status == SDWriteStatus::Uncertain) {
+            batchAppendBlocked = true;
+            printModuleName("Uncertain batch write; preserving file and blocking further appends!");
+        }
+        return result.status;
 
     } else {
         printModuleName("Failed to open file!");
+        return SDWriteStatus::Failed;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -508,14 +570,27 @@ bool SDManager::clearBatch() {
         return false;
     }
 
-    myFile = sd.open(batchFileName, O_WRITE | O_CREAT | O_TRUNC);
+    const bool recovered = hasRecoveredBatch();
+    batchClearPending = true;
+    myFile = sd.open(getBatchFilename(), O_WRITE | O_CREAT | O_TRUNC);
     if (!myFile) {
         printModuleName("Failed to clear the published batch file!");
         return false;
     }
 
-    myFile.close();
-    current_batch = 0;
+    if (!myFile.close()) {
+        printModuleName("Failed to close cleared batch file; clear result is uncertain!");
+        return false;
+    }
+    batchClearPending = false;
+    if (recovered) {
+        recoveryFileName[0] = '\0';
+        recoveryCount = 0;
+        findRecoveryBatch();
+    } else {
+        current_batch = 0;
+        batchAppendBlocked = false;
+    }
     return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

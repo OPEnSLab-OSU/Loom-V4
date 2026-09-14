@@ -589,7 +589,7 @@ void Loom_LTE::power_up() {
             FUNCTION_END;
             return;
         }
-        if (batch_sd->getCurrentBatch() < batch_sd->getBatchSize() - 1) {
+        if (!batch_sd->shouldPowerModem()) {
             powerUp = false;
             FUNCTION_END;
             return;

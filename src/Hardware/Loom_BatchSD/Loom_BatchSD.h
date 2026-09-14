@@ -19,6 +19,8 @@ class Loom_BatchSD {
      * Returns if we should publish the data on this batch
      */
     bool shouldPublish();
+    bool shouldPowerModem() const { return sdMan != nullptr && sdMan->batchReady(true); }
+    bool hasRecoveredBatch() const { return sdMan != nullptr && sdMan->hasRecoveredBatch(); }
 
     /**
      * Return a pointer to the open memory read from arduino

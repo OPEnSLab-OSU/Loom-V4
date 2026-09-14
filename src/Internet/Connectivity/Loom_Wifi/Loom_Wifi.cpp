@@ -141,7 +141,7 @@ void Loom_WIFI::power_up() {
             powerUp = false;
             return;
         }
-        if (batchSD->getCurrentBatch() < batchSD->getBatchSize() - 1) {
+        if (!batchSD->shouldPowerModem()) {
             WARNING(F("Not ready to publish, WIFI will not be powered up"));
             powerUp = false;
             return;
