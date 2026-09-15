@@ -108,8 +108,6 @@ class Loom_Hypnos : public Module{
         void package() override;
     public:
 
-        volatile bool shouldPowerUp = true;
-
         /**
          * Constructs a new Hypnos Instance using the manager to hold information about the device
          * @param man Reference to the manager
@@ -164,37 +162,13 @@ class Loom_Hypnos : public Module{
         /* Sleep Functionality */
 
         /**
-         * Enables RTC based interrupts using the DS3231 on the Hypnos
-         * @param isrFunc function to callback to when the interrupt is triggered
-         * @param interruptPin Defaults to RTC pin on Hypnos can be changed to reflect other interrupts
-         * @param interruptType Type of the interrupt to register (SLEEP or OTHER)
-         * @param triggerState When the interrupt should trigger
-         */
-        bool registerInterrupt(InterruptCallbackFunction isrFunc = nullptr, int interruptPin = 12, HypnosInterruptType interruptType = SLEEP, int triggerState = LOW);
-
-        /**
-         * Called when the user wants to wake the Hypnos back out of the sleep state
-         * This detaches the interrupt AND re-enables the power rails
-         */
-        void wakeup();
-
-        /**
-         * Called when the user wants to reattach the interrupt handler to the RTC interrupt to collect subsequent interrupts
-         * @param interruptPin Pin to reattach the interrupt to for RTC this doesn't need to be changed
-         */
-        bool reattachRTCInterrupt(int interruptPin = 12);
-
-        /**
-         * Set the next interrupt to be triggered at a set interval in the future
-         * @param duration The time that will elapse before the next interrupt is triggered
-         */
-        void setInterruptDuration(const TimeSpan duration);
-
-        /**
          * Drops the Feather M0 and Hypnos board into a low power sleep waiting for an interrupt to wake it up and pull it out of sleep
+         * @param seconds Duration to sleep for
          * @param waitForSerial Whether or not we should wait for the user to open the serial monitor before continuing execution
          */
-        void sleep(bool waitForSerial = false);
+        void sleep(uint32_t seconds, bool waitForSerial = false);
+
+        /* RTC Functionality */
 
         /**
          * Get the current time from the RTC
@@ -305,13 +279,6 @@ class Loom_Hypnos : public Module{
         bool RTC_initialized = false;                                                       // Did the RTC initialize correctly?
 
         bool custom_time = false;                                                           // Set the RTC to a user specified time
-
-        // Map the given pin to an interrupt call back
-        // 0th - ISR
-        // 1st - Interrupt Trigger
-        // 2nd - Interrupt Type (SLEEP or OTHER)
-        std::map<int, std::tuple<InterruptCallbackFunction, int, HypnosInterruptType>> pinToInterrupt;
-
         void initializeRTC();                                                               // Initialize RTC
 
         void createTimezoneMap();                                                           // Map Timezone Strings to Timezone enum
@@ -326,8 +293,11 @@ class Loom_Hypnos : public Module{
 
         /* Sleep functionality */
         void pre_sleep();                            // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
-        void post_sleep(bool waitForSerial);         // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
+        void post_sleep();                           // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
 
-
-
+        /**
+         * Handle interrupt when waking from sleep
+         */
+        static void wakeup();
+        static volatile bool shouldPowerUp;
 };
