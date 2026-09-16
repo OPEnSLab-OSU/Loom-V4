@@ -162,11 +162,16 @@ class Loom_Hypnos : public Module{
         /* Sleep Functionality */
 
         /**
+         * Set the next interrupt to be triggered at a set interval in the future
+         * @param duration The time that will elapse before the next interrupt is triggered
+         */
+        void setInterruptDuration(const TimeSpan duration);
+
+        /**
          * Drops the Feather M0 and Hypnos board into a low power sleep waiting for an interrupt to wake it up and pull it out of sleep
-         * @param seconds Duration to sleep for
          * @param waitForSerial Whether or not we should wait for the user to open the serial monitor before continuing execution
          */
-        void sleep(uint32_t seconds, bool waitForSerial = false);
+        void sleep(bool waitForSerial = false);
 
         /* RTC Functionality */
 
@@ -280,6 +285,7 @@ class Loom_Hypnos : public Module{
         /* Sleep functionality */
         void pre_sleep();                            // Called just before the hypnos enters sleep, this disconnects the power rails and the serial bus
         void post_sleep();                           // Called just after the hypnos wakes up, this reconnects the power rails and the serial bus
+        uint32_t sleepDurationMillis = 20 * 60 * 1000;  // 20 minute default sleep
 
         /**
          * Handle interrupt when waking from sleep

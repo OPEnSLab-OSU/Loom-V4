@@ -376,10 +376,18 @@ void Loom_Hypnos::set_custom_time(){
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
+    FUNCTION_START;
+    sleepDurationMillis = duration.totalseconds() * 1000;
+    FUNCTION_END;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /* Sleep Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::sleep(uint32_t seconds, bool waitForSerial){
+void Loom_Hypnos::sleep(bool waitForSerial){
 	
 	// Power down the active modules
     manInst->power_down();
@@ -388,7 +396,7 @@ void Loom_Hypnos::sleep(uint32_t seconds, bool waitForSerial){
 
     shouldPowerUp = false;
     LowPower.attachInterruptWakeup(RTC_ALARM_WAKEUP, wakeup, 0);
-    LowPower.sleep(seconds);  // Go to sleep and hang
+    LowPower.sleep(sleepDurationMillis);  // Go to sleep and hang
 
     // Go back to sleep until woken up by the sleep alarm on the on-chip RTC
     while (!shouldPowerUp) {
