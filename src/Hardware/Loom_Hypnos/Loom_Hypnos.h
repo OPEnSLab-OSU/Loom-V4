@@ -5,6 +5,7 @@
 #include <ArduinoLowPower.h>
 #include <map>
 #include <tuple>
+#include "../../Sensors/Loom_Analog/Loom_Analog.h"
 
 #include "Arduino.h"
 #include "Module.h"
@@ -253,6 +254,10 @@ class Loom_Hypnos : public Module{
 
         /* Return initialization state of the RTC */
         bool isRTCInitialized() { return RTC_initialized; };
+
+        void checkBattery();
+
+        void recharge(bool needsCharge);
 
     private:
 
