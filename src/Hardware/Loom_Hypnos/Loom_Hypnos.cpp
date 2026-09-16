@@ -1,8 +1,6 @@
 #include "Loom_Hypnos.h"
 #include "Logger.h"
 
-volatile bool Loom_Hypnos::shouldPowerUp = false;
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Hypnos::Loom_Hypnos(Manager& man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time, bool useSD) : Module("Hypnos"), custom_time(use_custom_time), sd_chip_select(version), enableSD(useSD), timezone(zone){
     manInst = &man;
@@ -174,12 +172,74 @@ bool Loom_Hypnos::is5VDisabled(DEVICE_STATE deviceState){
 /* Interrupt Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::wakeup(){
-    shouldPowerUp = true;
+bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin, HypnosInterruptType interruptType, int triggerState){
+    FUNCTION_START;
+    pinMode(interruptPin, INPUT_PULLUP);  //  Set interrupt pin input mode
+    LOG(F("Registering interrupt..."));
+
+    // If the RTC hasn't already been initialized then do so now if we are trying to schedule an RTC interrupt
+    if(!RTC_initialized && interruptPin == 12)
+        initializeRTC();
+
+    // Make sure a callback function was supplied
+    if(isrFunc != nullptr){
+
+         // If the interrupt we registered is for sleep we should set the interrupt to wake the device from sleep
+        if(interruptType == SLEEP){
+            LowPower.attachInterruptWakeup(interruptPin, isrFunc, triggerState);
+            LOG(F("Interrupt successfully attached!"));
+        }
+        else{
+            attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
+            attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
+            LOG(F("Interrupt successfully attached!"));
+        }
+        // Add the interrupt to the list of pin to interrupts
+        pinToInterrupt.insert(std::make_pair(interruptPin, std::make_tuple(isrFunc, triggerState, interruptType)));
+        FUNCTION_END;
+        return true;
+    }
+    else{
+        detachInterrupt(digitalPinToInterrupt(interruptPin));
+        ERROR(F("Failed to attach interrupt! Interrupt callback evaluated to a null pointer, it is possible you forgot to supply a callback function"));
+        FUNCTION_END;
+        return false;
+    }
+    FUNCTION_END;
+    return false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/* RTC Functionality */
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin){
+    FUNCTION_START;
+    if(std::get<2>(pinToInterrupt[interruptPin]) != SLEEP){
+
+        // If we haven't previously registered the interrupt we need to do this before we can reattach to an interrupt that doesn't exist
+        if(pinToInterrupt.count(interruptPin) <= 0){
+            ERROR(F("Failed to reattach interrupt! Interrupt has not previously been registered..."));
+            FUNCTION_END;
+            return false;
+        }
+
+        attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
+        attachInterrupt(digitalPinToInterrupt(interruptPin), std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
+    }
+    else{
+        LowPower.attachInterruptWakeup(interruptPin, std::get<0>(pinToInterrupt[interruptPin]), std::get<1>(pinToInterrupt[interruptPin]));
+    }
+    LOG(F("Interrupt successfully reattached!"));
+    FUNCTION_END;
+    return true;
+
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::wakeup(){
+    detachInterrupt(pinToInterrupt.begin()->first);     // Detach the interrupt so it doesn't trigger again
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::initializeRTC(){
@@ -202,6 +262,9 @@ void Loom_Hypnos::initializeRTC(){
             set_custom_time();
         }
 	}
+
+	// Clear any pending alarms
+	RTC_DS.clearAlarm();
 
     RTC_DS.writeSqwPinMode(DS3231_OFF);
 
@@ -426,56 +489,81 @@ void Loom_Hypnos::set_custom_time(){
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::setInterruptDuration(const TimeSpan duration){
+    FUNCTION_START;
+    char output[OUTPUT_SIZE];
+
+    // The time in the future that the alarm will be set for
+    alarmTime = RTC_DS.now() + duration;
+    RTC_DS.setAlarm(alarmTime);
+
+    // Print the time that the next interrupt is set to trigger
+    LOGF("Current Time (Local): %s", getLocalTime(RTC_DS.now()).text());
+    LOGF("Next interrupt alarm set for: %s", getLocalTime(alarmTime).text());
+    FUNCTION_END;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /* Sleep Functionality */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::sleep(uint32_t seconds, bool waitForSerial){
+void Loom_Hypnos::sleep(bool waitForSerial){
 	
-	// Power down the active modules
-    manInst->power_down();
+    // If the alarm set time is less than the current time we missed our next alarm so we need to set a new one, we need to check if we have powered on already so we dont use the RTC that isn't enabled
+    bool hasAlarmTriggered = false;
+	
+	// Try to power down the active modules
+    if (shouldPowerUp) {
+        manInst->power_down();
 
-    pre_sleep();  // Pre-sleep cleanup
-
-    shouldPowerUp = false;
-    LowPower.attachInterruptWakeup(RTC_ALARM_WAKEUP, wakeup, 0);
-    LowPower.sleep(seconds);  // Go to sleep and hang
-
-    // Go back to sleep until woken up by the sleep alarm on the on-chip RTC
-    while (!shouldPowerUp) {
-        LowPower.sleep();
+        // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
+        uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
+        uint32_t currentTime = RTC_DS.now().unixtime();
+        hasAlarmTriggered = alarmedTime <= currentTime;
+        
+        // 50ms delay allows this last message to be sent before the bus disconnects
+        LOG("Entering Standby Sleep...");
+        delay(50);
     }
 
-    Watchdog.enable(WATCHDOG_TIMEOUT);
+    // If it hasn't we should preform our sleep as before
+    if(!hasAlarmTriggered){
+        pre_sleep();                                            // Pre-sleep cleanup
+        shouldPowerUp = true;
+        LowPower.sleep();                                       // Go to sleep and hang
+        Watchdog.enable(WATCHDOG_TIMEOUT);
+    }
+    // If it has we want to trigger a resample which requires powering the sensors back up
+    else{
+        WARNING("Alarm triggered during sample, specified sample duration was too short! Resampling...");
+        reattachRTCInterrupt();
+        if(shouldPowerUp){
+            manInst->power_up();
+        }
+    }
     Watchdog.reset();
 
-    post_sleep();  // Wake up
+    // If the alarm hadn't triggered last time we want to wake up like normal
+    if(!hasAlarmTriggered)
+        post_sleep(waitForSerial);         // Wake up
    
-    LOG(F("Device has awoken from sleep!"));
-    Watchdog.reset();
-
-    // Re-init the modules that need it
-    manInst->power_up();
-
-    // We want to wait for the user to re-open the serial monitor before continuing to see readouts
-    if(waitForSerial){
-        TIMER_DISABLE;
-        while(!Serial);
-        TIMER_ENABLE;
-    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::pre_sleep(){
-    // 50ms delay allows this last message to be sent before the bus disconnects
-    LOG("Entering Standby Sleep...");
-    delay(50);
-
     bool disable5 = is5VDisabled(DEVICE_STATE::ENTERING_SLEEP);
     bool disable33 = is3VDisabled(DEVICE_STATE::ENTERING_SLEEP);
+    char output[OUTPUT_SIZE];
+    delay(1000);
 
     // Close the serial connection and detach
     Serial.end();
+    USBDevice.detach();
+
+    // Reattach the interrupt to the RTC interrupt pin
+    attachInterrupt(digitalPinToInterrupt(pinToInterrupt.begin()->first), std::get<0>(pinToInterrupt.begin()->second), std::get<1>(pinToInterrupt.begin()->second));
 
     // Disable the power rails
     disable(disable33, disable5);
@@ -483,25 +571,45 @@ void Loom_Hypnos::pre_sleep(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::post_sleep(){
+void Loom_Hypnos::post_sleep(bool waitForSerial){
     // Enable the Watchdog timer when waking up
     TIMER_ENABLE;
     Watchdog.reset();
     
-    Watchdog.reset();
-    Serial.begin(115200);
-    Watchdog.reset();
+    if(shouldPowerUp){
+        USBDevice.attach();
+        Watchdog.reset();
+        Serial.begin(115200);
+        Watchdog.reset();
 
-    // Check if they are not disabled to see if they should be enabled
-    bool enable5 = !is5VDisabled(DEVICE_STATE::EXITING_SLEEP);
-    Watchdog.reset();
-    bool enable33 = !is3VDisabled(DEVICE_STATE::EXITING_SLEEP);
-    Watchdog.reset();
+        // Check if they are not disabled to see if they should be enabled
+        bool enable5 = !is5VDisabled(DEVICE_STATE::EXITING_SLEEP);
+        Watchdog.reset();
+        bool enable33 = !is3VDisabled(DEVICE_STATE::EXITING_SLEEP);
+        Watchdog.reset();
 
-    enable(enable33, enable5); // Checks if the 3.3v or 5v are disabled and re-enables them
-    Watchdog.reset();
-    delay(1000);
-    Watchdog.reset();
+        enable(enable33, enable5); // Checks if the 3.3v or 5v are disabled and re-enables them
+        Watchdog.reset();
+        delay(1000);
+        Watchdog.reset();
+
+        LOG(F("Device has awoken from sleep!"));
+        Watchdog.reset();
+
+        // Clear any pending RTC alarms
+        RTC_DS.clearAlarm();
+        Watchdog.reset();
+
+        // Re-init the modules that need it
+        manInst->power_up();
+
+        // We want to wait for the user to re-open the serial monitor before continuing to see readouts
+        if(waitForSerial){
+            TIMER_DISABLE;
+            while(!Serial);
+            TIMER_ENABLE;
+        }        
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
