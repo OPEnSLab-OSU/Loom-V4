@@ -134,10 +134,50 @@ bool Loom_Hypnos::is3VDisabled(DEVICE_STATE deviceState){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void checkBattery(){
-    if(getBatteryVoltage() < 3.2){
+void checkBattery(Loom_Analog analog, TimeSpan duration = TimeSpan(0,1,0,0), bool usingSolar){
+    FUNCTION_START;
+    char output[OUTPUT_SIZE];
+
+    float currBattery = analog.getBatteryVoltage();
+    snprintf(output, OUTPUT_SIZE, "Current battery: %.2f", currBattery);
+    LOG(output);
+
+    bool needsCharge = currBattery < 3.1;
+    bool nominalCharge = currBattery > 3.3;
+
+    if(nominalCharge){
+        LOG(F("Batteries within nominal range. Continuing"))
+        FUNCTION_END;
+        return;
+    }
+
+    LOG(F("Battery charge below nominal level. Checking for brownout risk"));
+
+    if(needsCharge){
+        if(!usingSolar){
+            LOG(F("Battery level critical! Charge or change batteries"));
+            FUNCTION_END;
+            return;
+        }
+        TIMER_DISABLE;
+        while((currBattery = analog.getBatteryVoltage()) < 3.3){
+            // sleep takes time in millis
+            LowPower.sleep(duration*1000);
+        }
+        TIMER_ENABLE;
+
+        snprintf(output, OUTPUT_SIZE, "Device has finished charging. Current battery level: %.2f", currBattery);
+        LOG(output);
+        FUNCTION_END;
+        return;
+            
         
     }
+
+    LOG("Battery is below nominal, but not yet critical");
+    FUNCTION_END;
+
+
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////

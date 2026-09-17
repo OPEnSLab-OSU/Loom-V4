@@ -255,9 +255,13 @@ class Loom_Hypnos : public Module{
         /* Return initialization state of the RTC */
         bool isRTCInitialized() { return RTC_initialized; };
 
-        void checkBattery();
+        /**
+         * @param analog: analog object to read voltage
+         * @param duration: if needs to recharge, set how long of an interval you would like
+         * before battery is checked again
+         */
+        void checkBattery(Loom_Analog analog, TimeSpan duration);
 
-        void recharge(bool needsCharge);
 
     private:
 
