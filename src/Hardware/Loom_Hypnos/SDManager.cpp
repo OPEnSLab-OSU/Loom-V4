@@ -2,15 +2,11 @@
 #include "Logger.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-// Helper: safely append src onto dest, tracking how much room is actually left
-// instead of blindly passing the full buffer size on every call (which was the
-// root cause of the stack buffer overflow in log() and writeHeaders()).
 static void safeAppend(char* dest, size_t destSize, const char* src) {
     size_t used = strlen(dest);
-    if (used >= destSize - 1) return; // already full, nothing more can be appended
-    size_t remaining = destSize - 1 - used;
-    strncat(dest, src, remaining);
-}
+    if (used >= destSize - 1) return;
+    strncat(dest, src, destSize - 1 - used);
+}  // safe string concatenation that ensures we don't overflow the destination buffer
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -60,11 +56,6 @@ void SDManager::writeHeaders(){
 
     JsonObject document = manInst->getDocument().as<JsonObject>();
 
-    // FIXED: use safeAppend() instead of strncat(..., 512) on every call.
-    // The old code passed the FULL buffer size to every strncat call inside
-    // the loop below, regardless of how much was already written. With
-    // several sensor modules registered, this let the loop write far past
-    // the end of header1/header2 -- a real stack buffer overflow.
     safeAppend(header1, sizeof(header1), "ID,,");
     safeAppend(header2, sizeof(header2), "name,instance,");
     
@@ -98,9 +89,7 @@ void SDManager::writeHeaders(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::log(DateTime currentTime){
     char output[MAX_JSON_SIZE + 1];
-    bool success = true;   // tracks open/write/timestamp failures
-    bool truncated = false; // tracks whether any append had to be cut short
-
+    
     if(sdInitialized){
         
         // Open the file in read/write mode, create the file if we need to and append the content to the end of the file
@@ -148,7 +137,6 @@ bool SDManager::log(DateTime currentTime){
                     localArr[indexPointer-localArr] = '\0';
                 }
 
-                // FIXED: bounded appends via safeAppend() instead of strncat(..., MAX_JSON_SIZE)
                 safeAppend(output, sizeof(output), utcArr);
                 safeAppend(output, sizeof(output), ",");
                 safeAppend(output, sizeof(output), localArr);
@@ -164,17 +152,8 @@ bool SDManager::log(DateTime currentTime){
 
                 // Get all JSON keys  
                 for(JsonPair keyValue : v.as<JsonObject>()["data"].as<JsonObject>()){
-                    // FIXED: this was the main overflow site. Previously called
-                    // strncat(output, ..., MAX_JSON_SIZE) once per key, across
-                    // every sensor module -- easily exceeding the buffer many
-                    // times over with several modules registered.
                     safeAppend(output, sizeof(output), keyValue.value().as<String>().c_str());
                     safeAppend(output, sizeof(output), ",");
-
-                    // Track truncation: if we were already at/near capacity
-                    // before this append, later data silently got dropped.
-                    if(strlen(output) >= sizeof(output) - 1)
-                        truncated = true;
                 }
             }
 
@@ -190,14 +169,10 @@ bool SDManager::log(DateTime currentTime){
             // Inform the user that we have successfully written to the file
             snprintf_P(output, MAX_JSON_SIZE, PSTR("Successfully logged data to %s"), fileName);
             LOG(output);
-
-            if(truncated)
-                WARNING(F("SD log row was truncated! Data exceeded MAX_JSON_SIZE buffer."));
             
         }
         else{
             printModuleName("Failed to open log file!");
-            success = false;
         }
 
         // If we want to log batch data do so
@@ -207,14 +182,9 @@ bool SDManager::log(DateTime currentTime){
     }
     else{
         printModuleName("Failed to log! SD card not Initialized!");
-        success = false;
     }
-
-    // FIXED: log() is declared to return bool but previously fell off the
-    // end with no return statement on any path -- undefined behavior, and
-    // callers checking the result (e.g. Loom_Hypnos::logToSD()) were reading
-    // garbage. Now returns a real, meaningful result.
-    return success && !truncated;
+     
+    
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -333,9 +303,7 @@ char* SDManager::readFile(const char* fileName){
 
         if(myFile){
             // read from the file until there's nothing else in it:
-            // FIXED: bounded to the malloc'd buffer size so a large file can't
-            // write past the end of fileContents (previously unbounded).
-            while (myFile.available() && index < 4999) {
+            while (myFile.available()) {
                 fileContents[index] = (char)(myFile.read());
                 index++;
             }
