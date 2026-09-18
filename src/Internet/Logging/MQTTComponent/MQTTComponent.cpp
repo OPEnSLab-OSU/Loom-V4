@@ -75,6 +75,25 @@ bool MQTTComponent::connectToBroker() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool MQTTComponent::publishMessage(const char *topic, const char *message, bool retain, int qos) {
     FUNCTION_START;
+    if (topic == nullptr || message == nullptr) {
+        ERROR(F("Topic or message pointer was null."));
+        FUNCTION_END;
+        return false;
+    }
+
+    size_t topicLen = strlen(topic);
+    if (topicLen >= MAX_TOPIC_LENGTH) {
+        ERROR(F("Topic length exceeds MAX_TOPIC_LENGTH."));
+        FUNCTION_END;
+        return false;
+    }
+
+    size_t messageLen = strlen(message);
+    if (messageLen >= MAX_JSON_SIZE) {
+        ERROR(F("Message length exceeds MAX_JSON_SIZE."));
+        FUNCTION_END;
+        return false;
+    }
 
     // Make sure the module is initialized
     if (moduleInitialized && internetClient.moduleInitialized) {
