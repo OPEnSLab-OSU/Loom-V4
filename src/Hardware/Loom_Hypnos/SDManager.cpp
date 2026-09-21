@@ -81,6 +81,8 @@ void SDManager::writeHeaders(){
         }
     }
 
+    strncat(header2, "checksum,", 512);
+
     // Write the headers to the file
     myFile.println(header1);
     myFile.println(header2);
@@ -188,6 +190,69 @@ bool SDManager::log(DateTime currentTime){
     }
      
     
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool SDManager::verifyChecksum(File &myFile) {
+    myFile.seekSet(0);
+    char lineBuf[MAX_JSON_SIZE];
+    int lineIndex = 0;
+    int lineCount = 0;
+
+    while (myFile.available()) {
+        // Go through every char in file
+        char c = myFile.read();
+
+        // Never let WD timer reset while reading/verifying file
+        WD_TIMER_RESET;
+
+        // When we hit a new line, we start evaluating
+        if (c == '\n') {
+            lineBuf[lineIndex] = '\0';
+
+            // Find last comma = checksum, don't evaluate on the checksum number since it is point
+            // of reference
+            char *checksumComma = strrchr(lineBuf, ',');
+
+            lineCount++;
+
+            // Skip headers in csv
+            if (lineCount > 4) {
+                if (checksumComma != nullptr) {
+                    // Get the value to compare to
+                    uint16_t actualChecksum = atoi(checksumComma + 1);
+
+                    *checksumComma = '\0';
+
+                    // Go through the lineBuf (one line in csv) and manually add checksum
+                    uint16_t lineChecksum = 0;
+                    for (int i = 0; i < strlen(lineBuf); i++) {
+                        lineChecksum += (uint8_t)lineBuf[i];
+                    }
+
+                    // Compare actual checksum to computed checksum, if fails then file is corrupted
+                    if (actualChecksum != lineChecksum) {
+                        char buf[64];
+                        snprintf(buf, 64, "Error: Checksum Failed at Line %i", lineCount);
+                        ERROR(buf);
+                        return false;
+                    }
+                }
+            }
+            // Reset for next line
+            lineIndex = 0;
+            memset(lineBuf, '\0', MAX_JSON_SIZE);
+        }
+        // When not at endline, just keep adding to lineBuf that will represent array of csv
+        // characters
+        else {
+            lineBuf[lineIndex++] = c;
+        }
+    }
+    // If verification passes, file is not corrupted
+    printModuleName("Checksum Passed");
+    return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
