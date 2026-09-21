@@ -233,53 +233,42 @@ bool SDManager::begin(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::updateCurrentFileName(){
-    uint16_t indexDir = 0;
     char f_name[260];
     char* strLocation;
+    const char* prefix = (strlen(overrideFileName) > 0) ? overrideFileName : device_name;
+    int highest = -1;
 
-    // What number we need to append to the file name
     file_count = 0;
 
-    // While there is a next file to open, open it
     while(scanningFile.openNext(&root)){
         scanningFile.getName(f_name, 25);
-
-        if(strlen(overrideFileName) > 0){
-            // Check if the substring exists
-            strLocation = strstr(f_name, overrideFileName);
-        }
-        else{
-            // Check if the substring exists
-            strLocation = strstr(f_name, device_name);
-        }
-        
+        strLocation = strstr(f_name, prefix);
         if(strLocation != NULL){
-            // Increase the file count per loop to track what the next file should be
             file_count++;
+            if(strstr(f_name, "-Batch.txt") == NULL){
+                int num = atoi(strLocation + strlen(prefix));
+                if(num > highest && scanningFile.fileSize() > 10)
+                    highest = num;
+            }
         }
         scanningFile.close();
     }
 
-    // Account for the batch files if we are using batch logging
-    if(batch_size > 0){
+    if(batch_size > 0)
         file_count = file_count / 2;
-    }
+
+    int fileNum = (highest >= 0) ? highest : getCurrentFileNumber();
 
     if(strlen(overrideFileName) > 0){
-        // Set all the fileNames with the override name
-        snprintf_P(fileName, 260, PSTR("%s%i.csv"), overrideFileName, getCurrentFileNumber()); 
-        snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), overrideFileName, getCurrentFileNumber()); 
-        snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
-       
+        snprintf_P(fileName, 260, PSTR("%s%i.csv"), overrideFileName, fileNum);
+        snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), overrideFileName, fileNum);
     }
     else{
-        // Set all the fileNames
-        snprintf_P(fileName, 260, PSTR("%s%i.csv"), device_name, getCurrentFileNumber()); 
-        snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), device_name, getCurrentFileNumber()); 
-        snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
+        snprintf_P(fileName, 260, PSTR("%s%i.csv"), device_name, fileNum);
+        snprintf_P(fileNameNoExtension, 260, PSTR("%s%i"), device_name, fileNum);
     }
+    snprintf_P(batchFileName, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
 
-    // Close the root file after we have decided what to name the next file
     root.close();
 
     char output[OUTPUT_SIZE];
@@ -287,7 +276,6 @@ bool SDManager::updateCurrentFileName(){
     printModuleName(output);
 
     return true;
-
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
