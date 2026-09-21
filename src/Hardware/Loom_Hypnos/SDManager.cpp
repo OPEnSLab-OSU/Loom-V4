@@ -22,12 +22,12 @@ bool SDManager::writeLineToFile(const char* filename, const char* content){
     // Check if the SD card is actually functional
     if(sdInitialized){
         // Open the given file for writing
-        myFile = sd.open(filename, O_RDWR | O_CREAT | O_APPEND);
+        File tempFile = sd.open(filename, O_RDWR | O_CREAT | O_APPEND);
     
         // Check if the file was actually opened, if so write the content to the file
-        if(myFile){
-            myFile.println(content);
-            myFile.close();
+        if(tempFile){
+            tempFile.println(content);
+            tempFile.close();
             return true;
         }
         printModuleName("Failed to Open File!");
@@ -91,19 +91,18 @@ bool SDManager::log(DateTime currentTime){
     char output[MAX_JSON_SIZE + 1];
     
     if(sdInitialized){
-        
-        // Open the file in read/write mode, create the file if we need to and append the content to the end of the file
-        myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
-        
+
+        // File should already be open from begin()
         if(myFile){
             
             // If this file has never been written to before we need to create and write the proper headers to the file
-            if(myFile.available() <= 3){
+            if(myFile.size() <= 3){
                 // Set the date created timestamp of the File
                 myFile.timestamp(T_CREATE, currentTime.year(), currentTime.month(), currentTime.day(), currentTime.hour(), currentTime.minute(), currentTime.second());
                 
                 writeHeaders();
-            }    
+                lastClosed = currentTime.day();
+            }
             
             snprintf_P(output, MAX_JSON_SIZE, PSTR("%s,%i,"), manInst->get_device_name(), manInst->get_instance_num());
             
@@ -160,11 +159,15 @@ bool SDManager::log(DateTime currentTime){
             // Write the matching data into the CSV file
             myFile.println(output);
 
-            // Set the last modified date
-            myFile.timestamp(T_WRITE , currentTime.year(), currentTime.month(), currentTime.day(), currentTime.hour(), currentTime.minute(), currentTime.second());
+            // Flush without closing, only actually close/reopen at EOD.
+            myFile.sync();
 
-            // Close the file
-            myFile.close();
+            // End of day check instead of closing on every log() call 
+            if(currentTime.day() != lastClosed){
+                myFile.close();
+                myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
+                lastClosed = currentTime.day();
+            }
 
             // Inform the user that we have successfully written to the file
             snprintf_P(output, MAX_JSON_SIZE, PSTR("Successfully logged data to %s"), fileName);
@@ -221,7 +224,8 @@ bool SDManager::begin(){
         }
         updateCurrentFileName();
 
-        
+        // Open once here; log() reuses this handle instead of reopening every call
+        myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
     }
     
     // Once the SD card has initialized the first round through we don't want to update the file name
@@ -287,16 +291,16 @@ char* SDManager::readFile(const char* fileName){
 
     long index = 0;
     if(sdInitialized){
-        myFile = sd.open(fileName);
+        File tempFile = sd.open(fileName);
 
-        if(myFile){
+        if(tempFile){
             // read from the file until there's nothing else in it:
-            while (myFile.available()) {
-                fileContents[index] = (char)(myFile.read());
+            while (tempFile.available()) {
+                fileContents[index] = (char)(tempFile.read());
                 index++;
             }
             fileContents[index] = '\0';
-            myFile.close();
+            tempFile.close();
         }
         else{
             printModuleName("Failed to open file!");
@@ -317,17 +321,17 @@ void SDManager::logBatch(){
     // We want to clear the file after the batch size has been exceeded
     if(current_batch >= batch_size){
         current_batch = 0;
-        myFile = sd.open(f_name, O_WRITE | O_TRUNC | O_APPEND);
+        batchFile = sd.open(f_name, O_WRITE | O_TRUNC | O_APPEND);
     }
     else{
-        myFile = sd.open(f_name, O_WRITE | O_CREAT | O_APPEND);
+        batchFile = sd.open(f_name, O_WRITE | O_CREAT | O_APPEND);
     }
     // Check if the file has been opened properly and write the JSON packet to one line
-    if(myFile){
+    if(batchFile){
       
         manInst->getJSONString(jsonString);
-        myFile.println(jsonString);
-        myFile.close();
+        batchFile.println(jsonString);
+        batchFile.close();
         current_batch++;
         
     }else{
