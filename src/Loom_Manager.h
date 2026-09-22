@@ -150,6 +150,12 @@ class Manager{
         int get_packet_number() { return packetNumber; };
 
     private:
+        /**
+         * Log the cause of the latest reset.  Options: power on, 1.2V brown-out,
+         * 3.3V brown-out, external trigger (button), watchdog timeout, and system
+         * reset request.
+         */
+        void logResetCause();
 
         /* Device Information */
         char deviceName[100];                                   // Name of the device
