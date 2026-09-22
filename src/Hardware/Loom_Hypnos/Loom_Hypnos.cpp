@@ -446,6 +446,7 @@ void Loom_Hypnos::sleep(bool waitForSerial){
 
     shouldPowerUp = false;
     LowPower.attachInterruptWakeup(RTC_ALARM_WAKEUP, wakeup, 0);
+    TIMER_DISABLE;
     LowPower.sleep(sleepDurationMillis);  // Go to sleep and hang
 
     // Go back to sleep until woken up by the sleep alarm on the on-chip RTC
