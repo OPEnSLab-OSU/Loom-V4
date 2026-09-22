@@ -162,6 +162,12 @@ class Loom_Hypnos : public Module{
         /* Sleep Functionality */
 
         /**
+         * Sets a callback function to run once the device wakes up from sleep
+         * @param isrCallback function to callback to when the wakeup interrupt is triggered
+         */
+        bool registerWakeupCallback(InterruptCallbackFunction isrCallback);
+
+        /**
          * Set the next interrupt to be triggered at a set interval in the future
          * @param duration The time that will elapse before the next interrupt is triggered
          */
@@ -292,4 +298,5 @@ class Loom_Hypnos : public Module{
          */
         static void wakeup();
         static volatile bool shouldPowerUp;
+        static InterruptCallbackFunction wakeupCallback;
 };
