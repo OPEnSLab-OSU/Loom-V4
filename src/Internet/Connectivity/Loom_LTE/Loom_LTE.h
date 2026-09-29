@@ -9,11 +9,15 @@
  */
 
 #if __has_include("Loom_LTE_Config.h")
+#include "Loom_WarningGuards.h"
+
 #include "Loom_LTE_Config.h"
 #endif
 
 #if __has_include("arduino_secrets.h")
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include "arduino_secrets.h"
+LOOM_EXTERNAL_INCLUDE_END
 #endif
 
 /*
@@ -126,9 +130,8 @@
 #include "../NetworkComponent.h"
 #include "Loom_LTE_Modem.h"
 #include "Loom_Manager.h"
-#include <functional>
 
-#include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
+class Loom_BatchSD;
 
 // The LTE modem is connected to the board's hardware Serial1 port.
 #define SerialAT Serial1
@@ -235,7 +238,7 @@ class Loom_LTE : public NetworkComponent {
      * Attach a BatchSD module so LTE can remain off until the configured
      * batch window requires upload.
      */
-    void setBatchSD(Loom_BatchSD &batch) { batch_sd = &batch; };
+    void setBatchSD(Loom_BatchSD &batch) { batchSD = &batch; };
 
     LTE_MODEM getModemType() const { return modemType; }
 
@@ -306,6 +309,7 @@ class Loom_LTE : public NetworkComponent {
     bool selectWorkingBaud(uint32_t timeoutMs);
     bool initializeModemFromAT();
     bool bootModemWithRetries();
+    bool tryConnectDataSession(uint8_t attempt, uint8_t maxAttempts);
 
     // Raw AT helpers and R5 setup hints.
     bool sendATExpectOK(const char *command, uint32_t timeoutMs = 5000L);
@@ -323,21 +327,21 @@ class Loom_LTE : public NetworkComponent {
     LTE_VERSION lteBoardVersion = SPARKFUN;
     LTE_MODEM modemType = LTE_MODEM::SARA_R4;
 
-    Manager *manInst;
+    Manager *manager;
 
-    char APN[100];
-    char gprsUser[100];
-    char gprsPass[100];
+    char apnName[100];
+    char apnUsername[100];
+    char apnPassword[100];
 
     int powerPin = A5;
     int resetPin = -1;
-    uint32_t selectedBaud = 9600UL;
+    uint32_t uartBaud = 9600UL;
 
     Loom_LTE_Modem *modem = nullptr;
 
-    bool powerUp = true;
-    bool firstInit = true;
-    Loom_BatchSD *batch_sd = nullptr;
+    bool shouldPowerUp = true;
+    bool firstInitialization = true;
+    Loom_BatchSD *batchSD = nullptr;
 
     bool powered = false;
 };

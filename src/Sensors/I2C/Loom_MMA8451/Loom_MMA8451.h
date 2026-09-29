@@ -1,7 +1,11 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Adafruit_MMA8451.h>
 #include <Wire.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"

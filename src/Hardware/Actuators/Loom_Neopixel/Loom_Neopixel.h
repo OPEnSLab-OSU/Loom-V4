@@ -1,9 +1,13 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
 #include "../../../Actuators.h"
 #include "../../../Loom_Manager.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Adafruit_NeoPixel.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 /**
  *  Neopixel LED Strip Controller

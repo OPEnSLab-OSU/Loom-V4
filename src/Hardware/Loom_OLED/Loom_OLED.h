@@ -1,9 +1,13 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
 #include "Loom_Manager.h"
 #include "Module.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Adafruit_SSD1306.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 /**
  * Class for driving the OLED display

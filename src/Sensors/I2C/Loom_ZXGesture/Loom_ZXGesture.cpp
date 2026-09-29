@@ -1,17 +1,18 @@
 #include "Loom_ZXGesture.h"
 #include "Logger.h"
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_ZXGesture::Loom_ZXGesture(Manager &man, int address, bool useMux, Mode mode)
     : I2CDevice("ZX Gesture"), manInst(&man), zx(ZX_Sensor(address)), mode(mode) {
 
     // Register the module with the manager
-    if (!useMux)
+    if (!useMux) {
         manInst->registerModule(this);
+    }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ZXGesture::initialize() {
     if (!zx.init()) {
         ERROR(F("Failed to initialize ZX Gesture Sensor! Check connections and try again..."));
@@ -22,8 +23,8 @@ void Loom_ZXGesture::initialize() {
         uint8_t ver = zx.getModelVersion();
         if (ver != ZX_MODEL_VER) {
             moduleInitialized = false;
-            ERRORF("Incorrect Model Version. Expected Version: %u Actual Version: %u",
-                   ZX_MODEL_VER, ver);
+            ERRORF("Incorrect Model Version. Expected Version: %u Actual Version: %u", ZX_MODEL_VER,
+                   ver);
             return;
         } else {
             LOGF("Model Version: %u", ver);
@@ -46,97 +47,102 @@ void Loom_ZXGesture::initialize() {
         needsReinit = false;
     }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ZXGesture::measure() {
 
-    if (moduleInitialized) {
-        // Get the current connection status
-        bool connectionStatus = checkDeviceConnection();
+    if (!moduleInitialized) {
+        return;
+    }
 
-        // If we are connected and we need to reinit
-        if (connectionStatus && needsReinit) {
-            initialize();
-            needsReinit = false;
-        }
+    // Get the current connection status
+    bool connectionStatus = checkDeviceConnection();
 
-        // If we are not connected
-        else if (!connectionStatus) {
-            ERROR(F("No acknowledge received from the device"));
-            return;
-        }
+    // If we are connected and we need to reinit
+    if (connectionStatus && needsReinit) {
+        initialize();
+        needsReinit = false;
+    }
 
-        // Check if we are in position detection mode or in gesture detection mode
-        if (mode == Mode::POS) {
-            uint8_t x, z;
-            if (zx.positionAvailable()) {
+    // If we are not connected
+    else if (!connectionStatus) {
+        ERROR(F("No acknowledge received from the device"));
+        return;
+    }
 
-                // Read X and Y values into struct
-                x = zx.readX();
-                z = zx.readZ();
+    // Check if we are in position detection mode or in gesture detection mode
+    if (mode == Mode::POS) {
+        uint8_t x, z;
+        if (zx.positionAvailable()) {
 
-                if ((x != ZX_ERROR) && (z != ZX_ERROR)) {
-                    pos.x = x;
-                    pos.z = z;
-                } else {
-                    ERROR(F("Error occurred while reading position data"));
-                }
-            }
+            // Read X and Y values into struct
+            x = zx.readX();
+            z = zx.readZ();
 
-            // No position available
-            else {
-                pos.x = 255;
-                pos.z = 255;
+            if ((x != ZX_ERROR) && (z != ZX_ERROR)) {
+                pos.x = x;
+                pos.z = z;
+            } else {
+                ERROR(F("Error occurred while reading position data"));
             }
         }
 
-        // If we are trying to detect a gesture
+        // No position available
         else {
-            if (zx.gestureAvailable()) {
-                const GestureType gesture = zx.readGesture();
-                gestureSpeed = zx.readGestureSpeed();
+            pos.x = 255;
+            pos.z = 255;
+        }
+    }
 
-                switch (gesture) {
-                case RIGHT_SWIPE:
-                    gestureString = "Right Swipe";
-                    break;
-                case LEFT_SWIPE:
-                    gestureString = "Left Swipe";
-                    break;
-                case UP_SWIPE:
-                    gestureString = "Up Swipe";
-                    break;
-                default:
-                    gestureString = "No Gesture";
-                }
-            }
+    // If we are trying to detect a gesture
+    else {
+        if (zx.gestureAvailable()) {
+            const GestureType gesture = zx.readGesture();
+            gestureSpeed = zx.readGestureSpeed();
 
-            // Defaults if no gesture was detected
-            else {
+            switch (gesture) {
+            case RIGHT_SWIPE:
+                gestureString = "Right Swipe";
+                break;
+            case LEFT_SWIPE:
+                gestureString = "Left Swipe";
+                break;
+            case UP_SWIPE:
+                gestureString = "Up Swipe";
+                break;
+            default:
                 gestureString = "No Gesture";
-                gestureSpeed = 0;
             }
         }
-    }
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_ZXGesture::package() {
-    if (moduleInitialized) {
-        JsonObject json = manInst->get_data_object(getModuleName());
-        switch (mode) {
-        case POS:
-            json["Position_X"] = pos.x;
-            json["Position_Z"] = pos.z;
-            break;
-        case GEST:
-            json["Gesture"] = gestureString;
-            json["Speed"] = gestureSpeed;
-            break;
+        // Defaults if no gesture was detected
+        else {
+            gestureString = "No Gesture";
+            gestureSpeed = 0;
         }
     }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_ZXGesture::package() {
+    if (!moduleInitialized) {
+        return;
+    }
+
+    JsonObject json = manInst->get_data_object(getModuleName());
+    switch (mode) {
+    case POS:
+        json["Position_X"] = pos.x;
+        json["Position_Z"] = pos.z;
+        break;
+    case GEST:
+        json["Gesture"] = gestureString;
+        json["Speed"] = gestureSpeed;
+        break;
+    }
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // re-initialization

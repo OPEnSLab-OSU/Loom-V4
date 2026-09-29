@@ -1,11 +1,15 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
 #include "../../Loom_Manager.h"
 #include "../Radio.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <HardwareSerial.h>
 #include <RHReliableDatagram.h>
 #include <RH_Serial.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 /**
  * Used to communicate with Freewave type radios
@@ -78,7 +82,7 @@ class Loom_Freewave : public Radio {
   private:
     Manager *manInst; // Instance of the manager
 
-    HardwareSerial &serial1;     // Serial reference
-    RH_Serial driver;            // Freewave Driver
-    RHReliableDatagram manager;   // RadioHead reliability manager, owned in-place
+    HardwareSerial &serial1;    // Serial reference
+    RH_Serial driver;           // Freewave Driver
+    RHReliableDatagram manager; // RadioHead reliability manager, owned in-place
 };

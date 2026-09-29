@@ -5,6 +5,7 @@
  */
 
 #include "arduino_secrets.h"
+#include <Hardware/Loom_BatchSD/Loom_BatchSD.h>
 
 #include <Loom_Manager.h>
 

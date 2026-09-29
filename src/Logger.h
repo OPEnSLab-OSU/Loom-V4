@@ -1,25 +1,37 @@
 #pragma once
 
-#include "Hardware/Loom_Hypnos/Loom_Hypnos.h"
-#include <MemoryFree.h>
+#include "Loom_WarningGuards.h"
+
+#include "Module.h"
+LOOM_EXTERNAL_INCLUDE_BEGIN
+#include <ArduinoJson.h>
+LOOM_EXTERNAL_INCLUDE_END
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 
-// To acquire a function call summary, just add INSTRUMENT() to the top of the
-// relevant function.
+class SDManager;
+class Loom_Hypnos;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Function summaries: show entry/exit timing and available memory during debugging.
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// FUNCTION_START begins a scoped debug summary. Its destructor records the exit on every
+// return path. FUNCTION_END marks the normal exit in source; it does not emit a second summary.
+// INSTRUMENT() remains available as the equivalent scoped spelling.
 #define LOOM_LOGGER_JOIN_IMPL(a, b) a##b
 #define LOOM_LOGGER_JOIN(a, b) LOOM_LOGGER_JOIN_IMPL(a, b)
 #define INSTRUMENT()                                                                               \
     FunctionInstrumentor LOOM_LOGGER_JOIN(_loomInstrumentor_, __LINE__)(__FILE__, __func__,        \
                                                                         __LINE__);
 
-// DEPRECATED - use INSTRUMENT
 #define FUNCTION_START INSTRUMENT()
-// DEPRECATED - use INSTRUMENT
 #define FUNCTION_END
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Message helpers: LOG for progress, WARNING for a problem, ERROR for a failed operation.
+////////////////////////////////////////////////////////////////////////////////////////////////////
 struct LogContext {
     const char *file;
     const char *func;
@@ -44,7 +56,7 @@ struct LogContext {
 #define GENERIC_LOGF(silent, level, msg, ...)                                                      \
     do {                                                                                           \
         LogContext log{__FILE__, __func__, __LINE__, silent, level};                               \
-        Logger::getInstance()->genericLogFormatted(log, PSTR(msg), ##__VA_ARGS__);                  \
+        Logger::getInstance()->genericLogFormatted(log, PSTR(msg), ##__VA_ARGS__);                 \
     } while (false)
 
 #define LOGF(msg, ...) GENERIC_LOGF(false, "DEBUG", msg, ##__VA_ARGS__)
@@ -72,6 +84,7 @@ class Logger {
     unsigned int stackDepth = 0;
 
     // Whether or not to use the SD card or log function summaries
+    bool debugOutputEnabled = true;
     bool enableFunctionSummaries = false;
     bool enableSDLogging = false;
     bool rtcTimestampsEnabled = true;
@@ -79,7 +92,7 @@ class Logger {
     SDManager *sdInst = nullptr;
     Loom_Hypnos *hypnosInst = nullptr;
 
-    Logger(){};
+    Logger() {};
 
     /**
      * Generic log function - prints to Serial and logs to SD
@@ -87,60 +100,28 @@ class Logger {
      * @param message The message we want to log
      * @param silent Whether to print to the serial monitor
      */
-    void log(char *message, bool silent) {
-        char filePath[32];
-
-        // If we want to actually print to serial
-        if (!silent)
-            Serial.println(message);
-
-        // Log as long as we have given it a SD card instance
-        if (sdInst != nullptr && enableSDLogging && sdInst->hasSDInitialized()) {
-            snprintf_P(filePath, sizeof(filePath), PSTR("/debug/output_%i.log"),
-                       sdInst->getCurrentFileNumber());
-            sdInst->writeLineToFile(filePath, message);
-        }
-    }
+    void log(char *message, bool silent);
 
     static const char *baseFileName(const char *src) {
-        if (src == nullptr)
+        if (src == nullptr) {
             return "";
+        }
 
         const char *backslash = strrchr(src, '\\');
         const char *slash = strrchr(src, '/');
         const char *separator = backslash;
-        if (separator == nullptr || (slash != nullptr && slash > separator))
+        if (separator == nullptr || (slash != nullptr && slash > separator)) {
             separator = slash;
+        }
         return separator == nullptr ? src : separator + 1;
     }
 
-    static size_t writePrefix(char *destination, size_t destinationSize, LogContext log) {
-        if (destination == nullptr || destinationSize == 0)
-            return 0;
-
-        const char *fileName = baseFileName(log.file);
-        int written = 0;
-        Logger *logger = Logger::getInstance();
-        if (logger->rtcTimestampsEnabled && logger->hypnosInst != nullptr &&
-            logger->hypnosInst->isRTCInitialized()) {
-            DateTime time = logger->hypnosInst->getCurrentTime();
-            char timestamp[21];
-            logger->hypnosInst->dateTime_toString(time, timestamp);
-            written = snprintf_P(destination, destinationSize, PSTR("[%s] [%s] [%s:%s:%lu] "),
-                                 timestamp, log.level, fileName, log.func, log.lineNum);
-        } else {
-            written = snprintf_P(destination, destinationSize, PSTR("[%s] [%s:%s:%lu] "),
-                                 log.level, fileName, log.func, log.lineNum);
-        }
-
-        if (written <= 0)
-            return 0;
-        if (static_cast<size_t>(written) >= destinationSize)
-            return destinationSize - 1;
-        return static_cast<size_t>(written);
-    }
+    static size_t writePrefix(char *destination, size_t destinationSize, LogContext log);
 
   public:
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Output options: one shared logger, with optional SD storage and RTC timestamps.
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     // Deleting copy constructor.
     Logger(const Logger &obj) = delete;
 
@@ -161,10 +142,7 @@ class Logger {
      * to the front of the logger output
      * @param hypnos Pointer to the hypnos object this also sets the sdInst
      */
-    void setHypnos(Loom_Hypnos *hypnos) {
-        hypnosInst = hypnos;
-        sdInst = hypnos->getSDManager();
-    };
+    void setHypnos(Loom_Hypnos *hypnos);
 
     void genericLog(LogContext log, const __FlashStringHelper *msg) {
         // ATSAMD21 flash is memory-mapped, so F() strings can be consumed without a RAM copy.
@@ -172,15 +150,20 @@ class Logger {
     }
 
     void genericLog(LogContext log, const char *msg) {
+        if (!debugOutputEnabled && strcmp(log.level, "DEBUG") == 0) {
+            return;
+        }
         char logMessage[OUTPUT_SIZE] = {};
         const size_t prefixLength = writePrefix(logMessage, sizeof(logMessage), log);
-        strncpy(logMessage + prefixLength, msg ? msg : "",
-                sizeof(logMessage) - prefixLength - 1);
+        strncpy(logMessage + prefixLength, msg ? msg : "", sizeof(logMessage) - prefixLength - 1);
 
         this->log(logMessage, log.silent);
     }
 
     void genericLogFormatted(LogContext log, const char *format, ...) {
+        if (!debugOutputEnabled && strcmp(log.level, "DEBUG") == 0) {
+            return;
+        }
         char logMessage[OUTPUT_SIZE] = {};
         const size_t prefixLength = writePrefix(logMessage, sizeof(logMessage), log);
 
@@ -196,21 +179,18 @@ class Logger {
     /*
      * Directly log a message
      */
-    void logLong(char *message, bool silent) { log(message, silent); };
+    void logLong(char *message, bool silent) {
+        if (debugOutputEnabled) {
+            log(message, silent);
+        }
+    }
 
     // Preserve LOG_LONG's unprefixed pretty-JSON payload on both destinations without
     // allocating MAX_JSON_SIZE bytes on the Feather M0 stack.
-    void logDocument(const DynamicJsonDocument &document) {
-        serializeJsonPretty(document, Serial);
-        Serial.println();
-        if (sdInst != nullptr && enableSDLogging && sdInst->hasSDInitialized()) {
-            char filePath[32];
-            snprintf_P(filePath, sizeof(filePath), PSTR("/debug/output_%i.log"),
-                       sdInst->getCurrentFileNumber());
-            if (!sdInst->writeJsonToFile(filePath, document))
-                Serial.println(F("Could not save JSON to the SD debug log!"));
-        }
-    }
+    void logDocument(const DynamicJsonDocument &document);
+
+    /** Suppress DEBUG messages, JSON display, and summaries; preserve warnings and errors. */
+    void setDebugOutput(bool enabled) { debugOutputEnabled = enabled; }
 
     /* Enable function summaries to view memory usage */
     void enableSummaries() { enableFunctionSummaries = true; };
@@ -222,7 +202,8 @@ class Logger {
     void disableRTCTimestamps() { rtcTimestampsEnabled = false; };
 
     bool shouldLogSummaries() {
-        return enableFunctionSummaries && sdInst != nullptr && enableSDLogging;
+        return debugOutputEnabled && enableFunctionSummaries && sdInst != nullptr &&
+               enableSDLogging;
     }
 
     /**
@@ -230,8 +211,9 @@ class Logger {
      * Always null-terminates within dstSize.
      */
     static void truncateFileName(char *dst, size_t dstSize, const char *src) {
-        if (dst == nullptr || dstSize == 0)
+        if (dst == nullptr || dstSize == 0) {
             return;
+        }
         if (src == nullptr) {
             dst[0] = '\0';
             return;
@@ -245,31 +227,9 @@ class Logger {
 
 class FunctionInstrumentor {
   private:
-    // Keep the large formatting buffers out of the constructor/destructor frames. GCC otherwise
-    // reserves them before the early return even when field deployments disable summaries.
-    static __attribute__((noinline)) void writeSummary(Logger *logger, bool starting,
-                                                       const char *file, const char *func,
-                                                       int lineNum) {
-        const int freemem = freeMemory();
-        char logfileName[48];
-        snprintf_P(logfileName, sizeof(logfileName), PSTR("/debug/funcSummaries_%i.log"),
-                   logger->sdInst->getCurrentFileNumber());
-
-        char output[OUTPUT_SIZE] = {};
-        if (starting) {
-            char fileName[LOGGER_FILENAME_SIZE] = {};
-            Logger::truncateFileName(fileName, sizeof(fileName), file);
-            snprintf_P(output, sizeof(output), PSTR("start,%d,%s,%s,%d,%d,%lu"),
-                       static_cast<int>(logger->stackDepth - 1), fileName, func, lineNum, freemem,
-                       millis());
-        } else {
-            snprintf_P(output, sizeof(output), PSTR("end,%d, , , ,%d,%lu"),
-                       static_cast<int>(logger->stackDepth), freemem, millis());
-        }
-
-        if (!logger->sdInst->writeLineToFile(logfileName, output))
-            Serial.println(F("Could not write instrumentation to file!"));
-    }
+    // Keep formatting buffers out of the constructor/destructor frames when summaries are off.
+    static __attribute__((noinline)) void
+    writeSummary(Logger *logger, bool starting, const char *file, const char *func, int lineNum);
 
   public:
     // delete all other constructors
@@ -280,15 +240,17 @@ class FunctionInstrumentor {
         Logger *logger = Logger::getInstance();
         logger->stackDepth++;
 
-        if (logger->shouldLogSummaries())
+        if (logger->shouldLogSummaries()) {
             writeSummary(logger, true, file, func, lineNum);
+        }
     }
 
     ~FunctionInstrumentor() {
         Logger *logger = Logger::getInstance();
         logger->stackDepth--;
 
-        if (logger->shouldLogSummaries())
+        if (logger->shouldLogSummaries()) {
             writeSummary(logger, false, nullptr, nullptr, 0);
+        }
     }
 };

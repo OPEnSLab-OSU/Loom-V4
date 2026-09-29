@@ -1,13 +1,17 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include "Arduino.h"
 #include <Adafruit_SleepyDog.h>
-#include <ArduinoJson.h>
-#include <Wire.h>
+LOOM_EXTERNAL_INCLUDE_END
 #include <stdio.h>
 #include <string.h>
 
-/* Watchdog Timer Setup */
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Watchdog: restart the board if a protected operation stops making progress.
+////////////////////////////////////////////////////////////////////////////////////////////////////
 #define WATCHDOG_TIMEOUT 10000
 
 // To allow Watchdog functionality, WATCHDOG_ENABLE must be set during compilation
@@ -27,11 +31,13 @@
 inline void loomResetWatchdogIfEnabled() {
 #if defined(ARDUINO_ARCH_SAMD)
 #if defined(__SAMD51__)
-    if (WDT->CTRLA.bit.ENABLE)
+    const bool watchdogEnabled = WDT->CTRLA.bit.ENABLE;
 #else
-    if (WDT->CTRL.bit.ENABLE)
+    const bool watchdogEnabled = WDT->CTRL.bit.ENABLE;
 #endif
+    if (watchdogEnabled) {
         Watchdog.reset();
+    }
 #elif defined(WATCHDOG_ENABLE)
     Watchdog.reset();
 #endif
@@ -49,12 +55,16 @@ inline void loomResetWatchdogIfEnabled() {
 #define MODULE_NAME_SIZE 32
 
 /**
- *  General overarching interface to provide basic unified functionality
+ * One part of a Loom device: a sensor, display, storage module, or connection.
+ * Manager calls these same operations on each registered module in registration order.
  *
  *  @author Will Richards
  */
 class Module {
   public:
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Module name: the label used in logs and the packet.
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     Module(const char *modName) { setModuleName(modName); };
     virtual ~Module() = default;
 
@@ -71,23 +81,27 @@ class Module {
         Serial.println(message ? message : "");
     };
 
-    // Generic measure and package calls to unify some interaction with different sensor
-    // implementations
-    virtual void initialize() = 0; // Initialize all functionality of the sensor
-    virtual void measure() = 0;    // Collect data from the sensor
-    virtual void package() = 0;    // Package collected data into JSON document
-    virtual void power_up() = 0;   // Power the sensor up and come out of sleep
-    virtual void power_down() = 0; // Power the sensor down to prepare for sleep
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Measurement cycle: setup -> read -> package; power down/up surrounds sleep.
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    virtual void initialize() = 0; // Set up the hardware before the first reading.
+    virtual void measure() = 0;    // Read the hardware and keep the latest values in this module.
+    virtual void package() = 0;    // Add those values to Manager's shared JSON packet.
+    virtual void power_up() = 0;   // Restore the hardware after sleep.
+    virtual void power_down() = 0; // Prepare the hardware for sleep.
+    // A failed module normally stays skipped; some connections can recover on the next wake.
     virtual bool retryPowerUpWhenUninitialized() const { return false; }
 
     // Not required overrides
     virtual void display_data() {}; // Called by the manager to allow OLED to display data at the
                                     // same time as manager.display_data
 
-    bool moduleInitialized =
-        true; // Whether or not the module initialized successfully true until set otherwise
-    int module_address =
-        -1; // Specifically for I2C addresses, -1 means the module doesn't have an address
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Availability: used by Manager to decide whether to call this module.
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Drivers clear this flag when setup or recovery fails. Manager skips unavailable modules.
+    bool moduleInitialized = true;
+    int module_address = -1; // I2C address, or -1 when the module has no I2C address.
   private:
     char moduleName[MODULE_NAME_SIZE];
 };

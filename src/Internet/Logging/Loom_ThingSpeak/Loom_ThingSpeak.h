@@ -1,11 +1,10 @@
 #pragma once
 
-#include <ArduinoMqttClient.h>
-#include <tuple>
+#include <vector>
 
 #include "Loom_Manager.h"
 
-#include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
+class Loom_BatchSD;
 #include "../MQTTComponent/MQTTComponent.h"
 
 /* Define function signatures for functions of type "float name()" and "float name(int parameter)"*/
@@ -32,9 +31,8 @@ class Loom_ThingSpeak : public MQTTComponent {
      * Construct a new MQTT interface
      * @param man Reference to the manager
      * @param internet_client Reference to whatever connectivity platform is being used
-     * @param broker_address Domain where the broker is being hosted
-     * @param broker_port Port that the broker is listening on
-     * @param database_name Name of the database that will be used by MongoDB
+     * @param channelID ThingSpeak channel receiving the fields
+     * @param clientID Client ID supplied by ThingSpeak
      *
      * Not Required:
      * @param broker_user User name to log into the broker
@@ -63,7 +61,7 @@ class Loom_ThingSpeak : public MQTTComponent {
 
     /**
      * Load the MQTT credentials from a JSON string, used to pull credentials from a file
-     * @param jsonString JSON formatted string containing the login credentials, this is freed at
+     * @param json JSON formatted string containing the login credentials, this is freed at
      * the end
      */
     void loadConfigFromJSON(char *json) override;
@@ -71,24 +69,35 @@ class Loom_ThingSpeak : public MQTTComponent {
     /**
      * Add a new function to the list of functions that we are going to pass into ThingSpeak
      *
-     * @param fieldName The corresponding field number
-     * @param function The function signature as follows: float someFunction()
+     * @param fieldNumber The corresponding field number
+     * @param readValue Function called during publishing, with signature float someFunction()
      */
-    void addFunction(int fieldNumber, FloatReturnFuncDefs function);
+    void addFunction(int fieldNumber, FloatReturnFuncDefs readValue);
 
     /**
      * Add a new function to the list of functions that we are going to pass into ThingSpeak
      *
-     * @param fieldName The corresponding field number
-     * @param function The function signature as follows: float someFunction(int)
+     * @param fieldNumber The corresponding field number
+     * @param readValue Function called during publishing, with signature float someFunction(int)
      * @param parameter The parameter to supply to the function when we call it
      */
-    void addFunction(int fieldNumber, FloatReturnFuncDefsWithParam function, int parameter);
+    void addFunction(int fieldNumber, FloatReturnFuncDefsWithParam readValue, int parameter);
 
   private:
     static constexpr size_t MESSAGE_SIZE = 1024;
+    static constexpr size_t MAX_FIELDS = 8;
 
-    Manager *manInst; // Instance of the manager
+    struct FieldFunction {
+        int fieldNumber;
+        FloatReturnFuncDefs readValue;
+    };
+    struct ParameterizedFieldFunction {
+        int fieldNumber;
+        FloatReturnFuncDefsWithParam readValue;
+        int parameter;
+    };
+
+    Manager *manager;  // Instance of the manager
     int channelID = 0; // The channelID we are publishing to
 
     /**
@@ -100,9 +109,7 @@ class Loom_ThingSpeak : public MQTTComponent {
      */
     bool formatMessage(char topic[MAX_TOPIC_LENGTH], char message[MESSAGE_SIZE]);
 
-    /* List of mappings from field names to functions */
-    std::vector<std::pair<int, FloatReturnFuncDefs>>
-        functionsNoParam; // List of added functions that take no parameters
-    std::vector<std::tuple<int, FloatReturnFuncDefsWithParam, int>>
-        functionsParam; // List of added functions that take a parameter
+    // Keep the two lists separate: payloads historically emit no-argument fields first.
+    std::vector<FieldFunction> fieldsWithoutParameters;
+    std::vector<ParameterizedFieldFunction> fieldsWithParameters;
 };

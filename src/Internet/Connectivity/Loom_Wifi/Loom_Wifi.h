@@ -1,9 +1,13 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <WiFi101.h>
 #include <WiFiUdp.h>
+LOOM_EXTERNAL_INCLUDE_END
 
-#include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
+class Loom_BatchSD;
 #include "../NetworkComponent.h"
 #include "Loom_Manager.h"
 
@@ -129,7 +133,7 @@ class Loom_WIFI : public NetworkComponent {
     /**
      * Called by max to ignore WiFi verification requests
      */
-    void useMax() { usingMax = true; };
+    void useMax() { usedByMax = true; };
 
     /**
      * Set an instance of BatchSD to check if we need to power up
@@ -151,20 +155,22 @@ class Loom_WIFI : public NetworkComponent {
     }
 
   private:
-    Manager *manInst; // Pointer to the manager
+    void setDefaultAccessPointName();
+
+    Manager *manager; // Pointer to the manager
 
     WiFiClient
         wifiClient; // Wifi client that can be used with the MQTT client or other additional objects
     Loom_BatchSD *batchSD = nullptr;
 
-    bool powerUp = true; // Whether or not the WiFi should power up (used with batch uploads)
+    bool shouldPowerUp = true; // Whether or not the WiFi should power up (used with batch uploads)
 
-    char wifi_name[100] = {};     // Access point to connect to
-    char wifi_password[100] = {}; // Password to connect to the access point
+    char networkName[100] = {};     // Access point to connect to
+    char networkPassword[100] = {}; // Password to connect to the access point
     int connectionRetries;
 
-    bool usingMax = false; // If we are using max
-    bool firstInit = true;
+    bool usedByMax = false; // If we are using max
+    bool firstInitialization = true;
     CommunicationMode mode; // Current WiFi mode we are in
 
     IPAddress remoteIP; // IP address to send the UDP requests to

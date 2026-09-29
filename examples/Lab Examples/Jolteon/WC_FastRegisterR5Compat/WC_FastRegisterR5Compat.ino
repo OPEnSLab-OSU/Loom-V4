@@ -31,6 +31,7 @@
 #define USE_SARA_R5
 
 #include <SparkFun_LTE_Shield_Arduino_Library.h>
+#include <Logger.h>
 
 #define USING_HYPNOS true
 #define LTEShieldSerial Serial1

@@ -1,7 +1,11 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Arduino.h>
 #include <Client.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 /**
  * Small runtime interface over TinyGSM's separate SARA-R4 and SARA-R5 types.

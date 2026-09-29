@@ -1,6 +1,10 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Adafruit_SHT31.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
@@ -44,5 +48,4 @@ class Loom_SHT31 : public I2CDevice {
     int i2c_address; // I2C address of the device
 
     float sensorData[2] = {0, 0}; // Array of size 2 to hold the temp and humidity data
-
 };

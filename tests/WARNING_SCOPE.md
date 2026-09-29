@@ -52,11 +52,14 @@ inside an external scope.
 Useful checks from the Loom library root:
 
 ```powershell
+./tests/verify_warning_scope.ps1
 rg -n "Loom_WarningGuards|LOOM_EXTERNAL_INCLUDE" src examples
 rg -l "LOOM_EXTERNAL_INCLUDE_BEGIN" src
 ```
 
 Then run one of the audit entry points documented in `tests/README.md`.
+The verifier itself runs no compiler and rejects scopes around Loom code or standard/runtime
+headers. It can run before compiler audits are authorized.
 
 ## Removing the structure
 

@@ -1,7 +1,7 @@
 #include "Loom_Manager.h"
 #include "Logger.h"
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 Manager::Manager(const char *devName, uint32_t instanceNum)
     : instanceNumber(instanceNum), doc(MAX_JSON_SIZE) {
     strncpy(deviceName, devName ? devName : "", sizeof(deviceName) - 1);
@@ -11,31 +11,29 @@ Manager::Manager(const char *devName, uint32_t instanceNum)
     modules.reserve(8);
     Logger::getInstance();
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::registerModule(Module *module) {
     if (module == nullptr) {
         ERROR(F("Cannot register a null module."));
         return;
     }
 
-    char *location;
-    // If there are no duplicates proceed as normal
-    for (size_t i = 0; i < modules.size(); i++) {
-        // Find the pointer to the module name
-        location = strstr(modules[i]->getModuleName(), module->getModuleName());
+    // The packet needs distinct labels for modules of the same type. Match the base name even
+    // when a previously registered module already has an address suffix, then label both.
+    for (Module *registered : modules) {
+        // Substring matching preserves the existing handling of earlier suffixed names.
+        const char *location = strstr(registered->getModuleName(), module->getModuleName());
 
-        // Check if the module name contains the base string to make sure this works past 2 modules
-        // of the same type
-        if (location != NULL) {
+        if (location != nullptr) {
             // Append the address to the name
             char modifiedName[MODULE_NAME_SIZE];
 
             // Format first module name
             snprintf_P(modifiedName, sizeof(modifiedName), PSTR("%s_%i"),
-                       modules[i]->getModuleName(), modules[i]->module_address);
-            modules[i]->setModuleName(modifiedName);
+                       registered->getModuleName(), registered->module_address);
+            registered->setModuleName(modifiedName);
 
             // Format second string using the same array
             snprintf_P(modifiedName, sizeof(modifiedName), PSTR("%s_%i"), module->getModuleName(),
@@ -50,78 +48,72 @@ void Manager::registerModule(Module *module) {
 
     modules.push_back(module);
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 DynamicJsonDocument &Manager::getDocument() { return doc; }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::beginSerial(bool waitForSerial) {
-    uint32_t startMillis = millis();
+    const uint32_t startMillis = millis();
 
     Serial.begin(BAUD_RATE);
-    // Pause if the Serial is not open and we want to wait
+    // USB Serial may never open on a deployed device, so waiting has a time limit.
     while (!Serial && waitForSerial) {
 
-        // If it has been 20 seconds break out of the loop
-        if ((uint32_t)(millis() - startMillis) >= WAIT_TIME_MS) {
+        if (static_cast<uint32_t>(millis() - startMillis) >= WAIT_TIME_MS) {
             break;
         }
     }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::measure() {
     FUNCTION_START;
-
-    if (hasInitialized) {
-        LOG(F("** Measuring **"));
-        for (size_t i = 0; i < modules.size(); i++) {
-            if (modules[i]->moduleInitialized)
-                modules[i]->measure();
-            else
-                WARNINGF("%s Not initialized!", modules[i]->getModuleName());
-            // TIMER_RESET;
-        }
-    } else {
+    if (!hasInitialized) {
         ERROR(F("Unable to collect data as the manager and thus all sensors connected to it have "
                 "not been initialized! Call manager.initialize() to fix this."));
+    } else {
+        LOG(F("** Measuring **"));
+        for (Module *module : modules) {
+            if (module->moduleInitialized) {
+                module->measure();
+            } else {
+                WARNINGF("%s Not initialized!", module->getModuleName());
+            }
+        }
     }
     LOG(F("** Measuring Complete **"));
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::package() {
     FUNCTION_START;
 
     LOG(F("** Packaging **"));
 
-    // Clear the document so that we don't get null characters after too many updates
+    // Reuse the existing JSON pool; clearing it also invalidates views into the old packet.
     doc.clear();
     doc[F("type")] = F("data");
     doc["id"]["name"] = get_device_name();
     doc["id"]["instance"] = get_instance_num();
 
-    // Get the contents of the JSON document
-    contentsArray = doc["contents"];
-    if (contentsArray.isNull())
-        contentsArray = doc.createNestedArray("contents");
+    contentsArray = doc.createNestedArray("contents");
 
     // Add the packet number to the JSON document
     JsonObject json = get_data_object("Packet");
     json["Number"] = packetNumber;
 
-    for (size_t i = 0; i < modules.size(); i++) {
-        if (modules[i]->moduleInitialized) {
-            modules[i]->package();
+    for (Module *module : modules) {
+        if (module->moduleInitialized) {
+            module->package();
         } else {
-            WARNINGF("%s Not initialized!", modules[i]->getModuleName());
+            WARNINGF("%s Not initialized!", module->getModuleName());
         }
-        // TIMER_RESET;
     }
 
     if (doc.overflowed()) {
@@ -133,57 +125,56 @@ void Manager::package() {
     LOG(F("** Packaging Complete **"));
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 JsonObject Manager::get_data_object(const char *moduleName) {
     const char *safeModuleName = moduleName ? moduleName : "";
 
-    // Check if the key already exists in the array
-    for (JsonVariant value : contentsArray) {
-
-        // If the data already exists
-        const char *existingName = value.as<JsonObject>()["module"].as<const char *>();
+    for (JsonObject moduleEntry : contentsArray) {
+        const char *existingName = moduleEntry["module"].as<const char *>();
         if (existingName != nullptr && strcmp(existingName, safeModuleName) == 0) {
-            return value.as<JsonObject>()["data"];
+            return moduleEntry["data"];
         }
     }
 
-    // If it doesn't already exist create a new object
-    JsonObject json = contentsArray.createNestedObject();
-    json["module"] = safeModuleName;
-    return json.createNestedObject("data");
+    JsonObject moduleEntry = contentsArray.createNestedObject();
+    moduleEntry["module"] = safeModuleName;
+    return moduleEntry.createNestedObject("data");
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::power_up() { power_up(0); }
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::power_up(int wakeWatchdogMs) {
     FUNCTION_START;
-    if (wakeWatchdogMs > 0)
+    if (wakeWatchdogMs > 0) {
         Watchdog.enable(wakeWatchdogMs);
-    else {
+    } else {
         WD_TIMER_ENABLE;
     }
-    for (size_t i = 0; i < modules.size(); i++) {
+    for (Module *module : modules) {
         loomResetWatchdogIfEnabled();
-        if (modules[i]->moduleInitialized || modules[i]->retryPowerUpWhenUninitialized()) {
+        if (module->moduleInitialized || module->retryPowerUpWhenUninitialized()) {
             // LTE startup may legitimately take minutes. Limit the exception to that call,
             // then restore protection before the following sensor/SD module is touched.
-            const bool isLTE = strcmp(modules[i]->getModuleName(), "LTE") == 0;
+            const bool isLTE = strcmp(module->getModuleName(), "LTE") == 0;
             if (isLTE) {
-                if (wakeWatchdogMs > 0)
+                if (wakeWatchdogMs > 0) {
                     Watchdog.disable();
-                else {
+                } else {
                     WD_TIMER_DISABLE;
                 }
             }
-            modules[i]->power_up();
-            if (isLTE && wakeWatchdogMs > 0)
+            module->power_up();
+            if (isLTE && wakeWatchdogMs > 0) {
                 Watchdog.enable(wakeWatchdogMs);
+            }
         } else {
-            WARNINGF("%s Not initialized!", modules[i]->getModuleName());
+            WARNINGF("%s Not initialized!", module->getModuleName());
         }
         loomResetWatchdogIfEnabled();
     }
@@ -194,30 +185,30 @@ void Manager::power_up(int wakeWatchdogMs) {
     }
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::power_down() {
     FUNCTION_START;
-    for (size_t i = 0; i < modules.size(); i++) {
-        if (modules[i]->moduleInitialized)
-            modules[i]->power_down();
-        else
-            WARNINGF("%s Not initialized!", modules[i]->getModuleName());
-        // TIMER_RESET;
+    for (Module *module : modules) {
+        if (module->moduleInitialized) {
+            module->power_down();
+        } else {
+            WARNINGF("%s Not initialized!", module->getModuleName());
+        }
     }
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::display_data() {
     FUNCTION_START;
     if (!doc.isNull()) {
 
         // Display data for modules that support it
-        for (size_t i = 0; i < modules.size(); i++) {
-            modules[i]->display_data();
+        for (Module *module : modules) {
+            module->display_data();
         }
 
         LOG(F("Data Json: \n"));
@@ -225,12 +216,11 @@ void Manager::display_data() {
     } else {
         LOG(F("JSON Document is Null there is no data to display"));
     }
-
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::initialize() {
     FUNCTION_START;
     // If you are using a hypnos board that has not been enabled, this needs to occur before
@@ -243,54 +233,46 @@ void Manager::initialize() {
 
     LOG(F("** Initializing Modules **"));
     read_serial_num();
-    for (size_t i = 0; i < modules.size(); i++) {
-        modules[i]->initialize();
+    for (Module *module : modules) {
+        module->initialize();
     }
     hasInitialized = true;
     LOG(F("** Setup Complete ** "));
-
-    // TIMER_ENABLE;
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Manager::getJSONString(char array[MAX_JSON_SIZE]) {
-    // size_t jsonSize = measureJson(doc) + 1; // Retained for callers that need a measured size.
-    serializeJson(doc, array, MAX_JSON_SIZE);
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void Manager::getJSONString(char array[MAX_JSON_SIZE]) { serializeJson(doc, array, MAX_JSON_SIZE); }
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::read_serial_num() {
-    char serial_no[33];
     // Serial numbers are made up of four words located at these specific registers (see datasheet)
-    uint32_t sn_words[4];
-    sn_words[0] = *(volatile uint32_t *)(0x0080A00C);
-    sn_words[1] = *(volatile uint32_t *)(0x0080A040);
-    sn_words[2] = *(volatile uint32_t *)(0x0080A044);
-    sn_words[3] = *(volatile uint32_t *)(0x0080A048);
+    const uint32_t serialWords[] = {
+        *reinterpret_cast<volatile const uint32_t *>(0x0080A00C),
+        *reinterpret_cast<volatile const uint32_t *>(0x0080A040),
+        *reinterpret_cast<volatile const uint32_t *>(0x0080A044),
+        *reinterpret_cast<volatile const uint32_t *>(0x0080A048),
+    };
 
-    // Take these raw values and convert them into a string of hex characters
+    // Each word becomes eight uppercase hex digits, most-significant byte first. Write into the
+    // member buffer directly so no second 33-byte text buffer is needed on the stack.
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
             const size_t offset = static_cast<size_t>(i * 8 + j * 2);
-            snprintf_P(serial_no + offset, sizeof(serial_no) - offset, PSTR("%02X"),
-                       (uint8_t)(sn_words[i] >> ((3 - j) * 8)));
+            snprintf_P(serial_num + offset, sizeof(serial_num) - offset, PSTR("%02X"),
+                       static_cast<uint8_t>(serialWords[i] >> ((3 - j) * 8)));
         }
     }
-
-    // Copy the contents of the calculated char array into the member variable
-    strncpy(serial_num, serial_no, 33);
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::pause(const uint32_t ms) const {
-    // TIMER_DISABLE;
     const uint32_t startTime = millis();
-    while ((uint32_t)(millis() - startTime) < ms)
-        ;
-    // TIMER_ENABLE;
+    while ((uint32_t)(millis() - startTime) < ms) {
+        // Preserve the busy wait; delay() would change scheduler/USB behavior.
+    }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////

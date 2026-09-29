@@ -3,6 +3,7 @@
   * MANAGER MUST BE INCLUDED FIRST IN ALL CODE */ 
 // Configurable WeatherChimes 2026 sketch.
 #include <Loom_Manager.h>
+#include <Hardware/Loom_BatchSD/Loom_BatchSD.h>
   #include <Logger.h> 
   #include <Hardware/Loom_Hypnos/Loom_Hypnos.h> 
   #include <Sensors/Loom_Analog/Loom_Analog.h> 

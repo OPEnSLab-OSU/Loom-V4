@@ -1,13 +1,15 @@
 #pragma once
 
-#include "ArduinoJson.hpp"
-#include "ArduinoJson/Object/JsonObject.hpp"
-#include "Hardware/Loom_BatchSD/Loom_BatchSD.h"
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <ArduinoJson.h>
-#include <Logger.h>
+LOOM_EXTERNAL_INCLUDE_END
 #include <Module.h>
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
+LOOM_EXTERNAL_INCLUDE_END
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -21,6 +23,9 @@
 #define RF95_FREQ 915.0 // LoRa Radio Frequency
 
 #define RECV_DATA_SIZE 256
+
+class Manager;
+class Loom_BatchSD;
 
 enum class FragReceiveStatus {
     Incomplete, // no packet has been completed
@@ -206,15 +211,15 @@ class Loom_LoRa : public Module {
     bool sendFragmentedPacket(JsonObject json, uint8_t destinationAddress);
     bool sendPacketHeader(JsonObject json, uint8_t destinationAddress);
 
-    Manager *manager = nullptr; // Instance of the Loom manager
-    RH_RF95 radioDriver;        // Underlying radio driver
+    Manager *manager = nullptr;      // Instance of the Loom manager
+    RH_RF95 radioDriver;             // Underlying radio driver
     RHReliableDatagram radioManager; // RadioHead reliability manager, owned in-place
 
     Loom_BatchSD *batchSD = nullptr; // Pointer to the batchSD
 
     bool poweredUp = true;
 
-    uint8_t deviceAddress;  // Device address
+    uint8_t deviceAddress;      // Device address
     int16_t signalStrength = 0; // Strength of the signal received
 
     uint8_t powerLevel;        // The power level we want to transmit at

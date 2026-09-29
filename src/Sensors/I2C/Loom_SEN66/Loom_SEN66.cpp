@@ -1,17 +1,18 @@
 #include "Loom_SEN66.h"
 #include "Logger.h"
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_SEN66::Loom_SEN66(Manager &man, bool measurePM, bool useMux, bool readNumVals)
     : I2CDevice("SEN66"), manInst(&man), measurePM(measurePM), readNumVals(readNumVals) {
     module_address = SEN66_I2C_ADDRESS;
 
-    if (!useMux)
+    if (!useMux) {
         manInst->registerModule(this);
+    }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SEN66::initialize() {
     FUNCTION_START;
 
@@ -24,11 +25,9 @@ void Loom_SEN66::initialize() {
     if (error) {
         ERRORF("SEN66 reset failed, error: %u", error);
         moduleInitialized = false;
-        FUNCTION_END;
         return;
-    } else {
-        LOG("Sensor successfully reset!");
     }
+    LOG("Sensor successfully reset!");
 
     LOG("Resetting SEN66, waiting 1.2s...");
     delay(1200);
@@ -38,28 +37,25 @@ void Loom_SEN66::initialize() {
     if (error) {
         ERRORF("Error starting SEN66 measurement: %u", error);
         moduleInitialized = false;
-        FUNCTION_END;
         return;
-    } else {
-        moduleInitialized = true;
-        needsReinit = false;
-        LOG("SEN66 Started. Waiting 5s for fan spin-up...");
-        delay(5000); // Initial spin-up delay
     }
-
+    moduleInitialized = true;
+    needsReinit = false;
+    LOG("SEN66 Started. Waiting 5s for fan spin-up...");
+    delay(5000); // Initial spin-up delay
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SEN66::power_up() {
     // Hypnos normally removes both sensor rails during sleep. Re-run the full
     // startup sequence so continuous measurement is actually restarted.
     initialize();
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SEN66::measure() {
     FUNCTION_START;
 
@@ -67,16 +63,36 @@ void Loom_SEN66::measure() {
     resetValuesForMeasure();
 
     // Temporary variables
-    float tmpPm1p0, tmpPm2p5, tmpPm4p0, tmpPm10p0;
-    float tmpHum, tmpTemp, tmpVoc, tmpNox;
-    uint16_t tmpCo2;
-    float tmpNumPm0p5, tmpNumPm1p0, tmpNumPm2p5, tmpNumPm4p0, tmpNumPm10p0;
+    float tmpPm1p0 = 0.0f;
+    float tmpPm2p5 = 0.0f;
+    float tmpPm4p0 = 0.0f;
+    float tmpPm10p0 = 0.0f;
+    float tmpHum = 0.0f;
+    float tmpTemp = 0.0f;
+    float tmpVoc = 0.0f;
+    float tmpNox = 0.0f;
+    uint16_t tmpCo2 = 0;
+    float tmpNumPm0p5 = 0.0f;
+    float tmpNumPm1p0 = 0.0f;
+    float tmpNumPm2p5 = 0.0f;
+    float tmpNumPm4p0 = 0.0f;
+    float tmpNumPm10p0 = 0.0f;
 
     // Accumulators
-    float accPm1p0 = 0, accPm2p5 = 0, accPm4p0 = 0, accPm10p0 = 0;
-    float accHum = 0, accTemp = 0, accVoc = 0, accNox = 0;
+    float accPm1p0 = 0;
+    float accPm2p5 = 0;
+    float accPm4p0 = 0;
+    float accPm10p0 = 0;
+    float accHum = 0;
+    float accTemp = 0;
+    float accVoc = 0;
+    float accNox = 0;
     long accCo2 = 0;
-    float accNumPm0p5 = 0, accNumPm1p0 = 0, accNumPm2p5 = 0, accNumPm4p0 = 0, accNumPm10p0 = 0;
+    float accNumPm0p5 = 0;
+    float accNumPm1p0 = 0;
+    float accNumPm2p5 = 0;
+    float accNumPm4p0 = 0;
+    float accNumPm10p0 = 0;
 
     int validSamples = 0;
     int validNumberSamples = 0;
@@ -91,7 +107,7 @@ void Loom_SEN66::measure() {
         // Wait 1 second for next data point (Sensor updates @ 1Hz)
         delay(1000);
 
-        uint8_t padding;
+        uint8_t padding = 0;
         bool dataReady = false;
         error = sen66.getDataReady(padding, dataReady);
         if (error) {
@@ -99,49 +115,47 @@ void Loom_SEN66::measure() {
             continue;
         }
 
-        if (dataReady) {
-            // Read Values
-            error = sen66.readMeasuredValues(tmpPm1p0, tmpPm2p5, tmpPm4p0, tmpPm10p0, tmpHum,
-                                             tmpTemp, tmpVoc, tmpNox, tmpCo2);
+        if (!dataReady) {
+            continue;
+        }
 
-            // Filter out Error/NotReady values (High PM or 0xFFFF CO2)
-            if (error == 0 && tmpPm2p5 < 6000.0 && tmpCo2 < 60000) {
+        error = sen66.readMeasuredValues(tmpPm1p0, tmpPm2p5, tmpPm4p0, tmpPm10p0, tmpHum, tmpTemp,
+                                         tmpVoc, tmpNox, tmpCo2);
+        if (error) {
+            ERRORF("SEN66 read error: %u", error);
+            continue;
+        }
+        // Keep the positive validity test: its negation rejects NaN PM values too.
+        if (!(tmpPm2p5 < 6000.0 && tmpCo2 < 60000)) {
+            ERRORF("Invalid SEN66 data skipped (PM2.5: %.2f, CO2: %u)", tmpPm2p5, tmpCo2);
+            continue;
+        }
 
-                accPm1p0 += tmpPm1p0;
-                accPm2p5 += tmpPm2p5;
-                accPm4p0 += tmpPm4p0;
-                accPm10p0 += tmpPm10p0;
-                accHum += tmpHum;
-                accTemp += tmpTemp;
-                accVoc += tmpVoc;
-                accNox += tmpNox;
-                accCo2 += tmpCo2;
+        accPm1p0 += tmpPm1p0;
+        accPm2p5 += tmpPm2p5;
+        accPm4p0 += tmpPm4p0;
+        accPm10p0 += tmpPm10p0;
+        accHum += tmpHum;
+        accTemp += tmpTemp;
+        accVoc += tmpVoc;
+        accNox += tmpNox;
+        accCo2 += tmpCo2;
 
-                if (readNumVals) {
-                    error = sen66.readNumberConcentrationValues(
-                        tmpNumPm0p5, tmpNumPm1p0, tmpNumPm2p5, tmpNumPm4p0, tmpNumPm10p0);
-                    if (error == 0) {
-                        accNumPm0p5 += tmpNumPm0p5;
-                        accNumPm1p0 += tmpNumPm1p0;
-                        accNumPm2p5 += tmpNumPm2p5;
-                        accNumPm4p0 += tmpNumPm4p0;
-                        accNumPm10p0 += tmpNumPm10p0;
-                        validNumberSamples++;
-                    } else {
-                        ERRORF("SEN66 number concentration read failed: %u", error);
-                    }
-                }
-                validSamples++;
+        if (readNumVals) {
+            error = sen66.readNumberConcentrationValues(tmpNumPm0p5, tmpNumPm1p0, tmpNumPm2p5,
+                                                        tmpNumPm4p0, tmpNumPm10p0);
+            if (error == 0) {
+                accNumPm0p5 += tmpNumPm0p5;
+                accNumPm1p0 += tmpNumPm1p0;
+                accNumPm2p5 += tmpNumPm2p5;
+                accNumPm4p0 += tmpNumPm4p0;
+                accNumPm10p0 += tmpNumPm10p0;
+                validNumberSamples++;
             } else {
-                // Debug print
-                if (error) {
-                    ERRORF("SEN66 read error: %u", error);
-                } else {
-                    ERRORF("Invalid SEN66 data skipped (PM2.5: %.2f, CO2: %u)", tmpPm2p5,
-                           tmpCo2);
-                }
+                ERRORF("SEN66 number concentration read failed: %u", error);
             }
         }
+        validSamples++;
     }
 
     // Calculate Averages
@@ -154,7 +168,7 @@ void Loom_SEN66::measure() {
         ambientTemperature = accTemp / validSamples;
         vocIndex = accVoc / validSamples;
         noxIndex = accNox / validSamples;
-        co2 = (uint16_t)(accCo2 / validSamples);
+        co2 = static_cast<uint16_t>(accCo2 / validSamples);
 
         if (readNumVals && validNumberSamples > 0) {
             numConcentrationPm0p5 = accNumPm0p5 / validNumberSamples;
@@ -169,12 +183,11 @@ void Loom_SEN66::measure() {
         ERROR("No valid samples collected. Outputting 0s.");
     }
     logDeviceStatus();
-
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SEN66::package() {
     FUNCTION_START;
     JsonObject json = manInst->get_data_object(getModuleName());
@@ -199,29 +212,29 @@ void Loom_SEN66::package() {
     json["VocIndex"] = (isnan(vocIndex) ? -1 : vocIndex);
     json["NoxIndex"] = (isnan(noxIndex) ? -1 : noxIndex);
     json["CO2"] = co2;
-
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SEN66::adjustTempOffset(int16_t offset, int16_t slope, uint16_t timeConstant) {
     FUNCTION_START;
 
     if (moduleInitialized) {
         uint16_t error = sen66.setTemperatureOffsetParameters(offset, slope, timeConstant, 0);
-        if (error)
+        if (error) {
             ERRORF("Failed to adjust SEN66 sensor offset. Error: %u", error);
+        }
     }
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SEN66::logDeviceStatus() {
     FUNCTION_START;
 
-    SEN66DeviceStatus deviceStatus;
+    SEN66DeviceStatus deviceStatus = {};
     uint16_t error = sen66.readDeviceStatus(deviceStatus);
 
     if (!error) {
@@ -229,12 +242,11 @@ void Loom_SEN66::logDeviceStatus() {
     } else {
         ERRORF("Error logging SEN66 device status: %u", error);
     }
-
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SEN66::resetValuesForMeasure() {
     FUNCTION_START;
     massConcentrationPm1p0 = 0;
@@ -253,3 +265,4 @@ void Loom_SEN66::resetValuesForMeasure() {
     co2 = 0;
     FUNCTION_END;
 }
+////////////////////////////////////////////////////////////////////////////////////////////////////

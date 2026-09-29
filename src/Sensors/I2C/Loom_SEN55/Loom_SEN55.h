@@ -1,7 +1,11 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <SensirionI2CSen5x.h>
 #include <Wire.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
@@ -165,7 +169,7 @@ class Loom_SEN55 : public I2CDevice {
     float getPM10() { return massConcentrationPm10p0; };
 
     /**
-     * Get the PM2.5 reading
+     * Get the humidity reading
      */
     float getHumidity() { return ambientHumidity; };
 
@@ -191,11 +195,15 @@ class Loom_SEN55 : public I2CDevice {
 
     /**
      * Reset relevant values to 0, this is useful for preparing for another measurement cycle.
-     * @return An array of the values pre-reset
      */
     void resetValuesForMeasure();
 
   private:
+    // False aborts the cycle before status logging, matching the original error paths.
+    // A completed cycle may still contain no ready samples; each mode reports that itself.
+    bool measureWithPm();
+    bool measureWithoutPm();
+
     Manager *manInst;        // Instance of the manager
     SensirionI2CSen5x sen5x; // Instance of the SEN55 object
 

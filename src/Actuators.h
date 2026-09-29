@@ -1,8 +1,12 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
 #include "Module.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <ArduinoJson.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 enum ACTUATOR_TYPE { SERVO, STEPPER, RELAY, NEOPIXEL };
 
@@ -58,8 +62,9 @@ class Actuator : public Module {
             return "Relay";
         case NEOPIXEL:
             return "Neopixel";
+        default:
+            return "Unknown";
         }
-        return "Unknown";
     };
 
     /**

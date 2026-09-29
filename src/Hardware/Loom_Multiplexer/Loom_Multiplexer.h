@@ -1,29 +1,19 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
 #include "../../Loom_Manager.h"
 #include "../../Module.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include "Wire.h"
-#include <algorithm>
+LOOM_EXTERNAL_INCLUDE_END
 #include <array>
 #include <initializer_list>
-#include <tuple>
 #include <vector>
-// I2C Sensors Used by Loom
-#include "../../Sensors/I2C/Loom_ADS1115/Loom_ADS1115.h"
-#include "../../Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h"
-#include "../../Sensors/I2C/Loom_K30/Loom_K30.h"
-#include "../../Sensors/I2C/Loom_MB1232/Loom_MB1232.h"
-#include "../../Sensors/I2C/Loom_MMA8451/Loom_MMA8451.h"
-#include "../../Sensors/I2C/Loom_MPU6050/Loom_MPU6050.h"
-#include "../../Sensors/I2C/Loom_MS5803/Loom_MS5803.h"
-#include "../../Sensors/I2C/Loom_SEN55/Loom_SEN55.h"
-#include "../../Sensors/I2C/Loom_SEN66/Loom_SEN66.h"
-#include "../../Sensors/I2C/Loom_SHT31/Loom_SHT31.h"
-#include "../../Sensors/I2C/Loom_STEMMA/Loom_STEMMA.h"
-#include "../../Sensors/I2C/Loom_T6793/Loom_T6793.h"
-#include "../../Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h"
-#include "../../Sensors/I2C/Loom_ZXGesture/Loom_ZXGesture.h"
+LOOM_EXTERNAL_INCLUDE_BEGIN
+#include <Adafruit_TSL2591.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 /**
  * Adds hot swappable functionality for TCA9548 I2C multiplexers.
@@ -38,7 +28,9 @@
  */
 class Loom_Multiplexer : public Module {
   public:
-    /* Loomified generalized calls */
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Main cycle: select each sensor's port before using its driver.
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     void initialize() override;
     void measure() override;
     void package() override;
@@ -46,6 +38,9 @@ class Loom_Multiplexer : public Module {
     void power_up() override;
     bool retryPowerUpWhenUninitialized() const override { return true; }
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Discovery settings: choose addresses, ports, and sensor options before initialize().
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     /**
      * Construct a new Multiplexer using the default Loom I2C address list.
      *
@@ -107,6 +102,9 @@ class Loom_Multiplexer : public Module {
      */
     void setSEN66Options(bool measurePM = true, bool readNumVals = true);
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Debug scans: inspect what responds on each port without adding packet fields.
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     /**
      * Print mux initialization and scan diagnostics directly to Serial.
      */
@@ -130,7 +128,16 @@ class Loom_Multiplexer : public Module {
     byte activeMuxAddr;         // Active TCA9548 address
     const uint8_t numPorts = 8; // Number of ports on the multiplexer
 
-    std::vector<std::tuple<byte, Module *, int>> sensors; // List of auto-loaded sensors
+    struct MuxSensor {
+        byte address;
+        Module *module; // Owned by the mux; clearSensors() deletes it.
+        int port;
+    };
+    std::vector<MuxSensor> sensors;
+
+    Loom_Multiplexer(Manager &man, const byte *addresses, size_t count);
+    void assignKnownAddresses(const byte *addresses, size_t count);
+    byte findMultiplexer();
 
     bool selectPin(uint8_t pin);       // Select which mux port to transmit to
     bool disableChannels();            // Disables all channels on the multiplexer

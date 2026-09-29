@@ -1,10 +1,14 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <DFRobot_OxygenSensor.h>
 #include <Wire.h>
+LOOM_EXTERNAL_INCLUDE_END
 /**
  *  DFRobot Oxygen Sensor
  *

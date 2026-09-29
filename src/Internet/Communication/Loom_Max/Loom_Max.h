@@ -1,10 +1,14 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
 #include "../../Connectivity/Loom_Wifi/Loom_Wifi.h"
 #include "Actuators.h"
 #include "Module.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Udp.h>
+LOOM_EXTERNAL_INCLUDE_END
 #include <vector>
 
 // Base ports to send and receive on
@@ -43,8 +47,6 @@ class Loom_Max : public Module {
      * Construct a new instance of the the Max MSP Pub/Sub protocol
      * @param man Reference to the manager
      * @param wifi Reference to the Wifi manager for getting UDP communication streams
-     * @param mode How traffic is handled between the feather and the max client (CLIENT = Remote
-     * Router, AP = Access point on the feather)
      */
     Loom_Max(Manager &man, Loom_WIFI &wifi);
 
@@ -52,40 +54,41 @@ class Loom_Max : public Module {
      * Construct a new instance of the the Max MSP Pub/Sub protocol
      * @param man Reference to the manager
      * @param wifi Reference to the Wifi manager for getting UDP communication streams
-     * @param mode How traffic is handled between the feather and the max client (CLIENT = Remote
-     * Router, AP = Access point on the feather)
      * @param firstAct The first actuator to add to the list
      */
     template <typename T>
     Loom_Max(Manager &man, Loom_WIFI &wifi, T *firstAct)
-        : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi) {
+        : Module("Max Pub/Sub"), manager(&man), wifiModule(&wifi) {
 
         wifi.useMax();
         if (firstAct != nullptr) {
             actuators.reserve(1);
             actuators.push_back(firstAct);
         }
-        manInst->registerModule(this);
+        manager->registerModule(this);
     };
 
     /**
      * Construct a new instance of the the Max MSP Pub/Sub protocol
      * @param man Reference to the manager
      * @param wifi Reference to the Wifi manager for getting UDP communication streams
-     * @param mode How traffic is handled between the feather and the max client (CLIENT = Remote
-     * Router, AP = Access point on the feather)
      * @param firstAct The first actuator to add to the list
      * @param additionalActuators This takes any number of actuators
      */
     template <typename T, typename... Args>
     Loom_Max(Manager &man, Loom_WIFI &wifi, T *firstAct, Args *...additionalActuators)
-        : Module("Max Pub/Sub"), manInst(&man), wifiInst(&wifi) {
+        : Module("Max Pub/Sub"), manager(&man), wifiModule(&wifi) {
         wifi.useMax();
         // Allocate the pointer table once during global construction instead of leaving the
         // progressively grown blocks as holes in the SAMD21 heap.
         actuators.reserve(1 + sizeof...(Args));
-        get_variadic_parameters((Actuator *)firstAct, (Actuator *)additionalActuators...);
-        manInst->registerModule(this);
+        Actuator *const requestedActuators[] = {firstAct, additionalActuators...};
+        for (Actuator *actuator : requestedActuators) {
+            if (actuator != nullptr) {
+                actuators.push_back(actuator);
+            }
+        }
+        manager->registerModule(this);
     };
 
     ~Loom_Max();
@@ -94,32 +97,22 @@ class Loom_Max : public Module {
     Loom_Max &operator=(const Loom_Max &) = delete;
 
   private:
-    Manager *manInst;    // Instance of the manager
-    Loom_WIFI *wifiInst; // Instance of the WiFi Manager
+    Manager *manager;      // Instance of the manager
+    Loom_WIFI *wifiModule; // Instance of the WiFi Manager
 
     WiFiUDP udpSend; // Instance of the UDP controller for sending
     WiFiUDP udpRecv; // Instance of the UDP controller for recieving
 
-    uint16_t sendPort; // Port to send the UDP packets to
-    uint16_t recvPort; // Port to receive the packets on
+    uint16_t sendPort = 0; // Port to send the UDP packets to
+    uint16_t recvPort = 0; // Port to receive the packets on
 
     IPAddress remoteIP; // IP Address to send the packets to
 
     void setUDPPort(); // Set the UDP port to the correct port number
     void setIP();      // Set the remote IP to send the packets too
 
-    std::vector<Actuator *> actuators; // List of actuators we want to control with max
+    void dispatchActuatorCommand(JsonVariant command);
 
-    // Collect a variadic list of actuator pointers into the pre-reserved pointer table.
-    template <typename T> T *get_variadic_parameters(T *v) {
-        if (v != nullptr)
-            actuators.push_back(v);
-        return v;
-    };
-
-    template <typename T, typename... Args> T *get_variadic_parameters(T *first, Args *...args) {
-        if (first != nullptr)
-            actuators.push_back(first);
-        return get_variadic_parameters(args...);
-    };
+    // Constructor pointers transfer ownership to Max; the destructor deletes them in order.
+    std::vector<Actuator *> actuators;
 };

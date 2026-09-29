@@ -63,10 +63,21 @@ References:
   `goto`; a narrowly scoped cleanup exception requires review and a comment.
 - Keep functions single-purpose and make ownership/lifetime visible. Avoid hidden heap allocation
   in convenience return types. Pass large objects by reference.
+- Headers include types required by their own interface. Put implementation-only driver includes
+  in source files; use forward declarations for pointer/reference-only dependencies. Prefer a
+  small local utility when it replaces a genuinely isolated dependency without duplicating a
+  hardware/protocol stack. Measure linked costs before claiming memory or speed improvements.
 - Use macros only for include guards, platform/compiler adaptation, and clearly bounded compile-time
   instrumentation. Parenthesize macro arguments where the expansion permits it.
-- Comments explain constraints, invariants, units, hardware behavior, or a non-obvious decision.
-  Remove narration that merely restates the next line.
+- Write comments for a learner as well as a maintainer. Retain paired slash dividers and useful
+  section labels so readers can scan operations without trained eyes. Explain the purpose of a
+  block, constraints, units, ownership, timing, and failure handling. Update inaccurate comments
+  when code changes; do not discard useful explanations or future-work notes as cosmetic cleanup.
+- Keep the familiar `FUNCTION_START` / `FUNCTION_END` debug spelling. Entry creates the scoped
+  instrumentor; exit logging is automatic on every return. The end macro is an explicit source
+  marker, not a second logging operation.
+
+See [the embedded design review](EMBEDDED_DESIGN_REVIEW.md) for applied decisions and validation limits.
 
 ## Beta diagnostic boundary
 
@@ -80,17 +91,20 @@ Temporary deployment telemetry in a sketch uses exactly these markers:
 WISP_DIAGNOSTIC_CHECKPOINT("phase"); // LOOM_BETA_DIAGNOSTIC
 ```
 
-`LOOM_WISP_BETA_DIAGNOSTICS=1` is the soak-test build. Setting it to `0` must compile out the
-diagnostic object, strings, and calls while leaving watchdog and recovery behavior in place. The
-final canonical cleanup removes every marked block and tagged call, then rebuilds and reruns golden
-output tests. Diagnostics remain Serial-only and may not add or rename stored JSON/CSV fields.
+These blocks now live only in separate sketches whose folder and main `.ino` names end in
+`_debug`. `LOOM_WISP_BETA_DIAGNOSTICS=1` is the soak-test build. Setting it to `0` must compile
+out the diagnostic object, strings, and calls while leaving watchdog and recovery behavior in
+place. Quiet sibling sketches contain no marked blocks or tagged calls, suppress routine logger
+debug output, and omit SD debug logging/JSON display. Diagnostics remain Serial-only and may not
+add or rename stored JSON/CSV fields. Source-only pair checks guard operational/configuration
+parity; compiler and golden-output checks still require separate validation.
 
 ## Required review and release evidence
 
 - Exact-FQBN clean build with warnings separated into Loom-owned and external findings.
 - Linked `.data` + `.bss` measurement and compiler stack-usage review for changed recurring paths.
 - Diagnostic-enabled and diagnostic-disabled WISP builds.
-- Automated verification of canonical/mirrored examples, diagnostic boundaries, dependency hashes,
+- Automated verification of quiet/debug example parity, diagnostic boundaries, dependency hashes,
   official core hashes, and output-contract tokens.
 - Golden comparisons of representative JSON, CSV, filenames, MQTT topics, and wire payloads.
 - Hardware tests for RTC/DST boundaries, repeated standby/wake, SDA/SCL stuck-low faults, sensor-rail

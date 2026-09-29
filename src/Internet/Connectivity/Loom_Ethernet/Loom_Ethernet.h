@@ -1,8 +1,10 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Ethernet.h>
-#include <EthernetClient.h>
-#include <EthernetUdp.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #include "../NetworkComponent.h"
 #include "Loom_Manager.h"
@@ -119,7 +121,7 @@ class Loom_Ethernet : public NetworkComponent {
     void sendNTPpacket();
 
     uint8_t mac[6] = {}; // MAC address of the connected device
-    IPAddress ip;   // The IP we should assign to this device
+    IPAddress ip;        // The IP we should assign to this device
 
     IPAddress remoteIP; // IP address to send the UDP requests to
 };

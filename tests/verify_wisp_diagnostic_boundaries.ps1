@@ -1,131 +1,83 @@
+param([string] $DeploymentFolder)
+
 $ErrorActionPreference = 'Stop'
-
 $loomRoot = Split-Path -Parent $PSScriptRoot
-$sketches = @(
-    'examples\Lab Examples\Wisp\Wisp_Batch_Logging\Wisp_Batch_Logging.ino',
-    'examples\Lab Examples\Wisp\Wisp_Mux_BatchLogging\Wisp_Mux_BatchLogging.ino',
-    'examples\Lab Examples\Wisp\WispV2_Deploy_2026\WispV2_Deploy_2026.ino',
-    'examples\Lab Examples\Wisp\examples\Wisp\Wisp_Batch_Logging\Wisp_Batch_Logging.ino',
-    'examples\Lab Examples\Wisp\examples\Wisp\Wisp_Mux_BatchLogging\Wisp_Mux_BatchLogging.ino',
-    'examples\Lab Examples\Wisp\examples\Wisp\WispV2_Deploy_2026\WispV2_Deploy_2026.ino'
-)
-
-$failed = $false
-
-function Report-Failure([string] $path, [int] $lineNumber, [string] $message) {
-    $location = if ($lineNumber -gt 0) { "${path}:${lineNumber}" } else { $path }
-    Write-Error "${location}: ${message}" -ErrorAction Continue
-    $script:failed = $true
+$wispRoot = Join-Path $loomRoot 'examples\Lab Examples\Wisp'
+foreach ($header in @('src\Logger.h', 'src\Diagnostics\Loom_MemoryDiagnostics.h')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $loomRoot $header) -PathType Leaf)) {
+        throw "Missing canonical debug header: $header"
+    }
 }
+$sketches = @(Get-ChildItem -LiteralPath $wispRoot -Filter '*.ino' -Recurse)
+if ($DeploymentFolder) {
+    $sketches += Get-ChildItem -LiteralPath $DeploymentFolder -Filter '*.ino' -Recurse
+}
+if ($sketches.Count -lt 6) { throw 'Expected all three clean/debug Wisp pairs.' }
 
-foreach ($relativePath in $sketches) {
-    $path = Join-Path $loomRoot $relativePath
-    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-        Report-Failure $relativePath 0 'missing sketch'
+foreach ($sketch in $sketches) {
+    if ($sketch.BaseName -cne $sketch.Directory.Name) {
+        throw "Arduino main sketch/folder name mismatch: $($sketch.FullName)"
+    }
+    $text = [IO.File]::ReadAllText($sketch.FullName)
+    if ($text -notmatch '(?m)^\s*#include\s*[<"]Logger\.h[>"]') {
+        throw "Sketch must explicitly include its logger header: $($sketch.FullName)"
+    }
+    foreach ($required in @('hypnos.setWakeWatchdogTimeout(ACTIVE_WATCHDOG_MS)',
+                            'const bool networkWindow = batchSD.shouldPublish()',
+                            'Watchdog.disable();', 'sd->retryBatch()', 'hypnos.logToSD()')) {
+        if (-not $text.Contains($required)) {
+            throw "Missing production safeguard '$required': $($sketch.FullName)"
+        }
+    }
+    if (-not $sketch.BaseName.EndsWith('_debug')) {
+        if ($text -match 'LOOM_BETA_DIAGNOSTIC|WISP_DIAGNOSTIC_|Loom_MemoryDiagnostics|ENABLE_SD_LOGGING|manager\.display_data\(') {
+            throw "Debug instrumentation escaped into the quiet sketch: $($sketch.FullName)"
+        }
+        if (-not $text.Contains('Logger::getInstance()->setDebugOutput(false)')) {
+            throw "Quiet sketch does not suppress routine logger output: $($sketch.FullName)"
+        }
+        Write-Host "PASS quiet boundary: $($sketch.Name)"
         continue
     }
 
-    $lines = [System.IO.File]::ReadAllLines($path)
-    $insideBlock = $false
-    $beginCount = 0
-    $endCount = 0
-    $taggedCallCount = 0
-    $hasWatchdog = $false
-    $sdLoggingCount = 0
-    $hasWakeGuard = $false
-    $hasRecoveryAwarePublish = $false
-
-    for ($index = 0; $index -lt $lines.Length; $index++) {
-        $line = $lines[$index]
-        $lineNumber = $index + 1
-        if ($line.Contains('hypnos.setWakeWatchdogTimeout(ACTIVE_WATCHDOG_MS)')) {
-            $hasWakeGuard = $true
-        }
-        if ($line.Contains('const bool networkWindow = batchSD.shouldPublish()')) {
-            $hasRecoveryAwarePublish = $true
-        }
-
+    if ($text -notmatch '(?m)^\s*#include\s*[<"]Diagnostics/Loom_MemoryDiagnostics\.h[>"]') {
+        throw "Debug sketch must explicitly include the canonical diagnostic header: $($sketch.FullName)"
+    }
+    $inside = $false
+    $begins = 0
+    $ends = 0
+    $calls = 0
+    foreach ($line in ($text -split '\r?\n')) {
         if ($line.Contains('// BEGIN LOOM_BETA_DIAGNOSTICS')) {
-            if ($insideBlock) {
-                Report-Failure $relativePath $lineNumber 'nested diagnostic block'
+            if ($inside) { throw "Nested diagnostic block: $($sketch.FullName)" }
+            $inside = $true
+            $begins++
+        } elseif ($line.Contains('// END LOOM_BETA_DIAGNOSTICS')) {
+            if (-not $inside) { throw "Unmatched diagnostic end: $($sketch.FullName)" }
+            $inside = $false
+            $ends++
+        } elseif (-not $inside) {
+            if ($line -match 'memoryDiagnostics|LOOM_WISP_BETA_DIAGNOSTICS') {
+                throw "Diagnostic implementation outside its block: $($sketch.FullName)"
             }
-            $insideBlock = $true
-            $beginCount++
-            continue
-        }
-
-        if ($line.Contains('// END LOOM_BETA_DIAGNOSTICS')) {
-            if (-not $insideBlock) {
-                Report-Failure $relativePath $lineNumber 'diagnostic block ends without a begin marker'
-            }
-            $insideBlock = $false
-            $endCount++
-            continue
-        }
-
-        if ($line.Contains('Adafruit_SleepyDog.h') -or
-            $line.Contains('enableActiveWatchdog()')) {
-            $hasWatchdog = $true
-        }
-
-        if ($line.Trim() -eq 'ENABLE_SD_LOGGING;') {
-            $sdLoggingCount++
-        }
-
-        if ($line.Contains('DISABLE_RTC_LOG_TIMESTAMPS')) {
-            Report-Failure $relativePath $lineNumber 'canonical timestamped debug-log format is disabled'
-        }
-
-        if (-not $insideBlock -and $line.Contains('memoryDiagnostics')) {
-            Report-Failure $relativePath $lineNumber 'raw memory-diagnostic implementation escaped its marked block'
-        }
-
-        if (-not $insideBlock -and $line.Contains('LOOM_WISP_BETA_DIAGNOSTICS')) {
-            Report-Failure $relativePath $lineNumber 'diagnostic compile switch escaped its marked block'
-        }
-
-        if (-not $insideBlock -and $line.Contains('WISP_DIAGNOSTIC_')) {
-            if (-not $line.Contains('// LOOM_BETA_DIAGNOSTIC')) {
-                Report-Failure $relativePath $lineNumber 'diagnostic call is not tagged for canonical removal'
-            }
-            else {
-                $taggedCallCount++
+            if ($line.Contains('WISP_DIAGNOSTIC_')) {
+                if (-not $line.Contains('// LOOM_BETA_DIAGNOSTIC')) {
+                    throw "Untagged diagnostic call: $($sketch.FullName)"
+                }
+                $calls++
+            } elseif ($line.Contains('LOOM_BETA_DIAGNOSTIC')) {
+                throw "Diagnostic tag attached to operational code: $($sketch.FullName)"
             }
         }
-
-        if (-not $insideBlock -and
-            $line.Contains('LOOM_BETA_DIAGNOSTIC') -and
-            -not $line.Contains('WISP_DIAGNOSTIC_')) {
-            Report-Failure $relativePath $lineNumber 'removal tag is attached to a non-diagnostic line'
-        }
     }
-
-    if ($insideBlock) {
-        Report-Failure $relativePath $lines.Length 'diagnostic block is not closed'
+    if ($inside -or $begins -ne 2 -or $ends -ne 2 -or $calls -eq 0) {
+        throw "Incomplete diagnostic blocks/calls: $($sketch.FullName)"
     }
-    if ($beginCount -ne 2 -or $endCount -ne 2) {
-        Report-Failure $relativePath 0 "expected two diagnostic blocks; found ${beginCount} begin and ${endCount} end markers"
+    if (-not $text.Contains('#if LOOM_WISP_BETA_DIAGNOSTICS') -or
+        ([regex]::Matches($text, '(?m)^\s*ENABLE_SD_LOGGING;\s*$').Count -ne 1) -or
+        $text.Contains('DISABLE_RTC_LOG_TIMESTAMPS')) {
+        throw "Debug build lost its gate or timestamped SD logging: $($sketch.FullName)"
     }
-    if ($taggedCallCount -eq 0) {
-        Report-Failure $relativePath 0 'no tagged diagnostic calls found'
-    }
-    if (-not $hasWatchdog) {
-        Report-Failure $relativePath 0 'production watchdog coverage is missing'
-    }
-    if ($sdLoggingCount -ne 1) {
-        Report-Failure $relativePath 0 "expected one ENABLE_SD_LOGGING call; found ${sdLoggingCount}"
-    }
-    if (-not $hasWakeGuard -or -not $hasRecoveryAwarePublish) {
-        Report-Failure $relativePath 0 'wake watchdog or recovery-aware network window is missing'
-    }
-
-    if (-not $failed) {
-        Write-Host "PASS $relativePath ($taggedCallCount tagged calls)"
-    }
+    Write-Host "PASS debug boundary: $($sketch.Name) ($calls checkpoints/traces)"
 }
-
-if ($failed) {
-    exit 1
-}
-
-Write-Host 'All WISP beta diagnostics are compile-gated, bounded, and removable.'
+Write-Host 'All Wisp sketches preserve production safeguards and separate debug output.'

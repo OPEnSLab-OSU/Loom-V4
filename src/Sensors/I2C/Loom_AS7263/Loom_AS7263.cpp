@@ -6,9 +6,9 @@ namespace {
 // the maximum integration setting takes about 1.5 seconds, so 2.5 seconds leaves ample margin
 // without allowing a disconnected or wedged sensor to hang the entire stack.
 constexpr uint32_t MEASUREMENT_TIMEOUT_MS = 2500;
-}
+} // namespace
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_AS7263::Loom_AS7263(Manager &man, bool useMux, int addr, uint8_t gain, uint8_t mode,
                          uint8_t integration_time)
     : I2CDevice("AS7263"), manInst(&man), gain(gain), mode(mode),
@@ -16,12 +16,13 @@ Loom_AS7263::Loom_AS7263(Manager &man, bool useMux, int addr, uint8_t gain, uint
     module_address = addr;
 
     // Register the module with the manager
-    if (!useMux)
+    if (!useMux) {
         manInst->registerModule(this);
+    }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7263::initialize() {
 
     // If we have less than 2 bytes of json from the sensor
@@ -36,53 +37,55 @@ void Loom_AS7263::initialize() {
         asInst.setIntegrationTime(integration_time);
     }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7263::measure() {
-    if (moduleInitialized) {
-        // Get the current connection status
-        bool connectionStatus = checkDeviceConnection();
+    if (!moduleInitialized) {
+        return;
+    }
 
-        // If we are connected and we need to reinit
-        if (connectionStatus && needsReinit) {
-            initialize();
-            needsReinit = false;
-        }
+    // Get the current connection status
+    bool connectionStatus = checkDeviceConnection();
 
-        // If we are not connected
-        else if (!connectionStatus) {
-            ERROR(F("No acknowledge received from the device"));
+    // If we are connected and we need to reinit
+    if (connectionStatus && needsReinit) {
+        initialize();
+        needsReinit = false;
+    }
+
+    // If we are not connected
+    else if (!connectionStatus) {
+        ERROR(F("No acknowledge received from the device"));
+        return;
+    }
+
+    // Start the same one-shot conversion as AS726X::takeMeasurements(), but keep the wait
+    // bounded. The dependency's implementation has no timeout and can otherwise block the
+    // whole stack forever if the sensor stops responding after the connection check.
+    asInst.clearDataAvailable();
+    asInst.setMeasurementMode(3);
+    const uint32_t measurementStart = millis();
+    while (!asInst.dataAvailable()) {
+        if (millis() - measurementStart >= MEASUREMENT_TIMEOUT_MS) {
+            ERROR(F("AS7263 measurement timed out"));
             return;
         }
-
-        // Start the same one-shot conversion as AS726X::takeMeasurements(), but keep the wait
-        // bounded. The dependency's implementation has no timeout and can otherwise block the
-        // whole stack forever if the sensor stops responding after the connection check.
-        asInst.clearDataAvailable();
-        asInst.setMeasurementMode(3);
-        const uint32_t measurementStart = millis();
-        while (!asInst.dataAvailable()) {
-            if (millis() - measurementStart >= MEASUREMENT_TIMEOUT_MS) {
-                ERROR(F("AS7263 measurement timed out"));
-                return;
-            }
-            TIMER_RESET;
-            delay(5);
-        }
-
-        // NIR
-        nir[0] = asInst.getCalibratedR();
-        nir[1] = asInst.getCalibratedS();
-        nir[2] = asInst.getCalibratedT();
-        nir[3] = asInst.getCalibratedU();
-        nir[4] = asInst.getCalibratedV();
-        nir[5] = asInst.getCalibratedW();
+        TIMER_RESET;
+        delay(5);
     }
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+    // NIR
+    nir[0] = asInst.getCalibratedR();
+    nir[1] = asInst.getCalibratedS();
+    nir[2] = asInst.getCalibratedT();
+    nir[3] = asInst.getCalibratedU();
+    nir[4] = asInst.getCalibratedV();
+    nir[5] = asInst.getCalibratedW();
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7263::package() {
     if (moduleInitialized) {
         JsonObject json = manInst->get_data_object(getModuleName());
@@ -94,9 +97,9 @@ void Loom_AS7263::package() {
         json["NIR_860nm"] = nir[5];
     }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7263::power_up() {
     if (moduleInitialized) {
         asInst.setGain(gain);
@@ -104,4 +107,4 @@ void Loom_AS7263::power_up() {
         asInst.setIntegrationTime(integration_time);
     }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////

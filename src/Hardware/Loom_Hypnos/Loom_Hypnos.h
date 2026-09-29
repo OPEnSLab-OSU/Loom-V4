@@ -1,13 +1,18 @@
 #pragma once
 
-#include <ArduinoLowPower.h>
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <OPEnS_RTC.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #if !defined(LOOM_OPENS_RTC_PATCH_LEVEL) || LOOM_OPENS_RTC_PATCH_LEVEL < 1
 #error "Loom_Hypnos requires the hardened OPEnS_RTC dependency from Loom/dependencies."
 #endif
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include "Arduino.h"
+LOOM_EXTERNAL_INCLUDE_END
 #include "Internet/Connectivity/NetworkComponent.h"
 #include "Module.h"
 
@@ -320,8 +325,8 @@ class Loom_Hypnos : public Module {
     SDManager *sdMan = nullptr; // SD Manager
     uint16_t wakeWatchdogMs = 0;
     void enableWakeWatchdog();
-    int sd_chip_select;         // Pin that the SD card will use to communicate with the Hypnos
-    bool enableSD; // Specifies whether or not the SD card should be enabled on the Hypnos
+    int sd_chip_select; // Pin that the SD card will use to communicate with the Hypnos
+    bool enableSD;      // Specifies whether or not the SD card should be enabled on the Hypnos
 
     int batch_size;
 
@@ -366,7 +371,8 @@ class Loom_Hypnos : public Module {
     InterruptRegistration *findInterruptRegistration(int pin);
     int sleepInterruptPin = -1;
 
-    void initializeRTC(); // Initialize RTC
+    void initializeRTC();       // Initialize RTC
+    bool releaseRTCInterrupt(); // Consume a wake alarm and verify INT/SQW is deasserted.
 
     DateTime getLocalTime(DateTime time); // Convert a given UTC time to local time
     TIME_ZONE timezone;                   // Timezone the RTC was set to

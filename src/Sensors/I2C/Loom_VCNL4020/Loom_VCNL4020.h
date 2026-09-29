@@ -1,11 +1,17 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Wire.h>
+LOOM_EXTERNAL_INCLUDE_END
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Adafruit_Sensor.h>
 #include <Adafruit_VCNL4020.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 /**
  * Loom integration for VCNL4020 Proximity and Ambient Light sensor module.
@@ -46,8 +52,8 @@ class Loom_VCNL4020 : public I2CDevice {
     uint16_t readProximity() { return proximity; }
 
   private:
-    Manager *managerInstance; // Manager instance
-    Adafruit_VCNL4020 vcnl;   // Adafruit's VCNL4020 object
+    Manager *managerInstance;  // Manager instance
+    Adafruit_VCNL4020 vcnl;    // Adafruit's VCNL4020 object
     uint16_t ambientLight = 0; // Ambient illumination value
     uint16_t proximity = 0;    // Proximity value
 
@@ -57,5 +63,4 @@ class Loom_VCNL4020 : public I2CDevice {
     vcnl4020_proxrate proxRate;
     uint8_t proxLED;
     vcnl4020_proxfreq proxFreq;
-
 };

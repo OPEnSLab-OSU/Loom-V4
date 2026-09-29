@@ -1,7 +1,11 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <SparkFun_AS7265X.h>
 #include <Wire.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #if !defined(LOOM_AS7265X_PATCH_LEVEL) || LOOM_AS7265X_PATCH_LEVEL < 1
 #error "Loom_AS7265X requires the Loom-patched SparkFun AS7265X dependency from Loom/dependencies."
@@ -51,6 +55,8 @@ class Loom_AS7265X : public I2CDevice {
     uint16_t *getNIR() { return nir; };
 
   private:
+    void setMeasurementBulbs(bool enabled);
+
     Manager *manInst; // Instance of the manager
     AS7265X asInst;   // Instance of the AS7265X
 

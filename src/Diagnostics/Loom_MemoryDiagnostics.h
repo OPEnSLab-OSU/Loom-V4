@@ -1,6 +1,11 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Arduino.h>
+#include <Adafruit_SleepyDog.h>
+LOOM_EXTERNAL_INCLUDE_END
 #include <malloc.h>
 
 #include "Loom_Manager.h"
@@ -26,7 +31,7 @@ class Loom_MemoryDiagnostics {
 
     void checkpoint(const __FlashStringHelper *phase, DynamicJsonDocument &document,
                     int currentBatch) {
-        char stackMarker;
+        char stackMarker = 0;
         const uintptr_t stackAddress = reinterpret_cast<uintptr_t>(&stackMarker);
         const uintptr_t currentBreak = reinterpret_cast<uintptr_t>(sbrk(0));
 
@@ -42,10 +47,12 @@ class Loom_MemoryDiagnostics {
         // allocator's top free chunk plus as-yet-unclaimed SRAM below the current stack marker.
         latestContiguous = latestGap + topFree;
 
-        if (!hasSample || latestGap < minimumGap)
+        if (!hasSample || latestGap < minimumGap) {
             minimumGap = latestGap;
-        if (!hasSample || latestContiguous < minimumContiguous)
+        }
+        if (!hasSample || latestContiguous < minimumContiguous) {
             minimumContiguous = latestContiguous;
+        }
 
         const int32_t delta = hasSample ? latestGap - previousGap : 0;
         previousGap = latestGap;
@@ -94,8 +101,7 @@ class Loom_MemoryDiagnostics {
      */
     void addToPacket(Manager &manager, int currentBatch) {
         DynamicJsonDocument &document = manager.getDocument();
-        const uint32_t jsonUsedBeforeDiagnostics =
-            static_cast<uint32_t>(document.memoryUsage());
+        const uint32_t jsonUsedBeforeDiagnostics = static_cast<uint32_t>(document.memoryUsage());
         const bool overflowedBeforeDiagnostics = document.overflowed();
 
         manager.addData("Memory", "cycle", cycle);
@@ -109,8 +115,9 @@ class Loom_MemoryDiagnostics {
         manager.addData("Memory", "ovf", overflowedBeforeDiagnostics ? 1 : 0);
         manager.addData("Memory", "batch", currentBatch);
 
-        if (document.overflowed() && !overflowedBeforeDiagnostics)
+        if (document.overflowed() && !overflowedBeforeDiagnostics) {
             Serial.println(F("[MEM] WARNING: diagnostics overflowed the JSON document"));
+        }
     }
 
   private:

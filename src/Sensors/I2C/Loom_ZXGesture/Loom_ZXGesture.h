@@ -1,6 +1,10 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <ZX_Sensor.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
@@ -61,7 +65,7 @@ class Loom_ZXGesture : public I2CDevice {
     Manager *manInst; // Instance of the manager
     ZX_Sensor zx;     // ZX sensor instance
 
-    Mode mode;    // Current mode of the sensor
+    Mode mode;                 // Current mode of the sensor
     Position pos = {255, 255}; // Position measured by the sensor (X and Z) in mm
 
     const char *gestureString = "No Gesture"; // Static name of the last gesture

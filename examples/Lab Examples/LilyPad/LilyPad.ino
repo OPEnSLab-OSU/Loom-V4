@@ -15,6 +15,7 @@
 #define COLLECTION_NAME "LP1"
 
 #include "arduino_secrets.h"
+#include <Wire.h>
 
 // Loom includes
 #include <Loom_Manager.h>

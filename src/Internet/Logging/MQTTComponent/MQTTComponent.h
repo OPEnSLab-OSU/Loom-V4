@@ -1,12 +1,16 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <ArduinoJson.h>
 #include <ArduinoMqttClient.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #include "../../Connectivity/NetworkComponent.h"
 #include "Module.h"
 
-#define MAX_JSON_SIZE 2000   // The maximum length of an MQTT message
+#define MAX_JSON_SIZE 2000 // The maximum length of an MQTT message
 // Project/database components are bounded to 63 characters and Manager device names to 63.
 // Three components, two separators, an 11-character signed instance, and null need 203 bytes.
 #define MAX_TOPIC_LENGTH 208
@@ -102,8 +106,8 @@ class MQTTComponent : public Module {
     virtual void initialize() override;
 
     /* MQTT Connection parameters */
-    char address[100];  // Domain that the broker is running on
-    int port;           // Port the broker is listening on
+    char address[100]; // Domain that the broker is running on
+    int port;          // Port the broker is listening on
 
   public:
     /**

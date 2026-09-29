@@ -1,6 +1,10 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <ArduinoJson.h>
+LOOM_EXTERNAL_INCLUDE_END
 #include <vector>
 
 #include "Module.h"
@@ -10,13 +14,16 @@
 #define BAUD_RATE 115200   // Serial interface baud rate
 
 /**
- * Unifies all the various sensors to allow for collection in unison
- * This class manages the JSON document store of all sensor information
+ * Runs the registered modules and holds one shared packet of their latest readings.
+ * A sketch typically calls measure(), package(), then its storage/network module to save/send.
  *
  * @author Will Richards
  */
 class Manager {
   public:
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Setup: identify this device and register its modules.
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     // Repository examples use at most 19 characters. A 63-character ceiling leaves substantial
     // application headroom without reserving 100 bytes in every Manager and SDManager instance.
     static constexpr size_t DEVICE_NAME_SIZE = 64;
@@ -29,33 +36,38 @@ class Manager {
     Manager(const char *devName, uint32_t instanceNum);
 
     /**
-     * Registers a new sub-module to be controlled by the manager (Used on sensors so measure and
-     * package calls can all be called at once)
-     * @param module Pointer to a class the inherits from Module that we want to add
+     * Add a module to the measurement cycle. Manager borrows it; it does not delete it.
+     * The module must stay alive for every Manager call that uses it (usually the whole sketch).
+     * @param module Pointer to the module; null pointers are rejected
      */
     void registerModule(Module *module);
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Packet access: these references and views use the shared JSON buffer.
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     /**
-     * Get a reference to the JSON document that sensor data is stored in
-     * @return reference to the main JSON document
+     * Borrow the current packet without copying it. package() replaces its contents.
+     * @return reference to Manager's JSON document
      */
-    DynamicJsonDocument &getDocument(); // Returns a reference to the main JSON document storing
+    DynamicJsonDocument &getDocument();
 
     /** Check at the output boundary, including data added by a sketch after package(). */
     bool isPacketValid() const { return loomJsonIsComplete(doc); }
 
     /**
-     * Add a random piece of data to the overall JSON package in the given module name with a name
-     * for the data
+     * Add a named value to a module's part of the current packet, for example a temperature.
      * @param moduleName Module name to store the data under
      * @param dataName Key name of the data we are inserting
-     * @param data The data itself
+     * @param data The data itself; constant C string pointers must stay valid until save/send
      */
     template <typename T> void addData(const char *moduleName, const char *dataName, T data) {
-        JsonObject json = get_data_object(moduleName);
-        json[dataName] = data;
+        JsonObject moduleData = get_data_object(moduleName);
+        moduleData[dataName] = data;
     };
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Main cycle: initialize once, then measure -> package -> save/send in the sketch.
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     /**
      * Start the Serial interface with some parameters, should we wait up to 20 seconds for the
      * serial interface to open before continuing
@@ -107,6 +119,9 @@ class Manager {
      */
     void getJSONString(char array[MAX_JSON_SIZE]);
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Device information: names and identifiers used in packets and storage.
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     /**
      * Gets the current device name set by the user
      * @return current device name
@@ -152,7 +167,8 @@ class Manager {
     void setEnableState(bool state) { hypnosEnabled = state; };
 
     /**
-     * Get the JSON object to store the module data in
+     * Find or create this module's data in the current packet. The returned object is a view
+     * into Manager's document, not a separate buffer; use it before the next package() call.
      * @param moduleName Name of the module we are trying to store data for
      */
     JsonObject get_data_object(const char *moduleName);
@@ -165,21 +181,19 @@ class Manager {
   private:
     /* Device Information */
     char deviceName[DEVICE_NAME_SIZE]; // Name of the device
-    uint32_t instanceNumber;   // Instance number of the device
-    uint32_t packetNumber = 1; // Tracks the current packet number
+    uint32_t instanceNumber;           // Instance number of the device
+    uint32_t packetNumber = 1;         // Tracks the current packet number
     char serial_num[33];
 
     void read_serial_num(); // Read the serial number out of the feather's registers
 
     /* Module Data */
-    DynamicJsonDocument doc; // JSON document that will store all sensor information
-    JsonArray contentsArray; // Stores the contents of the modules
-    std::vector<Module *> modules; // List of modules that have been added to the stack
+    DynamicJsonDocument doc;       // One heap pool, allocated in the constructor and reused.
+    JsonArray contentsArray;       // View into that pool, rebuilt by package().
+    std::vector<Module *> modules; // Borrowed pointers, in registration order.
 
     /* Validation */
-    bool hasInitialized = false; // Whether or not the initialize function has been called, if not
-                                 // it could be the source of hanging so we want to know
-    bool usingHypnos = false;    // If the setup is using a hypnos
-    bool hypnosEnabled = false; // If the power rails on the hypnos are enabled this means we should
-                                // be able to initialize
+    bool hasInitialized = false;
+    bool usingHypnos = false;
+    bool hypnosEnabled = false; // Sensor power must be on before initialization.
 };

@@ -1,9 +1,12 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
 #include "../Module.h"
 #include "Logger.h"
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <ArduinoJson.h>
-#include <SPI.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 /**
  * Slightly abstracted Radio class to allow for all radio modules to inherit from one spot

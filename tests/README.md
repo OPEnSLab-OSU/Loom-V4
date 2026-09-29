@@ -1,5 +1,29 @@
 # Loom compile tests
 
+## Source-only preflight
+
+These checks do not invoke compilers:
+
+```powershell
+./tests/verify_source_preflight.ps1 -DeploymentFolder 'C:\Users\brews\Documents\Arduino\WispV2_Deploy_2026'
+```
+
+The PowerShell 7 entry point runs the four checks below and fails if any one fails. Pass
+`-FormatterPath` with an installed `clang-format.exe` path to add a read-only formatting check.
+It does not start the compile-audit launchers or the host tests. Individual checks remain available:
+
+```powershell
+./tests/verify_warning_scope.ps1
+./tests/verify_wisp_example_mirrors.ps1 -DeploymentFolder 'C:\Users\brews\Documents\Arduino\WispV2_Deploy_2026'
+./tests/verify_wisp_diagnostic_boundaries.ps1 -DeploymentFolder 'C:\Users\brews\Documents\Arduino\WispV2_Deploy_2026'
+./tests/verify_patched_dependencies.ps1
+```
+
+Warning-scope verification checks the current external include groups. Diagnostic-boundary
+verification also checks that canonical logger/memory headers exist and are explicitly included
+by their sketches. A source-only pass does not substitute for a successful board build or runtime
+verification. Compiler execution remains deferred at the user's request.
+
 ## Data safety regression tests
 
 Run `./verify_data_safety.ps1` on Windows with Visual Studio C++ Build Tools installed.
@@ -107,18 +131,27 @@ manifest needed to restore its instrumentation.
 .\verify_wisp_diagnostic_boundaries.ps1
 ```
 
-Checks that temporary WISP heap/reset telemetry is behind `LOOM_WISP_BETA_DIAGNOSTICS`, every
-in-sketch diagnostic call is tagged for mechanical removal, markers are balanced, and production
-watchdog coverage has not been mistaken for debug code. The marker policy is defined in
+Checks that quiet Wisp sketches contain no added telemetry or SD debug logging, `_debug`
+sketches retain compile-gated, tagged diagnostics, and both retain production watchdog/retry
+coverage. Both Wisp checks accept `-DeploymentFolder` to check the active deployment pair too.
+The marker policy is defined in
 [`SAMD21_CODING_PROFILE.md`](../docs/SAMD21_CODING_PROFILE.md).
 
 ```powershell
 .\verify_wisp_example_mirrors.ps1
 ```
 
-Checks that the nested WISP deployment sketches and their local memory-diagnostics header still
-match the canonical Loom copies. Line-ending differences are ignored so the check works across
-Windows and Unix checkouts; any code or configuration drift fails the check.
+The legacy filename now checks operational parity between each quiet/debug pair, allowing only
+the documented diagnostic/logging/serial-wait differences. It also rejects the obsolete nested
+Wisp examples folder. There are no longer nested sketch mirrors to maintain.
+
+```bat
+loom_compile_audit_wisp_no_bins.bat
+```
+
+Manual warning-separated audit of the six library Wisp sketches. This launcher does not run
+automatically as part of the source-only checks. Compilation of the readability refactor is
+deferred at the user's request.
 
 ```bat
 loom_compile_get_cli_tools.bat

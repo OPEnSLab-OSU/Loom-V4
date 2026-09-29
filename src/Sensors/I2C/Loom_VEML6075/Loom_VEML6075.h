@@ -1,11 +1,17 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Wire.h>
+LOOM_EXTERNAL_INCLUDE_END
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Adafruit_Sensor.h>
 #include <Adafruit_VEML6075.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 /**
  * Interface for the VEML6075 ultraviolet light sensor module.
@@ -48,7 +54,7 @@ class Loom_VEML6075 : public I2CDevice {
   private:
     Manager *manInst;       // Instance of the manager
     Adafruit_VEML6075 veml; // Adafruit VENL6075 Sensor Object
-    float UVA = 0.0f; // Ultraviolet-A value (315nm - 400nm)
-    float UVB = 0.0f; // Ultraviolet-B value (280nm - 315nm)
-    float UVI = 0.0f; // Ultraviolet Index value
+    float UVA = 0.0f;       // Ultraviolet-A value (315nm - 400nm)
+    float UVB = 0.0f;       // Ultraviolet-B value (280nm - 315nm)
+    float UVI = 0.0f;       // Ultraviolet Index value
 };

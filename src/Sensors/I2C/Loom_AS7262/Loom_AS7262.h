@@ -1,7 +1,11 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <AS726X.h>
 #include <Wire.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #if !defined(LOOM_AS726X_PATCH_LEVEL) || LOOM_AS726X_PATCH_LEVEL < 1
 #error "Loom_AS7262 requires the Loom-patched SparkFun AS726X dependency from Loom/dependencies."

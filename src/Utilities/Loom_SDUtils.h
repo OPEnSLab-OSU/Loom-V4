@@ -31,12 +31,13 @@ AppendResult appendRecord(FileType &file, const Document &document) {
     file.clearWriteError();
     const size_t written = serializeJson(document, file);
     const size_t newline = file.println();
-    const bool complete = expected > 0 && written == expected && newline == 2 &&
-                          !file.getWriteError() && file.sync();
+    const bool complete =
+        expected > 0 && written == expected && newline == 2 && !file.getWriteError() && file.sync();
     const bool rolledBack = complete || (file.truncate(start) && file.sync());
     const bool closed = file.close();
-    if (complete)
+    if (complete) {
         return {closed ? SDWriteStatus::Saved : SDWriteStatus::Uncertain, true};
+    }
     return {rolledBack && closed ? SDWriteStatus::Failed : SDWriteStatus::Uncertain, false};
 }
 
@@ -47,34 +48,42 @@ template <typename FileType>
 RecordResult nextRecord(FileType &file, uint32_t &start, size_t &length, size_t limit,
                         bool *terminated = nullptr) {
     length = 0;
-    if (terminated)
+    if (terminated) {
         *terminated = false;
+    }
     while (file.available()) {
         start = file.curPosition();
         const int value = file.read();
-        if (value < 0)
+        if (value < 0) {
             return RecordResult::ReadError;
-        if (value == '\r' || value == '\n')
+        }
+        if (value == '\r' || value == '\n') {
             continue;
+        }
         length = 1;
         break;
     }
-    if (length == 0)
+    if (length == 0) {
         return RecordResult::End;
-    if (length >= limit)
+    }
+    if (length >= limit) {
         return RecordResult::TooLong;
+    }
 
     while (file.available()) {
         const int value = file.read();
-        if (value < 0)
+        if (value < 0) {
             return RecordResult::ReadError;
+        }
         if (value == '\r' || value == '\n') {
-            if (terminated)
+            if (terminated) {
                 *terminated = true;
+            }
             break;
         }
-        if (++length >= limit)
+        if (++length >= limit) {
             return RecordResult::TooLong;
+        }
     }
     return RecordResult::Ready;
 }
@@ -84,16 +93,19 @@ template <typename FileType>
 bool countRecords(FileType &file, size_t limit, int &count, void (*progress)() = nullptr) {
     count = 0;
     while (true) {
-        if (progress)
+        if (progress) {
             progress();
+        }
         uint32_t start = 0;
         size_t length = 0;
         bool terminated = false;
         const RecordResult result = nextRecord(file, start, length, limit, &terminated);
-        if (result == RecordResult::End)
+        if (result == RecordResult::End) {
             return true;
-        if (result != RecordResult::Ready || !terminated || count == INT_MAX)
+        }
+        if (result != RecordResult::Ready || !terminated || count == INT_MAX) {
             return false;
+        }
         ++count;
     }
 }
@@ -121,36 +133,43 @@ inline bool sameName(const char *left, const char *right) {
 // False means a matching number cannot be incremented safely.
 inline bool advanceLogNumber(const char *name, const char *base, int &next) {
     while (*base) {
-        if (foldAscii(*name) != foldAscii(*base))
+        if (foldAscii(*name) != foldAscii(*base)) {
             return true;
+        }
         ++name;
         ++base;
     }
     const char *digits = name;
-    while (*name >= '0' && *name <= '9')
+    while (*name >= '0' && *name <= '9') {
         ++name;
-    if (name == digits || (!sameName(name, ".csv") && !sameName(name, "-Batch.txt")))
+    }
+    if (name == digits || (!sameName(name, ".csv") && !sameName(name, "-Batch.txt"))) {
         return true;
+    }
 
     int number = 0;
     while (digits != name) {
         const int digit = *digits++ - '0';
-        if (number > (INT_MAX - digit) / 10)
+        if (number > (INT_MAX - digit) / 10) {
             return false;
+        }
         number = number * 10 + digit;
     }
-    if (number == INT_MAX)
+    if (number == INT_MAX) {
         return false;
-    if (number >= next)
+    }
+    if (number >= next) {
         next = number + 1;
+    }
     return true;
 }
 
 inline bool isHistoricalBatch(const char *name, const char *base, int sessionNumber) {
     const char *suffix = nullptr;
     for (const char *cursor = name; *cursor; ++cursor) {
-        if (*cursor == '-')
+        if (*cursor == '-') {
             suffix = cursor;
+        }
     }
     int next = 0;
     return suffix && sameName(suffix, "-Batch.txt") && advanceLogNumber(name, base, next) &&
@@ -164,26 +183,28 @@ enum class RecoveryResult { Selected, Done, ReadError };
 template <typename Directory, typename FileType, size_t NameSize, typename OnRejected>
 RecoveryResult scanRecoveryFiles(Directory &directory, FileType &file, const char *base,
                                  int sessionNumber, uint32_t &cursor,
-                                 char (&selectedName)[NameSize], int &selectedCount,
-                                 size_t limit, void (*progress)(), OnRejected rejected) {
+                                 char (&selectedName)[NameSize], int &selectedCount, size_t limit,
+                                 void (*progress)(), OnRejected rejected) {
     char name[NameSize];
     while (file.openNext(&directory)) {
-        if (progress)
+        if (progress) {
             progress();
+        }
         const uint32_t nextPosition = directory.curPosition();
         if (!file.getName(name, sizeof(name))) {
             file.close();
             return RecoveryResult::ReadError;
         }
-        const bool candidate = !file.isDirectory() && isHistoricalBatch(name, base, sessionNumber)
-                               && file.fileSize() > 0;
+        const bool candidate = !file.isDirectory() &&
+                               isHistoricalBatch(name, base, sessionNumber) && file.fileSize() > 0;
         if (candidate) {
             int records = 0;
             const bool complete = countRecords(file, limit, records, progress);
             const bool readFailed = file.getError() != 0;
             file.close();
-            if (readFailed)
+            if (readFailed) {
                 return RecoveryResult::ReadError;
+            }
             if (complete && records > 0) {
                 memcpy(selectedName, name, strlen(name) + 1);
                 selectedCount = records;

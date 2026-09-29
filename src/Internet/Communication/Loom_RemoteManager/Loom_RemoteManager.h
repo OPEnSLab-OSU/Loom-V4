@@ -56,7 +56,7 @@ class Loom_RemoteManager : public MQTTComponent {
      *
      * @param hypnos Reference to the Hypnos object
      */
-    void setHypnosInstance(Loom_Hypnos &hypnos) { this->hypnosInst = &hypnos; };
+    void setHypnosInstance(Loom_Hypnos &hypnos) { this->hypnos = &hypnos; };
 
     /* Publish the current status updates*/
     bool publish() override;
@@ -64,8 +64,8 @@ class Loom_RemoteManager : public MQTTComponent {
   private:
     static constexpr size_t RETAINED_MESSAGE_SIZE = 256;
 
-    Manager *manInst = nullptr;        // Instance of the Loom Manager
-    Loom_Hypnos *hypnosInst = nullptr; // Instance of the Hypno
+    Manager *manager = nullptr;    // Instance of the Loom Manager
+    Loom_Hypnos *hypnos = nullptr; // Instance of the Hypno
 
     /* Helper methods for updating individual components of the device */
 

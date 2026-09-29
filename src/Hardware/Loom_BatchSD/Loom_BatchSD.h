@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../Loom_Hypnos/Loom_Hypnos.h"
-#include <vector>
 
 /**
  * Basic wrapper for SD to manage batch uploading

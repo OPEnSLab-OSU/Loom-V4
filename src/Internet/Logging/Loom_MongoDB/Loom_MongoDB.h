@@ -1,12 +1,9 @@
 #pragma once
 
-#include <ArduinoMqttClient.h>
-
-#include "../../Connectivity/NetworkComponent.h"
 #include "../MQTTComponent/MQTTComponent.h"
 #include "Loom_Manager.h"
 
-#include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
+class Loom_BatchSD;
 
 /**
  * Platform for logging data to MQTT for logging to a remote database
@@ -71,9 +68,11 @@ class Loom_MongoDB : public MQTTComponent {
   private:
     static constexpr size_t TOPIC_COMPONENT_SIZE = 64;
 
+    void buildTopic();
+
     Manager *manInst; // Instance of the manager
 
-    char topic[MAX_TOPIC_LENGTH]; // Topic we are publishing to
+    char topic[MAX_TOPIC_LENGTH];             // Topic we are publishing to
     char database_name[TOPIC_COMPONENT_SIZE]; // Database to publish the data to
     char projectServer[TOPIC_COMPONENT_SIZE]; // Project
 };

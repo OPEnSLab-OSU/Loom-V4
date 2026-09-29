@@ -1,14 +1,20 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
 #include <array>
 #include <vector>
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include "Arduino.h"
+LOOM_EXTERNAL_INCLUDE_END
 
 #include "Loom_Manager.h"
 #include "Module.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <SDI12.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #define RESPONSE_SIZE 50
 
@@ -67,8 +73,8 @@ class Loom_SDI12 : public Module {
         std::array<float, 3> data = {{0.0f, 0.0f, 0.0f}};
     };
 
-    float sensorData[3] = {};         // Most recently read sensor data for the manual getters
-    std::vector<char> inUseAddresses; // List of address that have SDI_12 sensors connected
+    float sensorData[3] = {};          // Most recently read sensor data for the manual getters
+    std::vector<char> inUseAddresses;  // List of address that have SDI_12 sensors connected
     std::vector<SensorRecord> sensors; // Per-address type, name, and latest readings
 
     void readResponse(

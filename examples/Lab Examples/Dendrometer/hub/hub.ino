@@ -1,4 +1,5 @@
 #include "arduino_secrets.h"
+#include <Logger.h>
 
 #include <Loom_Manager.h> //4.7
 #include <Diagnostics/Loom_MemoryDiagnostics.h>

@@ -1,19 +1,20 @@
 #include "Loom_ADS1115.h"
 #include "Logger.h"
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_ADS1115::Loom_ADS1115(Manager &man, byte address, bool useMux, bool enable_analog,
                            bool enable_diff, adsGain_t gain)
     : I2CDevice("ADS1115"), manInst(&man), adc_gain(gain), i2c_address(address),
       enableAnalog(enable_analog), enableDiff(enable_diff) {
     module_address = i2c_address;
 
-    if (!useMux)
+    if (!useMux) {
         manInst->registerModule(this);
+    }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ADS1115::initialize() {
     // Own the I2C master setup instead of depending on another module having
     // initialized Wire first. This is especially important for SmartRock,
@@ -27,8 +28,9 @@ void Loom_ADS1115::initialize() {
     for (uint8_t attempt = 0; attempt < 3; attempt++) {
         Wire.beginTransmission(i2c_address);
         i2cStatus = Wire.endTransmission();
-        if (i2cStatus == 0)
+        if (i2cStatus == 0) {
             break;
+        }
         delay(100);
     }
 
@@ -37,8 +39,9 @@ void Loom_ADS1115::initialize() {
     // SmartRock boards do not depend on one particular strap configuration.
     if (i2cStatus != 0) {
         for (uint8_t candidate = 0x48; candidate <= 0x4B; candidate++) {
-            if (candidate == i2c_address)
+            if (candidate == i2c_address) {
                 continue;
+            }
 
             Wire.beginTransmission(candidate);
             if (Wire.endTransmission() == 0) {
@@ -72,66 +75,70 @@ void Loom_ADS1115::initialize() {
     // Set the gain of the ADC
     ads.setGain(adc_gain);
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ADS1115::measure() {
-    if (moduleInitialized) {
-        // Get the current connection status
-        bool connectionStatus = checkDeviceConnection();
-
-        // If we are connected and we need to reinit
-        if (connectionStatus && needsReinit) {
-            initialize();
-            needsReinit = false;
-        }
-
-        // If we are not connected
-        else if (!connectionStatus) {
-            ERROR(F("No acknowledge received from the device"));
-            return;
-        }
-
-        if (enableAnalog) {
-            for (int i = 0; i < 4; i++) {
-                analogData[i] = ads.readADC_SingleEnded(i);
-                volts[i] = ads.computeVolts(analogData[i]);
-            }
-
-            if (enableDiff) {
-                diffData[0] = (int)ads.readADC_Differential_0_1();
-                diffData[1] = (int)ads.readADC_Differential_2_3();
-            }
-        }
+    if (!moduleInitialized) {
+        return;
     }
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_ADS1115::package() {
-    if (moduleInitialized) {
-        JsonObject json = manInst->get_data_object(getModuleName());
-        if (enableAnalog) {
-            json["A0"] = analogData[0];
-            json["A1"] = analogData[1];
-            json["A2"] = analogData[2];
-            json["A3"] = analogData[3];
+    // Get the current connection status
+    bool connectionStatus = checkDeviceConnection();
 
-            json["A0_Volts"] = volts[0];
-            json["A1_Volts"] = volts[1];
-            json["A2_Volts"] = volts[2];
-            json["A3_Volts"] = volts[3];
+    // If we are connected and we need to reinit
+    if (connectionStatus && needsReinit) {
+        initialize();
+        needsReinit = false;
+    }
+
+    // If we are not connected
+    else if (!connectionStatus) {
+        ERROR(F("No acknowledge received from the device"));
+        return;
+    }
+
+    if (enableAnalog) {
+        for (int i = 0; i < 4; i++) {
+            analogData[i] = ads.readADC_SingleEnded(i);
+            volts[i] = ads.computeVolts(analogData[i]);
         }
 
         if (enableDiff) {
-            json["Diff_0"] = diffData[0];
-            json["Diff_1"] = diffData[1];
+            diffData[0] = (int)ads.readADC_Differential_0_1();
+            diffData[1] = (int)ads.readADC_Differential_2_3();
         }
     }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_ADS1115::package() {
+    if (!moduleInitialized) {
+        return;
+    }
+
+    JsonObject json = manInst->get_data_object(getModuleName());
+    if (enableAnalog) {
+        json["A0"] = analogData[0];
+        json["A1"] = analogData[1];
+        json["A2"] = analogData[2];
+        json["A3"] = analogData[3];
+
+        json["A0_Volts"] = volts[0];
+        json["A1_Volts"] = volts[1];
+        json["A2_Volts"] = volts[2];
+        json["A3_Volts"] = volts[3];
+    }
+
+    if (enableDiff) {
+        json["Diff_0"] = diffData[0];
+        json["Diff_1"] = diffData[1];
+    }
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ADS1115::power_up() {
 
     // Restore the configured gain without calling begin() again. The packaged
@@ -141,4 +148,4 @@ void Loom_ADS1115::power_up() {
         ads.setGain(adc_gain);
     }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////

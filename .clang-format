@@ -11,6 +11,8 @@ AlignConsecutiveMacros: false
 IndentAccessModifiers: false
 AccessModifierOffset: -2
 IndentWidth: 4
+InsertBraces: true
+SortIncludes: Never
 TabWidth: 4
 UseTab: Never
 ColumnLimit: 100

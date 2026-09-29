@@ -26,12 +26,12 @@
 #define LOOM_ANALOG_ADC_MAX_READING ((1UL << LOOM_ANALOG_ADC_RESOLUTION_BITS) - 1UL)
 #endif
 
-/* Contain all the information regarding the analog pin that we want to use*/
+// One monitored pin: its packet label and the latest reading in both supported representations.
 struct AnalogMapping {
     int pinNumber;
     char name[5];
-    float analog;
-    float analog_mv;
+    float analog;    // Raw ADC count for a normal pin; volts for the battery pin (legacy format).
+    float analog_mv; // Voltage in millivolts for either kind of pin.
 
     /* Construct a new analog mapping */
     AnalogMapping(int pinNumber, const char *name, float analog, float analog_mv) {
@@ -67,17 +67,24 @@ class Loom_Analog : public Module {
     void package() override;
 
     /**
-     * Templated constructor that uses more than 1 analog pin
+     * Read one or more analog pins in the supplied order, followed by battery voltage.
+     *
+     * Example: Loom_Analog analog(manager, A0, A1). The pin table is allocated during setup.
+     *
      * @param man Reference to the manager
      * @param firstPin First analog pin we want to read from
-     * @param additionalPins Variable length argument allowing you to supply multiple pins
+     * @param additionalPins Optional additional pin arguments; their count is known at compile
+     * time
      */
     template <typename T, typename... Args>
     Loom_Analog(Manager &man, T firstPin, Args... additionalPins)
         : Module("Analog"), manInst(&man) {
         analogReadResolution(adcResolutionBits);
         pinMappings.reserve(sizeof...(additionalPins) + 2);
-        get_variadic_parameters(firstPin, additionalPins...);
+        const int pins[] = {static_cast<int>(firstPin), static_cast<int>(additionalPins)...};
+        for (int pin : pins) {
+            pinMappings.emplace_back(pin, 0, 0);
+        }
         const float batteryVoltage = readBatteryVoltage();
         pinMappings.emplace_back(batteryPin, "Vbat", batteryVoltage, batteryVoltage * 1000.0f);
 
@@ -86,24 +93,9 @@ class Loom_Analog : public Module {
     };
 
     /**
-     * Templated constructor that uses only 1 analog pin
-     * @param man Reference to the manager
-     * @param firstPin First analog pin we want to read from
-     */
-    template <typename T> Loom_Analog(Manager &man, T firstPin) : Module("Analog"), manInst(&man) {
-        analogReadResolution(adcResolutionBits);
-        pinMappings.reserve(2);
-        pinMappings.emplace_back(firstPin, 0, 0);
-        const float batteryVoltage = readBatteryVoltage();
-        pinMappings.emplace_back(batteryPin, "Vbat", batteryVoltage, batteryVoltage * 1000.0f);
-
-        // Register the module with the manager
-        manInst->registerModule(this);
-    };
-
-    /**
-     * Templated constructor that only reads the battery voltage
-     * @param man Reference to the manager
+     * Read only battery voltage: Loom_Analog analog(manager).
+     * @param man Reference to the
+     * manager
      */
     Loom_Analog(Manager &man) : Module("Analog"), manInst(&man) {
         analogReadResolution(adcResolutionBits);
@@ -116,8 +108,10 @@ class Loom_Analog : public Module {
     };
 
     /**
-     * Get the current voltage of the battery
-     */
+     * Read battery voltage in volts, averaging sampleCount ADC readings. The dividerScale
+     *
+     * accounts for the board's battery-divider circuit. A zero sample count/range returns zero.
+ */
     static float getBatteryVoltage(int batteryPin = LOOM_ANALOG_BATTERY_PIN,
                                    uint8_t resolutionBits = LOOM_ANALOG_ADC_RESOLUTION_BITS,
                                    float referenceVoltage = LOOM_ANALOG_ADC_REFERENCE_VOLTAGE,
@@ -126,34 +120,22 @@ class Loom_Analog : public Module {
                                    uint32_t maxReading = LOOM_ANALOG_ADC_MAX_READING);
 
     /**
-     * Get the Millivolts of a specified pin
-     * @param pin The pin to get the data from eg. A0, A1, ...
+     * Get the most recently measured millivolts of a registered pin; an unknown pin returns zero.
+
+     * * @param pin The pin to get the data from eg. A0, A1, ...
      */
     float getMV(int pin);
 
     /**
-     * Get the analog value from a given pin
-     * @param pin The pin to get the data from eg. A0, A1, ...
+     * Get the latest ADC count for a registered pin, or volts for the battery pin.
+     * An
+     * unknown pin returns zero. Call measure() first when a fresh reading is needed.
+     * @param
+     * pin The pin to get the data from eg. A0, A1, ...
      */
     float getAnalog(int pin);
 
   private:
-    /**
-     *   The following two functions are some sorcery to get the variadic parameters without the
-     * need for passing in a size variable I don't fully understand it so don't touch it just works
-     *   Based off: https://eli.thegreenplace.net/2014/variadic-templates-in-c/
-     */
-    template <typename T> T get_variadic_parameters(T v) {
-        /* Push the pin number to vector */
-        pinMappings.emplace_back(v, 0, 0);
-        return v;
-    };
-
-    template <typename T, typename... Args> T get_variadic_parameters(T first, Args... args) {
-        pinMappings.emplace_back(first, 0, 0);
-        return get_variadic_parameters(args...);
-    };
-
     float analogToMV(int analog); // Convert the analog voltage to mV
     float readBatteryVoltage() const;
     Manager *manInst;                       // Instance of the manager

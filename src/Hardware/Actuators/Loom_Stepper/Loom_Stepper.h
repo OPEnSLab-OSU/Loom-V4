@@ -1,10 +1,14 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
 #include "Actuators.h"
 #include "Loom_Manager.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Adafruit_MotorShield.h>
 #include <Adafruit_PWMServoDriver.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #define SERVO_MIN 150 // Minimum pulse width
 #define SERVO_MAX 600 // Maximum pulse width
@@ -51,7 +55,7 @@ class Loom_Stepper : public Actuator {
 
     int instance; // Instance number of the servo
 
-    int currentSteps = 0; // Running step count
-    uint8_t rpm = 0;      // Current RPM of the motor
+    int currentSteps = 0;  // Running step count
+    uint8_t rpm = 0;       // Current RPM of the motor
     bool clockwise = true; // If it is spinning clockwise
 };

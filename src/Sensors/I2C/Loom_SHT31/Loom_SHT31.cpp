@@ -1,18 +1,19 @@
 #include "Loom_SHT31.h"
 #include "Logger.h"
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_SHT31::Loom_SHT31(Manager &man, int address, bool useMux)
     : I2CDevice("SHT31"), manInst(&man), i2c_address(address) {
     module_address = address;
 
     // Register the module with the manager
-    if (!useMux)
+    if (!useMux) {
         manInst->registerModule(this);
+    }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SHT31::initialize() {
     FUNCTION_START;
     if (!sht.begin(i2c_address)) {
@@ -25,45 +26,46 @@ void Loom_SHT31::initialize() {
     }
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SHT31::measure() {
     FUNCTION_START;
-    if (moduleInitialized) {
-        // Get the current connection status
-        bool connectionStatus = checkDeviceConnection();
+    if (!moduleInitialized) {
+        return;
+    }
 
-        // If we are connected and we need to reinit
-        if (connectionStatus && needsReinit) {
-            initialize();
-            needsReinit = false;
-        }
+    // Get the current connection status
+    bool connectionStatus = checkDeviceConnection();
 
-        // If we are not connected
-        else if (!connectionStatus) {
-            ERROR(F("No acknowledge received from the device"));
-            FUNCTION_END;
-            return;
-        }
-        // Pull the data from the sensor
-        float temp = sht.readTemperature();
-        float humid = sht.readHumidity();
+    // If we are connected and we need to reinit
+    if (connectionStatus && needsReinit) {
+        initialize();
+        needsReinit = false;
+    }
 
-        // If both the temp and humidity values are valid send the data
-        if (!isnan(temp) && !isnan(humid)) {
-            sensorData[0] = temp;
-            sensorData[1] = humid;
-        } else {
-            WARNING(F("Collected information was invalid, the previous collected data will be "
-                      "published again."));
-        }
+    // If we are not connected
+    else if (!connectionStatus) {
+        ERROR(F("No acknowledge received from the device"));
+        return;
+    }
+    // Pull the data from the sensor
+    float temp = sht.readTemperature();
+    float humid = sht.readHumidity();
+
+    // If both the temp and humidity values are valid send the data
+    if (!isnan(temp) && !isnan(humid)) {
+        sensorData[0] = temp;
+        sensorData[1] = humid;
+    } else {
+        WARNING(F("Collected information was invalid, the previous collected data will be "
+                  "published again."));
     }
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SHT31::package() {
     FUNCTION_START;
     if (moduleInitialized) {
@@ -73,4 +75,4 @@ void Loom_SHT31::package() {
     }
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////

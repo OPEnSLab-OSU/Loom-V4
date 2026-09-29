@@ -1,10 +1,16 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Wire.h>
+LOOM_EXTERNAL_INCLUDE_END
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <MS5803_02.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 /**
  * Interface for the MS5803 Atmospheric Pressure / Temperature sensor module.

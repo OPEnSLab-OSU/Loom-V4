@@ -154,11 +154,14 @@ void runAlarmReplacementTest() {
 
     delay(2000);
     const bool immediateRetrigger = rtcInterruptCount != countBeforeReplacement;
+    const bool replacementPinLow = digitalRead(RTC_INTERRUPT_PIN) == LOW;
 
     Serial.print(F("Immediate stale retrigger:       "));
     Serial.println(immediateRetrigger ? F("YES") : F("NO"));
+    Serial.print(F("RTC INT LOW after 2 s:           "));
+    Serial.println(replacementPinLow ? F("YES") : F("NO"));
 
-    const bool replacementObserved = immediateRetrigger
+    const bool replacementObserved = (immediateRetrigger || replacementPinLow)
         ? false
         : waitForInterruptCount(countBeforeReplacement + 1, 12000);
 
@@ -170,7 +173,7 @@ void runAlarmReplacementTest() {
     Serial.println(F(" s"));
 
     alarmReplacementPassed =
-        !immediateRetrigger &&
+        !immediateRetrigger && !replacementPinLow &&
         replacementObserved &&
         elapsed >= REPLACEMENT_ALARM_SECONDS - 2 &&
         elapsed <= REPLACEMENT_ALARM_SECONDS + 3;
@@ -252,6 +255,7 @@ void loop() {
     const uint32_t elapsed = wakeTime.unixtime() - sleepStart.unixtime();
     const uint32_t wakeInterruptDelta = rtcInterruptCount - interruptCountBeforeSleep;
     const bool wakeInterruptObserved = wakeInterruptDelta == 1;
+    const bool rtcPinHighAfterWake = digitalRead(RTC_INTERRUPT_PIN) == HIGH;
 
     analogReadResolution(10);
     manager.measure();
@@ -267,10 +271,18 @@ void loop() {
     Serial.println(wakeInterruptDelta);
     Serial.print(F("Exactly one wake interrupt:      "));
     Serial.println(wakeInterruptObserved ? F("YES") : F("NO"));
+    Serial.print(F("RTC INT HIGH after wake:         "));
+    Serial.println(rtcPinHighAfterWake ? F("YES") : F("NO"));
     printVoltage(F("Vbat after wake:                 "), afterSleepVoltage);
+
+    delay(2000);
+    const bool rtcPinHighAfterSettle = digitalRead(RTC_INTERRUPT_PIN) == HIGH;
+    Serial.print(F("RTC INT HIGH after 2 s:          "));
+    Serial.println(rtcPinHighAfterSettle ? F("YES") : F("NO"));
 
     const bool cyclePassed =
         wakeInterruptObserved &&
+        rtcPinHighAfterWake && rtcPinHighAfterSettle &&
         elapsed >= SLEEP_SECONDS - 2 &&
         elapsed <= SLEEP_SECONDS + 4 &&
         afterSleepVoltage >= MIN_EXPECTED_BATTERY_V;
@@ -278,5 +290,4 @@ void loop() {
     Serial.print(F("Standby cycle result:            "));
     Serial.println(cyclePassed ? F("PASS") : F("FAIL"));
 
-    delay(2000);
 }

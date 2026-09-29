@@ -1,6 +1,10 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <DFRobot_MultiGasSensor.h>
+LOOM_EXTERNAL_INCLUDE_END
 #include <string.h>
 
 #include "../I2CDevice.h"

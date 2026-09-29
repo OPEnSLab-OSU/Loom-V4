@@ -1,6 +1,10 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Adafruit_seesaw.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
@@ -43,5 +47,5 @@ class Loom_STEMMA : public I2CDevice {
     int address;
 
     float temperature = 0.0f; // Soil temperature
-    uint16_t cap = 0;          // Soil capacitive
+    uint16_t cap = 0;         // Soil capacitive
 };

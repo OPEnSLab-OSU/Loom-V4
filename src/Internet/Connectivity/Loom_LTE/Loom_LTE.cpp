@@ -1,4 +1,5 @@
 #include "Loom_LTE.h"
+#include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
 #include "Logger.h"
 
 /*
@@ -22,73 +23,77 @@
  * reset-pin polarity and timing on the target board.
  */
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::copyCredential(char *dst, const char *src, size_t dstSize) {
     // All LTE credentials live in fixed-size buffers so field deployments do not
     // depend on heap-backed strings staying valid after setup.
-    if (dstSize == 0)
+    if (dstSize == 0) {
         return;
+    }
 
-    if (src == nullptr)
+    if (src == nullptr) {
         src = "";
+    }
 
     strncpy(dst, src, dstSize - 1);
     dst[dstSize - 1] = '\0';
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 // Construct a configured LTE module from sketch-supplied APN credentials.
 // The board version determines which PWR_ON sequence is used during power-up.
+////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_LTE::Loom_LTE(Manager &man, const char *apn, const char *user, const char *pass, const int pin,
                    LTE_VERSION version, const int rstPin, LTE_MODEM modemType)
-    : NetworkComponent("LTE"), modemType(modemType), manInst(&man),
+    : NetworkComponent("LTE"), modemType(modemType), manager(&man),
       modem(createLteModem(modemType == LTE_MODEM::SARA_R5, SerialAT)) {
-    copyCredential(this->APN, apn, sizeof(this->APN));
-    copyCredential(this->gprsUser, user, sizeof(this->gprsUser));
-    copyCredential(this->gprsPass, pass, sizeof(this->gprsPass));
+    copyCredential(this->apnName, apn, sizeof(this->apnName));
+    copyCredential(this->apnUsername, user, sizeof(this->apnUsername));
+    copyCredential(this->apnPassword, pass, sizeof(this->apnPassword));
     this->powerPin = pin;
     this->resetPin = rstPin;
 
     lteBoardVersion = version;
-    selectedBaud = isSaraR5() ? LOOM_LTE_R5_UART_BAUD : 9600UL;
+    uartBaud = isSaraR5() ? LOOM_LTE_R5_UART_BAUD : 9600UL;
     idlePowerPin();
-    manInst->registerModule(this);
+    manager->registerModule(this);
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 // Construct an LTE module whose APN credentials will be supplied later from SD JSON.
+////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_LTE::Loom_LTE(Manager &man, LTE_MODEM modemType)
-    : NetworkComponent("LTE"), modemType(modemType), manInst(&man),
+    : NetworkComponent("LTE"), modemType(modemType), manager(&man),
       modem(createLteModem(modemType == LTE_MODEM::SARA_R5, SerialAT)) {
-    memset(APN, '\0', sizeof(APN));
-    memset(gprsUser, '\0', sizeof(gprsUser));
-    memset(gprsPass, '\0', sizeof(gprsPass));
+    memset(apnName, '\0', sizeof(apnName));
+    memset(apnUsername, '\0', sizeof(apnUsername));
+    memset(apnPassword, '\0', sizeof(apnPassword));
 
-    if (isSaraR5())
+    if (isSaraR5()) {
         lteBoardVersion = OPENS;
-    selectedBaud = isSaraR5() ? LOOM_LTE_R5_UART_BAUD : 9600UL;
+    }
+    uartBaud = isSaraR5() ? LOOM_LTE_R5_UART_BAUD : 9600UL;
 
     idlePowerPin();
-    manInst->registerModule(this);
+    manager->registerModule(this);
     moduleInitialized = false;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_LTE::~Loom_LTE() { delete modem; }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 // Put a board-level control pin into its inactive state.
 // For OPEnS R5 hardware this releases the SARA input through the MOSFET circuit.
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::driveControlPinIdle(int pin) {
     // Idle means the modem input is released. On OPEnS/Jolteon hardware the
     // Feather drives a MOSFET gate, so the Feather level is the inverse of the
     // actual SARA pin level.
-    if (pin < 0)
+    if (pin < 0) {
         return;
+    }
 
     if (lteBoardVersion == OPENS) {
         const uint8_t idleLevel =
@@ -100,16 +105,17 @@ void Loom_LTE::driveControlPinIdle(int pin) {
         pinMode(pin, INPUT);
     }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 // Put a board-level control pin into its active state.
 // Active means the SARA-side input is being asserted by the board control circuit.
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::driveControlPinActive(int pin) {
     // Active means the SARA input is being pulled low through the board control
     // circuit. This is used for PWR_ON and RESET_N pulses.
-    if (pin < 0)
+    if (pin < 0) {
         return;
+    }
 
     if (lteBoardVersion == OPENS) {
         const uint8_t activeLevel =
@@ -121,14 +127,15 @@ void Loom_LTE::driveControlPinActive(int pin) {
         pinMode(pin, OUTPUT);
     }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::pulseControlPin(int pin, uint32_t pulseMs, const __FlashStringHelper *label) {
     // Keep the pulse helper boring and explicit. All pulse timing is configured
     // in Loom_LTE_Config.h so board startup can be tuned without editing logic.
-    if (pin < 0)
+    if (pin < 0) {
         return;
+    }
 
     Serial.print(label);
     Serial.print(F(" pulse for "));
@@ -139,21 +146,22 @@ void Loom_LTE::pulseControlPin(int pin, uint32_t pulseMs, const __FlashStringHel
     delay(pulseMs);
     driveControlPinIdle(pin);
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::idlePowerPin() { driveControlPinIdle(powerPin); }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::idleResetPin() {
-    if (isSaraR5() && !LOOM_LTE_R5_ENABLE_RESET_RECOVERY)
+    if (isSaraR5() && !LOOM_LTE_R5_ENABLE_RESET_RECOVERY) {
         return;
+    }
     driveControlPinIdle(resetPin);
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::prepareOptionalPowerRails() {
     // Most Loom sketches let the manager own Hypnos rail control. This optional
     // path exists for bare LTE debug sketches where the LTE library needs to
@@ -166,11 +174,11 @@ void Loom_LTE::prepareOptionalPowerRails() {
         delay(250);
     }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 // Apply the board-specific power-on sequence.
 // R5 OPEnS/Jolteon boards use the explicit startup path configured above.
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::powerBoardOn() {
     // The OPEnS/Jolteon R5 board uses a OPEnS/Jolteon R5 startup sequence here:
     // A5 HIGH requests power-on through the control MOSFET, A5 LOW releases it,
@@ -209,9 +217,9 @@ void Loom_LTE::powerBoardOn() {
     }
     pinMode(powerPin, INPUT);
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::powerBoardOff() {
     // NOTE: We don't need to power off the sparkfun LTE board we can just use the power off command
     // Handle powering off the parkfun board
@@ -222,53 +230,54 @@ void Loom_LTE::powerBoardOff() {
     //     pinMode(powerPin, INPUT);
     // }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::logPlainFailure(const __FlashStringHelper *message) { ERROR(message); }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::waitForModemAT(uint32_t timeoutMs) {
     // AT is the lowest-level proof that power, UART routing, baud, and level
     // shifting are all working. This intentionally runs before SIM/APN/network.
     uint32_t start = millis();
 
-    while (SerialAT.available())
+    while (SerialAT.available()) {
         SerialAT.read();
+    }
 
     while ((uint32_t)(millis() - start) < timeoutMs) {
-        if (modem->testAT(1000L))
+        if (modem->testAT(1000L)) {
             return true;
+        }
 
         delay(300);
     }
-
     return false;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 // Open the LTE UART at the configured primary baud and verify AT.
 // Optional fallback probing is only for bench diagnostics.
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::selectWorkingBaud(uint32_t timeoutMs) {
     // The host UART still needs one concrete baud before it can send the first
     // AT command. Keep that primary rate in Loom_LTE_Config.h so board startup
     // does not require editing this file.
     // Restore the configured primary baud before returning failure.
     const uint32_t primaryBaud = isSaraR5() ? LOOM_LTE_R5_UART_BAUD : 9600UL;
-    selectedBaud = primaryBaud;
+    uartBaud = primaryBaud;
     SerialAT.end();
     delay(100);
-    SerialAT.begin(selectedBaud);
+    SerialAT.begin(uartBaud);
     delay(250);
 
     Serial.print(F("LTE UART baud probe: "));
-    Serial.println(selectedBaud);
+    Serial.println(uartBaud);
 
     if (waitForModemAT(timeoutMs)) {
         Serial.print(F("LTE UART baud selected: "));
-        Serial.println(selectedBaud);
+        Serial.println(uartBaud);
         return true;
     }
 
@@ -281,43 +290,43 @@ bool Loom_LTE::selectWorkingBaud(uint32_t timeoutMs) {
 
         for (uint8_t i = 0; i < (sizeof(supportedBauds) / sizeof(supportedBauds[0])); i++) {
             // Skip the configured primary baud because it was already tested first.
-            if (supportedBauds[i] == primaryBaud)
+            if (supportedBauds[i] == primaryBaud) {
                 continue;
+            }
 
             // Try the next supported one-shot autobaud rate.
-            selectedBaud = supportedBauds[i];
+            uartBaud = supportedBauds[i];
 
             // Reopen the UART at the candidate baud.
             SerialAT.end();
             delay(100);
-            SerialAT.begin(selectedBaud);
+            SerialAT.begin(uartBaud);
             delay(250);
 
             // Print each fallback attempt for debug traces.
             Serial.print(F("LTE UART baud probe: "));
-            Serial.println(selectedBaud);
+            Serial.println(uartBaud);
 
             // Accept the candidate baud only if the modem answers AT.
             if (waitForModemAT(3000L)) {
                 Serial.print(F("LTE UART baud selected: "));
-                Serial.println(selectedBaud);
+                Serial.println(uartBaud);
                 return true;
             }
         }
 
         // Restore the configured primary baud before returning failure.
-        selectedBaud = primaryBaud;
+        uartBaud = primaryBaud;
         SerialAT.end();
         delay(100);
-        SerialAT.begin(selectedBaud);
+        SerialAT.begin(uartBaud);
         delay(250);
     }
-
     return false;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::initializeModemFromAT() {
     // TinyGSM initialization is separated from raw AT detection so the logs can
     // tell apart hardware/UART silence from a library-profile mismatch.
@@ -334,13 +343,14 @@ bool Loom_LTE::initializeModemFromAT() {
                       "the installed TinyGSM version supports that modem."));
     return false;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::sendATExpectOK(const char *command, uint32_t timeoutMs) {
     // Small raw-AT helper for setup commands that TinyGSM does not wrap cleanly.
-    while (SerialAT.available())
+    while (SerialAT.available()) {
         SerialAT.read();
+    }
 
     SerialAT.print(command);
     SerialAT.print("\r\n");
@@ -359,25 +369,27 @@ bool Loom_LTE::sendATExpectOK(const char *command, uint32_t timeoutMs) {
             errorIndex = character == errorResponse[errorIndex]
                              ? errorIndex + 1
                              : (character == errorResponse[0] ? 1 : 0);
-            if (okIndex == sizeof(okResponse) - 1)
+            if (okIndex == sizeof(okResponse) - 1) {
                 return true;
-            if (errorIndex == sizeof(errorResponse) - 1)
+            }
+            if (errorIndex == sizeof(errorResponse) - 1) {
                 return false;
+            }
         }
         delay(1);
     }
-
     return false;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::applyR5NetworkHints() {
     // These are non-destructive hints. They make the modem verbose, ensure full
     // functionality, and optionally skip broad carrier search when a numeric
     // operator code is configured.
-    if (!isSaraR5())
+    if (!isSaraR5()) {
         return;
+    }
 
     modem->sendAT(F("+CMEE=2"));
     modem->waitResponse(5000L);
@@ -391,14 +403,15 @@ void Loom_LTE::applyR5NetworkHints() {
         char copsCommand[48];
         snprintf(copsCommand, sizeof(copsCommand), "AT+COPS=1,2,\"%s\",%i",
                  LOOM_LTE_R5_FORCE_OPERATOR_NUMERIC, LOOM_LTE_R5_FORCE_OPERATOR_ACT);
-        if (!sendATExpectOK(copsCommand, 180000L))
+        if (!sendATExpectOK(copsCommand, 180000L)) {
             WARNING(F("INFO: forced operator registration did not return OK. Falling back to "
                       "automatic network behavior."));
+        }
     }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::logRawAT(const char *command, uint32_t timeoutMs) {
     // Raw AT snapshots are printed only in failure paths so normal logs stay
     // readable, but failed field boots leave something useful on the UART.
@@ -406,8 +419,9 @@ void Loom_LTE::logRawAT(const char *command, uint32_t timeoutMs) {
     Serial.print(command);
     Serial.print(F(": "));
 
-    while (SerialAT.available())
+    while (SerialAT.available()) {
         SerialAT.read();
+    }
 
     SerialAT.print(command);
     SerialAT.print("\r\n");
@@ -425,14 +439,15 @@ void Loom_LTE::logRawAT(const char *command, uint32_t timeoutMs) {
         delay(1);
     }
 
-    if (!sawResponse)
+    if (!sawResponse) {
         Serial.print(F("(no response)"));
+    }
 
     Serial.println();
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::logBootChecklist() {
     WARNING(F("Boot checklist:"));
     WARNING(F("1. If there is no AT response, measure the SARA 1.8V V_INT/ref rail. Missing 1.8V "
@@ -442,9 +457,9 @@ void Loom_LTE::logBootChecklist() {
     WARNING(F("3. If AT works but SIM/network fails, this is no longer a boot problem. Check SIM, "
               "antenna, APN, carrier profile, and coverage."));
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::bootModemWithRetries() {
     // Boot is handled in stages so the logs show exactly where startup fails.
     // In R5 startup sequence, the power pulse is sent first, then AT
@@ -455,8 +470,9 @@ bool Loom_LTE::bootModemWithRetries() {
         if (selectWorkingBaud(8000L)) {
             LOG(F("Modem already answered AT. Skipping power pulse so we do not accidentally "
                   "toggle it off."));
-            if (initializeModemFromAT())
+            if (initializeModemFromAT()) {
                 return true;
+            }
         }
 #else
         LOG(F("Using OPEnS/Jolteon R5 startup sequence."));
@@ -478,8 +494,9 @@ bool Loom_LTE::bootModemWithRetries() {
 
         if (selectWorkingBaud(LOOM_LTE_R5_BOOT_AT_TIMEOUT_MS)) {
             LOG(F("Modem answered AT."));
-            if (initializeModemFromAT())
+            if (initializeModemFromAT()) {
                 return true;
+            }
         } else {
             WARNING(F("Modem did not answer AT during the boot window."));
             WARNING(F("INFO: the host can not talk to the modem yet. This is before "
@@ -497,27 +514,28 @@ bool Loom_LTE::bootModemWithRetries() {
 
             if (selectWorkingBaud(30000L)) {
                 LOG(F("Modem answered AT after reset."));
-                if (initializeModemFromAT())
+                if (initializeModemFromAT()) {
                     return true;
+                }
             }
         }
 
-        if (attempt < 3)
+        if (attempt < 3) {
             delay(3000);
+        }
     }
-
     return false;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 // Full manager initialization: boot the modem, then try to open a data session.
 // moduleInitialized tracks modem/AT readiness so a failed data session can be retried later.
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::initialize() {
     // Manager initialization enters here. At the end of this function,
     // moduleInitialized means the modem booted and TinyGSM can issue AT commands.
     FUNCTION_START;
-    char ip[16];
+    char ip[16] = {};
 
     // Put the board-level control pins into their released states before boot.
     idlePowerPin();
@@ -534,8 +552,7 @@ void Loom_LTE::initialize() {
         ERROR(F("INFO: the modem never reached the basic AT-command-ready state, so this is a "
                 "boot/power/UART problem before carrier registration."));
         moduleInitialized = false;
-        firstInit = false;
-        FUNCTION_END;
+        firstInitialization = false;
         return;
     }
 
@@ -552,7 +569,7 @@ void Loom_LTE::initialize() {
         LOG(F("Connected!"));
 
         // Print APN.
-        LOGF("APN: %s", APN);
+        LOGF("APN: %s", apnName);
 
         // Print signal quality as reported by the modem.
         LOGF("Signal State: %i", modem->getSignalQuality());
@@ -569,40 +586,37 @@ void Loom_LTE::initialize() {
                 "failed."));
     }
 
-    firstInit = false;
+    firstInitialization = false;
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::power_up() {
     // Power-up only proves that the modem can answer AT and be initialized.
     // Cellular registration and APN/PDP activation happen in connect().
     FUNCTION_START;
 
-    if (batch_sd != nullptr && !firstInit) {
+    if (batchSD != nullptr && !firstInitialization) {
         // Wake for the sample that will fill the batch and for every retry while an unsent batch
         // remains at or above the threshold.
-        if (batch_sd->getBatchSize() <= 0) {
+        if (batchSD->getBatchSize() <= 0) {
             ERROR(F("Invalid BatchSD configuration; LTE will remain off."));
-            powerUp = false;
-            FUNCTION_END;
+            shouldPowerUp = false;
             return;
         }
-        if (!batch_sd->shouldPowerModem()) {
-            powerUp = false;
-            FUNCTION_END;
+        if (!batchSD->shouldPowerModem()) {
+            shouldPowerUp = false;
             return;
-        } else {
-            powerUp = true;
         }
+        shouldPowerUp = true;
     }
 
     if (powered) {
         moduleInitialized = true;
-        if (!firstInit)
+        if (!firstInitialization) {
             (void)connect();
-        FUNCTION_END;
+        }
         return;
     }
 
@@ -623,8 +637,8 @@ void Loom_LTE::power_up() {
     delay(100);
 
     // Preserve the 4.9 R4 UART while allowing an R5 object to select 115200.
-    selectedBaud = isSaraR5() ? LOOM_LTE_R5_UART_BAUD : 9600UL;
-    SerialAT.begin(selectedBaud);
+    uartBaud = isSaraR5() ? LOOM_LTE_R5_UART_BAUD : 9600UL;
+    SerialAT.begin(uartBaud);
     delay(250);
 
     // Power on the LTE board and verify the modem reaches a stable AT state.
@@ -636,7 +650,6 @@ void Loom_LTE::power_up() {
         powered = false;
         moduleInitialized = false;
         TIMER_ENABLE;
-        FUNCTION_END;
         return;
     }
 
@@ -647,17 +660,17 @@ void Loom_LTE::power_up() {
     TIMER_ENABLE;
 
     // Connect to the network if we are powering up after the first initialization pass.
-    if (!firstInit)
+    if (!firstInitialization) {
         (void)connect();
-
+    }
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::power_down() {
     FUNCTION_START;
-    if (powered && powerUp) {
+    if (powered && shouldPowerUp) {
         LOG(F("Powering down LTE modem."));
         TIMER_DISABLE;
         modem->poweroff();
@@ -668,22 +681,22 @@ void Loom_LTE::power_down() {
     }
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::package() {
     FUNCTION_START;
     // Batch deployments deliberately power the modem off between uploads. Do not issue AT
     // commands (or trigger TinyGSM String churn) merely because it initialized earlier.
     if (moduleInitialized && powered) {
-        JsonObject json = manInst->get_data_object(getModuleName());
+        JsonObject json = manager->get_data_object(getModuleName());
         json["RSSI"] = modem->getSignalQuality();
     }
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::logSignalDiagnostic() {
     int signal = modem->getSignalQuality();
 
@@ -700,9 +713,9 @@ void Loom_LTE::logSignalDiagnostic() {
         LOG(F("INFO: signal is probably good enough for registration."));
     }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::logSimDiagnostic() {
     int simStatus = modem->getSimStatus();
 
@@ -718,9 +731,9 @@ void Loom_LTE::logSimDiagnostic() {
         break;
     }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::logRegistrationDiagnostic() {
     int regStatus = modem->getRegistrationStatus();
 
@@ -746,9 +759,9 @@ void Loom_LTE::logRegistrationDiagnostic() {
         break;
     }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::logNetworkDiagnostics() {
     logRawAT("AT+CPIN?", 3000L);
     logRawAT("AT+CSQ", 3000L);
@@ -763,19 +776,62 @@ void Loom_LTE::logNetworkDiagnostics() {
     logRegistrationDiagnostic();
     logSignalDiagnostic();
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LTE::tryConnectDataSession(uint8_t attempt, uint8_t maxAttempts) {
+    modem->sendAT(F("+CFUN=1"));
+    modem->waitResponse(10000L);
+
+    LOG(F("Injecting APN profile..."));
+    modem->setPdpContext(apnName);
+    modem->waitResponse(10000L);
+
+    LOG(F("Waiting for network..."));
+    if (!modem->waitForNetwork(600000L)) {
+        WARNING(F("No response from network."));
+        WARNING(F("INFO: the modem did not finish cellular registration in time. This is "
+                  "usually SIM, antenna, carrier coverage, band support, or power stability."));
+        logNetworkDiagnostics();
+        return false;
+    }
+    if (!modem->isNetworkConnected()) {
+        WARNING(F("Modem did not report network registration."));
+        WARNING(
+            F("INFO: the modem answered, but it is not registered to the cellular network yet."));
+        logNetworkDiagnostics();
+        return false;
+    }
+
+    LOG(F("Connected to network!"));
+    LOGF("Attempting to connect to LTE Network: %s", apnName);
+    modem->gprsDisconnect();
+    delay(500);
+    if (modem->gprsConnect(apnName, apnUsername, apnPassword)) {
+        LOG(F("Successfully Connected!"));
+        delay(6000);
+        return true;
+    }
+
+    WARNINGF("PDP context connection failed on attempt %u / %u", attempt, maxAttempts);
+    WARNING(F("INFO: cellular registration worked, but the data session did not open. Check "
+              "APN, SIM data plan, carrier provisioning, and IPv4/IPv6 expectations."));
+    logNetworkDiagnostics();
+    return false;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Register on the cellular network and activate the APN/PDP data session.
 // This stage is only entered after boot has already proven AT/TinyGSM readiness.
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::connect() {
     // Connection is intentionally retried independently from boot. A clean AT
     // boot can still fail later because of SIM, antenna, APN, carrier account,
     // tower coverage, or marginal power during transmit bursts.
     FUNCTION_START;
-    const uint8_t maxAttempts = 5;
+    constexpr uint8_t maxAttempts = 5;
 
-    if (strlen(APN) == 0) {
+    if (apnName[0] == '\0') {
         WARNING(F("INFO: APN is empty. The modem may register, but the data session will probably "
                   "fail."));
     }
@@ -783,7 +839,6 @@ bool Loom_LTE::connect() {
     if (!powered) {
         ERROR(F("Cannot connect LTE modem before power-up completes."));
         ERROR(F("INFO: connection was requested before the modem was ready for AT commands."));
-        FUNCTION_END;
         return false;
     }
 
@@ -791,7 +846,6 @@ bool Loom_LTE::connect() {
 
     if (isConnected()) {
         TIMER_ENABLE;
-        FUNCTION_END;
         return true;
     }
 
@@ -800,53 +854,14 @@ bool Loom_LTE::connect() {
     for (uint8_t attempt = 1; attempt <= maxAttempts; attempt++) {
         LOGF("LTE connect attempt %u / %u", attempt, maxAttempts);
 
-        modem->sendAT(F("+CFUN=1"));
-        modem->waitResponse(10000L);
-
-        // Inject the APN profile into PDP context 1.
-        LOG(F("Injecting APN profile..."));
-        modem->setPdpContext(APN);
-        modem->waitResponse(10000L);
-
-        // Wait for the modem to register on the cellular network.
-        LOG(F("Waiting for network..."));
-        if (!modem->waitForNetwork(600000L)) {
-            WARNING(F("No response from network."));
-            WARNING(F("INFO: the modem did not finish cellular registration in time. This is "
-                      "usually SIM, antenna, carrier coverage, band support, or power stability."));
-            logNetworkDiagnostics();
-        } else if (!modem->isNetworkConnected()) {
-            WARNING(F("Modem did not report network registration."));
-            WARNING(F(
-                "INFO: the modem answered, but it is not registered to the cellular network yet."));
-            logNetworkDiagnostics();
-        } else {
-            LOG(F("Connected to network!"));
-
-            LOGF("Attempting to connect to LTE Network: %s", APN);
-
-            // Clear any stale PDP state before opening the data session.
-            modem->gprsDisconnect();
-            delay(500);
-
-            // Open the APN/PDP data session.
-            if (modem->gprsConnect(APN, gprsUser, gprsPass)) {
-                LOG(F("Successfully Connected!"));
-                delay(6000);
-                TIMER_ENABLE;
-                FUNCTION_END;
-                return true;
-            }
-
-            WARNINGF("PDP context connection failed on attempt %u / %u", attempt, maxAttempts);
-            WARNING(
-                F("INFO: cellular registration worked, but the data session did not open. Check "
-                  "APN, SIM data plan, carrier provisioning, and IPv4/IPv6 expectations."));
-            logNetworkDiagnostics();
+        if (tryConnectDataSession(attempt, maxAttempts)) {
+            TIMER_ENABLE;
+            return true;
         }
 
-        if (attempt < maxAttempts)
+        if (attempt < maxAttempts) {
             delay(10000);
+        }
     }
 
     ERROR(F("Connection reattempts exceeded. Connection failed."));
@@ -856,9 +871,9 @@ bool Loom_LTE::connect() {
     FUNCTION_END;
     return false;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::disconnect() {
     FUNCTION_START;
     if (moduleInitialized) {
@@ -867,21 +882,20 @@ void Loom_LTE::disconnect() {
     }
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::verifyConnection() {
     // This checks a real socket after TinyGSM reports a data session. It helps
     // separate "registered and has PDP" from "can actually route traffic".
     FUNCTION_START;
-    bool returnStatus = false;
+    bool receivedData = false;
     LOG(F("Attempting to verify internet connection..."));
 
     if (!moduleInitialized || !powered) {
         ERROR(F("LTE modem is not initialized."));
         ERROR(F(
             "INFO: the code tried to open an internet socket before LTE initialization finished."));
-        FUNCTION_END;
         return false;
     }
 
@@ -893,60 +907,61 @@ bool Loom_LTE::verifyConnection() {
                 "opened. This usually means PDP/DNS/routing/carrier data path trouble."));
         logNetworkDiagnostics();
         client->stop();
-        FUNCTION_END;
         return false;
-    } else {
-        // Request the logo.txt to display.
-        client->print("GET /TinyGSM/logo.txt HTTP/1.1\r\n");
-        client->print("Host: vsh.pp.ua\r\n");
-        client->print("Connection: close\r\n\r\n");
-        client->println();
-
-        // Print response data to the serial monitor while the socket remains open.
-        uint32_t timeout = millis();
-        while (client->connected() && millis() - timeout < 10000L) {
-            // Print available data.
-            while (client->available() && millis() - timeout < 10000L) {
-                char c = client->read();
-                Serial.print(c);
-                timeout = millis();
-                returnStatus = true;
-            }
-        }
-
-        Serial.println();
-        client->stop();
     }
 
-    if (!returnStatus)
+    // Request the logo.txt to display.
+    client->print("GET /TinyGSM/logo.txt HTTP/1.1\r\n");
+    client->print("Host: vsh.pp.ua\r\n");
+    client->print("Connection: close\r\n\r\n");
+    client->println();
+
+    // Print response data to the serial monitor while the socket remains open.
+    uint32_t timeout = millis();
+    while (client->connected() && millis() - timeout < 10000L) {
+        // Print available data.
+        while (client->available() && millis() - timeout < 10000L) {
+            char c = client->read();
+            Serial.print(c);
+            timeout = millis();
+            receivedData = true;
+        }
+    }
+
+    Serial.println();
+    client->stop();
+
+    if (!receivedData) {
         WARNING(F("INFO: TCP connected, but no response data arrived before timeout."));
+    }
 
     TIMER_RESET;
     FUNCTION_END;
-    return returnStatus;
+    return receivedData;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::debugPassthrough() {
     // Direct USB-to-LTE bridge. Use Both NL & CR in the Serial Monitor and type
     // commands like AT, AT+CPIN?, AT+CSQ, AT+CEREG?, AT+CGATT?, and AT+CEER.
-    while (SerialAT.available())
+    while (SerialAT.available()) {
         Serial.write(SerialAT.read());
+    }
 
-    while (Serial.available())
+    while (Serial.available()) {
         SerialAT.write(Serial.read());
+    }
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::loadConfigFromJSON(char *json) {
     FUNCTION_START;
 
     if (json == nullptr) {
         ERROR(F("Cannot load LTE credentials from a null buffer."));
         moduleInitialized = false;
-        FUNCTION_END;
         return;
     }
 
@@ -955,41 +970,41 @@ void Loom_LTE::loadConfigFromJSON(char *json) {
     DeserializationError deserialError = deserializeJson(doc, json);
 
     if (deserialError != DeserializationError::Ok) {
-        ERRORF("There was an error reading the LTE credentials from SD: %s",
-               deserialError.c_str());
+        ERRORF("There was an error reading the LTE credentials from SD: %s", deserialError.c_str());
         ERROR(F("INFO: LTE config JSON could not be parsed, so APN/user/pass may be missing."));
         moduleInitialized = false;
         free(json);
-        FUNCTION_END;
         return;
     }
 
     // Load cellular credentials when present.
     if (!doc["apn"].isNull()) {
-        copyCredential(APN, doc["apn"] | "", sizeof(APN));
-        copyCredential(gprsUser, doc["user"] | "", sizeof(gprsUser));
-        copyCredential(gprsPass, doc["pass"] | "", sizeof(gprsPass));
+        copyCredential(apnName, doc["apn"] | "", sizeof(apnName));
+        copyCredential(apnUsername, doc["user"] | "", sizeof(apnUsername));
+        copyCredential(apnPassword, doc["pass"] | "", sizeof(apnPassword));
     }
 
     // Override the LTE PWR_ON pin when the SD config supplies one.
-    if (doc.containsKey("pin"))
+    if (doc.containsKey("pin")) {
         powerPin = doc["pin"].as<int>();
+    }
 
     // Override the LTE RESET_N pin when the SD config supplies one.
-    if (doc.containsKey("reset_pin"))
+    if (doc.containsKey("reset_pin")) {
         resetPin = doc["reset_pin"].as<int>();
+    }
 
     moduleInitialized = true;
     free(json);
     FUNCTION_END;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 Client *Loom_LTE::getClient() { return modem->getClient(); }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::getNetworkTime(int *year, int *month, int *day, int *hour, int *minute, int *second,
                               float *tz) {
     // TinyGSM overwrites tz with the modem's CCLK suffix. On the SARA-R410,
@@ -1002,9 +1017,9 @@ bool Loom_LTE::getNetworkTime(int *year, int *month, int *day, int *hour, int *m
     const bool updated =
         modem->getNetworkTime(year, month, day, hour, minute, second, &modemTimezone);
 
-    if (tz != nullptr)
+    if (tz != nullptr) {
         *tz = configuredTimezone;
-
+    }
     return updated;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////

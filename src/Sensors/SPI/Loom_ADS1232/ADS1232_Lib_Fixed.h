@@ -1,6 +1,10 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Arduino.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 /**
  * Minimal ADS1232 driver with bounded ready waits and correct 24-bit retrieval.

@@ -1,6 +1,10 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Wire.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #include "../I2CDevice.h"
 #include "Logger.h"
@@ -8,7 +12,7 @@
 class EZOSensor : public I2CDevice {
   public:
     /* Construct a new EZO device */
-    EZOSensor(const char *modName) : I2CDevice(modName){};
+    EZOSensor(const char *modName) : I2CDevice(modName) {};
 
     /* General command to transmit data over I2C to the given device*/
     bool sendTransmission(const char *command) {

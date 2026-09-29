@@ -11,6 +11,7 @@
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 #include <Loom_Manager.h>
+#include <Logger.h>
 
 #include <stdio.h>
 

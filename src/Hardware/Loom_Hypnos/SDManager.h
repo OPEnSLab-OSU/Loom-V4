@@ -1,12 +1,18 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <OPEnS_RTC.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #if !defined(LOOM_OPENS_RTC_PATCH_LEVEL) || LOOM_OPENS_RTC_PATCH_LEVEL < 1
 #error "SDManager requires the hardened OPEnS_RTC dependency from Loom/dependencies."
 #endif
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <SPI.h>
 #include <SdFat.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 #include "../../Loom_Manager.h"
 #include "../../Module.h"
@@ -126,8 +132,8 @@ class SDManager : public Module {
     bool hasRecoveredBatch() const { return recoveryFileName[0] != '\0'; }
     bool batchReady(bool includeNextSample = false) const {
         return sdInitialized && !batchClearPending && batch_size > 0 &&
-               (hasRecoveredBatch() || current_batch >= batch_size -
-                    (includeNextSample && !batchAppendBlocked ? 1 : 0));
+               (hasRecoveredBatch() ||
+                current_batch >= batch_size - (includeNextSample && !batchAppendBlocked ? 1 : 0));
     }
 
     /**
@@ -174,7 +180,7 @@ class SDManager : public Module {
 
     SdFat sd; // SD Card Object
 
-    int chip_select;       // Chip select pin for the SD card
+    int chip_select;                     // Chip select pin for the SD card
     char device_name[LOG_BASENAME_SIZE]; // Starting point of the SD file name
 
     // A 63-character base + 10-digit counter + "-Batch.txt" + null needs at most 84 bytes.
@@ -185,7 +191,7 @@ class SDManager : public Module {
     uint32_t recoveryScanPosition = 0;
     int recoveryCount = 0;
     bool recoveryScanPending = true;
-    bool batchClearPending = false; // Already acknowledged; retry clearing before further replay
+    bool batchClearPending = false;  // Already acknowledged; retry clearing before further replay
     bool batchAppendBlocked = false; // An uncertain rollback must not corrupt the next record
     SDLogResult lastLogResult;
     uint32_t lastLogPacket = 0;

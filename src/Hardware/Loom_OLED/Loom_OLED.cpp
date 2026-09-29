@@ -1,16 +1,21 @@
+#include "Loom_WarningGuards.h"
 
 #include "Loom_OLED.h"
 #include "Logger.h"
 
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Adafruit_GFX.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 namespace {
 size_t printTruncated(Adafruit_SSD1306 &display, const char *text, size_t maximumLength) {
-    if (text == nullptr)
+    if (text == nullptr) {
         return 0;
+    }
     size_t i = 0;
-    for (; i < maximumLength && text[i] != '\0'; ++i)
+    for (; i < maximumLength && text[i] != '\0'; ++i) {
         display.write(static_cast<uint8_t>(text[i]));
+    }
     return i;
 }
 
@@ -27,16 +32,19 @@ void printValueTruncated(Adafruit_SSD1306 &display, JsonVariant value, size_t ma
 
 size_t countEntries(JsonArray contents) {
     size_t count = 0;
-    for (JsonVariant module : contents)
+    for (JsonVariant module : contents) {
         count += module["data"].as<JsonObject>().size();
+    }
     return count;
 }
 
 void printQualifiedKey(Adafruit_SSD1306 &display, const char *moduleName, const char *key,
                        size_t maximumLength) {
-    const size_t moduleLength = printTruncated(display, moduleName ? moduleName : "", maximumLength);
-    if (moduleLength >= maximumLength)
+    const size_t moduleLength =
+        printTruncated(display, moduleName ? moduleName : "", maximumLength);
+    if (moduleLength >= maximumLength) {
         return;
+    }
     display.write(static_cast<uint8_t>('.'));
     printTruncated(display, key, maximumLength - moduleLength - 1);
 }
@@ -47,8 +55,9 @@ void printEntryAt(Adafruit_SSD1306 &display, JsonArray contents, size_t targetIn
     for (JsonVariant module : contents) {
         const char *moduleName = module["module"].as<const char *>();
         for (JsonPair entry : module["data"].as<JsonObject>()) {
-            if (index++ != targetIndex)
+            if (index++ != targetIndex) {
                 continue;
+            }
 
             display.setCursor(keyX, y);
             printQualifiedKey(display, moduleName, entry.key().c_str(), keyLength);
@@ -60,7 +69,7 @@ void printEntryAt(Adafruit_SSD1306 &display, JsonArray contents, size_t targetIn
 }
 } // namespace
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_OLED::Loom_OLED(Manager &man, const bool enable_rate_filter, const uint16_t min_filter_delay,
                      const Version type, const byte reset_pin, const Format display_format,
                      const uint16_t scroll_duration, const byte freeze_pin,
@@ -75,13 +84,13 @@ Loom_OLED::Loom_OLED(Manager &man, const bool enable_rate_filter, const uint16_t
     // Create the correct display module given the OLED version
     display = (version == Version::FEATHERWING) ? &featherwingDisplay : &breakoutDisplay;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_OLED::~Loom_OLED() = default;
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_OLED::initialize() {
 
     // We need the freeze pin for inputs if freeze isn't disabled
@@ -102,19 +111,21 @@ void Loom_OLED::initialize() {
     // Clears the screen
     display->clearDisplay();
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_OLED::display_data() {
     LOG("Attempting to display data on OLED...");
     // If we cant update the display yet return
-    if (!canWrite())
+    if (!canWrite()) {
         return;
+    }
 
     // If we are trying to write data check if we are freezing the display if so return
     if (freeze_behavior == FreezeType::DATA) {
-        if (digitalRead(freeze_pin) == 0)
+        if (digitalRead(freeze_pin) == 0) {
             return;
+        }
     }
 
     // Set the parameters for writing to the OLED
@@ -129,8 +140,9 @@ void Loom_OLED::display_data() {
     // Write the values to memory in the correct spots
     switch (display_format) {
     case Format::FOUR:
-        for (size_t i = 0; i < 4 && i < size; ++i)
+        for (size_t i = 0; i < 4 && i < size; ++i) {
             printEntryAt(*display, contents, i, 0, 64, static_cast<int>(i * 8), 8, 8);
+        }
         break;
 
     case Format::EIGHT:
@@ -138,14 +150,14 @@ void Loom_OLED::display_data() {
             const bool rightColumn = i >= 4;
             const int keyX = rightColumn ? 64 : 0;
             const int valueX = keyX + 32;
-            printEntryAt(*display, contents, i, keyX, valueX, static_cast<int>((i % 4) * 8), 4,
-                         4);
+            printEntryAt(*display, contents, i, keyX, valueX, static_cast<int>((i % 4) * 8), 4, 4);
         }
         break;
 
     case Format::SCROLL:
-        if (size == 0)
+        if (size == 0) {
             break;
+        }
 
         unsigned long time;
 
@@ -164,19 +176,19 @@ void Loom_OLED::display_data() {
         const size_t offset = static_cast<size_t>(
             size * (static_cast<float>(time % duration) / static_cast<float>(duration)));
 
-        for (size_t i = 0; i < 5; ++i)
-            printEntryAt(*display, contents, (i + offset) % size, 0, 80,
-                         static_cast<int>(i * 8), 15, 10);
-
+        for (size_t i = 0; i < 5; ++i) {
+            printEntryAt(*display, contents, (i + offset) % size, 0, 80, static_cast<int>(i * 8),
+                         15, 10);
+        }
         break;
     }
 
     // Write the data to the screen
     display->display();
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_OLED::canWrite() {
     const unsigned long now = millis();
     if (rateFilterEnabled && hasDisplayed &&
@@ -189,3 +201,4 @@ bool Loom_OLED::canWrite() {
     hasDisplayed = true;
     return true;
 }
+////////////////////////////////////////////////////////////////////////////////////////////////////
