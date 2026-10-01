@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <limits.h>
+#include <string.h>
 
 // Small integer-only checks shared by clock/configuration boundaries. No heap or RTC driver.
 namespace loomTime {
@@ -52,8 +53,43 @@ inline uint32_t unixSeconds(int year, int month, int day, int hour, int minute, 
            static_cast<uint32_t>(second);
 }
 
-// Advance an absolute UTC sampling grid, skipping missed slots in one calculation. A target
-// still in the future is retained, so an early wake/retry cannot move the schedule forward.
+// Parse the exact UTC packet timestamp, without locale, libc timezone or another RTC read.
+inline bool packetUtcSeconds(const char *text, uint32_t &seconds) {
+    if (!text || strlen(text) != 20 || text[4] != '-' || text[7] != '-' || text[10] != 'T' ||
+        text[13] != ':' || text[16] != ':' || text[19] != 'Z') {
+        return false;
+    }
+    const uint8_t offsets[] = {0, 5, 8, 11, 14, 17};
+    int fields[6] = {};
+    for (uint8_t field = 0; field < 6; ++field) {
+        const uint8_t digits = field == 0 ? 4 : 2;
+        for (uint8_t digit = 0; digit < digits; ++digit) {
+            const char value = text[offsets[field] + digit];
+            if (value < '0' || value > '9') { return false; }
+            fields[field] = fields[field] * 10 + value - '0';
+        }
+    }
+    const uint32_t parsed = unixSeconds(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5]);
+    if (parsed == 0) { return false; }
+    seconds = parsed;
+    return true;
+}
+
+// Keep a previous due wake as an optional anchor when an interval changes.
+inline uint32_t sampleIntervalAnchor(uint32_t now, uint32_t previousTarget,
+                                     uint32_t previousClock, uint32_t previousInterval,
+                                     uint32_t interval, bool keepLastWakeAnchor) {
+    if (now < previousClock) {
+        return 0; // A backwards clock correction invalidates the old phase.
+    }
+    if (interval != previousInterval &&
+        !(keepLastWakeAnchor && previousTarget != 0 && previousTarget <= now)) {
+        return 0; // Changed interval: only an already-due wake is a reusable anchor.
+    }
+    return previousTarget;
+}
+
+// Advance an absolute UTC grid and skip missed slots; retain a still-future target on retries.
 inline bool nextSampleTime(uint32_t now, uint32_t interval, uint32_t previousTarget,
                            uint32_t &target) {
     if (interval == 0) {

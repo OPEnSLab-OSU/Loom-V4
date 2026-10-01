@@ -196,6 +196,10 @@ void Loom_Multiplexer::setSEN66Options(bool measurePM, bool readNumVals) {
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void Loom_Multiplexer::setDFGasPowerRetained(bool retained) {
+    dfGasPowerRetained = retained;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::setDebug(bool enabled) {
     debugOutput = enabled;
@@ -506,6 +510,22 @@ void Loom_Multiplexer::measure() {
     FUNCTION_END;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Loom_Multiplexer::prepareForSampling() {
+    FUNCTION_START(this, "Mux: finish startup sensor settling before sample cadence begins");
+    if (!moduleInitialized) {
+        return;
+    }
+    for (const MuxSensor &sensor : sensors) {
+        if (sensor.module->moduleInitialized && selectPin(sensor.port)) {
+            FUNCTION_START(sensor.module, "Mux child: initial sampling preparation");
+            LOOM_FEED_WATCHDOG();
+            sensor.module->prepareForSampling();
+            LOOM_FEED_WATCHDOG();
+        }
+    }
+    disableChannels();
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::package() {
@@ -860,9 +880,9 @@ Module *Loom_Multiplexer::loadSensor(const byte addr) {
 
     // Loom_DFMultiGasSensor
     case 0x74:
-        return new Loom_DFMultiGasSensor(*manInst, 0x74, 10, true, true);
+        return new Loom_DFMultiGasSensor(*manInst, 0x74, 10, !dfGasPowerRetained, true);
     case 0x75:
-        return new Loom_DFMultiGasSensor(*manInst, 0x75, 10, true, true);
+        return new Loom_DFMultiGasSensor(*manInst, 0x75, 10, !dfGasPowerRetained, true);
 
     // Loom_T6793
     case 0x15:

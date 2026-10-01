@@ -66,11 +66,14 @@ int main() {
     {
         SDManager sd;
         sd.existing.insert("/debug/trace_1.ndjson");
+        sd.sessionNumber = 2; // Shared SD session selection, not a separate trace counter.
         Loom_Trace trace;
         traceFake::ms = 10;
         traceFake::fraction = 125;
         assert(trace.begin(sd, true));
         assert(std::string(trace.getRecordPath()) == "/debug/trace_2.ndjson");
+        assert(std::string(trace.getPerfettoPath()) == "/debug/trace_2.perfetto.json");
+        assert(sd.saved.find("\"session_number\":2") != std::string::npos);
         assert(sd.saved.find("\"heap_hooks\":true") != std::string::npos);
         assert(trace.enter("source.cpp", "void Example::run()", 12, allocationPointer));
         __wrap_malloc(128);
@@ -184,5 +187,12 @@ int main() {
         std::cout << "PASS millis rollover extended, micros fraction preserved\n";
     }
     std::cout << "Trace Event bytes on this host: " << sizeof(Loom_Trace::Event) << '\n';
+    for (const char *collision : {"/debug/trace_0.ndjson", "/debug/trace_0.perfetto.json"}) {
+        SDManager sd;
+        sd.existing.insert(collision);
+        Loom_Trace trace;
+        assert(!trace.begin(sd)); // Never silently renumber, append or overwrite an old capture.
+        assert(sd.saved.empty() && sd.perfetto.empty());
+    }
     assert(allocatorDepth == 0);
 }

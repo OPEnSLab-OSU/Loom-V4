@@ -966,6 +966,10 @@ bool Loom_Hypnos::scheduleWake(const TimeSpan duration) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::setSampleInterval(const TimeSpan interval) {
+    return setSampleInterval(interval, false);
+}
+
+bool Loom_Hypnos::setSampleInterval(const TimeSpan interval, bool keepLastWakeAnchor) {
     FUNCTION_START(this);
     const int32_t seconds = interval.totalseconds();
     // DS3231 Alarm 1 compares day-of-month, not month/year. A short interval prevents an
@@ -984,9 +988,8 @@ bool Loom_Hypnos::setSampleInterval(const TimeSpan interval) {
         return false;
     }
     const uint32_t nowUtc = now.unixtime();
-    if (sampleIntervalSeconds != static_cast<uint32_t>(seconds) || nowUtc < lastSampleClockUtc) {
-        nextSampleUtc = 0; // Changed period or backwards clock adjustment: use a fresh anchor.
-    }
+    nextSampleUtc = loomTime::sampleIntervalAnchor(nowUtc, nextSampleUtc, lastSampleClockUtc,
+        sampleIntervalSeconds, static_cast<uint32_t>(seconds), keepLastWakeAnchor);
     uint32_t targetUtc = 0;
     if (!loomTime::nextSampleTime(nowUtc, static_cast<uint32_t>(seconds), nextSampleUtc,
                                   targetUtc) ||

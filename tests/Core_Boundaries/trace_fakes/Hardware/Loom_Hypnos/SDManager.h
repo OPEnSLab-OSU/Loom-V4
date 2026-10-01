@@ -54,6 +54,8 @@ class SDManager {
     size_t limit = SIZE_MAX;
     unsigned int batches = 0;
     bool ready = true;
+    int sessionNumber = 0;
+    int getDebugFileNumber() const { return sessionNumber; }
     bool canWriteDebugLogs() const { return ready; }
     bool fileExists(const char *path) { return existing.count(path) != 0; }
     bool writeLineToFile(const char *path, const char *line) {

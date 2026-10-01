@@ -3,6 +3,9 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdio.h>
+#if defined(LOOM_SENSOR_FAKE_SAMD)
+#include "../fakes/Arduino.h"
+#endif
 using byte = uint8_t;
 #define INPUT 0
 #define A7 21
@@ -21,4 +24,6 @@ int analogRead(int pin);
 int digitalPinToInterrupt(uint8_t pin);
 void attachInterrupt(int number, void (*callback)(), int mode);
 void detachInterrupt(int number);
+#if !defined(LOOM_SENSOR_FAKE_SAMD)
 #define LOOM_FEED_WATCHDOG() ((void)0)
+#endif

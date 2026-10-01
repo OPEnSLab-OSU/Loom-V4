@@ -207,6 +207,8 @@ class SDManager : public Module {
 
     /** Current CSV number. Schema changes may rotate CSV while its upload batch stays put. */
     int getCurrentFileNumber() { return csvFileNumber; };
+    // Diagnostic logs stay in this boot/session even if a genuine schema change rotates CSV.
+    int getDebugFileNumber() const { return batchSessionNumber; }
 
   private:
     static constexpr size_t LOG_BASENAME_SIZE = Manager::DEVICE_NAME_SIZE;

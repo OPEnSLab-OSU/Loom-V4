@@ -9,6 +9,10 @@ class Module {
     virtual void package() = 0;
     virtual void power_up() = 0;
     virtual void power_down() = 0;
+    virtual void prepareForSampling() {}
+    virtual void idle() {}
+    virtual void resume() {}
+    virtual bool retryPowerUpWhenUninitialized() const { return false; }
     const char *getModuleName() const { return name; }
 
   protected:

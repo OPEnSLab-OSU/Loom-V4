@@ -85,7 +85,7 @@ class Loom_DFMultiGasSensor : public I2CDevice {
     bool powersDown;
 
     bool attemptConnectionToSensor();
-    void
+    bool
     configureSensorProperties(DFRobot_GAS::eMethod_t aquireMode = DFRobot_GAS::eMethod_t::PASSIVITY,
                               DFRobot_GAS::eSwitch_t gasCompMode = DFRobot_GAS::eSwitch_t::ON);
 

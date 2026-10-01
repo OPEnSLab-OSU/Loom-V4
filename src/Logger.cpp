@@ -51,7 +51,7 @@ void Logger::log(char *message, bool silent) {
     // Log as long as we have given it a SD card instance
     if (sdInst != nullptr && enableSDLogging && sdInst->canWriteDebugLogs()) {
         snprintf_P(filePath, sizeof(filePath), PSTR("/debug/output_%i.log"),
-                   sdInst->getCurrentFileNumber());
+                   sdInst->getDebugFileNumber());
         if (!sdInst->writeLineToFile(filePath, message)) {
             Serial.println(F("Could not save message to the SD debug log!"));
         }
@@ -109,7 +109,7 @@ void Logger::logDocument(const DynamicJsonDocument &document) {
     if (sdInst != nullptr && enableSDLogging && sdInst->canWriteDebugLogs()) {
         char filePath[32];
         snprintf_P(filePath, sizeof(filePath), PSTR("/debug/output_%i.log"),
-                   sdInst->getCurrentFileNumber());
+                   sdInst->getDebugFileNumber());
         if (!sdInst->writeJsonToFile(filePath, document)) {
             Serial.println(F("Could not save JSON to the SD debug log!"));
         }
@@ -132,7 +132,7 @@ void FunctionInstrumentor::writeSummary(Logger *logger, bool starting, const cha
     const int freemem = LoomMemory::freeMemoryBytes();
     char logfileName[48];
     snprintf_P(logfileName, sizeof(logfileName), PSTR("/debug/funcSummaries_%i.log"),
-               logger->sdInst->getCurrentFileNumber());
+               logger->sdInst->getDebugFileNumber());
 
     char output[OUTPUT_SIZE] = {};
     if (starting) {

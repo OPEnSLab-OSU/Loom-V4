@@ -61,8 +61,13 @@ but does not add the heap linker options. The active deployment debug sketch pri
 
 At runtime the debug sketch
 starts capture after `manager.initialize()`, when SD is available. It selects a new
-`/debug/trace_N.ndjson` and `/debug/trace_N.perfetto.json` pair for each boot, independent of CSV rotation. The sketch prints both exact paths. Trace-file selection
-is bounded to 9,999 names. Remove/archive old trace files manually when that range is exhausted.
+`/debug/trace_N.ndjson` and `/debug/trace_N.perfetto.json` pair for each boot, with the same
+session number as `output_N.log`, function summaries, the initial sensor CSV, and its batch.
+SDManager scans both root data files and debug/trace names when selecting a new session, so
+legacy captures and orphaned companion files are preserved. Old independently numbered
+captures are not renamed. A genuine later CSV schema rotation does not rename the trace or
+output log. Trace startup rejects a filename collision instead of silently renumbering.
+The sketch prints both exact paths, and capture metadata includes `session_number`.
 Setup and cycle returns are saved by a scoped guard. Hypnos also drains the recorder immediately before disabling SD/SPI and resumes writes only after SD initialization succeeds on wake. While SD is unavailable, events remain bounded in RAM; overflow is explicitly recorded, including omitted function boundaries. The clock
 measures **active MCU time**; SAMD standby is not added to call durations.
 
@@ -196,6 +201,43 @@ event is recorded immediately before its allocator call. This is block-lifetime 
 not timing of allocator execution itself.
 
 ## Cost, failure handling, and coverage
+
+Normal wakes append to the current sensor CSV, upload batch, and debug logs. LTE's `RSSI`
+column stays present while the modem is off: JSON null (serialized as `null` in the CSV) means
+there is no live reading, and packaging does not send an AT command in that state. Diagnostic
+`output_N.log` and `funcSummaries_N.log` use the fixed boot/session number instead of following
+a CSV schema rotation. A reboot still starts a new session; genuine schema changes or failed
+CSV integrity checks still preserve the old file and select another rather than append
+misaligned or uncertain data.
+
+The active bench sketch finishes SEN66's bounded PM settling before its first timed sleep,
+then waits for a verified RTC wake before recording its first sample. Settling must happen
+while `millis()` runs: a retained sensor continues measuring during MCU standby, but the
+MCU's elapsed-time counter pauses. The driver preserves its settled state on retained-power
+wakes and still settles after a detected restart. This avoids a boot-only extra warmup in the
+first recorded measurement. When SD settings
+advance the stress interval, `setSampleInterval(interval, true)` anchors the new period to the
+previous due wake instead of the end of active work. This schedules wake deadlines, not
+fabricated sample timestamps: variable sensor restoration and measurement time can still
+produce small variations between completed records. If work exceeds a period, missed slots
+are skipped and remain visible in the timing diagnostics.
+
+`[SAMPLE TIMING]` compares `timestamp.time_utc` from successfully saved records, rather than
+alarm deadlines or a later RTC read. It reports the actual gap and the configured interval;
+Perfetto also gets the gap, expected interval, and signed interval error. No sample timestamp
+is rewritten to appear regular. A backwards clock correction starts a new comparison.
+
+For this bench sketch, both Hypnos rails stay on through standby. Before initialization it
+therefore calls `mux.setDFGasPowerRetained(true)`. Normal gas-board wakes check communication
+and reuse acquisition settings instead of repeating `begin()` and the mode-change command.
+Unavailable gas boards still attempt reconnection/configuration. Other sketches retain the
+default power-cycled behavior; this option is appropriate only while gas-board power is retained.
+
+Gas-board traces name acquisition-mode acknowledgement, compensation/temperature, and gas
+identification transactions separately. The watchdog remains active for those calls; a stuck
+underlying I2C transaction can still reset the board. Failure to acknowledge acquisition mode
+disables that sensor until its later recovery attempt. An unreturned call is not reported as
+successful, and unsaved buffered trace events may be absent after a watchdog reset.
 
 The recorder keeps **24 fixed events** and small state in the opted-in sketch (**1,872 bytes**
 in the verified SAMD21 heap build, plus a few pointer/guard bytes and per-scope stack storage).

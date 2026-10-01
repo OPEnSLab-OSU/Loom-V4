@@ -125,23 +125,19 @@ bool Loom_Trace::begin(SDManager &manager, bool hooks) {
     }
     sd = &manager;
     heapHooks = hooks && loomTraceHeapHooksLinked != nullptr && loomTraceHeapHooksLinked();
-    // Use an independent number: CSV rotation must not rotate a still-running call trace.
-    bool selected = false;
-    for (unsigned int index = 1; index <= 9999; ++index) {
-        snprintf(path, sizeof(path), "/debug/trace_%u.ndjson", index);
-        snprintf(perfettoPath, sizeof(perfettoPath), "/debug/trace_%u.perfetto.json", index);
-        if (!sd->fileExists(path) && !sd->fileExists(perfettoPath)) {
-            selected = true;
-            break;
-        }
-    }
-    if (!selected) {
+    // SDManager chooses one immutable boot/session number, considering old trace files too.
+    // A later CSV schema rotation does not rename the running diagnostics or trace.
+    const int session = sd->getDebugFileNumber();
+    snprintf(path, sizeof(path), "/debug/trace_%i.ndjson", session);
+    snprintf(perfettoPath, sizeof(perfettoPath), "/debug/trace_%i.perfetto.json", session);
+    if (session < 0 || sd->fileExists(path) || sd->fileExists(perfettoPath)) {
         return false;
     }
     busy = true;
-    const char *header = heapHooks
-                             ? "{\"v\":1,\"kind\":\"session\",\"heap_hooks\":true,\"clock\":\"active_us\"}"
-                             : "{\"v\":1,\"kind\":\"session\",\"heap_hooks\":false,\"clock\":\"active_us\"}";
+    char header[128];
+    snprintf(header, sizeof(header),
+        "{\"v\":1,\"kind\":\"session\",\"session_number\":%i,\"heap_hooks\":%s,\"clock\":\"active_us\"}",
+        session, heapHooks ? "true" : "false");
     const bool saved = sd->writeLineToFile(path, header) && sd->writeLineToFile(
         perfettoPath,
         "{\"traceEvents\":["
@@ -157,6 +153,7 @@ bool Loom_Trace::begin(SDManager &manager, bool hooks) {
     }
     active = this;
     recording = true;
+    value("SD capture session number (matches output log)", session, "session number");
     marker("trace started: pre-existing allocations are outside capture");
     memory("capture baseline");
     marker(heapHooks ? "Heap hooks enabled: allocations after capture are recorded"

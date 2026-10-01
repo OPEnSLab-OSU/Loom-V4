@@ -112,6 +112,20 @@ void testNames() {
     assert(!loomSD::advanceLogNumber("Deploy_999999999999999999.csv", "Deploy_", next));
     assert(next == 16);
     puts("PASS sparse names, orphaned pairs, case, exact suffixes, and counter overflow");
+    int shared = 0;
+    assert(loomSD::advanceLogNumber("Deploy_Test_0.csv", "Deploy_Test_", shared));
+    assert(loomSD::advanceDebugNumber("output_0.log", shared));
+    assert(loomSD::advanceDebugNumber("trace_1.ndjson", shared));
+    assert(loomSD::advanceDebugNumber("trace_2.perfetto.json", shared));
+    assert(shared == 3); // Migration past old independent numbering preserves both captures.
+    assert(loomSD::advanceDebugNumber("FUNCSUMMARIES_12.LOG", shared));
+    assert(shared == 13);
+    assert(loomSD::advanceDebugNumber("trace_99.ndjson.backup", shared));
+    assert(loomSD::advanceDebugNumber("output_.log", shared));
+    assert(shared == 13);
+    assert(!loomSD::advanceDebugNumber("trace_2147483647.ndjson", shared));
+    assert(!loomSD::advanceDebugNumber("output_999999999999999999.log", shared));
+    assert(shared == 13);
 }
 
 void testClose() {

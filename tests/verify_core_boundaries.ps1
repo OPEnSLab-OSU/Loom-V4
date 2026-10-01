@@ -27,7 +27,7 @@ foreach ($test in $tests) {
     $testObj = Join-Path $buildDir ($test.BaseName + '.obj')
     $log = Join-Path $buildDir ($test.BaseName + '.log')
     $fakeIncludes = ''
-    if ($test.BaseName -in @('test_ads1115', 'test_analog', 'test_reed_anemometer')) {
+    if ($test.BaseName -in @('test_ads1115', 'test_analog', 'test_reed_anemometer', 'test_sen66_startup', 'test_df_gas_retained')) {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'sensor_fakes') + '" /I"' + $jsonIncludes + '"'
     } elseif ($test.BaseName -in @('test_mqtt_component', 'test_thingspeak', 'test_remote_manager')) {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'mqtt_fakes') + '" /I"' + $jsonIncludes + '"'

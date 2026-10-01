@@ -221,6 +221,10 @@ class Loom_Hypnos : public Module {
      * Use setInterruptDuration() instead when you deliberately want a full rest AFTER work.
      */
     bool setSampleInterval(const TimeSpan interval);
+    /** On an interval change, true anchors the new period to the last due wake instead of
+     * adding active work time. A future old alarm or backwards RTC correction starts fresh.
+     * Useful when an SD-controlled stress test changes its interval after a verified wake. */
+    bool setSampleInterval(const TimeSpan interval, bool keepLastWakeAnchor);
 
     /** Read the cached, verified UTC wake deadline without another RTC transaction. */
     bool getScheduledWakeTime(DateTime &utc) const {

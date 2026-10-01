@@ -126,6 +126,23 @@ void Loom_SEN66::power_up() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_SEN66::prepareForSampling() {
+    FUNCTION_START(this, "SEN66: finish initial PM settling before sample cadence begins");
+    if (!moduleInitialized || !measurementStarted || !measurePM || pmSettled) {
+        return;
+    }
+    const uint32_t elapsed = static_cast<uint32_t>(millis() - measurementStartedAt);
+    if (elapsed < PM_WARMUP_MS) {
+        LOGF("SEN66 initial PM settling: waiting %lu ms before sampling",
+             static_cast<unsigned long>(PM_WARMUP_MS - elapsed));
+        // Only this known, bounded delay pauses the watchdog. No I2C occurs here.
+        LoomWatchdogPause pause;
+        delay(PM_WARMUP_MS - elapsed);
+    }
+    pmSettled = true;
+    // This confirms PM settling only; VOC/NOx learning still needs extended operation.
+}
+
 void Loom_SEN66::measure() {
     FUNCTION_START(this);
     resetValuesForMeasure();
@@ -141,17 +158,7 @@ void Loom_SEN66::measure() {
         return;
     }
 
-    if (measurePM && !pmSettled) {
-        const uint32_t elapsed = static_cast<uint32_t>(millis() - measurementStartedAt);
-        if (elapsed < PM_WARMUP_MS) {
-            LOG(F("Waiting for SEN66 particulate-matter startup (30 seconds total)..."));
-            // Pause only this known, bounded delay. I2C operations retain watchdog protection.
-            LoomWatchdogPause pause;
-            delay(PM_WARMUP_MS - elapsed);
-        }
-        pmSettled = true;
-        // PM readiness is not VOC/NOx convergence: those algorithms need hours of operation.
-    }
+    prepareForSampling();
 
     using loomSensor::SampleAverage;
     SampleAverage pm1, pm25, pm4, pm10, humidity, temperature, voc, nox, carbonDioxide;

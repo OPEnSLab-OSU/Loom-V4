@@ -181,7 +181,7 @@ inline bool sameName(const char *left, const char *right) {
 // FAT names are case-insensitive. Only exact base + digits + CSV/batch suffixes count;
 // gaps, unrelated substring matches, and incomplete file pairs must not reuse an old session.
 // False means a matching number cannot be incremented safely.
-inline bool advanceLogNumber(const char *name, const char *base, int &next) {
+inline bool advanceNumberedFile(const char *name, const char *base, const char *suffix, int &next) {
     while (*base) {
         if (foldAscii(*name) != foldAscii(*base)) {
             return true;
@@ -193,7 +193,7 @@ inline bool advanceLogNumber(const char *name, const char *base, int &next) {
     while (*name >= '0' && *name <= '9') {
         ++name;
     }
-    if (name == digits || (!sameName(name, ".csv") && !sameName(name, "-Batch.txt"))) {
+    if (name == digits || !sameName(name, suffix)) {
         return true;
     }
 
@@ -212,6 +212,18 @@ inline bool advanceLogNumber(const char *name, const char *base, int &next) {
         next = number + 1;
     }
     return true;
+}
+
+inline bool advanceLogNumber(const char *name, const char *base, int &next) {
+    return advanceNumberedFile(name, base, ".csv", next) &&
+           advanceNumberedFile(name, base, "-Batch.txt", next);
+}
+
+inline bool advanceDebugNumber(const char *name, int &next) {
+    return advanceNumberedFile(name, "output_", ".log", next) &&
+           advanceNumberedFile(name, "funcSummaries_", ".log", next) &&
+           advanceNumberedFile(name, "trace_", ".ndjson", next) &&
+           advanceNumberedFile(name, "trace_", ".perfetto.json", next);
 }
 
 inline bool isHistoricalBatch(const char *name, const char *base, int sessionNumber) {

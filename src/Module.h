@@ -71,8 +71,13 @@ class Module {
     virtual void package() = 0;    // Add those values to Manager's shared JSON packet.
     virtual void power_up() = 0;   // Restore the hardware after sleep.
     virtual void power_down() = 0; // Prepare the hardware for sleep.
+    // Optional startup settling before anchoring a sampling schedule. No packet is produced.
+    virtual void prepareForSampling() {}
     // A failed module normally stays skipped; some connections can recover on the next wake.
     virtual bool retryPowerUpWhenUninitialized() const { return false; }
+    // Opt in only when package() can safely report unavailable values without hardware I/O.
+    // This keeps intermittently powered connections from changing the CSV column layout.
+    virtual bool packageWhenUnavailable() const { return false; }
 
     // Idle keeps Hypnos rails on. A driver may stop its fan/conversions here and restart them
     // in resume(); the default leaves hardware alone, so older drivers remain compatible.

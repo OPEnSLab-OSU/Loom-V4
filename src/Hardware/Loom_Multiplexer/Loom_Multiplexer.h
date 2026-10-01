@@ -32,6 +32,7 @@ class Loom_Multiplexer : public Module {
     // Main cycle: select each sensor's port before using its driver.
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void initialize() override;
+    void prepareForSampling() override;
     void measure() override;
     void package() override;
     void power_down() override;
@@ -104,6 +105,9 @@ class Loom_Multiplexer : public Module {
      * Set the SEN66 options used when a SEN66 is auto-loaded.
      */
     void setSEN66Options(bool measurePM = true, bool readNumVals = true);
+    /** Set before initialize(): true only when gas-board power is retained throughout sleep.
+     * Retained boards keep their acquisition settings; unavailable boards still retry setup. */
+    void setDFGasPowerRetained(bool retained = true);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     // Debug scans: inspect what responds on each port without adding packet fields.
@@ -169,6 +173,7 @@ class Loom_Multiplexer : public Module {
 
     bool sen66MeasurePM = true;
     bool sen66ReadNumVals = true;
+    bool dfGasPowerRetained = false; // Preserve the existing power-cycle behavior by default.
 
     bool debugOutput = false;
     bool scanDebugOutput = false;

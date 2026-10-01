@@ -3,6 +3,18 @@
 #include <assert.h>
 
 int main() {
+    uint32_t packetTime = 77;
+    assert(loomTime::packetUtcSeconds("2026-10-01T08:43:08Z", packetTime));
+    const uint32_t firstRecord = packetTime;
+    assert(loomTime::packetUtcSeconds("2026-10-01T08:45:57Z", packetTime));
+    assert(packetTime - firstRecord == 169); // Check actual CSV timestamps, not wake alarms.
+    const char *badTimes[] = {nullptr, "", "2026-10-01T01:43:08", "2026-10-01T08:43:08Zx",
+                             "2026-02-30T08:43:08Z", "2026-10-01T08:6x:08Z"};
+    for (const char *bad : badTimes) {
+        const uint32_t before = packetTime;
+        assert(!loomTime::packetUtcSeconds(bad, packetTime));
+        assert(packetTime == before);
+    }
     using loomTime::validUtcFields;
     assert(!loomTime::validRtcWakeDelay(0));
     assert(!loomTime::validRtcWakeDelay(-1));
@@ -67,5 +79,24 @@ int main() {
     }
     assert(loomTime::nextSampleTime(target + 400, 180, target, target));
     assert(target == firstWake + 103UL * 180); // Skip two missed deadlines after a slow cycle.
+
+    // Changing the SD interval after waking must not add the just-completed work to the
+    // first new interval. Legacy callers still get a fresh phase on interval changes.
+    const uint32_t lastWake = target;
+    uint32_t anchor = loomTime::sampleIntervalAnchor(lastWake + 34, lastWake,
+        lastWake - 146, 180, 600, true);
+    assert(anchor == lastWake);
+    assert(loomTime::nextSampleTime(lastWake + 34, 600, anchor, target));
+    assert(target == lastWake + 600);
+    assert(loomTime::nextSampleTime(lastWake + 1234, 600, anchor, target));
+    assert(target == lastWake + 1800); // Overruns skip slots, not an accumulating work delay.
+    assert(loomTime::sampleIntervalAnchor(lastWake + 34, lastWake, lastWake - 146,
+        180, 600, false) == 0);
+    assert(loomTime::sampleIntervalAnchor(lastWake + 34, lastWake + 180, lastWake,
+        180, 600, true) == 0); // Do not treat an old future alarm as an actual wake.
+    assert(loomTime::sampleIntervalAnchor(lastWake - 1, lastWake - 180, lastWake,
+        180, 600, true) == 0); // Backwards RTC correction reanchors even in opt-in mode.
+    assert(loomTime::sampleIntervalAnchor(lastWake + 34, lastWake + 180, lastWake,
+        180, 180, true) == lastWake + 180); // Same interval retains an early/retry alarm.
     return 0;
 }

@@ -125,7 +125,7 @@ void Manager::package() {
     json["Number"] = packetNumber;
 
     for (Module *module : modules) {
-        if (module->moduleInitialized) {
+        if (module->moduleInitialized || module->packageWhenUnavailable()) {
             FUNCTION_START(module, "Module dispatch: package()");
             module->package();
             LOOM_FEED_WATCHDOG(); // Feed after completed work, never during a blocked call.

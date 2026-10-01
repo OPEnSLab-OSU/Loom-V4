@@ -28,6 +28,7 @@ class Loom_SEN66 : public I2CDevice {
     // Manager controlled functions
     void measure() override;
     void initialize() override;
+    void prepareForSampling() override;
     void power_up() override;
     void power_down() override {};
     void idle() override;

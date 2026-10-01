@@ -115,7 +115,7 @@ void Loom_DFMultiGasSensor::initialize() {
     if (moduleInitialized) {
         LOG(F("DFRobot Multi Gas Sensor acknowledged and initialized."));
         // Configure in passive mode with temperature compenstation off (default)
-        configureSensorProperties();
+        moduleInitialized = configureSensorProperties();
     } else {
         ERROR(F("Failed to initialize DFRobot Multi Gas Sensor. Module disabled."));
     }
@@ -183,8 +183,10 @@ void Loom_DFMultiGasSensor::power_up() {
     if (moduleInitialized) {
         // A power-cycled/reconnected board loses its acquisition settings.
         if (reconnected) {
-            configureSensorProperties();
+            moduleInitialized = configureSensorProperties();
         }
+    }
+    if (moduleInitialized) {
         LOG(F("DFRobot Multi Gas sensor powered on successfully!"));
     } else {
         ERROR(F("DFRobot Multi Gas sensor failed to power on and has been disabled."));
@@ -232,24 +234,41 @@ bool Loom_DFMultiGasSensor::attemptConnectionToSensor() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_DFMultiGasSensor::configureSensorProperties(DFRobot_GAS::eMethod_t aquireMode,
+bool Loom_DFMultiGasSensor::configureSensorProperties(DFRobot_GAS::eMethod_t aquireMode,
                                                       DFRobot_GAS::eSwitch_t gasCompMode) {
     FUNCTION_START(this);
     // Set aquire mode to passive so we are able to request data from it whenever
-    LOG(F("Setting Acquire Mode to..."));
-    gasSensor.changeAcquireMode(aquireMode);
+    LOGF("Gas sensor %s (0x%02X): requesting %s acquisition mode over I2C",
+         getModuleName(), module_address, aquireMode == gasSensor.PASSIVITY ? "PASSIVE" : "INITIATIVE");
+    LOOM_FEED_WATCHDOG(); // Start this operation with the full guard; never feed a blocked call.
+    bool modeAccepted;
+    {
+        FUNCTION_START(this, "Gas board: request acquisition mode and read acknowledgement (I2C)");
+        modeAccepted = gasSensor.changeAcquireMode(aquireMode);
+    }
+    LOOM_FEED_WATCHDOG();
+    if (!modeAccepted) {
+        ERRORF("Gas sensor %s (0x%02X) did not acknowledge acquisition mode; disabled until a later recovery",
+               getModuleName(), module_address);
+        return false;
+    }
     delay(1000);
     LOGF("Acquire Mode set to %hs", aquireMode == gasSensor.PASSIVITY ? "PASSIVE" : "INITIATIVE");
 
     // Set temperature compensation
     LOG(F("Setting temp compensation..."));
-    gasSensor.setTempCompensation(gasCompMode);
+    {
+        FUNCTION_START(this, "Gas board: set compensation and read temperature (I2C)");
+        gasSensor.setTempCompensation(gasCompMode);
+    }
+    LOOM_FEED_WATCHDOG();
     delay(1000);
     LOGF("Temp compensation set to %hs", gasCompMode == gasSensor.OFF ? "OFF" : "ON");
 
     // Gas type is a board property, not a sample. Cache the allocation-free protocol result once
     // for this sensor instance.
     if (currentGasType[0] == '\0') {
+        FUNCTION_START(this, "Gas board: identify gas type (I2C)");
         const char *gasType = gasSensor.queryGasTypeFixed();
         if (gasType == nullptr || gasType[0] == '\0') {
             strncpy(currentGasType, "INV_TYPE", sizeof(currentGasType));
@@ -258,5 +277,6 @@ void Loom_DFMultiGasSensor::configureSensorProperties(DFRobot_GAS::eMethod_t aqu
         }
         currentGasType[sizeof(currentGasType) - 1] = '\0';
     }
+    return true;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////

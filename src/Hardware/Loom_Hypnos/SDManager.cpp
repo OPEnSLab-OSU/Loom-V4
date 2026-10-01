@@ -713,6 +713,30 @@ bool SDManager::updateCurrentFileName() {
         return false;
     }
 
+    // Diagnostics may outlive a deleted CSV, and old firmware used independent trace numbers.
+    // Reserve one number above every existing session artifact; never merge two captures.
+    if (sd.exists("/debug")) {
+        if (!root.open("/debug", O_RDONLY)) {
+            printModuleName("Cannot scan debug directory to select a shared session number!");
+            return false;
+        }
+        while (scanningFile.openNext(&root)) {
+            const bool named = scanningFile.getName(f_name, sizeof(f_name));
+            scanningFile.close();
+            if (!named || !loomSD::advanceDebugNumber(f_name, batchSessionNumber)) {
+                root.close();
+                printModuleName("Cannot safely select a shared debug/trace session number!");
+                return false;
+            }
+        }
+        const bool debugScanFailed = root.getError() != 0 || scanningFile.getError() != 0;
+        root.close();
+        if (debugScanFailed) {
+            printModuleName("Debug directory read failed; log filename was not selected!");
+            return false;
+        }
+    }
+
     buildNumberedName(fileName, sizeof(fileName), base, batchSessionNumber, ".csv");
     buildNumberedName(batchFileName, sizeof(batchFileName), base, batchSessionNumber, "-Batch.txt");
     if (sd.exists(fileName) || sd.exists(batchFileName)) {

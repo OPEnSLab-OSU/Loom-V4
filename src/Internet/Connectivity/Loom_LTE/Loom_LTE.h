@@ -215,6 +215,7 @@ class Loom_LTE : public NetworkComponent {
      */
     void power_down() override;
     bool retryPowerUpWhenUninitialized() const override { return true; }
+    bool packageWhenUnavailable() const override { return true; }
     bool canRemovePower() const override { return !powerMayBeOn; }
 
     // Cached library state for health checkpoints: this does not query the UART or prove

@@ -1,5 +1,17 @@
 # Loom 4.9.1
 
+LTE now keeps its RSSI field in every packet while deliberately powered off between batch
+uploads, using null for an unavailable reading without querying the modem. Normal wakes
+therefore keep the same CSV columns and append to the current file. Debug output and function
+summaries use the fixed session number, independently of legitimate CSV schema rotation.
+Hypnos adds an opt-in interval-change overload that preserves the last due wake as the anchor;
+the existing one-argument scheduling API retains its behavior. Gas wake configuration checks
+the acquisition-mode acknowledgement and labels individual I2C configuration calls in traces.
+The active retained-rail bench sketch reuses gas-board configuration on normal wakes, settles
+SEN66 before starting its timed sleeps, and reports actual saved sample-timestamp intervals.
+Trace filenames now share the immutable debug/data session number. New sessions account for
+existing trace names as well as CSV/batch files; legacy captures are preserved without renaming.
+
 Optional Wisp debug call/heap recording now saves directly loadable Chrome JSON and detailed
 NDJSON records to SD for Perfetto and an offline
 live-allocation inspector. Off/calls/heap modes keep the default extra toggle off; the recorder

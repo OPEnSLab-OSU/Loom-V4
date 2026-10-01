@@ -59,7 +59,8 @@ class TestModule : public Module {
     }
     void power_down() override { ++shutdowns; }
     bool canRemovePower() const override { return safeToRemove; }
-    bool slowStartup, guardAtWake = false, safeToRemove = true;
+    bool packageWhenUnavailable() const override { return reportUnavailable; }
+    bool slowStartup, guardAtWake = false, safeToRemove = true, reportUnavailable = false;
     unsigned int wakes = 0, packages = 0, shutdowns = 0;
 };
 
@@ -138,4 +139,18 @@ int main() {
     manager.setHealthObserver(nullptr);
     manager.package();
     assert(health.calls == observed); // Clearing the borrowed callback stops diagnostics.
+
+    // Only drivers that explicitly support unavailable-value packaging may bypass the
+    // availability gate. Packaging must not mark a powered-off connection initialized.
+    TestModule offlineConnection("offline connection"), failedSensor("failed sensor");
+    Manager offlineManager("offline status", 1);
+    offlineManager.registerModule(&offlineConnection);
+    offlineManager.registerModule(&failedSensor);
+    offlineConnection.moduleInitialized = failedSensor.moduleInitialized = false;
+    offlineManager.package();
+    assert(offlineConnection.packages == 0 && failedSensor.packages == 0);
+    offlineConnection.reportUnavailable = true;
+    offlineManager.package();
+    assert(offlineConnection.packages == 1 && failedSensor.packages == 0);
+    assert(!offlineConnection.moduleInitialized);
 }

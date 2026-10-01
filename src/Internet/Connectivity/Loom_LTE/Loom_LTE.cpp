@@ -742,9 +742,13 @@ void Loom_LTE::package() {
     FUNCTION_START(this);
     // Batch deployments deliberately power the modem off between uploads. Do not issue AT
     // commands (or trigger TinyGSM String churn) merely because it initialized earlier.
+    JsonObject json = manager->get_data_object(getModuleName());
     if (moduleInitialized && powerMayBeOn) {
-        JsonObject json = manager->get_data_object(getModuleName());
         json["RSSI"] = modem->getSignalQuality();
+    } else {
+        // Keep the same columns/order on every wake. Null means no live signal reading,
+        // rather than a fabricated or stale RSSI; no modem I/O occurs in this branch.
+        json["RSSI"] = nullptr;
     }
     FUNCTION_END;
 }
