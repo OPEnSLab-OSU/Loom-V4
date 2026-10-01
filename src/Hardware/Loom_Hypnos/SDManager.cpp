@@ -444,9 +444,12 @@ SDWriteStatus SDManager::logCsv(DateTime currentTime) {
     // available() measures unread bytes, not file size; append handles may already be at EOF.
     if (myFile.fileSize() == 0) {
         const uint32_t originalSize = myFile.fileSize();
-        // Set the date created timestamp of the File
-        myFile.timestamp(T_CREATE, currentTime.year(), currentTime.month(), currentTime.day(),
-                         currentTime.hour(), currentTime.minute(), currentTime.second());
+        // Hypnos supplies the local filesystem clock for every file. Keep the original
+        // explicit CSV time only when SDManager is used without that automatic callback.
+        if (!automaticFileTimestamps) {
+            myFile.timestamp(T_CREATE, currentTime.year(), currentTime.month(), currentTime.day(),
+                             currentTime.hour(), currentTime.minute(), currentTime.second());
+        }
 
         if (!writeHeaders(myFile) || !myFile.sync()) {
             const bool rolledBack = myFile.truncate(originalSize) && myFile.sync();
@@ -505,7 +508,7 @@ SDWriteStatus SDManager::logCsv(DateTime currentTime) {
         fieldsComplete && !row.getWriteError() && !myFile.getWriteError() && myFile.sync();
 
     // Set the last modified date
-    if (recordComplete) {
+    if (recordComplete && !automaticFileTimestamps) {
         myFile.timestamp(T_WRITE, currentTime.year(), currentTime.month(), currentTime.day(),
                          currentTime.hour(), currentTime.minute(), currentTime.second());
     }

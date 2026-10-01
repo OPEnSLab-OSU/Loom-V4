@@ -14,8 +14,38 @@ LOOM_EXTERNAL_INCLUDE_END
 #include "Sensors/Loom_Analog/Loom_Analog.h"
 #include "Utilities/Loom_TimeUtils.h"
 #include "Utilities/Loom_ClockRead.h"
+#include "Utilities/Loom_FileTimestampCache.h"
 
 namespace {
+// SdFat has one process-wide filesystem clock. Hypnos supplies the board's RTC, while
+// JSON/log contents continue to use UTC. FAT stores local wall time without a timezone.
+Loom_Hypnos *fileTimestampHypnos = nullptr;
+loomTime::FileTimestampCache fileTimestampCache;
+
+void sdFileDateTime(uint16_t *date, uint16_t *time) {
+    // Creation callbacks receive empty fields. Give those a defined fallback, but preserve
+    // an existing file's date during a transient clock fault instead of redating it to 2000.
+    if (*date == 0) {
+        *date = FAT_DEFAULT_DATE;
+        *time = FAT_DEFAULT_TIME;
+    }
+    if (fileTimestampHypnos == nullptr) {
+        return;
+    }
+    if (!fileTimestampCache.fresh(millis())) {
+        DateTime utc;
+        // This checked read updates the cache and never logs or reenters SD/trace output.
+        (void)fileTimestampHypnos->tryGetCurrentTime(utc);
+    }
+    uint32_t utcSeconds = 0;
+    if (!fileTimestampCache.get(millis(), utcSeconds)) {
+        return;
+    }
+    const DateTime local = fileTimestampHypnos->getLocalTime(DateTime(utcSeconds));
+    *date = FAT_DATE(local.year(), local.month(), local.day());
+    *time = FAT_TIME(local.hour(), local.minute(), local.second());
+}
+
 struct TimezoneEntry {
     const char *name;
     TIME_ZONE zone;
@@ -205,6 +235,10 @@ Loom_Hypnos::Loom_Hypnos(Manager &man, HYPNOS_VERSION version, TIME_ZONE zone, b
     // Create the SD Manager if we want to use SD
     if (useSD) {
         sdMan = new SDManager(manInst, sd_chip_select);
+        sdMan->setAutomaticFileTimestamps();
+        fileTimestampHypnos = this;
+        fileTimestampCache.invalidate();
+        SdFile::dateTimeCallback(sdFileDateTime);
         Logger::getInstance()->setHypnos(this);
     }
 
@@ -216,6 +250,11 @@ Loom_Hypnos::Loom_Hypnos(Manager &man, HYPNOS_VERSION version, TIME_ZONE zone, b
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Hypnos::~Loom_Hypnos() {
+    if (fileTimestampHypnos == this) {
+        SdFile::dateTimeCallbackCancel();
+        fileTimestampHypnos = nullptr;
+        fileTimestampCache.invalidate();
+    }
     if (sdMan != nullptr) {
         delete sdMan;
     }
@@ -273,6 +312,16 @@ void Loom_Hypnos::enable(bool enable33, bool enable5) {
     setPowerRails(enable33, enable5);
     digitalWrite(LED_BUILTIN, HIGH);
 
+    // Establish time before SD creates its debug directory and boot-reset journal.
+    // On wake, refresh from the RTC: millis() does not include time spent in standby.
+    if (!RTC_initialized) {
+        initializeRTC();
+    }
+    if (enableSD) {
+        DateTime utc;
+        (void)tryGetCurrentTime(utc);
+    }
+
     if (enableSD) {
         // Enable SPI pins
         pinMode(23, OUTPUT);
@@ -285,11 +334,6 @@ void Loom_Hypnos::enable(bool enable33, bool enable5) {
             trace->setStorageAvailable(sdMan->hasSDInitialized());
         }
 #endif
-    }
-
-    // If the RTC hasn't already been initialized then do so now
-    if (!RTC_initialized) {
-        initializeRTC();
     }
 
     manInst->setEnableState(true);
@@ -314,6 +358,9 @@ void Loom_Hypnos::applyWakeConfiguration() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::disable(bool disable33, bool disable5) {
+    if (fileTimestampHypnos == this) {
+        fileTimestampCache.invalidate();
+    }
 #if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
     if (enableSD) {
         if (Loom_Trace *trace = Loom_Trace::current()) {
@@ -522,6 +569,9 @@ void Loom_Hypnos::setCompileTime(const char *buildDate, const char *buildTime) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::initializeRTC() {
     FUNCTION_START(this);
+    if (fileTimestampHypnos == this) {
+        fileTimestampCache.invalidate();
+    }
     RTC_initialized = false; // A failed reinitialization must not retain an earlier success.
     alarmScheduled = false;  // An old alarm is not evidence for this initialization attempt.
     LOG("Initializing DS3231....");
@@ -708,16 +758,25 @@ DateTime Loom_Hypnos::getCurrentTime() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::tryGetCurrentTime(DateTime &utc) {
-    if (!RTC_initialized || rtcWriteUnverified) {
-        return false;
-    }
     // Recheck status rather than caching it: the RTC can lose oscillator power between wakes.
-    return loomTime::readEstablishedUtc(RTC_DS, utc);
+    const bool valid = RTC_initialized && !rtcWriteUnverified &&
+                       loomTime::readEstablishedUtc(RTC_DS, utc);
+    if (fileTimestampHypnos == this) {
+        if (valid) {
+            fileTimestampCache.update(utc.unixtime(), millis());
+        } else {
+            fileTimestampCache.unavailable(millis());
+        }
+    }
+    return valid;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::writeRtcUtc(const DateTime &utc) {
+    if (fileTimestampHypnos == this) {
+        fileTimestampCache.invalidate();
+    }
     const bool verified = loomTime::writeVerifiedUtc(RTC_DS, utc, millis);
     // A failed write can leave plausible but mixed date bytes while OSF is already clear.
     // Remember that uncertainty for this session; only a verified explicit set clears it.

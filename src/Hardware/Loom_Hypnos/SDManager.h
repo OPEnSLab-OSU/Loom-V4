@@ -47,6 +47,10 @@ class SDManager : public Module {
      */
     bool begin();
 
+    /** Hypnos installs a local RTC clock for all SdFat create/sync operations. Standalone
+     * SDManager users retain explicit CSV dating from log(currentTime). */
+    void setAutomaticFileTimestamps(bool enabled = true) { automaticFileTimestamps = enabled; }
+
     /**
      * Log the current sensor data to the SD card
      * @param currentTime The current time provided by the RTC this allows us to set accurate
@@ -242,6 +246,7 @@ class SDManager : public Module {
     int csvFileNumber = 0;      // May advance independently after a CSV schema/write failure.
 
     bool sdInitialized = false;      // Whether the card is reachable for the current operation
+    bool automaticFileTimestamps = false;
     bool logFileSelected = false;    // Whether this MCU boot session already chose its CSV filename
     bool writeDebug = false;         // Direct-Serial beta trace; never written through Logger
     bool debugAppendBlocked = false; // An uncertain debug append needs inspection after this boot.
