@@ -5,7 +5,7 @@
 #include "Logger.h"
 #include "Loom_Manager.h"
 LOOM_EXTERNAL_INCLUDE_BEGIN
-#include <RTClib.h>
+#include <OPEnS_RTC.h>
 LOOM_EXTERNAL_INCLUDE_END
 
 /*
