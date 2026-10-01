@@ -150,7 +150,7 @@ bool SDManager::writeLineToFile(const char *filename, const char *content) {
         return false;
     }
     if (writeDebug) {
-        Serial.print(F("[SD DEBUG] open "));
+        Serial.print(F("[SD DEBUG] Opening SD file: "));
         Serial.println(filename);
     }
 
@@ -162,7 +162,7 @@ bool SDManager::writeLineToFile(const char *filename, const char *content) {
     // Check if the file was actually opened, if so write the content to the file
     if (outputFile) {
         if (writeDebug) {
-            Serial.println(F("[SD DEBUG] write"));
+            Serial.println(F("[SD DEBUG] Writing the record"));
         }
 
         const uint32_t start = outputFile.fileSize();
@@ -174,7 +174,7 @@ bool SDManager::writeLineToFile(const char *filename, const char *content) {
         return finishDebugWrite(outputFile, start, writeComplete);
     }
     if (writeDebug) {
-        Serial.println(F("[SD DEBUG] open failed"));
+        Serial.println(F("[SD DEBUG] Could not open the file"));
     }
     lastDebugWriteStatus = SDWriteStatus::Failed;
     printModuleName("Failed to Open File!");
@@ -185,17 +185,17 @@ bool SDManager::writeLineToFile(const char *filename, const char *content) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::finishDebugWrite(File &file, uint32_t start, bool wroteAll) {
     if (writeDebug) {
-        Serial.println(F("[SD DEBUG] sync/rollback/close"));
+        Serial.println(F("[SD DEBUG] Saving the file; rolling back a partial write if needed; closing"));
     }
     lastDebugWriteStatus = loomSD::finishAppend(file, start, wroteAll).status;
     const bool complete = lastDebugWriteStatus == SDWriteStatus::Saved;
     if (lastDebugWriteStatus == SDWriteStatus::Uncertain) {
         debugAppendBlocked = true;
         // Report directly: sending this through Logger would attempt another SD write.
-        Serial.println(F("[SD DEBUG] uncertain append; SD debug logging paused until reboot."));
+        Serial.println(F("[SD DEBUG] The append result is uncertain; SD debug logging is paused until reboot."));
     }
     if (writeDebug) {
-        Serial.println(complete ? F("[SD DEBUG] done") : F("[SD DEBUG] failed"));
+        Serial.println(complete ? F("[SD DEBUG] File saved successfully") : F("[SD DEBUG] File save failed"));
     }
     if (!complete) {
         printModuleName("Failed while writing or closing debug file!");
@@ -232,20 +232,20 @@ bool SDManager::writeJsonToFile(const char *filename, const DynamicJsonDocument 
         return false;
     }
     if (writeDebug) {
-        Serial.print(F("[SD DEBUG] open "));
+        Serial.print(F("[SD DEBUG] Opening SD file: "));
         Serial.println(filename);
     }
     File outputFile = sd.open(filename, O_RDWR | O_CREAT | O_APPEND);
     if (!outputFile) {
         if (writeDebug) {
-            Serial.println(F("[SD DEBUG] open failed"));
+            Serial.println(F("[SD DEBUG] Could not open the file"));
         }
         lastDebugWriteStatus = SDWriteStatus::Failed;
         printModuleName("Failed to open JSON debug file!");
         return false;
     }
     if (writeDebug) {
-        Serial.println(F("[SD DEBUG] write"));
+        Serial.println(F("[SD DEBUG] Writing the JSON record"));
     }
     const uint32_t start = outputFile.fileSize();
     outputFile.clearWriteError();

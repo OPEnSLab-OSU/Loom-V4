@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Loom_LTE_Modem.h"
+#include "Loom_LTE_Config.h"
 
 template <typename ModemType, typename ClientType>
 class Loom_LTE_TinyGsmAdapter : public Loom_LTE_Modem {
@@ -19,7 +20,12 @@ class Loom_LTE_TinyGsmAdapter : public Loom_LTE_Modem {
     IPAddress localIP() override { return modem.localIP(); }
     bool isGprsConnected() override { return modem.isGprsConnected(); }
     void poweroff() override { (void)modem.poweroff(); }
-    bool poweroffChecked() override { return modem.poweroff(); }
+    bool poweroffChecked() override {
+        // Avoid TinyGSM's long generic poweroff wait. SARA firmware may cut UART power before
+        // its final OK; Loom probes AT separately and handles that expected no-reply case.
+        modem.sendAT(F("+CPWROFF"));
+        return modem.waitResponse(LOOM_LTE_POWEROFF_REPLY_TIMEOUT_MS) == 1;
+    }
     int getSimStatus() override { return static_cast<int>(modem.getSimStatus()); }
     int getRegistrationStatus() override { return static_cast<int>(modem.getRegistrationStatus()); }
     bool waitForNetwork(uint32_t timeoutMs) override { return modem.waitForNetwork(timeoutMs); }

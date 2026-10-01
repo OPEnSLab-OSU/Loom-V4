@@ -60,3 +60,10 @@
 #ifndef LOOM_LTE_R5_BOOT_AT_TIMEOUT_MS
 #define LOOM_LTE_R5_BOOT_AT_TIMEOUT_MS 45000UL
 #endif
+
+// CPWROFF can remove modem UART power before its final OK reaches the host. Keep the
+// acknowledgement wait bounded; Loom performs a separate short AT probe before deciding
+// whether shared rails may be removed.
+#ifndef LOOM_LTE_POWEROFF_REPLY_TIMEOUT_MS
+#define LOOM_LTE_POWEROFF_REPLY_TIMEOUT_MS 3000UL
+#endif

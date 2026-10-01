@@ -4,6 +4,9 @@
 #include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
 #include "Logger.h"
 #include "Loom_Manager.h"
+LOOM_EXTERNAL_INCLUDE_BEGIN
+#include <RTClib.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 /*
  * SARA-R5 startup sequence
@@ -683,19 +686,37 @@ void Loom_LTE::power_down() {
         if (gnssState != GnssState::OFF && !stopGNSS()) {
             WARNING(F("GNSS stop was not acknowledged; trying full modem power-off."));
         }
-        if (!modem->gprsDisconnect()) {
-            WARNING(F("LTE data-session disconnect was not acknowledged; trying power-off."));
+        // CPWROFF terminates the PDP session as part of modem shutdown. Calling a full
+        // gprsDisconnect() first can wait for the carrier's detach procedure for tens of
+        // seconds, even though the modem is already about to power down. The normal
+        // disconnect() API still performs an explicit PDP detach when the modem remains on.
+        LOG(F("Requesting LTE modem power-off; the modem will close its data session."));
+        const uint32_t poweroffStarted = millis();
+        const bool poweroffAcknowledged = modem->poweroffChecked();
+        if (!poweroffAcknowledged) {
+            // Some SARA firmware removes UART power before its final OK reaches the host. A
+            // short AT probe distinguishes that valid shutdown from a modem that is still on.
+            const bool modemStillAnswers = modem->testAT(1000L);
+            if (modemStillAnswers) {
+                // Keep the uncertain power state visible. The next power_up() must not pulse
+                // PWR_ON while the modem is demonstrably still responding.
+                WARNINGF("LTE power-off was not acknowledged and the modem still answers AT "
+                         "after %lu ms; keeping the device awake.",
+                         static_cast<unsigned long>(millis() - poweroffStarted));
+                return;
+            }
+            WARNINGF("LTE power-off returned no final reply after %lu ms, but the modem no "
+                     "longer answers AT; treating it as powered off.",
+                     static_cast<unsigned long>(millis() - poweroffStarted));
         }
-        if (!modem->poweroffChecked()) {
-            // Keep the uncertain power state visible. Next power_up() probes AT before deciding
-            // to pulse PWR_ON, which avoids blindly toggling an already-running modem.
-            WARNING(F("LTE power-off was not acknowledged; modem may still be on."));
-            return;
-        }
-        delay(5000);
+        // Allow the modem's power rail and UART pins to settle before Hypnos removes shared
+        // rails. This is deliberately bounded; the old path waited five seconds here.
+        delay(1000);
         powerMayBeOn = false;
+        moduleInitialized = false;
         gnssState = GnssState::OFF;
-        LOG(F("Powering down complete!"));
+        LOGF("Powering down complete after %lu ms; LTE is marked off and standby may proceed.",
+             static_cast<unsigned long>(millis() - poweroffStarted));
     }
     FUNCTION_END;
 }
@@ -1066,19 +1087,41 @@ Client *Loom_LTE::getClient() { return modem->getClient(); }
 bool Loom_LTE::getNetworkTime(int *year, int *month, int *day, int *hour, int *minute, int *second,
                               float *tz) {
     FUNCTION_START(this);
-    // TinyGSM overwrites tz with the modem's CCLK suffix. On the SARA-R410,
-    // the returned date/time fields are already UTC; applying that suffix here
-    // shifts UTC a second time (for example, 23:28 becomes 07:28 the next day
-    // in PST). Hypnos owns UTC-to-local conversion, so preserve its configured
-    // timezone and pass the modem clock fields through unchanged.
-    const float configuredTimezone = (tz != nullptr) ? *tz : 0.0f;
-    float modemTimezone = configuredTimezone;
-    const bool updated =
-        modem->getNetworkTime(year, month, day, hour, minute, second, &modemTimezone);
-
-    if (tz != nullptr) {
-        *tz = configuredTimezone;
+    if (year == nullptr || month == nullptr || day == nullptr || hour == nullptr ||
+        minute == nullptr || second == nullptr) {
+        return false;
     }
-    return updated;
+    // TinyGSM parses +CCLK as modem-local wall time plus a quarter-hour UTC offset.
+    // Convert that pair to UTC before Hypnos writes the DS3231; otherwise a modem configured
+    // for Pacific time is incorrectly labeled as UTC and gets shifted a second time later.
+    float modemTimezone = 0.0f;
+    const bool updated = modem->getNetworkTime(year, month, day, hour, minute, second,
+                                                &modemTimezone);
+    if (!updated) {
+        return false;
+    }
+    const int16_t timezoneQuarterHours = static_cast<int16_t>(
+        modemTimezone * 4.0f + (modemTimezone >= 0.0f ? 0.5f : -0.5f));
+    if (timezoneQuarterHours < -56 || timezoneQuarterHours > 56) {
+        ERRORF("LTE modem returned an invalid UTC offset of %i quarter-hours; RTC was not changed.",
+               static_cast<int>(timezoneQuarterHours));
+        return false;
+    }
+    const int32_t offsetSeconds = static_cast<int32_t>(timezoneQuarterHours) * 15L * 60L;
+    const DateTime modemLocal(*year, *month, *day, *hour, *minute, *second);
+    const DateTime utc = modemLocal - TimeSpan(offsetSeconds);
+    *year = utc.year();
+    *month = utc.month();
+    *day = utc.day();
+    *hour = utc.hour();
+    *minute = utc.minute();
+    *second = utc.second();
+    if (tz != nullptr) {
+        *tz = 0.0f; // The returned fields are now UTC.
+    }
+    LOGF("LTE modem clock converted to UTC; modem offset was %i quarter-hours.",
+         static_cast<int>(timezoneQuarterHours));
+    FUNCTION_END;
+    return true;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////

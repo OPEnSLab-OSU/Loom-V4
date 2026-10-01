@@ -49,6 +49,7 @@ class Loom_MemoryDiagnostics {
         // This is the useful allocation ceiling before allowing for future stack growth: the
         // allocator's top free chunk plus as-yet-unclaimed SRAM below the current stack marker.
         latestContiguous = latestGap + topFree;
+        const int32_t rawHeadroom = latestHeapFree + (latestGap > 0 ? latestGap : 0);
 
         if (!hasSample || latestGap < minimumGap) {
             minimumGap = latestGap;
@@ -68,31 +69,35 @@ class Loom_MemoryDiagnostics {
         Serial.print(F(" | active time "));
         Serial.print(millis());
         Serial.println(F(" ms"));
-        Serial.print(F("  Heap in use: "));
+        Serial.print(F("  Heap currently allocated: "));
         Serial.print(heapUsed);
-        Serial.print(F(" B | change since previous checkpoint: "));
+        Serial.print(F(" B (change since the previous checkpoint: "));
         if (heapChange >= 0) { Serial.print('+'); }
         Serial.print(heapChange);
-        Serial.print(F(" B | reusable free: "));
+        Serial.println(F(" B)"));
+        Serial.print(F("  Free heap inside the allocator: "));
         Serial.print(latestHeapFree);
-        Serial.print(F(" B in "));
+        Serial.print(F(" B across "));
         Serial.print(latestFreeChunks);
-        Serial.println(F(" chunks"));
-        Serial.print(F("  Stack-to-heap gap estimate: "));
+        Serial.println(F(" free blocks (fragmentation can prevent a large allocation)"));
+        Serial.print(F("  Unused RAM between the heap and current stack: "));
         Serial.print(latestGap);
-        Serial.print(F(" B | lowest checkpoint gap: "));
+        Serial.print(F(" B (estimate; the stack can grow into this space) | lowest observed: "));
         Serial.print(minimumGap);
-        Serial.print(F(" B | gap change: "));
+        Serial.print(F(" B | change: "));
         Serial.print(delta);
         Serial.println(F(" B"));
-        Serial.print(F("  Free outside top chunk: "));
+        Serial.print(F("  Free heap in fragmented blocks below the heap end: "));
         Serial.print(latestFragmentedFree);
-        Serial.print(F(" B | top-chunk-plus-gap estimate: "));
+        Serial.print(F(" B | largest contiguous growth estimate: "));
         Serial.print(latestContiguous);
-        Serial.print(F(" B | lowest estimate: "));
+        Serial.print(F(" B | lowest observed contiguous estimate: "));
         Serial.print(minimumContiguous);
         Serial.println(F(" B"));
-        Serial.print(F("  JSON pool used/capacity: "));
+        Serial.print(F("  Raw headroom estimate (free heap + unused stack space): "));
+        Serial.print(rawHeadroom);
+        Serial.println(F(" B; keep a safety margin and do not treat this as a guaranteed allocation size"));
+        Serial.print(F("  JSON document memory: "));
         Serial.print(document.memoryUsage());
         Serial.print('/');
         Serial.print(document.capacity());

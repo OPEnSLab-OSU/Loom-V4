@@ -91,6 +91,39 @@ bool timezoneUsesDST(TIME_ZONE zone) {
     return zone == AST || zone == EST || zone == CST || zone == MST || zone == PST || zone == AKST;
 }
 
+const char *timezoneAbbreviation(TIME_ZONE zone, bool daylight) {
+    if (daylight) {
+        if (zone == AST) return "ADT";
+        if (zone == EST) return "EDT";
+        if (zone == CST) return "CDT";
+        if (zone == MST) return "MDT";
+        if (zone == PST) return "PDT";
+        if (zone == AKST) return "AKDT";
+    }
+    if (zone == WAT) return "WAT";
+    if (zone == AT) return "AT";
+    if (zone == AST) return "AST";
+    if (zone == EST) return "EST";
+    if (zone == CST) return "CST";
+    if (zone == MST) return "MST";
+    if (zone == PST) return "PST";
+    if (zone == AKST) return "AKST";
+    if (zone == HST) return "HST";
+    if (zone == SST) return "SST";
+    if (zone == GMT) return "GMT";
+    if (zone == BST) return "BST";
+    if (zone == EET) return "EET";
+    if (zone == EEST) return "EEST";
+    if (zone == ZP4) return "ZP4";
+    if (zone == ZP5) return "ZP5";
+    if (zone == ZP6) return "ZP6";
+    if (zone == ZP7) return "ZP7";
+    if (zone == AWST) return "AWST";
+    if (zone == ACST) return "ACST";
+    if (zone == AEST) return "AEST";
+    return "UNKNOWN";
+}
+
 uint32_t localToUtcSeconds(uint32_t localSeconds, int16_t utcOffsetMinutes) {
     const int32_t offsetSeconds = static_cast<int32_t>(utcOffsetMinutes) * 60;
     return offsetSeconds < 0 ? localSeconds + static_cast<uint32_t>(-offsetSeconds)
@@ -199,6 +232,8 @@ void Loom_Hypnos::package() {
         WARNING(F("RTC read failed; this packet's timestamps are unavailable."));
         return;
     }
+    const bool localDaylight = isDaylightSavingsForDate(time, timezone);
+    const int16_t localOffsetMinutes = timezoneOffsetMinutes(timezone) + (localDaylight ? 60 : 0);
     localTime = getLocalTime(time);
     // ArduinoJson copies mutable text on assignment. Reuse one 21-byte buffer for both values.
     char text[21];
@@ -206,6 +241,9 @@ void Loom_Hypnos::package() {
     json["time_utc"] = text;
     dateTime_toString(localTime, text, true);
     json["time_local"] = text;
+    // Keep the wall-clock value backward-compatible, but make its interpretation explicit.
+    json["time_local_timezone"] = timezoneAbbreviation(timezone, localDaylight);
+    json["time_local_offset_minutes"] = localOffsetMinutes;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -507,7 +545,16 @@ void Loom_Hypnos::initializeRTC() {
         WARNING(F("RTC lost power."));
 
         if (hasSketchCompileTime) {
-            if (!writeRtcUtc(compileUtcTime(timezone, sketchCompileDate, sketchCompileTime))) {
+            const DateTime compileLocal = compileLocalTime(sketchCompileDate, sketchCompileTime);
+            const bool compileDaylight = isDaylightSavingsForLocalWallTime(compileLocal, timezone);
+            const int16_t compileOffsetMinutes =
+                timezoneOffsetMinutes(timezone) + (compileDaylight ? 60 : 0);
+            const DateTime compileUTC = compileUtcTime(timezone, sketchCompileDate, sketchCompileTime);
+            char compileText[21];
+            dateTime_toString(compileUTC, compileText);
+            LOGF("RTC fallback: compile timestamp normalized to UTC %s using offset %i minutes.",
+                 compileText, static_cast<int>(compileOffsetMinutes));
+            if (!writeRtcUtc(compileUTC)) {
                 ERRORF("Could not verify DS3231 compile time (I2C status %u; 0 can mean a time "
                        "mismatch).",
                        static_cast<unsigned int>(RTC_DS.lastI2CError()));
@@ -720,7 +767,28 @@ bool Loom_Hypnos::networkTimeUpdate() {
                 ERROR(F("Network returned an invalid UTC date; RTC was not changed."));
                 continue;
             }
-            if (!writeRtcUtc(DateTime(year, month, day, hour, minute, second))) {
+            const DateTime networkUtc(year, month, day, hour, minute, second);
+            DateTime rtcBeforeNetworkSync;
+            if (tryGetCurrentTime(rtcBeforeNetworkSync)) {
+                char rtcBeforeText[21];
+                char networkText[21];
+                dateTime_toString(rtcBeforeNetworkSync, rtcBeforeText);
+                dateTime_toString(networkUtc, networkText);
+                const uint32_t rtcSeconds = rtcBeforeNetworkSync.unixtime();
+                const uint32_t networkSeconds = networkUtc.unixtime();
+                if (networkSeconds >= rtcSeconds) {
+                    LOGF("Network UTC comparison: RTC=%s; network=%s; correction=+%lu seconds.",
+                         rtcBeforeText, networkText,
+                         static_cast<unsigned long>(networkSeconds - rtcSeconds));
+                } else {
+                    LOGF("Network UTC comparison: RTC=%s; network=%s; correction=-%lu seconds.",
+                         rtcBeforeText, networkText,
+                         static_cast<unsigned long>(rtcSeconds - networkSeconds));
+                }
+            } else {
+                WARNING(F("Could not read the RTC before network sync; writing the normalized network UTC anyway."));
+            }
+            if (!writeRtcUtc(networkUtc)) {
                 ERRORF("Could not verify DS3231 network time (I2C status %u; 0 can mean a time "
                        "mismatch).",
                        static_cast<unsigned int>(RTC_DS.lastI2CError()));
@@ -1122,7 +1190,7 @@ bool Loom_Hypnos::sleepImpl(bool waitForSerial, bool wakeModules) {
             } else if (missedRtcAlarm) {
                 hasAlarmTriggered = true;
             } else {
-                ERROR(F("Sleep aborted because the registered wake source was not ready."));
+                ERROR(F("Sleep cancelled: wake-source preparation failed and the RTC alarm was not already due. The device stayed awake."));
                 if (shouldPowerUp && wakeModules) {
                     restoreModulesAfterSleep(wakeModules);
                 }
@@ -1181,7 +1249,7 @@ bool Loom_Hypnos::pre_sleep(bool forceRailsOff, bool externalWake) {
     // still available. A failure is now visible to the user and leaves the
     // device awake instead of silently entering unbounded standby.
     if (externalWake && (sleepInterruptPin < 0 || !reattachRTCInterrupt(sleepInterruptPin))) {
-        ERROR(F("Could not attach the registered wake interrupt before standby."));
+        ERROR(F("Sleep setup failed: could not attach the registered wake interrupt before standby. The device stayed awake."));
         return false;
     }
 
@@ -1191,13 +1259,13 @@ bool Loom_Hypnos::pre_sleep(bool forceRailsOff, bool externalWake) {
             alarmTime.unixtime() <= now.unixtime()) {
             WARNING(F("RTC alarm became active during pre-sleep preparation; skipping standby."));
         } else {
-            ERROR(F("RTC INT is LOW before its scheduled time; refusing to enter standby."));
+            ERROR(F("Sleep setup failed: the RTC wake pin is already LOW before the scheduled alarm. The device stayed awake."));
         }
         return false;
     }
 
     if (!manInst->canRemovePower()) {
-        ERROR(F("A module has not acknowledged shutdown; peripheral rails stay on."));
+        ERROR(F("Sleep setup failed: a module did not confirm shutdown. Peripheral power remains on and the device stayed awake."));
         return false;
     }
 

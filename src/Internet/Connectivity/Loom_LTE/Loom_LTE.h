@@ -209,7 +209,9 @@ class Loom_LTE : public NetworkComponent {
     void power_up() override;
 
     /**
-     * Request modem power-down when the module is initialized and active.
+     * Request modem power-down when the module is initialized and active. The checked shutdown
+     * path tolerates firmware that cuts UART power before sending its final OK, while refusing
+     * to remove shared rails when the modem still answers AT.
      */
     void power_down() override;
     bool retryPowerUpWhenUninitialized() const override { return true; }
@@ -231,8 +233,8 @@ class Loom_LTE : public NetworkComponent {
     void package() override;
 
     /**
-     * Read UTC network time from the modem while preserving the timezone
-     * supplied by Hypnos for its separate local-time packaging.
+     * Read the modem CCLK wall time and normalize its reported quarter-hour offset to UTC
+     * before Hypnos writes the RTC. The returned timezone is zero because the fields are UTC.
      */
     bool getNetworkTime(int *year, int *month, int *day, int *hour, int *minute, int *second,
                         float *tz) override;
