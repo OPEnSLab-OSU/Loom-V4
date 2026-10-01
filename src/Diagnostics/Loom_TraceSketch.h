@@ -18,6 +18,11 @@
 #endif
 
 #if LOOM_TRACE
+#if LOOM_TRACE_HEAP && (!defined(LOOM_TRACE_LINKER_HEAP_HOOKS) || !LOOM_TRACE_LINKER_HEAP_HOOKS)
+// Conditional library discovery supplies linker wrapping for ordinary IDE builds.
+// Explicit CLI heap builds provide their own hooks and do not need this library.
+#include <Loom_TraceHeapLink.h>
+#endif
 #include "Loom_Trace.h"
 #include <Logger.h>
 #include <Arduino.h>

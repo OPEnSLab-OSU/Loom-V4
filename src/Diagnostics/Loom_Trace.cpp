@@ -157,7 +157,7 @@ bool Loom_Trace::begin(SDManager &manager, bool hooks) {
     marker("trace started: pre-existing allocations are outside capture");
     memory("capture baseline");
     marker(heapHooks ? "Heap hooks enabled: allocations after capture are recorded"
-                     : "Heap hooks OFF: use heap mode for individual allocations");
+                     : "Heap hooks OFF: enable LOOM_TRACE_HEAP with the Loom Trace Heap library installed");
     return true;
 }
 

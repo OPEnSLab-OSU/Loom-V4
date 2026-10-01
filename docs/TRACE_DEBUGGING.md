@@ -16,15 +16,32 @@ Verify/Upload; no global compiler flags are needed for calls, objects and memory
 
 ```cpp
 #define LOOM_TRACE 1 // 0 = off; 1 = calls, active objects, heap/free-RAM checkpoints
-#define LOOM_TRACE_HEAP 1 // Request allocations; also build with -Mode heap to link the hooks
+#define LOOM_TRACE_HEAP 1 // IDE discovers the optional heap companion when enabled
 ```
 
-Individual malloc/free/realloc events additionally require the existing allocator linker hooks.
-Use the heap build helper for those; a sketch macro cannot set linker options. The startup log
-states whether the build requests allocation hooks. The saved session's `heap_hooks` field and
-the trace's initial marker report whether the hooks are actually linked.
+Individual malloc/free/realloc events use the allocator linker hooks supplied by the optional
+`Loom_TraceHeap` library. The installed board package now includes it beside Loom. With both
+flags enabled, ordinary IDE Verify/Upload discovers that library and adds the linker settings;
+no launcher, extra compiler flag or board recipe edit is required. Turning either flag off
+excludes the companion and allocation hooks. The startup log reports actual capture availability.
+The saved session's `heap_hooks` field and the initial marker also report whether hooks are linked.
+If `Loom_TraceHeapLink.h` is missing, install [the companion library](../dependencies/Loom_TraceHeap/README.md)
+beside Loom, or disable allocation capture. The validated IDE target is SAMD21 Cortex M0+.
 
-From the Loom folder, compile one of these modes. The helper only compiles by default.
+The live and source V2 debug folders include `build-upload.bat` (Windows),
+`build-upload.sh` (macOS/Linux), `loom-build.cjs` and `loom-build.json`.
+Run the Windows launcher or `sh build-upload.sh` to **build and upload** using the sketch's
+flags; there is no trace mode to maintain separately. Set the board/port in JSON if automatic
+port selection is ambiguous. Use `--no-upload` to compile only or `--check` to check tools/settings.
+The launcher evaluates the flags with the real board preprocessor, then applies the matching
+compiler/linker settings to a fresh build. It preserves logs and the matching ELF, reports
+missing dependencies with installation links, and never uploads after a failed build.
+See [the portable launcher guide](../tools/sketch-launcher/README.md) to copy it into another sketch.
+Node.js 18+ and Arduino CLI (standalone or bundled with Arduino IDE) are required only for
+these launchers; the ordinary IDE workflow does not need Node.js.
+
+For explicit comparison modes, the older PowerShell helper remains available.
+From the Loom folder, compile one of these modes. This helper only compiles by default.
 It prints the temporary build folder, including its log and the matching firmware ELF.
 
 ```powershell
@@ -94,8 +111,8 @@ The comparison override is `LOOM_MUX_FORCE_ALL_DRIVERS=1`.
 
 To compile and upload that exact mode, add `-Upload -Port COM5` (replace COM5 with your board's
 port). Upload is optional and requires an explicit port. The helper uploads the verified binary
-without recompiling. An ordinary Arduino IDE upload honors the standalone sketch's trace flag,
-but does not add the heap linker options. The active deployment debug sketch prints an explicit
+without recompiling. An ordinary Arduino IDE upload honors the standalone sketch's trace and heap
+flags through the optional companion. The active deployment debug sketch prints an explicit
 `[TRACE] SD trace capture OFF` message when recording is compiled out.
 
 At runtime the debug sketch
@@ -148,7 +165,9 @@ Use the save guard only at deliberate boundaries such as setup/loop, before FUNC
 Hypnos already flushes before disabling SD and resumes after SD is ready on wake.
 
 Set `LOOM_TRACE_HEAP=0` for calls, observed objects and allocator totals alone. With it set
-to one, compile using the heap helper to capture allocation/free/reallocation events too:
+to one, ordinary IDE uploads capture allocation/free/reallocation events when the heap companion
+is installed. The portable launcher also follows these flags; alternatively select heap mode
+explicitly with the older comparison helper:
 
 ```powershell
 ./tools/build_loom_trace.ps1 -Mode heap -Sketch "C:/path/to/YourLoomSketch"

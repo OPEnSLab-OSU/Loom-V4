@@ -41,6 +41,7 @@ class Loom_Trace {
     bool begin(SDManager &sd, bool heapHooks = false);
     bool flush();
     bool isRecording() const { return recording && !busy; }
+    bool isHeapCaptureEnabled() const { return recording && heapHooks; }
     const char *getRecordPath() const { return path; }
     const char *getPerfettoPath() const { return perfettoPath; }
     void setStorageAvailable(bool available);

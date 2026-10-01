@@ -234,7 +234,7 @@ function showPosition() {
             '\n\nStack at recorded release/end:\n' + stackText(block.endStack, []);
         $('blockDetails').open = true;
     })));
-    $('emptyBlocks').textContent = !report.session.heap_hooks ? 'No allocation events were recorded: heap hooks were OFF. Object observations and allocator totals still work. Re-record with the heap build mode to capture new allocations and frees.' : !blocks.length ?
+    $('emptyBlocks').textContent = !report.session.heap_hooks ? 'No allocation events were recorded: heap hooks were OFF. Object observations and allocator totals still work. Enable LOOM_TRACE and LOOM_TRACE_HEAP, install the Loom Trace Heap companion, then re-record to capture new allocations and frees.' : !blocks.length ?
         'No matching captured blocks are live here. Earlier storage can still contribute to heap totals.' :
         blocks.length > 250 ? 'Showing the largest 250 matches; the report contains all allocations.' : 'Select a block for both call stacks and its lifetime.';
     const objectQuery = $('objectSearch').value.toLowerCase();

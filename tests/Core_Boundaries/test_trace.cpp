@@ -49,6 +49,7 @@ int main() {
         SDManager sd;
         Loom_Trace trace;
         assert(trace.begin(sd, true));
+        assert(trace.isHeapCaptureEnabled());
         trace.setStorageAvailable(false);
         const unsigned int before = sd.batches;
         for (size_t i = 0; i < Loom_Trace::EVENT_CAPACITY + 2; ++i) {
@@ -178,6 +179,7 @@ int main() {
         traceFake::ms = UINT32_MAX;
         traceFake::fraction = 500;
         assert(trace.begin(sd));
+        assert(!trace.isHeapCaptureEnabled()); // Calls-only sessions must not advertise allocation capture.
         assert(trace.flush());
         traceFake::ms = 0;
         traceFake::fraction = 125;

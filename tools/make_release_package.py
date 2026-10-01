@@ -10,7 +10,7 @@ import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-EXCLUDED_DIRECTORIES = {'.git', '.codex', '.agents', '__pycache__', 'node_modules', 'build', '.pio'}
+EXCLUDED_DIRECTORIES = {'.git', '.codex', '.agents', '__pycache__', 'node_modules', 'build', '.pio', '.loom-build'}
 GENERATED_PREFIXES = ('loom_compile_audit_', 'sketch_compile_', 'release_package_')
 CREDENTIAL_FILES = {'arduino_secrets.h', 'mqtt_creds.json', 'wifi_creds.json', 'lte_creds.json', '.env'}
 GENERATED_SUFFIXES = {'.exe', '.obj', '.o', '.elf', '.bin', '.hex', '.pyc', '.su'}

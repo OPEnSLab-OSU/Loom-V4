@@ -36,7 +36,8 @@
 
 // BEGIN LOOM_TRACE_DIAGNOSTICS
 // Reusable Loom sketch controls, independent of ordinary debug logging.
-// Heap allocation capture additionally needs the heap build's linker hooks.
+// IDE Verify/Upload honors these flags when the Loom_TraceHeap companion is installed.
+// The board package supplies it beside Loom; the portable launcher is also available.
 #ifndef LOOM_TRACE
 #define LOOM_TRACE 1
 #endif
@@ -283,9 +284,9 @@ void setup() {
         Serial.print(F("[TRACE] Load this SD file in the detailed heap/object inspector: "));
         Serial.println(executionTrace.getRecordPath());
         Serial.println(F("[TRACE] Active time excludes standby; baseline allocation times are unknown"));
-        Serial.println(LOOM_TRACE_HEAP ?
-            F("[TRACE] Allocation hooks requested; see the trace session metadata for hook availability") :
-            F("[TRACE] Calls/objects/free-RAM checkpoints ON; individual allocations OFF (heap build enables them)"));
+        Serial.println(executionTrace.isHeapCaptureEnabled() ?
+            F("[TRACE] Allocation capture ON: new allocations, frees, reallocations and failures") :
+            F("[TRACE] Allocation capture OFF: calls, objects and RAM checkpoints only"));
     } else {
         Serial.println(F("[TRACE] Could not start optional SD capture"));
     }

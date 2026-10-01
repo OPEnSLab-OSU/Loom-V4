@@ -9,3 +9,6 @@ clang-format-results.txt
 **/wifi_creds.json
 **/mqtt_creds.json
 .secrets
+
+# Sketch launcher binaries, staged sources and capture build logs
+.loom-build/

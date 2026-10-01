@@ -8,9 +8,11 @@ foreach ($header in @('src\Logger.h', 'src\Diagnostics\Loom_MemoryDiagnostics.h'
         throw "Missing canonical debug header: $header"
     }
 }
-$sketches = @(Get-ChildItem -LiteralPath $wispRoot -Filter '*.ino' -Recurse)
+$sketches = @(Get-ChildItem -LiteralPath $wispRoot -Filter '*.ino' -Recurse |
+    Where-Object { $_.FullName -notmatch '[\\/]\.loom-build[\\/]' })
 if ($DeploymentFolder) {
-    $sketches += Get-ChildItem -LiteralPath $DeploymentFolder -Filter '*.ino' -Recurse
+    $sketches += Get-ChildItem -LiteralPath $DeploymentFolder -Filter '*.ino' -Recurse |
+        Where-Object { $_.FullName -notmatch '[\\/]\.loom-build[\\/]' }
 }
 if ($sketches.Count -lt 6) { throw 'Expected all three clean/debug Wisp pairs.' }
 
