@@ -111,14 +111,16 @@ export function createEventTimeline({ report, select, selectCall }) {
     $('eventsPrevious').onclick = () => { if (page) { page--; render(); } };
     $('eventsNext').onclick = () => { if ((page + 1) * pageSize < matches.length) { page++; render(); } };
     $('timelineZoom').oninput = () => { $('timelineZoomLabel').textContent = $('timelineZoom').value + '×'; render(); };
-    $('timelineFollow').onclick = () => {
+    function reveal() {
         $('eventSearch').value = ''; $('eventCategory').value = ''; matches = report.history;
         page = Math.floor(Math.max(0, selectedIndex) / pageSize); render();
         const marker = $('eventTimeline').querySelector('.eventMarker.selectedEvent') ||
             $('eventTimeline').querySelector('.callSlice.selectedEvent');
         // Move the visible SVG viewport, not the collapsed text list underneath it.
-        marker?.scrollIntoView({ block: 'nearest', inline: 'center' });
-    };
+        marker?.scrollIntoView({ block: 'center', inline: 'center' });
+        $('timelineHover').textContent = tooltip(report.history[selectedIndex]);
+    }
+    $('timelineFollow').onclick = reveal;
     $('eventSearch').value = ''; $('eventCategory').value = ''; render();
-    return { highlight };
+    return { highlight, reveal };
 }

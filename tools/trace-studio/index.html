@@ -15,7 +15,8 @@
     <section id="drop" class="card drop">
         <div><h2>Drop your SD trace here</h2><p class="muted">Use <code>trace_N.ndjson</code> or <code>trace_N.perfetto.json</code>. General Chrome JSON and Perfetto files open in the Perfetto view.</p></div>
         <div class="toolbar"><label class="button">Choose a trace<input id="file" type="file" accept=".ndjson,.jsonl,.json,.pftrace,.perfetto-trace" hidden></label>
-            <button id="demo" class="secondary">Try a fictional Wisp cycle</button></div>
+            <button id="demo" class="secondary">Try a fictional Wisp cycle</button>
+            <label class="button secondary">Choose sensor CSV<input id="csvFile" type="file" accept=".csv" hidden></label></div>
         <p id="status" role="status" aria-live="polite">No recording loaded.</p>
     </section>
     <div class="toolbar actions"><button id="perfettoInline" disabled>View in Perfetto</button>
@@ -23,7 +24,18 @@
         <button id="export" class="secondary" disabled>Download Perfetto JSON</button>
         <button id="report" class="secondary" disabled>Download memory report</button></div>
     <p id="handoff" class="muted" role="status"></p>
-    <nav class="tabs" aria-label="Trace views"><button class="selected" id="inspectTab">Memory & objects</button><button id="timelineTab">Perfetto timeline</button></nav>
+    <nav class="tabs" aria-label="Trace views"><button class="selected" id="inspectTab">Memory & objects</button><button id="timelineTab">Perfetto timeline</button><button id="csvTab">Sensor samples</button></nav>
+    <section id="csvView" class="hidden card"><h2>Sensor samples from CSV</h2>
+        <p id="csvStatus" role="status">Choose the sensor CSV from the same recording session.</p>
+        <p class="muted">Sample times use the CSV's recorded UTC clock. Trace execution time excludes standby, so these clocks are displayed separately.</p>
+        <div id="csvLoaded" class="hidden">
+            <p id="csvRange"></p><p id="csvIntegrity" class="notice"></p><p id="csvWarnings" class="notice"></p>
+            <div class="toolbar"><label for="csvField">Plot a sensor field</label><select id="csvField"></select></div>
+            <div id="csvGraph"></div><p class="muted">Hover for values; drag to zoom and double-click to reset. Scroll the table sideways for every recorded sensor field.</p>
+            <div class="toolbar"><button id="csvPrevious" class="secondary">Earlier samples</button><button id="csvNext" class="secondary">Later samples</button><span id="csvPage"></span></div>
+            <div class="scroll csvTable"><table><thead id="csvHead"></thead><tbody id="csvRows"></tbody></table></div>
+        </div>
+    </section>
     <section id="perfettoView" class="hidden card"><h2>Perfetto timeline</h2>
         <p class="muted">Nested calls, heap events, checkpoints, and SD recording overhead. Perfetto loads when you request it. The trace is passed to its browser frame; there is no trace upload service.</p>
         <iframe id="perfettoFrame" title="Perfetto trace timeline"></iframe></section>
@@ -35,14 +47,26 @@
             <p class="muted">No board recording handy? The fictional cycle demonstrates baseline mux sensors, a sensor refresh, temporary buffers, and retained memory.</p></section>
         <div id="loaded" class="hidden">
             <nav class="jumpLinks" aria-label="Inspector sections"><a href="#callsTimeline">Calls & events</a><a href="#memorySection">Memory chart</a><a href="#stackSection">Running call stack</a><a href="#allocationSection">Allocations</a><a href="#objectSection">Objects</a></nav>
+            <section class="eventNavigator" aria-label="Selected event and navigation">
+                <p id="positionLabel" aria-live="polite">Select an event</p><strong id="eventDescription"></strong><small id="selectedContext"></small>
+                <div class="toolbar"><button id="previous" class="secondary">Previous event</button><button id="next" class="secondary">Next event</button>
+                    <button id="showSelectedEvent" class="secondary">Show event on timeline</button></div>
+                <details id="eventJump"><summary>Jump to an event or checkpoint</summary>
+                    <div class="toolbar"><label for="eventNumber">Event number</label><input id="eventNumber" type="number" min="1" value="1" required><button id="goEvent" class="secondary">Go</button></div>
+                    <label for="position">Selected event</label><input id="position" type="range" min="0" max="0" value="0">
+                    <div class="toolbar"><label for="checkpoint">Jump to a phase</label><select id="checkpoint"><option value="">Choose a checkpoint</option></select></div>
+                </details>
+            </section>
+            <section id="memorySnapshot"><h2 id="snapshotHeading">Memory at the selected event</h2><p class="muted">These values and the object/allocation tables follow the selected event. RAM values use the latest recorded measurement at or before it.</p>
             <div class="metrics">
                 <div class="metric">Heap in use<strong id="heapbytes">—</strong><small id="heapwhen"></small></div>
                 <div class="metric">Free heap (reusable)<strong id="freebytes">—</strong><small>Allocator free blocks; may be fragmented</small></div>
                 <div class="metric">Available RAM estimate<strong id="availablebytes">—</strong><small id="gapwhen"></small></div>
                 <div class="metric">Live captured bytes<strong id="livebytes">—</strong><small id="livecount"></small></div>
                 <div class="metric">Known present objects<strong id="objectcount">—</strong><small>Observed containers, including baseline sensors</small></div>
-                <div class="metric">Recorded SD-save time<strong id="overhead">—</strong><small id="peak"></small></div>
             </div>
+            <p id="allocationCapture" class="notice"></p>
+            <p id="quality" class="notice"></p></section>
             <section class="card" id="callsTimeline">
                 <div class="sectionHead"><div><h2>Calls & events</h2><p class="muted">Scroll sideways and down. Hover or focus a label for its full name; click to inspect memory at that event.</p></div>
                     <button id="perfettoSelection" class="secondary">Show selection in Perfetto</button></div>
@@ -59,11 +83,10 @@
             </section>
             <section class="card" id="memorySection">
                 <div class="sectionHead"><div><h2>Memory through execution</h2><p class="muted">Hover for values. Drag to zoom; double-click to reset. Click to select a recorded event.</p></div><button id="resetZoom" class="secondary">Reset zoom</button></div>
+                <div class="toolbar"><label for="memoryClock">Memory chart clock</label><select id="memoryClock"><option value="utc">UTC wall time (estimated)</option><option value="active">Awake execution time</option></select>
+                    <button id="zoomEvent" class="secondary">Zoom to selected event</button></div>
+                <p id="memoryClockInfo" class="notice"></p>
                 <div id="graph"></div>
-                <div class="toolbar"><label for="checkpoint">Jump to a phase</label><select id="checkpoint"><option value="">Choose a checkpoint</option></select></div>
-                <label id="positionLabel" for="position">Select an event</label><input id="position" type="range" min="0" max="0" value="0">
-                <div class="toolbar"><button id="previous" class="secondary">Previous event</button><button id="next" class="secondary">Next event</button><span id="eventDescription" class="muted"></span></div>
-                <p id="quality" class="notice"></p>
             </section>
             <div class="split">
                 <section class="card" id="stackSection"><h2>Call stack running here</h2><ol id="activeStack" class="stack"></ol><p id="noStack" class="muted"></p></section>
@@ -88,7 +111,8 @@
                 <input id="objectSearch" type="search" placeholder="Sensor name, mux port, or address" aria-label="Find an observed object">
                 <div class="scroll"><table><thead><tr><th>Object / address</th><th>State</th><th>Allocation coverage</th><th>Owner / size</th></tr></thead><tbody id="objects"></tbody></table></div>
                 <p id="emptyObjects" class="muted"></p><details id="objectDetails"><summary>Selected object details</summary><pre id="objectInfo">Select an object.</pre></details></section>
-            <section class="card"><h2>Capture quality & coverage</h2><ul id="warnings"></ul></section>
+            <section class="card"><h2>Capture quality & coverage</h2>
+                <p>Entire recording: SD trace-save time <strong id="overhead">—</strong> · <span id="peak"></span></p><ul id="warnings"></ul></section>
         </div>
     </div>
     <footer>Wisp Trace Studio · optional debug recording · active MCU time excludes standby</footer>

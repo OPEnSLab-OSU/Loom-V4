@@ -19,6 +19,20 @@ Drop either SD file here:
 - `trace_N.ndjson`: reconstruct lifetimes and generate Chrome JSON on the computer.
 - `trace_N.perfetto.json`: inspect the same Loom records and open the enriched timeline in Perfetto.
 
+Use **Choose sensor CSV** to load the matching Loom sensor file alongside the trace. The
+**Sensor samples** tab plots any numeric sensor field and shows every recorded field in a
+scrollable table, with 100 samples per page. It reports the recorded UTC range, sample intervals
+and whether optional additive-16 row checksums are present and valid. It preserves both files
+when switching tabs. CSV times include sleep; the trace active clock excludes sleep, so these
+clocks are shown separately. CSV inspection accepts up to 10 MB. Files remain in the browser.
+
+The selected-event navigator stays visible above the inspector while scrolling. It shows the
+event number/name, awake time, estimated UTC where available and enclosing call. Step, enter
+an event number, or **Show event on timeline** to reveal the matching page/marker. Memory cards
+and object/allocation tables follow that selection; the RAM card identifies its latest measured
+checkpoint. Whole-recording SD overhead lives under capture coverage. The wall-clock chart uses
+larger measurement dots and **Zoom to selected event** for the selected awake period.
+
 Choose a call, then **Call entry** or **Call return**. Choose a phase or step one event at a
 time to inspect the running call stack, live allocation addresses and requested sizes,
 known objects, mux ports, I2C addresses, and initialization state. Select a block to see its
@@ -30,6 +44,13 @@ stack growth. Fragmentation means this is not a single-allocation guarantee. The
 both free heap and available RAM estimates, using the last recorded measurement at each point.
 The stepped chart shows captured requested bytes beside the last measured allocator total;
 hover for values, drag to zoom, click a recorded point, and double-click to reset.
+The memory chart defaults to estimated UTC wall time when complete RTC/sleep diagnostics exist.
+Captured pre/post RTC seconds are anchored to measured wake/restoration timing, rather than the
+later diagnostic-write time. Standby gaps are blank, and event positions also show estimated UTC.
+Choose **Awake execution time** for precise profiling in seconds. Missing wake diagnostics,
+lost events or backwards reconstructed time leave the chart in awake time. Perfetto and the
+call/event timeline keep their precise active-time clock. Wall reconstruction does not imply
+that memory was sampled during standby. Allocation-capture status is stated above the timeline.
 
 **View in Perfetto** opens the embedded timeline. **Open full Perfetto** uses a new browser
 tab. Both use the stable buffer postMessage interface with checked source/origin and a readiness

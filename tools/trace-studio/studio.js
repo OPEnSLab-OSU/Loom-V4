@@ -6,6 +6,8 @@ import { fictionalCycle } from './demo.js';
 import { perfettoUrl, sendTrace, scrollTrace } from './perfetto.js';
 import { createEventTimeline } from './event-timeline.js';
 import { selectionRange } from './selection.js';
+import { mountSensorCsv } from './sensor-csv.js';
+import { reconstructWallClock, utcLabel } from './wall-clock.js';
 
 const $ = id => document.getElementById(id);
 const ms = us => (us / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 }) + ' ms';
@@ -13,7 +15,7 @@ const bytes = n => n.toLocaleString() + ' B';
 const signed = n => (n >= 0 ? '+' : '') + bytes(n);
 let converted = null, selectedCall = null, sourceBlob = null, sourceName = '', worker = null;
 let loadId = 0, plot = null, plotRows = [], snapshotCache = null;
-let eventTimeline = null;
+let eventTimeline = null, wallClock = null;
 let perfettoFrameLoadId = null, perfettoRequest = 0;
 
 function buttons() {
@@ -22,10 +24,12 @@ function buttons() {
     $('report').disabled = !converted;
 }
 function view(timeline) {
-    $('perfettoView').classList.toggle('hidden', !timeline);
-    $('inspectView').classList.toggle('hidden', timeline);
-    $('inspectTab').classList.toggle('selected', !timeline);
-    $('timelineTab').classList.toggle('selected', timeline);
+    $('perfettoView').classList.toggle('hidden', timeline !== true);
+    $('inspectView').classList.toggle('hidden', timeline !== false);
+    $('csvView').classList.toggle('hidden', timeline !== 'samples');
+    $('inspectTab').classList.toggle('selected', timeline === false);
+    $('timelineTab').classList.toggle('selected', timeline === true);
+    $('csvTab').classList.toggle('selected', timeline === 'samples');
 }
 function download(value, suffix) {
     const url = URL.createObjectURL(new Blob([JSON.stringify(value)], { type: 'application/json' }));
@@ -36,7 +40,7 @@ function download(value, suffix) {
 function prepare(name) {
     worker?.terminate(); worker = null; ++loadId;
     plot?.destroy(); plot = null; plotRows = [];
-    converted = null; selectedCall = null; sourceBlob = null; sourceName = name; snapshotCache = null; eventTimeline = null;
+    converted = null; selectedCall = null; sourceBlob = null; sourceName = name; snapshotCache = null; eventTimeline = null; wallClock = null;
     $('loaded').classList.add('hidden'); $('welcome').classList.remove('hidden');
     $('entry').disabled = true; $('exit').disabled = true;
     $('handoff').textContent = ''; $('blockDetails').open = false; $('objectDetails').open = false;
@@ -66,12 +70,19 @@ function analyze(content, name, fictional = false, rawBlob = null, preparedId = 
         // normalized timestamps match the inspector and its Perfetto selection.
         sourceBlob = new Blob([JSON.stringify(converted.perfetto)], { type: 'application/json' });
         const report = converted.report;
+        wallClock = reconstructWallClock(report);
+        $('memoryClock').options[0].disabled = !wallClock;
+        $('memoryClock').value = wallClock ? 'utc' : 'active';
+        $('allocationCapture').textContent = report.session.heap_hooks ?
+            'Individual allocation capture was enabled. Only allocations observed after recording began have lifetimes; earlier object allocation times remain unknown.' :
+            'Individual allocation capture was OFF for this recording. The object list identifies observed containers; it does not prove when they were allocated. Heap totals are measured, but block addresses, malloc/free events and allocation lifetimes were not recorded. Use the heap build mode for the next recording; this file cannot recover those events.';
         $('status').textContent = (fictional ? 'FICTIONAL EXAMPLE · ' : '') + name + ' · ' +
             report.calls.length + ' calls · ' + report.allocations.length + ' captured allocations · ' +
             (report.session.heap_hooks ? 'Heap capture enabled' : 'Call-only capture');
         $('loaded').classList.remove('hidden'); $('welcome').classList.add('hidden'); buttons();
         $('position').max = Math.max(0, report.history.length - 1); $('position').value = 0;
-        $('overhead').textContent = ms(report.overheadUs); $('peak').textContent = 'Peak captured: ' + bytes(report.peakTrackedBytes);
+        $('overhead').textContent = (report.overheadUs / 1e6).toLocaleString(undefined, { maximumFractionDigits: 3 }) + ' s';
+        $('peak').textContent = report.session.heap_hooks ? 'Peak captured: ' + bytes(report.peakTrackedBytes) : 'Individual allocations were not captured';
         $('warnings').replaceChildren(...report.warnings.map(message => {
             const item = document.createElement('li'); item.textContent = message; return item;
         }));
@@ -156,14 +167,19 @@ function showPosition() {
     const snapshot = snapshotCache?.index === index ? snapshotCache.value : LoomTrace.snapshot(report, index);
     snapshotCache = { index, value: snapshot };
     $('positionLabel').textContent = 'Event ' + (index + 1) + ' of ' + report.history.length + ' · ' + ms(snapshot.timeUs) + ' active time';
+    if (wallClock) $('positionLabel').textContent += ' · ≈ ' + utcLabel(wallClock.rows[index].utcUs);
+    $('eventNumber').max = report.history.length; $('eventNumber').value = index + 1;
+    $('selectedContext').textContent = report.history[index]?.context ? 'During: ' + report.history[index].context : 'Outside an instrumented call';
+    $('snapshotHeading').textContent = 'Memory at event ' + (index + 1);
     $('heapbytes').textContent = snapshot.checkpoint ? bytes(snapshot.checkpoint.usedBytes) : 'No measurement';
-    $('heapwhen').textContent = snapshot.checkpoint ? snapshot.checkpoint.name + ' at ' + ms(snapshot.checkpoint.timeUs) : 'Measured at checkpoints and call boundaries';
+    $('heapwhen').textContent = snapshot.checkpoint ? 'Measured at event ' + (snapshot.checkpoint.index + 1) + ': ' + snapshot.checkpoint.name +
+        (wallClock ? ' · ≈ ' + utcLabel(wallClock.rows[snapshot.checkpoint.index].utcUs) : ' · ' + ms(snapshot.checkpoint.timeUs) + ' awake') : 'Measured at checkpoints and call boundaries';
     const memory = snapshot.checkpoint;
     $('freebytes').textContent = memory ? bytes(memory.freeBytes) : 'No measurement';
     $('availablebytes').textContent = memory ? bytes(memory.freeBytes + Math.max(0, memory.gapBytes)) : 'No measurement';
     $('gapwhen').textContent = memory ? 'Free heap + ' + bytes(memory.gapBytes) + ' stack-to-heap gap; no future stack reserve' : 'Measured at checkpoints and call boundaries';
     $('livebytes').textContent = report.session.heap_hooks ? bytes(snapshot.liveBytes) : 'Not captured';
-    $('livecount').textContent = snapshot.live.length + ' blocks with observed allocation times';
+    $('livecount').textContent = report.session.heap_hooks ? snapshot.live.length + ' blocks with observed allocation times' : 'Allocation events were disabled; object observations are separate';
     $('objectcount').textContent = snapshot.activeObjects.length;
     $('quality').textContent = snapshot.incomplete ? 'Incomplete history after missing or ambiguous events. Objects and blocks shown here belong to the currently observed segment.' :
         'Showing the recorded event boundary. Baseline object identities may be known; baseline allocation times and internal buffers are not fully captured.';
@@ -201,7 +217,7 @@ function showPosition() {
             '\n\nStack at recorded release/end:\n' + stackText(block.endStack, []);
         $('blockDetails').open = true;
     })));
-    $('emptyBlocks').textContent = !report.session.heap_hooks ? 'Individual block histories require heap mode.' : !blocks.length ?
+    $('emptyBlocks').textContent = !report.session.heap_hooks ? 'No allocation events were recorded: heap hooks were OFF. Object observations and allocator totals still work. Re-record with the heap build mode to capture new allocations and frees.' : !blocks.length ?
         'No matching captured blocks are live here. Earlier storage can still contribute to heap totals.' :
         blocks.length > 250 ? 'Showing the largest 250 matches; the report contains all allocations.' : 'Select a block for both call stacks and its lifetime.';
     const objectQuery = $('objectSearch').value.toLowerCase();
@@ -232,6 +248,10 @@ function stackText(frames, fallback) {
 }
 function drawGraph() {
     plot?.destroy(); const report = converted.report;
+    const utc = $('memoryClock').value === 'utc' && wallClock;
+    $('memoryClockInfo').textContent = utc ?
+        utcLabel(wallClock.startUtcUs) + ' → ' + utcLabel(wallClock.endUtcUs) + '. Estimated from captured RTC seconds and measured wake/restoration timing. Sleep gaps are blank: no memory was measured in standby. Fine timing remains available in the awake-execution view.' :
+        'Awake execution time only: standby is excluded. ' + (wallClock ? 'Choose UTC wall time to include the sleep gaps.' : 'This recording has no complete, trustworthy RTC/wake anchors for a wall-clock reconstruction.');
     const unique = new Map();
     for (const row of report.history) unique.set(row.timeUs, row);
     plotRows = [...unique.values()];
@@ -246,27 +266,49 @@ function drawGraph() {
         free.push(currentFree); available.push(currentAvailable);
         return currentHeap;
     });
+    const points = [];
+    for (let i = 0; i < plotRows.length; i++) {
+        const row = plotRows[i];
+        const x = utc ? wallClock.rows[row.index].utcUs / 1e6 : row.timeUs / 1e6;
+        if (utc && i && wallClock.rows[row.index].segment !== wallClock.rows[plotRows[i - 1].index].segment) {
+            const previous = points.at(-1).x;
+            if (x - previous > .002) {
+                points.push({ x: previous + .000001, row: null, values: [null, null, null, null] });
+                points.push({ x: x - .000001, row: null, values: [null, null, null, null] });
+            }
+        }
+        points.push({ x, row, values: [report.session.heap_hooks ? row.bytes : null, heaps[i], free[i], available[i]] });
+    }
+    plotRows = points.map(point => point.row);
     const opts = {
         width: Math.max(280, $('graph').clientWidth), height: 230, scales: { x: { time: false } },
-        axes: [{ label: 'Active time (ms)' }, { values: (u, values) => values.map(n => n.toLocaleString() + ' B'), size: 74 }],
-        series: [{ label: 'Active time', value: (u, v) => v === null ? '—' : v.toFixed(3) + ' ms' },
+        axes: [{ label: utc ? 'UTC wall time (estimated; includes sleep gaps)' : 'Awake execution (seconds; excludes sleep)',
+            splits: utc ? (u, axis, min, max) => {
+                const step = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400].find(value => value >= (max - min) / 8) || 86400;
+                const ticks = [];
+                for (let tick = Math.ceil(min / step) * step; tick <= max; tick += step) ticks.push(tick);
+                return ticks;
+            } : undefined,
+            values: (u, values) => values.map(value => utc ? new Date(value * 1000).toISOString().slice(11, 19) : value.toLocaleString()) },
+            { values: (u, values) => values.map(n => n.toLocaleString() + ' B'), size: 74 }],
+        series: [{ label: utc ? 'Estimated UTC' : 'Awake execution', value: (u, v) => v === null ? '—' : utc ? utcLabel(v * 1e6) : v.toFixed(3) + ' s' },
             { label: 'Live captured bytes', stroke: '#176c58', width: 2, paths: uPlot.paths.stepped({ align: 1 }),
                 value: (u, v) => v === null ? (report.session.heap_hooks ? '—' : 'Not captured') : bytes(v) },
-            { label: 'Heap in use (last measurement)', stroke: '#527dbe', width: 2, paths: uPlot.paths.stepped({ align: 1 }),
+            { label: 'Heap in use (last measurement)', stroke: '#527dbe', width: 2, points: { show: !!utc, size: 9 }, paths: uPlot.paths.stepped({ align: 1 }),
                 value: (u, v) => v === null ? '—' : bytes(v) },
-            { label: 'Free heap (last measurement)', stroke: '#b47816', width: 2, paths: uPlot.paths.stepped({ align: 1 }),
+            { label: 'Free heap (last measurement)', stroke: '#b47816', width: 2, points: { show: !!utc, size: 9 }, paths: uPlot.paths.stepped({ align: 1 }),
                 value: (u, v) => v === null ? '—' : bytes(v) },
-            { label: 'Available RAM estimate (no stack reserve)', stroke: '#8c6baa', width: 1, dash: [5, 4], paths: uPlot.paths.stepped({ align: 1 }),
+            { label: 'Available RAM estimate (no stack reserve)', stroke: '#8c6baa', width: 1, points: { show: !!utc, size: 9 }, dash: [5, 4], paths: uPlot.paths.stepped({ align: 1 }),
                 value: (u, v) => v === null ? '—' : bytes(v) }],
         cursor: { drag: { x: true, y: false } }
     };
-    plot = new uPlot(opts, [plotRows.map(row => row.timeUs / 1000),
-        plotRows.map(row => report.session.heap_hooks ? row.bytes : null), heaps, free, available], $('graph'));
+    plot = new uPlot(opts, [points.map(point => point.x), ...[0, 1, 2, 3].map(series => points.map(point => point.values[series]))], $('graph'));
     let pointerStart = null;
     plot.over.addEventListener('pointerdown', event => { pointerStart = { x: event.clientX, y: event.clientY }; });
     plot.over.addEventListener('pointerup', event => {
         if (pointerStart && Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y) < 4 && plot.cursor.idx !== null) {
-            setPosition(plotRows[plot.cursor.idx].index);
+            const row = plotRows[plot.cursor.idx];
+            if (row) setPosition(row.index);
         }
         pointerStart = null;
     });
@@ -274,6 +316,9 @@ function drawGraph() {
 new ResizeObserver(() => {
     if (plot && $('graph').clientWidth > 0) plot.setSize({ width: Math.max(280, $('graph').clientWidth), height: 230 });
 }).observe($('graph'));
+new ResizeObserver(entries => {
+    document.documentElement.style.setProperty('--event-navigator-height', (entries[0].target.getBoundingClientRect().height + 16) + 'px');
+}).observe(document.querySelector('.eventNavigator'));
 async function openPerfetto(external = false, selection = false) {
     if (!sourceBlob) return;
     const blob = sourceBlob, name = sourceName, id = loadId;
@@ -315,14 +360,28 @@ $('position').oninput = showPosition;
 $('checkpoint').onchange = event => { if (event.target.value !== '') setPosition(Number(event.target.value)); };
 $('previous').onclick = () => setPosition(Number($('position').value) - 1);
 $('next').onclick = () => setPosition(Number($('position').value) + 1);
+$('showSelectedEvent').onclick = () => eventTimeline?.reveal();
+$('goEvent').onclick = () => { if ($('eventNumber').reportValidity()) { setPosition(Number($('eventNumber').value) - 1); $('eventJump').open = false; } };
+$('eventNumber').onkeydown = event => { if (event.key === 'Enter') $('goEvent').click(); };
 $('callSearch').oninput = renderCalls;
 $('blockSearch').oninput = showPosition; $('objectSearch').oninput = showPosition;
 $('entry').onclick = () => setPosition(selectedCall.startIndex);
 $('exit').onclick = () => setPosition(selectedCall.endIndex);
-$('resetZoom').onclick = () => { if (plot && converted) plot.setScale('x', { min: 0, max: Math.max(.001, converted.report.durationUs / 1000) }); };
+$('resetZoom').onclick = () => { if (plot && converted) plot.setScale('x', { min: plot.data[0][0], max: Math.max(plot.data[0][0] + .001, plot.data[0].at(-1)) }); };
+$('memoryClock').onchange = drawGraph;
+$('zoomEvent').onclick = () => {
+    if (!plot || !converted) return;
+    const index = Number($('position').value), utc = $('memoryClock').value === 'utc' && wallClock;
+    const center = utc ? wallClock.rows[index].utcUs / 1e6 : converted.report.history[index].timeUs / 1e6;
+    const radius = utc ? 30 : 1;
+    plot.setScale('x', { min: Math.max(plot.data[0][0], center - radius), max: Math.min(plot.data[0].at(-1), center + radius) });
+    $('memorySection').scrollIntoView({ block: 'start' });
+};
 $('export').onclick = () => download(converted.perfetto, '.perfetto.json');
 $('report').onclick = () => download(converted.report, '.memory.json');
 $('perfettoInline').onclick = () => openPerfetto(); $('perfettoTab').onclick = () => openPerfetto(true);
 $('perfettoSelection').onclick = () => openPerfetto(false, true);
 $('inspectTab').onclick = () => view(false);
+$('csvTab').onclick = () => view('samples');
+mountSensorCsv(uPlot, view);
 $('timelineTab').onclick = () => { if (sourceBlob) openPerfetto(); else { view(true); $('handoff').textContent = 'Load a recording first, or try the fictional Wisp cycle.'; } };

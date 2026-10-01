@@ -1,6 +1,9 @@
 # Optional calls and heap recording
 
-The Wisp **debug** examples and the local Wisp V2 deployment debug copy have an extra trace toggle. The active standalone `WispV2_Deploy_2026_debug` copy now defaults to ON; the library examples retain their existing defaults. A recording
+The Wisp **debug** examples and the local Wisp V2 deployment debug copy have an extra trace toggle.
+The standalone and source `WispV2_Deploy_2026_debug` copies now default to tracing ON and request
+heap capture. Other debug examples retain their existing defaults. The source Wisp V2 debug
+example shares the live copy's timing/diagnostics while keeping its original mux filter and all-port discovery. A recording
 shows the nested instrumented calls, individual captured allocations, and allocator totals
 at named checkpoints. Trace-off sketches omit the recorder buffer and SD trace writes. Logger
 keeps a fixed interface and lightweight null-hook checks, so separately compiled library code
@@ -12,7 +15,8 @@ In the active standalone debug sketch, change this flag and use ordinary Arduino
 Verify/Upload; no global compiler flags are needed for calls, objects and memory checkpoints:
 
 ```cpp
-#define LOOM_WISP_TRACE 1 // 0 = off; 1 = calls, active objects, heap/free-RAM checkpoints
+#define LOOM_TRACE 1 // 0 = off; 1 = calls, active objects, heap/free-RAM checkpoints
+#define LOOM_TRACE_HEAP 1 // Request allocations; also build with -Mode heap to link the hooks
 ```
 
 Individual malloc/free/realloc events additionally require the existing allocator linker hooks.
@@ -24,12 +28,12 @@ From the Loom folder, compile one of these modes. The helper only compiles by de
 It prints the temporary build folder, including its log and the matching firmware ELF.
 
 ```powershell
-./tools/build_wisp_trace.ps1 -Mode off
-./tools/build_wisp_trace.ps1 -Mode calls
-./tools/build_wisp_trace.ps1 -Mode heap
+./tools/build_loom_trace.ps1 -Mode off
+./tools/build_loom_trace.ps1 -Mode calls
+./tools/build_loom_trace.ps1 -Mode heap
 ```
 
-- `off`: ordinary Wisp debug behavior, with the extra recording disabled.
+- `off`: ordinary sketch debug behavior, with the extra recording disabled.
 - `calls`: nested calls and allocator-total checkpoints, without allocator interception.
 - `heap`: calls plus allocation, free, realloc, and failure events. Use this to inspect live blocks.
 - `sketch`: use the sketch's own flags with no extra compiler/linker settings, like an IDE build.
@@ -37,19 +41,18 @@ It prints the temporary build folder, including its log and the matching firmwar
 For the mux example:
 
 ```powershell
-./tools/build_wisp_trace.ps1 -Mode heap -Sketch "examples/Lab Examples/Wisp/Wisp_Mux_BatchLogging_debug"
+./tools/build_loom_trace.ps1 -Mode heap -Sketch "examples/Lab Examples/Wisp/Wisp_Mux_BatchLogging_debug"
 ```
 
 To build the deployment copy with its own sensor settings:
 
 ```powershell
-./tools/build_wisp_trace.ps1 -Mode heap -Sketch "$env:USERPROFILE/Documents/Arduino/WispV2_Deploy_2026_debug"
+./tools/build_loom_trace.ps1 -Mode heap -Sketch "$env:USERPROFILE/Documents/Arduino/WispV2_Deploy_2026_debug"
 ```
 
 The helper overrides the sketch toggle for comparison builds. Heap mode also sets
-`LOOM_WISP_TRACE_HEAP`, `LOOM_TRACE_LINKER_HEAP_HOOKS` and the GNU linker wrapping flags.
-The legacy library examples still require their original shared build flag. The active
-standalone debug copy uses Logger's shared callback interface and supports its own sketch flag.
+`LOOM_TRACE_HEAP`, `LOOM_TRACE_LINKER_HEAP_HOOKS` and the GNU linker wrapping flags.
+All three source Wisp debug examples and the live deployment copy use the same reusable header and sketch flags. The old Wisp flags and build helper remain compatibility aliases.
 Use a fresh build when changing linker modes.
 The board's existing `debug=off` setting and this recording toggle are independent.
 
@@ -71,6 +74,58 @@ The sketch prints both exact paths, and capture metadata includes `session_numbe
 Setup and cycle returns are saved by a scoped guard. Hypnos also drains the recorder immediately before disabling SD/SPI and resumes writes only after SD initialization succeeds on wake. While SD is unavailable, events remain bounded in RAM; overflow is explicitly recorded, including omitted function boundaries. The clock
 measures **active MCU time**; SAMD standby is not added to call durations.
 
+## Use the same controls in any Loom sketch
+
+`Diagnostics/Loom_TraceSketch.h` is shared by all the debug examples. The flags are generic,
+independent of the board's ordinary debug setting, and default to zero when omitted. Define
+both before including the header. No Wisp-specific helper structure or macros need copying:
+
+```cpp
+#ifndef LOOM_TRACE
+#define LOOM_TRACE 1
+#endif
+#ifndef LOOM_TRACE_HEAP
+#define LOOM_TRACE_HEAP 1
+#endif
+#include <Logger.h>
+#include <Diagnostics/Loom_TraceSketch.h>
+LOOM_TRACE_RECORDER(executionTrace);
+
+// After your existing manager.initialize(), when SD is ready:
+// bool started = LOOM_TRACE_BEGIN(executionTrace, *hypnos.getSDManager());
+
+void loop() {
+    LOOM_TRACE_SAVE_ON_RETURN(); // Save after FUNCTION_START's exit record.
+    FUNCTION_START;
+    LOOM_TRACE_CHECKPOINT("Before measuring sensors");
+    // Your existing measurement, logging and sleep logic goes here.
+    LOOM_TRACE_CHECKPOINT("After saving the sample");
+}
+```
+
+`LOOM_TRACE_BEGIN` starts capture and attaches the recorder to Logger. Existing
+`FUNCTION_START;` / `FUNCTION_START(this);` calls then supply nested function entry/return
+and memory measurements throughout Loom. The named checkpoint/value/flush helpers use the
+active recorder; before capture begins they do nothing. With `LOOM_TRACE=0` they compile
+out, including the recorder instance, while ordinary function summaries remain available.
+Use the save guard only at deliberate boundaries such as setup/loop, before FUNCTION_START.
+Hypnos already flushes before disabling SD and resumes after SD is ready on wake.
+
+Set `LOOM_TRACE_HEAP=0` for calls, observed objects and allocator totals alone. With it set
+to one, compile using the heap helper to capture allocation/free/reallocation events too:
+
+```powershell
+./tools/build_loom_trace.ps1 -Mode heap -Sketch "C:/path/to/YourLoomSketch"
+```
+
+The helper accepts other Loom sketches and copies their local source files, including an
+Arduino `src` subfolder. Its default board remains the Loom SAMD Feather M0; supply `-Fqbn`
+for a different compatible target. Heap wrapping requires a GNU linker and matching allocator
+symbols; it is not a portable heap interceptor for every Arduino core. Capture starts when
+SD is available, so objects allocated earlier have unknown allocation times. The old
+`LOOM_WISP_TRACE` / `LOOM_WISP_TRACE_HEAP` flags are fallback aliases when the generic flags
+are absent; new sketches should use the generic names. `build_wisp_trace.ps1` forwards to
+the generic helper for existing commands.
 ## Load the SD file directly in Perfetto
 
 Hypnos supplies a checked RTC clock for all SD file/folder creation and file modification dates,

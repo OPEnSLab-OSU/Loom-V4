@@ -36,6 +36,14 @@ details { margin-top:12px; } summary { cursor:pointer; font-size:13px; font-weig
 .jumpLinks a { padding:6px 0; font-weight:600; text-underline-offset:3px; }
 #callDetail,#callFreeSummary { white-space:pre-line; overflow-wrap:anywhere; }
 .callList button,.stack li,td { overflow-wrap:anywhere; }
-section[id] { scroll-margin-top:16px; }
+section[id] { scroll-margin-top:var(--event-navigator-height,16px); }
+.csvTable { margin-top:16px; } .csvTable th,.csvTable td { min-width:150px; white-space:nowrap; }
+#csvGraph { min-height:230px; margin-top:16px; } #csvWarnings { white-space:pre-line; } #csvWarnings:empty { display:none; }
+.eventNavigator { position:sticky; top:0; z-index:5; background:#f3faf7; border:1px solid #a9c7b9; border-radius:10px; padding:14px 18px; margin:16px 0; box-shadow:0 4px 12px #20343d18; }
+.eventNavigator #positionLabel { margin:0 0 4px; font-size:13px; } .eventNavigator strong { display:block; overflow-wrap:anywhere; }
+.eventNavigator small { display:block; margin:4px 0 10px; } .eventNavigator button { padding:7px 10px; }
+.eventNavigator strong { font-size:14px; } .eventNavigator summary { margin:8px 0; }
+#eventNumber { width:90px; font:inherit; padding:6px; border:1px solid #abc5bb; border-radius:6px; }
+#memorySnapshot .metrics { margin-top:12px; } #memorySnapshot { margin:24px 0; }
 @media(max-width:950px) { main { padding:18px; }.split,.split.wide { grid-template-columns:1fr; }.metrics { grid-template-columns:repeat(2,1fr); }.badge { display:none; } }
 @media(max-width:540px) { h1 { font-size:31px; }.card { padding:16px; }.steps { grid-template-columns:1fr; gap:8px; }.metric { padding:14px; }.metric strong { font-size:24px; }.sectionHead { flex-wrap:wrap; }.scroll { overflow:auto; } }

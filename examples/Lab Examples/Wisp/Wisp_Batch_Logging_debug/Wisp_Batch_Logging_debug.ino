@@ -27,41 +27,16 @@
 #include <Logger.h>
 
 // BEGIN LOOM_TRACE_DIAGNOSTICS
-// Extra debug toggle, OFF by default. tools/build_wisp_trace.ps1 sets the matching
-// library compiler flag and optional allocator linker hooks for all translation units.
-#ifndef LOOM_WISP_TRACE
-#define LOOM_WISP_TRACE 0
+// Reusable Loom sketch controls, independent of ordinary debug logging.
+// Heap allocation capture additionally needs the heap build's linker hooks.
+#ifndef LOOM_TRACE
+#define LOOM_TRACE 0
 #endif
-#ifndef LOOM_WISP_TRACE_HEAP
-#define LOOM_WISP_TRACE_HEAP 0
+#ifndef LOOM_TRACE_HEAP
+#define LOOM_TRACE_HEAP 0
 #endif
-#if LOOM_WISP_TRACE
-#if !defined(LOOM_ENABLE_TRACE) || !LOOM_ENABLE_TRACE
-#error "Use tools/build_wisp_trace.ps1 -Mode calls or -Mode heap for a trace build."
-#endif
-#include <Diagnostics/Loom_Trace.h>
-Loom_Trace executionTrace;
-// Declared before the function scope, so its destructor saves the recorded return too.
-struct WispTraceSaveOnReturn {
-    ~WispTraceSaveOnReturn() {
-        if (executionTrace.isRecording() && executionTrace.isStorageAvailable()) {
-            executionTrace.flush();
-        }
-    }
-};
-#define WISP_TRACE_SCOPE() WispTraceSaveOnReturn traceSaveOnReturn; FUNCTION_START
-#define WISP_TRACE_CHECKPOINT(name) executionTrace.memory(name)
-#define WISP_TRACE_FLUSH()                                                                         \
-    do {                                                                                           \
-        if (executionTrace.isRecording() && executionTrace.isStorageAvailable() && !executionTrace.flush()) {                                                             \
-            Serial.println(F("[TRACE] capture stopped: SD trace append failed"));                   \
-        }                                                                                          \
-    } while (false)
-#else
-#define WISP_TRACE_SCOPE() do {} while (false)
-#define WISP_TRACE_CHECKPOINT(name) do {} while (false)
-#define WISP_TRACE_FLUSH() do {} while (false)
-#endif
+#include <Diagnostics/Loom_TraceSketch.h>
+LOOM_TRACE_RECORDER(executionTrace);
 // END LOOM_TRACE_DIAGNOSTICS
 
 constexpr int ACTIVE_WATCHDOG_MS = 16000;
@@ -121,7 +96,7 @@ void setup() {
     manager.beginSerial();
     WISP_DIAGNOSTIC_ENABLE_SD_TRACE();              // LOOM_BETA_DIAGNOSTIC
     WISP_DIAGNOSTIC_CHECKPOINT("After global object construction"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("After global object construction"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("After global object construction"); // LOOM_TRACE_DIAGNOSTIC
 
     // Set the LTE board to only powerup when a batch is ready to be sent
     lte.setBatchSD(batchSD);
@@ -143,21 +118,20 @@ void setup() {
 
     // Read the MQTT creds file to supply the device with MQTT credentials
     WISP_DIAGNOSTIC_CHECKPOINT("Before loading MQTT settings"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("Before loading MQTT settings"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("Before loading MQTT settings"); // LOOM_TRACE_DIAGNOSTIC
     mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
     WISP_DIAGNOSTIC_CHECKPOINT("After loading MQTT settings"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("After loading MQTT settings"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("After loading MQTT settings"); // LOOM_TRACE_DIAGNOSTIC
 
     // Initialize all in-use modules
     WISP_DIAGNOSTIC_CHECKPOINT("Before initializing modules"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("Before initializing modules"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("Before initializing modules"); // LOOM_TRACE_DIAGNOSTIC
     manager.initialize();
 // BEGIN LOOM_TRACE_DIAGNOSTICS
-#if LOOM_WISP_TRACE
+#if LOOM_TRACE
     // Start after SD initialization. Existing objects are observed here; their allocation
     // times remain unknown. New mux sensors and their deletion are tracked thereafter.
-    if (executionTrace.begin(*hypnos.getSDManager(), LOOM_WISP_TRACE_HEAP != 0)) {
-        Logger::getInstance()->enableTrace(executionTrace);
+    if (LOOM_TRACE_BEGIN(executionTrace, *hypnos.getSDManager())) {
         executionTrace.object("Device manager", &manager, sizeof(manager));
         executionTrace.object("Hypnos board and power", &hypnos, sizeof(hypnos), nullptr, -1, hypnos.module_address, hypnos.moduleInitialized);
         executionTrace.object("LTE modem", &lte, sizeof(lte), nullptr, -1, lte.module_address, lte.moduleInitialized);
@@ -180,55 +154,57 @@ void setup() {
 // END LOOM_TRACE_DIAGNOSTICS
 
     WISP_DIAGNOSTIC_CHECKPOINT("After initializing modules"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("After initializing modules"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("After initializing modules"); // LOOM_TRACE_DIAGNOSTIC
 
-    WISP_TRACE_SCOPE(); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_SAVE_ON_RETURN();
+    FUNCTION_START; // LOOM_TRACE_DIAGNOSTIC
 
     // Register the ISR and attach to the interrupt
     hypnos.registerInterrupt(isrTrigger);
 
     WISP_DIAGNOSTIC_CHECKPOINT("Before initial network time sync"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("Before initial network time sync"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("Before initial network time sync"); // LOOM_TRACE_DIAGNOSTIC
     hypnos.networkTimeUpdate();
     WISP_DIAGNOSTIC_CHECKPOINT("After initial network time sync"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("After initial network time sync"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("After initial network time sync"); // LOOM_TRACE_DIAGNOSTIC
 
     WISP_DIAGNOSTIC_CHECKPOINT("Setup complete"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("Setup complete"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("Setup complete"); // LOOM_TRACE_DIAGNOSTIC
 }
 
 void loop() {
-    WISP_TRACE_SCOPE(); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_SAVE_ON_RETURN();
+    FUNCTION_START; // LOOM_TRACE_DIAGNOSTIC
 
     enableActiveWatchdog();
     WISP_DIAGNOSTIC_BEGIN_CYCLE();            // LOOM_BETA_DIAGNOSTIC
     WISP_DIAGNOSTIC_CHECKPOINT("Measurement cycle begins"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("Measurement cycle begins"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("Measurement cycle begins"); // LOOM_TRACE_DIAGNOSTIC
 
     // Measure and package the data
     WISP_DIAGNOSTIC_CHECKPOINT("Before measuring sensors"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("Before measuring sensors"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("Before measuring sensors"); // LOOM_TRACE_DIAGNOSTIC
     Watchdog.reset();
     manager.measure();
     Watchdog.reset();
     WISP_DIAGNOSTIC_CHECKPOINT("After measuring sensors"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("After measuring sensors"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("After measuring sensors"); // LOOM_TRACE_DIAGNOSTIC
     manager.package();
     Watchdog.reset();
     WISP_DIAGNOSTIC_CHECKPOINT("After packaging sensor JSON"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("After packaging sensor JSON"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("After packaging sensor JSON"); // LOOM_TRACE_DIAGNOSTIC
 
     // Print the current JSON packet
     WISP_DIAGNOSTIC_CHECKPOINT("Before displaying sensor JSON"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("Before displaying sensor JSON"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("Before displaying sensor JSON"); // LOOM_TRACE_DIAGNOSTIC
     manager.display_data();
     Watchdog.reset();
     WISP_DIAGNOSTIC_CHECKPOINT("After displaying sensor JSON"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("After displaying sensor JSON"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("After displaying sensor JSON"); // LOOM_TRACE_DIAGNOSTIC
 
     // Log the data to the SD
     WISP_DIAGNOSTIC_CHECKPOINT("Before saving sample and batch to SD"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("Before saving sample and batch to SD"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("Before saving sample and batch to SD"); // LOOM_TRACE_DIAGNOSTIC
     Watchdog.reset();
     if (!hypnos.logToSD()) {
         SDManager *sd = hypnos.getSDManager();
@@ -246,11 +222,11 @@ void loop() {
     }
     Watchdog.reset();
     WISP_DIAGNOSTIC_CHECKPOINT("After saving sample and batch to SD"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("After saving sample and batch to SD"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("After saving sample and batch to SD"); // LOOM_TRACE_DIAGNOSTIC
 
     // Pass in the batchSD to the mqtt obj to check/ publish a batch of data if ready
     WISP_DIAGNOSTIC_CHECKPOINT("Before MQTT publish window"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("Before MQTT publish window"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("Before MQTT publish window"); // LOOM_TRACE_DIAGNOSTIC
     const bool networkWindow = batchSD.shouldPublish();
     if (networkWindow) {
         Watchdog.disable();
@@ -264,11 +240,11 @@ void loop() {
         Watchdog.reset();
     }
     WISP_DIAGNOSTIC_CHECKPOINT("After MQTT publish window"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("After MQTT publish window"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("After MQTT publish window"); // LOOM_TRACE_DIAGNOSTIC
 
     // Set the interrupt duration for 5 minutes
     WISP_DIAGNOSTIC_CHECKPOINT("Before scheduling RTC wake"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("Before scheduling RTC wake"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("Before scheduling RTC wake"); // LOOM_TRACE_DIAGNOSTIC
     Watchdog.reset();
     hypnos.setInterruptDuration(TimeSpan(0, 0, 5, 0));
     Watchdog.reset();
@@ -277,25 +253,25 @@ void loop() {
     hypnos.reattachRTCInterrupt();
     Watchdog.reset();
     WISP_DIAGNOSTIC_CHECKPOINT("After scheduling RTC wake"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("After scheduling RTC wake"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("After scheduling RTC wake"); // LOOM_TRACE_DIAGNOSTIC
 
     // Set the hypnos to sleep, but with power still being supplied to the 5v rail (wait for serial
     // when testing from a computer)
     WISP_DIAGNOSTIC_CHECKPOINT("Before standby"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("Before standby"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("Before standby"); // LOOM_TRACE_DIAGNOSTIC
     // The SAMD21 watchdog continues in standby, so disable it for the five-minute RTC sleep.
     Watchdog.disable();
-    WISP_TRACE_FLUSH(); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_FLUSH(); // LOOM_TRACE_DIAGNOSTIC
     hypnos.sleep(false);
-    WISP_TRACE_FLUSH(); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_FLUSH(); // LOOM_TRACE_DIAGNOSTIC
     WISP_DIAGNOSTIC_CHECKPOINT("After waking and restoring modules"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("After waking and restoring modules"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("After waking and restoring modules"); // LOOM_TRACE_DIAGNOSTIC
 
     WISP_DIAGNOSTIC_CHECKPOINT("Before network time sync"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("Before network time sync"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("Before network time sync"); // LOOM_TRACE_DIAGNOSTIC
     Watchdog.disable(); // Network time may exceed the active watchdog period.
     hypnos.networkTimeUpdate();
     enableActiveWatchdog();
     WISP_DIAGNOSTIC_CHECKPOINT("After network time sync"); // LOOM_BETA_DIAGNOSTIC
-    WISP_TRACE_CHECKPOINT("After network time sync"); // LOOM_TRACE_DIAGNOSTIC
+    LOOM_TRACE_CHECKPOINT("After network time sync"); // LOOM_TRACE_DIAGNOSTIC
 }
