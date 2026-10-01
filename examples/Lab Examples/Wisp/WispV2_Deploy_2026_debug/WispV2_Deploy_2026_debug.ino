@@ -22,8 +22,8 @@
 
 #include <Adafruit_SleepyDog.h>
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
-// Keep only these mux drivers in firmware. Remove this define to restore the full loader.
-// Define before the mux header; this selection also supplies the runtime scan list below.
+// Optional: delete this entire three-line block to bundle every supported mux driver.
+// The runtime scan addresses below stay independent, so deleting this block still compiles.
 #ifndef LOOM_MUX_COMPILED_ADDRESSES
 #define LOOM_MUX_COMPILED_ADDRESSES 0x74, 0x15, 0x6B, 0x44
 #endif
@@ -96,7 +96,7 @@ Loom_Analog analog(manager, A0);
 
 // Source example mux address filter; sensor types and ports are discovered from hardware.
 // Keep this example's original sensor support separate from the live bench wiring.
-Loom_Multiplexer mux(manager, {LOOM_MUX_COMPILED_ADDRESSES});
+Loom_Multiplexer mux(manager, {0x74, 0x15, 0x6B, 0x44});
 
 // Restart this bench schedule after a reset. Advance only after a checked RTC wake.
 // Five wakes at each short interval, then two hours indefinitely; counters never wrap.

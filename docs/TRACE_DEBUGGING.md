@@ -81,7 +81,9 @@ all drivers. The original address-to-driver mapping is preserved; an address can
 different sensor models that share the same I2C address.
 
 The live V2 debug copy selects `0x74,0x6B,0x44,0x45,0x36,0x49,0x29`; the source V2 debug
-example selects its original `0x74,0x15,0x6B,0x44`. Their scan lists use the same sketch macro.
+example selects its original `0x74,0x15,0x6B,0x44`. The debug sketches keep explicit runtime
+scan lists independent of the optional compile define, so deleting its entire `#ifndef` /
+`#define` / `#endif` block restores the full loader while preserving the existing scan filter.
 TSL2591 gain/integration, SEN66 options, gas power retention, and traced object sizes still use
 the selected sensor's actual type and existing runtime settings.
 
