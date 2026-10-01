@@ -26,16 +26,26 @@ export async function sendTrace(target, blob, name, range = null, isCurrent = ()
     if (blob.size > 256 * 1024 * 1024) throw new Error('For recordings over 256 MB, open the original file directly in Perfetto.');
     const buffer = await blob.arrayBuffer();
     await waitForPerfetto(target);
-    if (!isCurrent()) return;
+    if (!isCurrent()) return false;
     target.postMessage({ perfetto: { buffer, title: name,
         fileName: name, localOnly: true, keepApiOpen: true } }, origin, [buffer]);
-    if (range) {
-        // Perfetto expects seconds in the trace's coordinate system. It retries
-        // range requests while the newly posted trace is still loading.
-        const padding = Math.max(1000, (range.endUs - range.startUs) * .1);
-        target.postMessage({ perfetto: { timeStart: Math.max(0, range.startUs - padding) / 1e6,
-            timeEnd: (range.endUs + padding) / 1e6, viewPercentage: 1 } }, origin);
-    }
+    if (range) postRange(target, range);
+    return true;
+}
+
+function postRange(target, range) {
+    // Perfetto expects seconds in the trace's coordinate system. It retries
+    // range requests while the newly posted trace is still loading.
+    const padding = Math.max(1000, (range.endUs - range.startUs) * .1);
+    target.postMessage({ perfetto: { timeStart: Math.max(0, range.startUs - padding) / 1e6,
+        timeEnd: (range.endUs + padding) / 1e6, viewPercentage: 1 } }, origin);
+}
+
+export async function scrollTrace(target, range, isCurrent = () => true) {
+    await waitForPerfetto(target);
+    if (!isCurrent()) return false;
+    postRange(target, range);
+    return true;
 }
 
 export const perfettoUrl = origin + '/#!/?mode=embedded';

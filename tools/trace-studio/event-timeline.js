@@ -12,7 +12,7 @@ export function createEventTimeline({ report, select, selectCall }) {
             (row.incomplete ? '\nCapture history is incomplete here' : '');
     }
     function choose(row) {
-        if (row.callId) selectCall(report.calls.find(call => call.id === row.callId));
+        selectCall(row.callId ? report.calls.find(call => call.id === row.callId) : null);
         select(row.index);
     }
     function svgElement(name, attributes = {}, text = '') {
@@ -114,7 +114,10 @@ export function createEventTimeline({ report, select, selectCall }) {
     $('timelineFollow').onclick = () => {
         $('eventSearch').value = ''; $('eventCategory').value = ''; matches = report.history;
         page = Math.floor(Math.max(0, selectedIndex) / pageSize); render();
-        $('eventRows').querySelector('.selectedEvent')?.scrollIntoView({ block: 'nearest' });
+        const marker = $('eventTimeline').querySelector('.eventMarker.selectedEvent') ||
+            $('eventTimeline').querySelector('.callSlice.selectedEvent');
+        // Move the visible SVG viewport, not the collapsed text list underneath it.
+        marker?.scrollIntoView({ block: 'nearest', inline: 'center' });
     };
     $('eventSearch').value = ''; $('eventCategory').value = ''; render();
     return { highlight };

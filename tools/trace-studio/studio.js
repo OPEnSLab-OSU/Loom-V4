@@ -3,8 +3,9 @@ import 'uplot/dist/uPlot.min.css';
 import './studio.css';
 import LoomTrace from '../trace/trace_converter.js';
 import { fictionalCycle } from './demo.js';
-import { perfettoUrl, sendTrace } from './perfetto.js';
+import { perfettoUrl, sendTrace, scrollTrace } from './perfetto.js';
 import { createEventTimeline } from './event-timeline.js';
+import { selectionRange } from './selection.js';
 
 const $ = id => document.getElementById(id);
 const ms = us => (us / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 }) + ' ms';
@@ -13,6 +14,7 @@ const signed = n => (n >= 0 ? '+' : '') + bytes(n);
 let converted = null, selectedCall = null, sourceBlob = null, sourceName = '', worker = null;
 let loadId = 0, plot = null, plotRows = [], snapshotCache = null;
 let eventTimeline = null;
+let perfettoFrameLoadId = null, perfettoRequest = 0;
 
 function buttons() {
     for (const id of ['perfettoInline', 'perfettoTab']) $(id).disabled = !sourceBlob;
@@ -28,21 +30,25 @@ function view(timeline) {
 function download(value, suffix) {
     const url = URL.createObjectURL(new Blob([JSON.stringify(value)], { type: 'application/json' }));
     const link = document.createElement('a'); link.href = url;
-    link.download = sourceName.replace(/\.(ndjson|jsonl|json)$/i, '') + suffix;
+    link.download = sourceName.replace(/\.(?:perfetto\.)?(ndjson|jsonl|json)$/i, '') + suffix;
     link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function prepare(name) {
     worker?.terminate(); worker = null; ++loadId;
+    plot?.destroy(); plot = null; plotRows = [];
     converted = null; selectedCall = null; sourceBlob = null; sourceName = name; snapshotCache = null; eventTimeline = null;
     $('loaded').classList.add('hidden'); $('welcome').classList.remove('hidden');
     $('entry').disabled = true; $('exit').disabled = true;
     $('handoff').textContent = ''; $('blockDetails').open = false; $('objectDetails').open = false;
+    $('timelineHover').textContent = 'Hover or focus a function or event to read its full label.';
+    for (const id of ['callSearch', 'blockSearch', 'objectSearch']) $(id).value = '';
     $('blockInfo').textContent = 'Select an allocation.'; $('objectInfo').textContent = 'Select an object.';
+    for (const id of ['graph', 'calls', 'eventTimeline', 'eventRows', 'blocks', 'objects', 'activeStack']) $(id).replaceChildren();
     buttons(); view(false);
     return loadId;
 }
-function analyze(content, name, fictional = false, rawBlob = null) {
-    const id = prepare(name);
+function analyze(content, name, fictional = false, rawBlob = null, preparedId = null) {
+    const id = preparedId ?? prepare(name);
     $('status').textContent = 'Reading ' + name + ' and reconstructing lifetimes…';
     worker = new Worker('./trace-worker.js');
     worker.onmessage = event => {
@@ -76,7 +82,7 @@ function analyze(content, name, fictional = false, rawBlob = null) {
         }));
         renderCalls(); drawGraph();
         eventTimeline = createEventTimeline({ report, select: setPosition, selectCall: call => {
-            if (!call) return; selectedCall = call; $('entry').disabled = false; $('exit').disabled = false; renderCalls();
+            selectedCall = call || null; renderCalls();
         } });
         if (fictional) {
             const point = report.checkpoints.find(row => row.name === 'During MQTT upload (fictional)');
@@ -86,7 +92,11 @@ function analyze(content, name, fictional = false, rawBlob = null) {
         }
         showPosition();
     };
-    worker.onerror = () => { if (id === loadId) $('status').textContent = 'The trace worker could not start. Reload this localhost page and try again.'; };
+    worker.onerror = () => {
+        if (id !== loadId) return;
+        worker?.terminate(); worker = null;
+        $('status').textContent = 'The trace worker could not start. Reload this localhost page and try again.';
+    };
     worker.postMessage({ id, content });
 }
 async function readFile(file) {
@@ -103,11 +113,12 @@ async function readFile(file) {
         $('status').textContent = file.name + ' · Ready for Perfetto. Detailed Loom inspection is unavailable for this file type or size.';
         return;
     }
-    const id = ++loadId;
+    const id = prepare(file.name);
+    $('status').textContent = 'Reading ' + file.name + '…';
     const content = await file.text();
     if (id !== loadId) return;
     // NDJSON must be converted before Perfetto; the MCU Chrome file is already ready.
-    analyze(content, file.name, false, /"traceEvents"\s*:/.test(content.slice(0, 1024)) ? file : null);
+    analyze(content, file.name, false, /"traceEvents"\s*:/.test(content.slice(0, 1024)) ? file : null, id);
 }
 function setPosition(index) {
     if (!converted) return;
@@ -130,6 +141,8 @@ function renderCalls() {
         return button;
     }));
     $('callLimit').textContent = matched.length > 1500 ? 'Showing first 1,500 matches. Search to narrow the list; the report contains all calls.' : '';
+    $('entry').disabled = !selectedCall; $('exit').disabled = !selectedCall;
+    $('exit').textContent = selectedCall && selectedCall.status !== 'returned' ? 'Last observed boundary' : 'Call return';
 }
 function tableRow(values, click) {
     const row = document.createElement('tr');
@@ -156,7 +169,8 @@ function showPosition() {
         'Showing the recorded event boundary. Baseline object identities may be known; baseline allocation times and internal buffers are not fully captured.';
     $('activeStack').replaceChildren(...snapshot.callStack.map(call => {
         const item = document.createElement('li'); item.textContent = call.displayName || call.name;
-        const label = document.createElement('small'); label.textContent = call.objectLabel;
+        item.title = call.signature + '\n' + call.file + ':' + call.line;
+        const label = document.createElement('small'); label.textContent = call.file + ':' + call.line;
         item.append(label); return item;
     }));
     $('noStack').textContent = snapshot.callStack.length ? '' : 'No instrumented function is active at this recorded boundary.';
@@ -172,7 +186,7 @@ function showPosition() {
         '\nStack-to-heap gap on entry: ' + bytes(call.gapAtEntry) + ' · recorded return: ' +
         (call.gapAtExit === null ? 'unknown' : bytes(call.gapAtExit)) : '';
     $('callDetail').textContent = call ? call.signature + '\n' + call.objectLabel + ' · ' + call.file + ':' + call.line +
-        '\nRecorded return: ' + ms(call.endUs) + ' (' + call.status + ') · ' + call.stillLiveAtExitIds.length + ' allocations created during this call remained live at its last boundary.' : 'Choose a call for its entry/return memory comparison.';
+        '\n' + (call.status === 'returned' ? 'Recorded return: ' : 'Last observed boundary: ') + ms(call.endUs) + ' (' + call.status + ') · ' + call.stillLiveAtExitIds.length + ' allocations created during this call remained live at its last boundary.' : 'Choose a call for its entry/return memory comparison.';
     $('selection').textContent = 'Live captured allocations at ' + ms(snapshot.timeUs);
     const blockQuery = $('blockSearch').value.toLowerCase();
     const blocks = snapshot.live.filter(block => (block.label + ' ' + block.address + ' ' + block.owner).toLowerCase().includes(blockQuery)).sort((a, b) => b.size - a.size);
@@ -264,22 +278,35 @@ async function openPerfetto(external = false, selection = false) {
     if (!sourceBlob) return;
     const blob = sourceBlob, name = sourceName, id = loadId;
     const row = converted?.report.history[Number($('position').value)];
-    const range = selection && row ? { startUs: selectedCall?.startUs ?? row.timeUs,
-        endUs: selectedCall?.endUs ?? row.timeUs } : null;
+    const range = selection ? selectionRange(row, selectedCall) : null;
+    const request = ++perfettoRequest;
+    const isCurrent = () => id === loadId && request === perfettoRequest;
     let target;
     if (external) {
         target = window.open('https://ui.perfetto.dev/');
         if (!target) { $('handoff').textContent = 'Your browser blocked the new tab. Use View in Perfetto or download the JSON.'; return; }
     } else {
         view(true);
+        if (perfettoFrameLoadId === id && !selection) return; // Keep the existing zoom/SQL/selection.
         if (!$('perfettoFrame').getAttribute('src')) $('perfettoFrame').src = perfettoUrl;
         target = $('perfettoFrame').contentWindow;
     }
     $('handoff').textContent = 'Opening ' + name + ' in Perfetto…';
-    try { await sendTrace(target, blob, name, range, () => id === loadId); if (id === loadId) $('handoff').textContent = 'Trace sent to Perfetto for local processing.'; }
-    catch (error) { if (id === loadId) $('handoff').textContent = error.message; }
+    try {
+        const sent = !external && perfettoFrameLoadId === id && range ?
+            await scrollTrace(target, range, isCurrent) : await sendTrace(target, blob, name, range, isCurrent);
+        if (sent && isCurrent()) {
+            if (!external) perfettoFrameLoadId = id;
+            $('handoff').textContent = range ? 'Selected time range sent to Perfetto.' : 'Trace sent to Perfetto for local processing.';
+        }
+    } catch (error) { if (isCurrent()) $('handoff').textContent = error.message; }
 }
-$('file').onchange = event => readFile(event.target.files[0]).catch(error => { $('status').textContent = error.message; });
+$('perfettoFrame').onload = () => { perfettoFrameLoadId = null; };
+$('file').onchange = event => {
+    const file = event.target.files[0];
+    event.target.value = ''; // A freshly copied recording can have the same SD filename.
+    readFile(file).catch(error => { $('status').textContent = error.message; });
+};
 $('drop').ondragover = event => { event.preventDefault(); $('drop').classList.add('dragging'); };
 $('drop').ondragleave = () => $('drop').classList.remove('dragging');
 $('drop').ondrop = event => { event.preventDefault(); $('drop').classList.remove('dragging'); readFile(event.dataTransfer.files[0]).catch(error => { $('status').textContent = error.message; }); };

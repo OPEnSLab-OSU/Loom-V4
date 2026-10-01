@@ -17,7 +17,7 @@ The pinned uPlot dependency and lockfile are included; tinybuild itself is your 
 Drop either SD file here:
 
 - `trace_N.ndjson`: reconstruct lifetimes and generate Chrome JSON on the computer.
-- `trace_N.perfetto.json`: inspect the same Loom records and open the original file in Perfetto.
+- `trace_N.perfetto.json`: inspect the same Loom records and open the enriched timeline in Perfetto.
 
 Choose a call, then **Call entry** or **Call return**. Choose a phase or step one event at a
 time to inspect the running call stack, live allocation addresses and requested sizes,
@@ -35,7 +35,11 @@ hover for values, drag to zoom, click a recorded point, and double-click to rese
 tab. Both use the stable buffer postMessage interface with checked source/origin and a readiness
 handshake. Downloads preserve the generated Perfetto JSON or complete Loom memory report.
 General Chrome JSON and `.pftrace` / `.perfetto-trace` files open in Perfetto without detailed
-Loom inspection. The iframe remains available for repeated recordings.
+Loom inspection. The iframe remains available for repeated recordings. Switching views preserves
+its zoom, selection and SQL workspace; **Show selection in Perfetto** moves to the selected call
+or event without importing the recording again. **Find selected event** brings the selected marker
+into the scrollable inspector timeline. Exported Perfetto JSON also preserves the original Loom
+records, so reopening a download retains the memory and object inspection.
 
 Files are read locally in a worker and are not posted to the localhost server. Perfetto loads
 its UI and processing engine from ui.perfetto.dev when requested; trace data is passed to that
@@ -60,3 +64,10 @@ Verified on 2026-09-30: global tinybuild 1.0.6 build/run, uPlot 1.6.32; fictiona
 and embedded import; production recorder JSON from the native SD harness imported directly;
 second trace replaced the first using the same frame; creation/release stacks and entry/return
 live-block comparisons. This is desktop/native evidence, not real-board timing or SD acceptance.
+
+Rechecked on 2026-10-01: recorder fixture import; same-filename reload; invalid-file recovery;
+call-only capture and incomplete-call boundary labels; an 18,004-event fictional recording with
+7,000 calls and 1,000 allocations, including paging, sensor filtering and navigation to its final
+event. Embedded Perfetto displayed call and memory tracks for both the demo and recorder fixture.
+All 27 converter cases plus selection and Perfetto handoff tests pass, including enriched-export
+reimport, exact event ordering, range-only navigation and stale-load cancellation.

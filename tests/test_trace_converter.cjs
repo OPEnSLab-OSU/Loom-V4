@@ -236,4 +236,19 @@ test('Available RAM counters include reusable heap and only a positive measured 
     const result = trace.convert(source([row('C', 1, { line: 128, gap: -10 }), row('B', 2, { old: '0x80', gap: 1000 }), row('E', 3, { old: '0x90', gap: 900 })]));
     assert.deepEqual(result.perfetto.traceEvents.filter(event => event.name === 'Available RAM estimate (no future stack reserve)').map(event => event.args.Bytes), [128, 1128, 1044]);
 });
+test('Downloaded enriched Perfetto JSON preserves complete Loom inspection on reimport', () => {
+    const fs = require('node:fs'), path = require('node:path');
+    const input = fs.readFileSync(path.join(__dirname, 'fixtures/native_recorder.ndjson'), 'utf8');
+    const original = trace.convert(input);
+    const restored = trace.convert(JSON.stringify(original.perfetto));
+    assert.deepEqual(restored.report, original.report);
+    const callsOnly = trace.convert(source([row('B', 10), row('C', 20)], { ...header, heap_hooks: false }));
+    assert.deepEqual(trace.convert(JSON.stringify(callsOnly.perfetto)).report, callsOnly.report);
+    const torn = trace.convert(input + '{"kind":');
+    assert.deepEqual(trace.convert(JSON.stringify(torn.perfetto)).report.warnings, torn.report.warnings);
+    const corrupt = structuredClone(original.perfetto);
+    corrupt.metadata.loomTrace.records[0].ts = -1;
+    assert.throws(() => trace.convert(JSON.stringify(corrupt)), /timestamp/);
+});
+
 console.log(`All ${tests} trace converter tests passed.`);

@@ -45,6 +45,14 @@
             session.clock !== 'active_us' || typeof session.heap_hooks !== 'boolean') {
             throw new Error('Expected one Loom trace v1 session header');
         }
+        if (session.import_warnings !== undefined) {
+            if (!Array.isArray(session.import_warnings) ||
+                !session.import_warnings.every(message => typeof message === 'string')) {
+                throw new Error('Invalid saved capture warnings');
+            }
+            warnings.push(...session.import_warnings);
+            delete session.import_warnings;
+        }
         let previous = 0;
         for (const row of records) {
             if (!kinds.has(row.kind)) {
@@ -77,6 +85,14 @@
     function fromChrome(content) {
         const document = JSON.parse(content);
         if (!document || !Array.isArray(document.traceEvents)) throw new Error('Expected Chrome traceEvents');
+        const saved = document.metadata?.loomTrace;
+        if (saved) {
+            if (!saved.session || !Array.isArray(saved.records)) throw new Error('Invalid saved Loom records');
+            // Enriched desktop exports keep the raw ledger for repeat inspection. Perfetto
+            // ignores this metadata; the ordinary parser still validates every restored record.
+            return [{ ...saved.session, import_warnings: saved.warnings || [] }, ...saved.records]
+                .map(row => JSON.stringify(row)).join('\n') + '\n';
+        }
         const native = document.traceEvents;
         if (!native.some(event => event.args && event.args['Record kind'])) {
             throw new Error('This is a general Chrome trace. Open it in Perfetto; detailed heap inspection requires a Loom SD trace.');
@@ -430,7 +446,7 @@
             allocationFailures: failures, overheadUs };
         return { report, perfetto: { traceEvents: events, displayTimeUnit: 'ms',
             metadata: { source: 'Loom trace v1', clock: 'Active time; excludes standby',
-                warnings: report.warnings } } };
+                warnings: report.warnings, loomTrace: { session, records, warnings: report.warnings } } } };
     }
 
     function snapshot(report, index) {
