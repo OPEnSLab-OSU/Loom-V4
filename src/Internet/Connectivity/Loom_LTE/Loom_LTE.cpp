@@ -1109,7 +1109,7 @@ bool Loom_LTE::getNetworkTime(int *year, int *month, int *day, int *hour, int *m
     }
     const int32_t offsetSeconds = static_cast<int32_t>(timezoneQuarterHours) * 15L * 60L;
     const DateTime modemLocal(*year, *month, *day, *hour, *minute, *second);
-    const DateTime utc = modemLocal - TimeSpan(offsetSeconds);
+    const DateTime utc = modemLocal + TimeSpan(-offsetSeconds);
     *year = utc.year();
     *month = utc.month();
     *day = utc.day();
