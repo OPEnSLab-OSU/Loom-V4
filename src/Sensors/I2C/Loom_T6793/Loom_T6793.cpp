@@ -16,7 +16,7 @@ Loom_T6793::Loom_T6793(Manager &man, uint8_t addr,
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_T6793::initialize() {
-    FUNCTION_START;
+    FUNCTION_START(this);
 
     /* Initialize wire and start the sensor using the standard I2C interface */
     Wire.begin();
@@ -38,7 +38,7 @@ void Loom_T6793::initialize() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_T6793::measure() {
-    FUNCTION_START;
+    FUNCTION_START(this);
 
     if (!moduleInitialized) {
         initialize();
@@ -101,7 +101,7 @@ void Loom_T6793::measure() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_T6793::package() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     JsonObject json = manInst->get_data_object(getModuleName());
 
     json["CO2"] = CO2_Val;
@@ -111,7 +111,7 @@ void Loom_T6793::package() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_T6793::GetSensorStatus() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     byte data[4] = {};
     Wire.beginTransmission(i2s_addr);
 
@@ -147,7 +147,7 @@ bool Loom_T6793::GetSensorStatus() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 unsigned long Loom_T6793::GetSerialNo() {
 
-    FUNCTION_START;
+    FUNCTION_START(this);
     byte data[6] = {};
     Wire.beginTransmission(i2s_addr);
 

@@ -30,7 +30,7 @@ foreach ($sketch in $sketches) {
         }
     }
     if (-not $sketch.BaseName.EndsWith('_debug')) {
-        if ($text -match 'LOOM_BETA_DIAGNOSTIC|WISP_DIAGNOSTIC_|Loom_MemoryDiagnostics|ENABLE_SD_LOGGING|manager\.display_data\(') {
+        if ($text -match 'LOOM_BETA_DIAGNOSTIC|WISP_DIAGNOSTIC_|Loom_MemoryDiagnostics|LOOM_WISP_TRACE|WISP_TRACE_|executionTrace|ENABLE_SD_LOGGING|manager\.display_data\(') {
             throw "Debug instrumentation escaped into the quiet sketch: $($sketch.FullName)"
         }
         if (-not $text.Contains('Logger::getInstance()->setDebugOutput(false)')) {

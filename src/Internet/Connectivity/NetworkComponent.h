@@ -25,5 +25,9 @@ class NetworkComponent : public Module {
     /* Is the current network interface connected */
     virtual bool isConnected() = 0;
 
+    /** Prepare the transport before a new MQTT/TCP connection. The conservative default retains
+     * existing/custom network behavior; cellular drivers can restore a lost data session. */
+    virtual bool prepareConnection() { return moduleInitialized; }
+
     virtual Client *getClient() = 0;
 };

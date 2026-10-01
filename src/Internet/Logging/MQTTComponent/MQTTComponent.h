@@ -41,8 +41,8 @@ class MQTTComponent : public Module {
     bool publishMessage(const char *topic, const char *message, bool retain = false, int qos = 1);
 
     /** Publish JSON directly to the network without constructing a temporary character array. */
-    bool publishDocument(const char *topic, const DynamicJsonDocument &document,
-                         bool retain = false, int qos = 1);
+    bool publishDocument(const char *topic, const JsonDocument &document, bool retain = false,
+                         int qos = 1);
 
     /** Publish exactly length bytes from a stream without buffering the whole payload in RAM. */
     bool publishStream(const char *topic, Stream &source, size_t length, bool retain = false,
@@ -143,6 +143,10 @@ class MQTTComponent : public Module {
   private:
     MqttClient mqttClient; // Instance of the MQTT client
     NetworkComponent &internetClient;
+
+    // One shared start/finish path gives text, JSON and SD streaming identical failure handling.
+    bool beginPublish(const char *topic, size_t length, bool retain, int qos);
+    bool finishPublish();
 
     int maxRetries = 4; // How many times we want to retry the connection
 };

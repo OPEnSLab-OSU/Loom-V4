@@ -23,16 +23,11 @@ struct AppendResult {
     bool committed;
 };
 
-// A retry is safe only after the failed append has been durably rolled back and closed.
-template <typename FileType, typename Document>
-AppendResult appendRecord(FileType &file, const Document &document) {
-    const uint32_t start = file.fileSize();
-    const size_t expected = measureJson(document);
-    file.clearWriteError();
-    const size_t written = serializeJson(document, file);
-    const size_t newline = file.println();
-    const bool complete =
-        expected > 0 && written == expected && newline == 2 && !file.getWriteError() && file.sync();
+// Flush a complete append, or remove its partial bytes before closing. Failed means a retry is
+// safe; Uncertain means the caller must preserve the file and stop appending to it.
+template <typename FileType>
+AppendResult finishAppend(FileType &file, uint32_t start, bool wroteAll) {
+    const bool complete = wroteAll && !file.getWriteError() && file.sync();
     const bool rolledBack = complete || (file.truncate(start) && file.sync());
     const bool closed = file.close();
     if (complete) {
@@ -41,7 +36,46 @@ AppendResult appendRecord(FileType &file, const Document &document) {
     return {rolledBack && closed ? SDWriteStatus::Failed : SDWriteStatus::Uncertain, false};
 }
 
+// A retry is safe only after the failed append has been durably rolled back and closed.
+template <typename FileType, typename Document>
+AppendResult appendRecord(FileType &file, const Document &document) {
+    const uint32_t start = file.fileSize();
+    const size_t expected = measureJson(document);
+    file.clearWriteError();
+    const size_t written = serializeJson(document, file);
+    const size_t newline = file.println();
+    return finishAppend(file, start, expected > 0 && written == expected && newline == 2);
+}
+
 enum class RecordResult { End, Ready, TooLong, ReadError };
+
+// Keep a directly readable Chrome JSON file closed at every saved batch. Only a verified
+// four-byte trailer is overwritten; rollback must restore it as well as the original length.
+template <typename FileType, typename Writer>
+AppendResult appendTraceEvents(FileType &file, Writer writer) {
+    const uint32_t size = file.fileSize();
+    const char trailer[] = "]}\r\n";
+    char actual[4];
+    if (size < 4 || !file.seekSet(size - 4) || file.read(actual, 4) != 4 ||
+        memcmp(actual, trailer, 4) != 0 || !file.seekSet(size - 4)) {
+        file.close();
+        return {SDWriteStatus::Uncertain, false}; // Preserve an unexpected/damaged file.
+    }
+    file.clearWriteError();
+    const bool wroteAll = writer(file) && file.write(trailer, 4) == 4 && !file.getWriteError();
+    const bool complete = wroteAll && file.sync();
+    bool rolledBack = complete;
+    if (!complete) {
+        file.clearWriteError();
+        rolledBack = file.truncate(size - 4) && file.seekSet(size - 4) &&
+                     file.write(trailer, 4) == 4 && file.truncate(size) && file.sync();
+    }
+    const bool closed = file.close();
+    if (complete) {
+        return {closed ? SDWriteStatus::Saved : SDWriteStatus::Uncertain, true};
+    }
+    return {rolledBack && closed ? SDWriteStatus::Failed : SDWriteStatus::Uncertain, false};
+}
 
 // Every iteration must consume a byte or return. available() alone does not detect SD errors.
 template <typename FileType>
@@ -88,14 +122,27 @@ RecordResult nextRecord(FileType &file, uint32_t &start, size_t &length, size_t 
     return RecordResult::Ready;
 }
 
+// A JSON parser may stop at its closing brace. Before sending, reject any non-whitespace
+// tail and any parser that crossed into the next line. end comes from a bounded nextRecord().
+template <typename FileType> bool finishJsonRecord(FileType &file, uint32_t end) {
+    const uint32_t position = file.curPosition();
+    if (position > end) {
+        return false;
+    }
+    for (uint32_t remaining = end - position; remaining > 0; --remaining) {
+        const int value = file.read();
+        if (value != ' ' && value != '\t') {
+            return false; // Includes failed reads; do not drain arbitrary damaged content.
+        }
+    }
+    return file.curPosition() == end;
+}
+
 // Recovery never edits old records. Refuse an overlong or unterminated (possibly torn) line.
 template <typename FileType>
 bool countRecords(FileType &file, size_t limit, int &count, void (*progress)() = nullptr) {
     count = 0;
     while (true) {
-        if (progress) {
-            progress();
-        }
         uint32_t start = 0;
         size_t length = 0;
         bool terminated = false;
@@ -107,6 +154,9 @@ bool countRecords(FileType &file, size_t limit, int &count, void (*progress)() =
             return false;
         }
         ++count;
+        if (progress) {
+            progress(); // A complete record was read; never feed merely for starting a scan.
+        }
     }
 }
 

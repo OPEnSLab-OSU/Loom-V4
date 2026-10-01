@@ -17,7 +17,7 @@ Loom_TSL2591::Loom_TSL2591(Manager &man, int address, bool useMux, tsl2591Gain_t
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::initialize() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     if (!tsl.begin()) {
         ERROR(F("Failed to initialize TSL2591! Check connections and try again..."));
         moduleInitialized = false;
@@ -35,7 +35,7 @@ void Loom_TSL2591::initialize() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::measure() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     if (!moduleInitialized) {
         return;
     }
@@ -81,7 +81,7 @@ void Loom_TSL2591::measure() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::package() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     if (moduleInitialized) {
         JsonObject json = manInst->get_data_object(getModuleName());
         // unitless, higher values indicate more light of that type.
@@ -95,7 +95,7 @@ void Loom_TSL2591::package() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::power_up() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     if (moduleInitialized) {
         tsl.enable();
 
@@ -109,7 +109,7 @@ void Loom_TSL2591::power_up() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_TSL2591::power_down() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     if (moduleInitialized) {
         tsl.disable();
     }

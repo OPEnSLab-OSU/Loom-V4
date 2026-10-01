@@ -129,9 +129,12 @@ LOOM_EXTERNAL_INCLUDE_END
 
 #include "../NetworkComponent.h"
 #include "Loom_LTE_Modem.h"
-#include "Loom_Manager.h"
 
+class Manager;
 class Loom_BatchSD;
+namespace loomGnss {
+struct Fix;
+}
 
 // The LTE modem is connected to the board's hardware Serial1 port.
 #define SerialAT Serial1
@@ -159,7 +162,10 @@ class Loom_LTE : public NetworkComponent {
   protected:
     void measure() override {};
 
-    bool isConnected() override { return modem->isGprsConnected(); };
+    // An intentionally powered-off modem cannot answer AT. Avoid a blocking query each sample.
+    bool isConnected() override {
+        return powerMayBeOn && moduleInitialized && modem->isGprsConnected();
+    };
 
   public:
     /**
@@ -207,6 +213,17 @@ class Loom_LTE : public NetworkComponent {
      */
     void power_down() override;
     bool retryPowerUpWhenUninitialized() const override { return true; }
+    bool canRemovePower() const override { return !powerMayBeOn; }
+
+    // Cached library state for health checkpoints: this does not query the UART or prove
+    // carrier/TCP connectivity. AT readiness means the last modem initialization succeeded.
+    enum class PowerStatus : uint8_t { Off, MayBeOn, AtReady };
+    PowerStatus getCachedPowerStatus() const {
+        if (!powerMayBeOn) {
+            return PowerStatus::Off;
+        }
+        return moduleInitialized ? PowerStatus::AtReady : PowerStatus::MayBeOn;
+    }
 
     /**
      * Add LTE signal quality to the Loom data package.
@@ -243,9 +260,24 @@ class Loom_LTE : public NetworkComponent {
     LTE_MODEM getModemType() const { return modemType; }
 
     /**
+     * Optional SARA-R510M8S GNSS: explicitly start/stop its receiver and read a cached fix.
+     * Ordinary R4/R5 sketches never call these methods and send no GNSS commands.
+     * Select SARA_R5, confirm the M8S variant/antenna, and call startGNSS() after initialize().
+     * No cellular location service or online aiding is enabled. Startup/stop take at most
+     * 11 seconds per AT command; reading does not wait for satellite acquisition.
+     */
+    bool startGNSS();
+    bool stopGNSS();
+    /** Failure leaves fix unchanged. Its UTC is the fix time; callers must check freshness. */
+    bool readGNSS(loomGnss::Fix &fix);
+
+    /**
      * Register on the cellular network and activate the APN/PDP data session.
      */
     bool connect();
+
+    /** Restore a lost APN/PDP session for an awake hub before retrying its MQTT connection. */
+    bool prepareConnection() override;
 
     /**
      * Disconnect the APN/PDP data session.
@@ -270,16 +302,10 @@ class Loom_LTE : public NetworkComponent {
     Client *getClient() override;
 
     /**
-     * Request a modem poweroff, then run the normal power-up sequence again.
+     * Restart through the checked shutdown path. If shutdown is not acknowledged,
+     * stay in the uncertain powered state instead of blindly applying another power pulse.
      */
-    void restartModem() {
-        TIMER_RESET;
-        modem->poweroff();
-        delay(5000);
-        powered = false;
-        power_up();
-        TIMER_RESET;
-    };
+    void restartModem();
 
     /**
      * Convert an IPAddress into a dotted IPv4 string.
@@ -304,11 +330,11 @@ class Loom_LTE : public NetworkComponent {
     // Board and modem bring-up.
     void prepareOptionalPowerRails();
     void powerBoardOn();
-    void powerBoardOff();
     bool waitForModemAT(uint32_t timeoutMs);
+    void discardModemInput(); // Bounded drain: continuous UART noise must not hang startup.
     bool selectWorkingBaud(uint32_t timeoutMs);
     bool initializeModemFromAT();
-    bool bootModemWithRetries();
+    bool bootModemWithRetries(bool allowPowerPulse);
     bool tryConnectDataSession(uint8_t attempt, uint8_t maxAttempts);
 
     // Raw AT helpers and R5 setup hints.
@@ -343,5 +369,9 @@ class Loom_LTE : public NetworkComponent {
     bool firstInitialization = true;
     Loom_BatchSD *batchSD = nullptr;
 
-    bool powered = false;
+    // True means ON or UNKNOWN after touching PWR_ON. It is not proof of AT readiness;
+    // moduleInitialized records readiness, and only checked shutdown proves OFF again.
+    bool powerMayBeOn = false;
+    enum class GnssState : uint8_t { OFF, RUNNING, UNKNOWN };
+    GnssState gnssState = GnssState::OFF;
 };

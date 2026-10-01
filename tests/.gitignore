@@ -1,2 +1,6 @@
 retry_failed_manifest.txt
 loom_compile_audit_*/
+
+# Generated local compiler evidence and Python bytecode (keep on disk for review).
+sketch_compile_*/
+__pycache__/

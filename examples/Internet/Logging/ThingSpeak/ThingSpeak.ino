@@ -57,8 +57,16 @@ void setup()
     thingspeak.addFunction(2, exampleParam, 100);
 
     /*
-        For Loom sensors you just need to pass in the "get" function for example:
-                mqtt.addFunction(1, sht.getTemperature());
+        For a Loom sensor, write a small wrapper that reads the sensor and returns a float:
+
+            float readTemperature() { return sht.getTemperature(); }
+
+        Then register the wrapper in setup():
+
+            thingspeak.addFunction(1, readTemperature);
+
+        Leave off the parentheses when registering it. This saves the function for later;
+        ThingSpeak calls it once each time you publish.
     */
 
     manager.initialize();

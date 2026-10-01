@@ -1,0 +1,126 @@
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Actuators\Neopixel
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Actuators\Relay
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Actuators\Servo
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Actuators\Stepper
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\ClassExamples\E102\102_ex_i2cSoil_A0
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\ClassExamples\E102\102_ex_i2cSoil_Threshold
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\ClassExamples\E102\Adalogger_i2cSensorsSD
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\ClassExamples\E102\Adalogger_i2cSensorsSD_STEMMA
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\ClassExamples\E102\Basic
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Hardware\OLED
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Hardware\TippingBucket
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Hypnos\Adalogger_Sleep
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Hypnos\Hypnos_NTP_Sync
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Hypnos\Hypnos_RTC_CustomTime
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Hypnos\Hypnos_RTC_SD_Timezone
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Hypnos\Hypnos_SD
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Hypnos\Hypnos_SD_Metadata
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Hypnos\Hypnos_SD_Sleep
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Hypnos\Hypnos_SD_Sleep_Interval_From_SD
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Hypnos\Hypnos_Sleep
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Hypnos\Hypnos_vCheck
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Internet\Communication\Max\Max_AP_MPU
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Internet\Communication\Max\Max_MPU
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Internet\Communication\Max\Max_Neopixel
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Internet\Communication\Max\Max_Relay
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Internet\Communication\Max\Max_Servo
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Internet\Communication\Max\Max_Stepper
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Internet\Communication\Max\RawMax
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Internet\Communication\Max\RawMax_AP
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Internet\Communication\RemoteManage
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Internet\Connectivity\Ethernet
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Internet\Connectivity\LTE
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Internet\Connectivity\LTE_with_Hypnos
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Internet\Connectivity\WIFI
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Internet\Logging\LTEMongoDBBatch
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Internet\Logging\ThingSpeak
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Internet\Logging\WiFiMongoDB
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Internet\Logging\WiFiMongoDBBatch
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Dendrometer\hub
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Dendrometer\node
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Evaporometer\Evaporometer
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Evaporometer\Evaporometer_V1_fixed
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Evaporometer\rev01_SDI12_Slave
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Evaporometer\rev01_SD_only
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\FloDar
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Jolteon\I2CBusHealth
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Jolteon\Jolteon_DFGas_Mux_Test
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Jolteon\Jolteon_Hypnos_SD_Sleep
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Jolteon\Loomified_LTE_R5_debug_passthrough
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Jolteon\Loomified_LTE_R5_example
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Jolteon\SAMD21J18_Blinky
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Jolteon\SAMD21J18_Blinky_UART
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Jolteon\SAMD21J18_Blinky_nRFEnable
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Jolteon\SARA_R5_Test_No_Loom
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Jolteon\WC_FastRegisterR5Compat
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Jolteon\debug_hypnos_adc_sleep_test
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\LilyPad
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\LoRa_To_4G
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\MultipleInterrupts
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\SmartRock\SmartRock
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\SmartRock\SmartRock2.5
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\SmartRock\SmartRock_2026
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\WC_FastRegister
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Wattson
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\WeatherChimes\Configurable_Chime_Code_2026
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\WeatherChimes\Cumulative_Chimes_Code_2025
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\WeatherChimes\WeatherChimes2025
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\WeatherChimes\WeatherChimes4G
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\WeatherChimes\WeatherChimesTippingBucket
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\WeatherChimes\WeatherChimesTippingBucketI2C
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\WeatherChimes\WeatherChimesWifi
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\WeatherChimes\WeatherChimes_WithMax
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\WeedWarden
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Wisp\WispV2_Deploy_2026
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Wisp\WispV2_Deploy_2026_debug
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Wisp\Wisp_Batch_Logging
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Wisp\Wisp_Batch_Logging_debug
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Wisp\Wisp_Mux_BatchLogging
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Wisp\Wisp_Mux_BatchLogging_debug
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\LoomLogger
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Radios\Freewave\Receive
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Radios\Freewave\Transmit
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Radios\LoRa\BatchTransmission\Receive
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Radios\LoRa\BatchTransmission\Transmit
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Radios\LoRa\SinglePacket\Receive
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Radios\LoRa\SinglePacket\Transmit
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\Analog\Analog
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\Analog\Teros10
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\Digital
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\ADS1115
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\AS7262
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\AS7263
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\AS7265X
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\DFMultiGasSensor
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\DFRobotO2
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\EZO\EZO-CO2
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\EZO\EZO-DisOxygen
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\EZO\EZO-ORP
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\EZO\EZO-PH
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\EZO\EZO-RGB
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\K30
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\MB1232
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\MMA8451
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\MS5803
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\MS5803_2_Sensors
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\Multiplexer
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\SEN55
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\SHT31
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\STEMMA
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\T6793
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\TSL2591
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\VCNL
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\VCNL2
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\VCNL4020
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\VEML6075
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\I2C\ZXGesture
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\ReedAnemometer
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\SDI12
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\SPI\MAX\MAX31856
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\SPI\MAX\MAX31865
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Sensors\Serial\NOVASDS
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\tests\Hypnos_DST_Boundaries
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\tests\OPEnS_RTC_Compatibility
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\tests\Radio\LoRa\TestFragmentation\FragTransmit
+C:\Users\brews\Documents\Arduino\WispV2_Deploy_2026
+C:\Users\brews\Documents\Arduino\WispV2_Deploy_2026\WispV2_Deploy_2026_debug

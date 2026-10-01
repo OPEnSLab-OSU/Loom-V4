@@ -1,4 +1,7 @@
 #include "AS5311.h"
+#include <Loom_Manager.h>
+#include <limits.h>
+#include <math.h>
 
 const int AS5311::DATA_TIMING_US = 12;
 // 1000us/bit was the value in the V3 code
@@ -33,16 +36,16 @@ void AS5311::deinitializePins() {
 }
 
 /**
- *  Returns the serial output from AS533
+ *  Returns the serial output from AS5311
  * @return 32 bit value, of which the 18 least signifcant bits contain the sensor data
  */
-uint32_t AS5311::bitbang(bool angleData = true) {
+uint32_t AS5311::bitbang(bool angleData) {
     initializePins();
 
     if (angleData) {
         digitalWrite(CLK_PIN, HIGH); // write clock high to select the angular position data
     } else {
-        digitalWrite(CLK_PIN, LOW); // write clock high to select the magnetic field strength data
+        digitalWrite(CLK_PIN, LOW); // A low clock selects magnetic field strength data.
     }
 
     delayMicroseconds(DATA_TIMING_US);
@@ -86,21 +89,40 @@ uint32_t AS5311::bitbang(bool angleData = true) {
  * See pages 12 to 15 of the AS5311 datasheet for more information
  * @return magnetStatus enum
  */
+bool AS5311::isValidReading(uint32_t data) {
+    // Datasheet sections 7.3/7.5: offset compensation must finish, CORDIC overflow invalidates
+    // the conversion, and even parity protects all 18 serial bits. Zero is not a ready reading.
+    if (data >= (1UL << 18) || (data & (1UL << OCF)) == 0 || (data & (1UL << COF)) != 0) {
+        return false;
+    }
+    // Fold the serial bits together: the low bit is one for odd parity. This fixed-size
+    // calculation works with embedded and host compilers without a compiler-specific builtin.
+    uint32_t parity = data;
+    parity ^= parity >> 16;
+    parity ^= parity >> 8;
+    parity ^= parity >> 4;
+    parity ^= parity >> 2;
+    parity ^= parity >> 1;
+    return (parity & 1U) == 0;
+}
+
 magnetStatus AS5311::getMagnetStatus() {
     uint32_t data = bitbang();
 
     // invalid data
-    if (!(data & (1 << OCF)) || data & (1 << COF) ||
-        __builtin_parity(data)) //__builtin_parity returns 1 if odd parity
+    if (!isValidReading(data)) {
         return magnetStatus::error;
+    }
 
     // magnetic field out of range
-    if (data & (1 << MAGINC) && data & (1 << MAGDEC) && data & (1 << LIN))
+    if (data & (1UL << LIN)) {
         return magnetStatus::red;
+    }
 
     // magnetic field borderline out of range
-    if (data & (1 << MAGINC) && data & (1 << MAGDEC))
+    if (data & (1 << MAGINC) && data & (1 << MAGDEC)) {
         return magnetStatus::yellow;
+    }
 
     return magnetStatus::green;
 }
@@ -115,25 +137,56 @@ uint32_t AS5311::getRawData() { return bitbang(true); }
  * Right shift the raw sensor data to isolate the absolute position component
  * @return 12-bit absolute postion value
  */
-uint16_t AS5311::getPosition() { return bitbang(true) >> DATAOFFSET; }
+uint16_t AS5311::getPosition() {
+    const uint32_t data = bitbang(true);
+    // A linearity alarm may contain invalid position data; report missing rather than inventing
+    // tree motion. Alignment still reports its red/yellow/green diagnostic separately.
+    return isValidReading(data) && (data & (1UL << LIN)) == 0
+               ? static_cast<uint16_t>(data >> DATAOFFSET)
+               : INVALID_READING;
+}
 
 /**
  * Right shift the raw sensor data to isolate the field strength component
  * @return 12-bit magnetic field strength value
  */
-uint16_t AS5311::getFieldStrength() { return bitbang(false) >> DATAOFFSET; }
+uint16_t AS5311::getFieldStrength() {
+    const uint32_t data = bitbang(false);
+    return isValidReading(data) ? static_cast<uint16_t>(data >> DATAOFFSET) : INVALID_READING;
+}
 
 /**
  * Takes multiple position measurements and average them
  * @return averaged 12-bit absolute position value
  */
 uint16_t AS5311::getFilteredPosition() {
-    uint16_t average = 0;
-    for (int i = 0; i < AVERAGE_MEASUREMENTS; i++) {
-        average += getPosition();
+    const uint16_t first = getPosition();
+    if (first == INVALID_READING) {
+        return INVALID_READING;
     }
-    average /= AVERAGE_MEASUREMENTS;
-    return average;
+    int32_t sum = first;
+    for (int i = 1; i < AVERAGE_MEASUREMENTS; ++i) {
+        const uint16_t position = getPosition();
+        if (position == INVALID_READING) {
+            return INVALID_READING; // Never average a bad serial word into a plausible position.
+        }
+        // 4095 and 0 are neighbours. Move every reading onto the same turn before averaging;
+        // the ordinary mean would instead report a false half-range displacement near zero.
+        int32_t difference = static_cast<int32_t>(position) - first;
+        if (difference > 2048) {
+            difference -= 4096;
+        } else if (difference < -2048) {
+            difference += 4096;
+        }
+        sum += static_cast<int32_t>(first) + difference;
+    }
+    int32_t average = sum / AVERAGE_MEASUREMENTS;
+    if (average < 0) {
+        average += 4096;
+    } else if (average >= 4096) {
+        average -= 4096;
+    }
+    return static_cast<uint16_t>(average);
 }
 
 /**
@@ -144,9 +197,13 @@ void AS5311::measure(Manager &manager) {
     int rawPosition = (int)getPosition();
 
     recordMagnetStatus(manager);
-    manager.addData("AS5311", "mag", getFieldStrength());
-    manager.addData("AS5311", "pos_raw", rawPosition);
-    manager.addData("AS5311", "pos_avg", filteredPosition);
+    const uint16_t fieldStrength = getFieldStrength();
+    // Keep the existing keys/order. -1 marks missing nonnegative readings; invalid displacement
+    // is NaN (serialized as JSON null), because negative displacement can be a real measurement.
+    manager.addData("AS5311", "mag", fieldStrength == INVALID_READING ? -1 : fieldStrength);
+    manager.addData("AS5311", "pos_raw", rawPosition == INVALID_READING ? -1 : rawPosition);
+    manager.addData("AS5311", "pos_avg",
+                    filteredPosition == INVALID_READING ? -1 : filteredPosition);
     manager.addData("displacement", "um", measureDisplacement(rawPosition));
 }
 
@@ -162,6 +219,9 @@ float AS5311::measureDisplacement(int pos) {
     static const float POLE_PAIR_LENGTH_UM = 2000.0; // 2mm == 2000um
     static const float UM_PER_TICK = POLE_PAIR_LENGTH_UM / TICKS;
 
+    if (pos < 0 || pos >= TICKS) {
+        return NAN; // Leave the displacement baseline and turn count untouched on a bad read.
+    }
     if (initialPosition == -1) { // initial position has not been measured
         initialPosition = pos;
         lastPosition = pos;
@@ -169,11 +229,15 @@ float AS5311::measureDisplacement(int pos) {
     int magnetPosition = pos;
 
     int difference = magnetPosition - lastPosition;
-    if (abs(difference) > WRAP_THRESHOLD) {
-        if (difference < 0) // high to low overflow
+    if (difference > WRAP_THRESHOLD || difference < -WRAP_THRESHOLD) {
+        if ((difference < 0 && overflows == INT_MAX) || (difference > 0 && overflows == INT_MIN)) {
+            return NAN; // Do not allow the signed turn counter to overflow.
+        }
+        if (difference < 0) { // high to low overflow
             overflows += 1;
-        else // low to high overflow
+        } else { // low to high overflow
             overflows -= 1;
+        }
     }
     lastPosition = magnetPosition;
 

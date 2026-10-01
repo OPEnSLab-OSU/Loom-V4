@@ -1,0 +1,4 @@
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Wisp\WispV2_Deploy_2026_debug
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Wisp\Wisp_Batch_Logging_debug
+C:\Users\brews\AppData\Local\Arduino15\packages\loom4\hardware\samd\4.9\libraries\Loom\examples\Lab Examples\Wisp\Wisp_Mux_BatchLogging_debug
+C:\Users\brews\Documents\Arduino\WispV2_Deploy_2026\WispV2_Deploy_2026_debug

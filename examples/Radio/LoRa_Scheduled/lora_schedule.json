@@ -1,0 +1,6 @@
+{
+  "window_length": 300,
+  "num_devices": 12,
+  "cycle_seconds": 3600,
+  "early_wake_seconds": 60
+}

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include <Loom_Manager.h>
+class Manager; // The packet writer is needed only by measure(), not by the GPIO reader.
 
 enum class magnetStatus { red, green, yellow, error };
 
@@ -12,6 +12,11 @@ class AS5311 {
     uint16_t getFilteredPosition();
     uint16_t getFieldStrength();
     uint32_t getRawData();
+
+    // Position/field reads use this out-of-range value for an invalid serial conversion.
+    // It is distinct from every real 12-bit reading (0 through 4095).
+    static constexpr uint16_t INVALID_READING = UINT16_MAX;
+    static bool isValidReading(uint32_t data);
 
     void measure(Manager &);
     float measureDisplacement(int);
@@ -34,7 +39,7 @@ class AS5311 {
     void initializePins();
     void deinitializePins();
     uint16_t getPosition();
-    uint32_t bitbang(bool);
+    uint32_t bitbang(bool angleData = true);
 };
 
 // bit definitions - See pages 12 and 13 of the AS5311 datasheet for more information

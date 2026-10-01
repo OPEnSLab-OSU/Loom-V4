@@ -12,6 +12,7 @@
 
 
 #include <Loom_Manager.h>
+#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Logger.h>
 
 #include <Sensors/Loom_Analog/Loom_Analog.h>

@@ -1,7 +1,7 @@
 // Wisp direct-sensor batch logging example.
+#include <Loom_Manager.h>
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Hardware/Loom_BatchSD/Loom_BatchSD.h>
-#include <Loom_Manager.h>
 
 #include <Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h>
 #include <Sensors/I2C/Loom_SEN55/Loom_SEN55.h>

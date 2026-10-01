@@ -15,6 +15,7 @@
 
 
 #include <Loom_Manager.h>
+#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Logger.h>
 
 #include <Sensors/I2C/Loom_STEMMA/Loom_STEMMA.h>

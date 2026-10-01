@@ -1,0 +1,63 @@
+name: Core boundaries and source checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-boundaries-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-boundaries:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: Loom
+    steps:
+      - name: Check out Loom
+        uses: actions/checkout@v4
+        with:
+          path: Loom
+          persist-credentials: false
+
+      # Match the installed board package. The existing host runner expects this sibling path.
+      - name: Check out ArduinoJson 6.20.1 headers
+        uses: actions/checkout@v4
+        with:
+          repository: bblanchon/ArduinoJson
+          ref: v6.20.1
+          path: ArduinoJson
+          persist-credentials: false
+
+      - name: Check warning scopes, examples and debug boundaries
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $checks = 'verify_warning_scope.ps1', 'verify_example_includes.ps1',
+                    'verify_wisp_example_mirrors.ps1', 'verify_wisp_diagnostic_boundaries.ps1'
+          foreach ($check in $checks) {
+            & pwsh -NoProfile -NonInteractive -File (Join-Path tests $check)
+            if ($LASTEXITCODE -ne 0) { throw "Source check failed: $check" }
+          }
+
+      - name: Run core boundary programs
+        run: ./tests/verify_core_boundaries.ps1
+
+      - name: Run SD data safety program
+        run: ./tests/verify_data_safety.ps1
+
+      - name: Run offline receipt and viewer checks
+        run: |
+          python -B -m unittest discover -s tools/service_mock -p 'test_*.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Receipt checks failed.' }
+          node tools/service_mock/test_viewer.js
+          if ($LASTEXITCODE -ne 0) { throw 'Viewer checks failed.' }
+
+      # No board SDK, network credentials, firmware upload or automatic Git writes are needed.
+      # Physical faults and real broker/database delivery still require separate acceptance.

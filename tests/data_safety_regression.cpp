@@ -21,11 +21,15 @@ struct FaultFile {
         ++reads;
         // A regression must fail promptly instead of hanging the test runner.
         assert(reads <= data.size() + 1);
-        if (position == failAt || !available())
+        if (position == failAt || !available()) {
             return -1;
+        }
         return static_cast<unsigned char>(data[position++]);
     }
-    bool close() { ++closes; return closeOK; }
+    bool close() {
+        ++closes;
+        return closeOK;
+    }
 };
 
 void testRecords() {
@@ -61,6 +65,18 @@ void testRecords() {
     assert(loomSD::nextRecord(tooLong, start, length, 5) == RecordResult::TooLong);
     assert(tooLong.reads == 5); // Bounded failure, not a drain of an arbitrary-sized file.
     puts("PASS batch delimiters, EOF, every read-error offset, and size boundary");
+
+    FaultFile spaces(" \t");
+    assert(loomSD::finishJsonRecord(spaces, 2));
+    FaultFile garbage(" x");
+    assert(!loomSD::finishJsonRecord(garbage, 2));
+    FaultFile failedTail(" \t");
+    failedTail.failAt = 1;
+    assert(!loomSD::finishJsonRecord(failedTail, 2));
+    FaultFile crossed("abc");
+    crossed.position = 3;
+    assert(!loomSD::finishJsonRecord(crossed, 2));
+    assert(crossed.reads == 0);
 }
 
 void testNames() {
@@ -80,8 +96,14 @@ void testNames() {
     assert(!loomSD::isHistoricalBatch("Deploy_9-Batch.txt", "Deploy_", 2));
     assert(!loomSD::isHistoricalBatch("Deploy_1.csv", "Deploy_", 2));
     assert(!loomSD::isHistoricalBatch("OtherDeploy_1-Batch.txt", "Deploy_", 2));
-    const char *unrelated[] = {"OtherDeploy_99.csv", "Deploy_99.csv.backup", "Deploy_.csv",
-        "Deploy_x99.csv", "Deploy_999999999999999999.json", "Deploy_", "", "De"};
+    const char *unrelated[] = {"OtherDeploy_99.csv",
+                               "Deploy_99.csv.backup",
+                               "Deploy_.csv",
+                               "Deploy_x99.csv",
+                               "Deploy_999999999999999999.json",
+                               "Deploy_",
+                               "",
+                               "De"};
     for (const char *name : unrelated) {
         assert(loomSD::advanceLogNumber(name, "Deploy_", next));
         assert(next == 16);
@@ -121,8 +143,9 @@ void testJson() {
 
     // Additions after package() must invalidate the same document at the output boundary.
     JsonArray extra = doc.createNestedArray("extra");
-    for (int i = 0; i < 1000 && !doc.overflowed(); ++i)
+    for (int i = 0; i < 1000 && !doc.overflowed(); ++i) {
         extra.add(i);
+    }
     assert(doc.overflowed());
     assert(!loomJsonIsComplete(doc));
     doc.clear();
@@ -159,13 +182,20 @@ struct FaultOutput {
         return count;
     }
     size_t println() { return write(reinterpret_cast<const uint8_t *>("\r\n"), 2); }
-    bool sync() { ++syncs; return !failAllSync && !(failFirstSync && syncs == 1); }
+    bool sync() {
+        ++syncs;
+        return !failAllSync && !(failFirstSync && syncs == 1);
+    }
     bool truncate(uint32_t length) {
-        if (truncateOK)
+        if (truncateOK) {
             bytes.resize(length);
+        }
         return truncateOK;
     }
-    bool close() { ++closes; return closeOK; }
+    bool close() {
+        ++closes;
+        return closeOK;
+    }
 };
 
 void testBatchCommit() {
@@ -207,7 +237,7 @@ void testBatchCommit() {
     assert(loomSD::canRetryBatch(result, 4, 4));
     assert(!loomSD::canRetryBatch(result, 4, 5));
     for (auto status : {SDWriteStatus::Saved, SDWriteStatus::Rejected, SDWriteStatus::Uncertain,
-                       SDWriteStatus::NotAttempted}) {
+                        SDWriteStatus::NotAttempted}) {
         result.batch = status;
         assert(!loomSD::canRetryBatch(result, 4, 4));
     }
@@ -215,6 +245,41 @@ void testBatchCommit() {
     result.batch = SDWriteStatus::Failed;
     assert(!loomSD::canRetryBatch(result, 4, 4));
     puts("PASS batch commit/rollback/close faults and same-sample batch-only retry eligibility");
+}
+
+// The ordinary text/pretty-JSON debug writers share this production finalizer with batches.
+// Inject every partial-write position plus flush, rollback and close failures.
+void testDebugAppend() {
+    const char *record = "debug text\r\n";
+    const size_t length = strlen(record);
+    for (size_t budget = 0; budget <= length; ++budget) {
+        FaultOutput file;
+        const uint32_t start = file.fileSize();
+        file.budget = budget;
+        const bool wroteAll =
+            file.write(reinterpret_cast<const uint8_t *>(record), length) == length;
+        const auto result = loomSD::finishAppend(file, start, wroteAll);
+        assert(file.closes == 1);
+        assert(result.status == (wroteAll ? SDWriteStatus::Saved : SDWriteStatus::Failed));
+        assert(file.bytes == (wroteAll ? "old\r\ndebug text\r\n" : "old\r\n"));
+    }
+    FaultOutput flush;
+    const uint32_t start = flush.fileSize();
+    flush.write(reinterpret_cast<const uint8_t *>(record), length);
+    flush.failFirstSync = true;
+    assert(loomSD::finishAppend(flush, start, true).status == SDWriteStatus::Failed);
+    assert(flush.bytes == "old\r\n" && flush.closes == 1);
+    for (int failure = 0; failure < 3; ++failure) {
+        FaultOutput broken;
+        const uint32_t savedSize = broken.fileSize();
+        broken.write(reinterpret_cast<const uint8_t *>(record), 3);
+        broken.truncateOK = failure != 0;
+        broken.failAllSync = failure == 1;
+        broken.closeOK = failure != 2;
+        assert(loomSD::finishAppend(broken, savedSize, false).status == SDWriteStatus::Uncertain);
+        assert(broken.closes == 1);
+    }
+    puts("PASS debug append rollback, flush and uncertain-close handling");
 }
 
 void testRecoveryCount() {
@@ -233,7 +298,8 @@ void testRecoveryCount() {
     assert(!loomSD::countRecords(failedRead, 2000, count));
     FaultFile empty("");
     assert(loomSD::countRecords(empty, 2000, count) && count == 0);
-    puts("PASS recovery recount, empty batch, read errors, and non-destructive torn-tail rejection");
+    puts(
+        "PASS recovery recount, empty batch, read errors, and non-destructive torn-tail rejection");
 }
 
 struct StoredBatch {
@@ -255,8 +321,9 @@ struct DirectoryFile {
     bool error = false, opened = false;
     bool openNext(FakeDirectory *directory) {
         assert(!opened);
-        if (directory->position >= directory->entries.size())
+        if (directory->position >= directory->entries.size()) {
             return false;
+        }
         entry = &directory->entries[directory->position++];
         position = 0;
         error = false;
@@ -264,8 +331,9 @@ struct DirectoryFile {
         return true;
     }
     bool getName(char *name, size_t capacity) {
-        if (entry->name.size() >= capacity)
+        if (entry->name.size() >= capacity) {
             return false;
+        }
         memcpy(name, entry->name.c_str(), entry->name.size() + 1);
         return true;
     }
@@ -281,47 +349,50 @@ struct DirectoryFile {
         }
         return static_cast<unsigned char>(entry->data[position++]);
     }
-    bool close() { assert(opened); opened = false; return true; }
+    bool close() {
+        assert(opened);
+        opened = false;
+        return true;
+    }
 };
 
 void testRecoveryDirectory() {
     FakeDirectory directory;
-    directory.entries = {
-        {"Wisp_3-Batch.txt", "{\"torn\":"},
-        {"Wisp_0-Batch.txt", ""},
-        {"Wisp_5-Batch.txt", "{\"current\":1}\r\n"},
-        {"Other_1-Batch.txt", "{\"other\":1}\r\n"},
-        {"Wisp_1-Batch.txt", "{\"old\":1}\r\n"},
-        {"Wisp_4-Batch.txt", "{\"old\":2}\r\n{\"old\":3}\r\n"}
-    };
+    directory.entries = {{"Wisp_3-Batch.txt", "{\"torn\":"},
+                         {"Wisp_0-Batch.txt", ""},
+                         {"Wisp_5-Batch.txt", "{\"current\":1}\r\n"},
+                         {"Other_1-Batch.txt", "{\"other\":1}\r\n"},
+                         {"Wisp_1-Batch.txt", "{\"old\":1}\r\n"},
+                         {"Wisp_4-Batch.txt", "{\"old\":2}\r\n{\"old\":3}\r\n"}};
     const auto original = directory.entries;
     DirectoryFile file;
     uint32_t cursor = 0;
     char name[84] = {};
     int count = 0, rejected = 0;
     const auto reject = [&](const char *) { ++rejected; };
-    assert(loomSD::scanRecoveryFiles(directory, file, "Wisp_", 5, cursor, name, count,
-                                     2000, nullptr, reject) == loomSD::RecoveryResult::Selected);
+    assert(loomSD::scanRecoveryFiles(directory, file, "Wisp_", 5, cursor, name, count, 2000,
+                                     nullptr, reject) == loomSD::RecoveryResult::Selected);
     assert(strcmp(name, "Wisp_1-Batch.txt") == 0 && count == 1 && cursor == 5);
     assert(rejected == 1 && !file.opened);
     // Simulate a successful clear: resume after this file; do not mix in the active session.
     name[0] = '\0';
     directory.position = cursor;
     directory.entries[5].failAt = 4;
-    assert(loomSD::scanRecoveryFiles(directory, file, "Wisp_", 5, cursor, name, count,
-                                     2000, nullptr, reject) == loomSD::RecoveryResult::ReadError);
+    assert(loomSD::scanRecoveryFiles(directory, file, "Wisp_", 5, cursor, name, count, 2000,
+                                     nullptr, reject) == loomSD::RecoveryResult::ReadError);
     assert(cursor == 5 && name[0] == '\0' && !file.opened);
     // Next wake retries the failed entry, not the following directory entry.
     directory.position = cursor;
     directory.entries[5].failAt = SIZE_MAX;
-    assert(loomSD::scanRecoveryFiles(directory, file, "Wisp_", 5, cursor, name, count,
-                                     2000, nullptr, reject) == loomSD::RecoveryResult::Selected);
+    assert(loomSD::scanRecoveryFiles(directory, file, "Wisp_", 5, cursor, name, count, 2000,
+                                     nullptr, reject) == loomSD::RecoveryResult::Selected);
     assert(strcmp(name, "Wisp_4-Batch.txt") == 0 && count == 2);
     directory.position = cursor;
-    assert(loomSD::scanRecoveryFiles(directory, file, "Wisp_", 5, cursor, name, count,
-                                     2000, nullptr, reject) == loomSD::RecoveryResult::Done);
-    for (size_t i = 0; i < original.size(); ++i)
+    assert(loomSD::scanRecoveryFiles(directory, file, "Wisp_", 5, cursor, name, count, 2000,
+                                     nullptr, reject) == loomSD::RecoveryResult::Done);
+    for (size_t i = 0; i < original.size(); ++i) {
         assert(original[i].data == directory.entries[i].data);
+    }
     puts("PASS multi-file recovery, active-session exclusion, read-error resume, preserved data");
 }
 
@@ -331,6 +402,7 @@ int main() {
     testClose();
     testJson();
     testBatchCommit();
+    testDebugAppend();
     testRecoveryCount();
     testRecoveryDirectory();
     puts("All data-safety helper tests passed.");

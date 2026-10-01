@@ -30,6 +30,9 @@ class Loom_BatchSD {
      * Open an independent batch reader that ordinary SD logging cannot replace or close.
      */
     File openBatch();
+    const char *getBatchFilename() const {
+        return sdMan != nullptr ? sdMan->getBatchFilename() : "";
+    }
 
     /**
      * Clear records after a complete successful publish.

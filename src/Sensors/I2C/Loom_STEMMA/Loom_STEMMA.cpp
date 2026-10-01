@@ -15,7 +15,7 @@ Loom_STEMMA::Loom_STEMMA(Manager &man, int addr, bool useMux)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::initialize() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     if (!stemma.begin(address)) {
         LOG(F("Failed to initialize STEMMA! Check connections and try again..."));
         moduleInitialized = false;
@@ -29,7 +29,7 @@ void Loom_STEMMA::initialize() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::measure() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     if (!moduleInitialized) {
         return;
     }
@@ -58,7 +58,7 @@ void Loom_STEMMA::measure() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_STEMMA::package() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     if (moduleInitialized) {
         JsonObject json = manInst->get_data_object(getModuleName());
         // no units for capacitive, lower values means dry, higher values mean very wet.

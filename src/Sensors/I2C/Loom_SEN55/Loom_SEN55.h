@@ -9,6 +9,7 @@ LOOM_EXTERNAL_INCLUDE_END
 
 #include "../I2CDevice.h"
 #include "Loom_Manager.h"
+#include <math.h>
 
 #define PM_AVERAGE_COUNT 10 // Number of times to read the pm values then average them over
 
@@ -16,7 +17,7 @@ LOOM_EXTERNAL_INCLUDE_END
  *  SEN55 Air Quality sensors, supports pm 1.0, 2.5, 4.0, 10 as well as Temp/Humidity and Nox and
  * Voc index
  *
- * NOTE: To get accurate results using the SE555 it should be powered on and remain on as according
+ * NOTE: To get accurate results using the SEN55 it should be powered on and remain on as according
  * to the data sheet, the switch-on behavior for the VOC Index is ~ 1 hr and the NOx is ~ 6 hours.
  * Data sheet: https://cdn.sparkfun.com/assets/5/b/f/2/8/Sensirion_Datasheet_SEN5x.pdf (Page 8)
  *
@@ -29,6 +30,8 @@ class Loom_SEN55 : public I2CDevice {
     void initialize() override;
     void power_up() override;
     void power_down() override {};
+    void idle() override;
+    void resume() override;
     bool retryPowerUpWhenUninitialized() const override { return true; }
     void package() override;
 
@@ -194,15 +197,17 @@ class Loom_SEN55 : public I2CDevice {
     void logDeviceStatus();
 
     /**
-     * Reset relevant values to 0, this is useful for preparing for another measurement cycle.
+     * Mark every reading unavailable before a new cycle. Getters return NAN until a successful
+     * read; packaging uses the existing -1 missing-value convention. A real zero remains zero.
      */
     void resetValuesForMeasure();
 
   private:
-    // False aborts the cycle before status logging, matching the original error paths.
-    // A completed cycle may still contain no ready samples; each mode reports that itself.
+    // False means this cycle missed valid data or a mode-change command failed.
     bool measureWithPm();
     bool measureWithoutPm();
+    bool supportsDirectModeSwitch = false; // Firmware > 1.0 preserves gas learning across modes.
+    static constexpr uint32_t PM_WARMUP_MS = 30000;
 
     Manager *manInst;        // Instance of the manager
     SensirionI2CSen5x sen5x; // Instance of the SEN55 object
@@ -211,19 +216,19 @@ class Loom_SEN55 : public I2CDevice {
     bool readNumVals; // Do we want to read the number concentration and typical particle size?
 
     /* Sensor readings */
-    float massConcentrationPm1p0 = 0.0f;
-    float massConcentrationPm2p5 = 0.0f;
-    float massConcentrationPm4p0 = 0.0f;
-    float massConcentrationPm10p0 = 0.0f;
-    float ambientHumidity = 0.0f;
-    float ambientTemperature = 0.0f;
-    float vocIndex = 0.0f;
-    float noxIndex = 0.0f;
+    float massConcentrationPm1p0 = NAN;
+    float massConcentrationPm2p5 = NAN;
+    float massConcentrationPm4p0 = NAN;
+    float massConcentrationPm10p0 = NAN;
+    float ambientHumidity = NAN;
+    float ambientTemperature = NAN;
+    float vocIndex = NAN;
+    float noxIndex = NAN;
     /* PM number readings */
-    float numConcentrationPm0p5 = 0.0f;
-    float numConcentrationPm1p0 = 0.0f;
-    float numConcentrationPm2p5 = 0.0f;
-    float numConcentrationPm4p0 = 0.0f;
-    float numConcentrationPm10p0 = 0.0f;
-    float typicalParticleSize = 0.0f;
+    float numConcentrationPm0p5 = NAN;
+    float numConcentrationPm1p0 = NAN;
+    float numConcentrationPm2p5 = NAN;
+    float numConcentrationPm4p0 = NAN;
+    float numConcentrationPm10p0 = NAN;
+    float typicalParticleSize = NAN;
 };

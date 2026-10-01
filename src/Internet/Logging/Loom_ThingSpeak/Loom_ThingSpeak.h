@@ -1,8 +1,6 @@
 #pragma once
 
-#include <vector>
-
-#include "Loom_Manager.h"
+class Manager;
 
 class Loom_BatchSD;
 #include "../MQTTComponent/MQTTComponent.h"
@@ -12,7 +10,7 @@ using FloatReturnFuncDefs = float (*)();
 using FloatReturnFuncDefsWithParam = float (*)(int);
 
 /**
- * Platform for logging data to MQTT for logging to a remote database
+ * Send up to eight callback-generated measurements to a ThingSpeak channel.
  *
  * @author Will Richards
  */
@@ -69,7 +67,7 @@ class Loom_ThingSpeak : public MQTTComponent {
     /**
      * Add a new function to the list of functions that we are going to pass into ThingSpeak
      *
-     * @param fieldNumber The corresponding field number
+     * @param fieldNumber ThingSpeak field number, from 1 through 8
      * @param readValue Function called during publishing, with signature float someFunction()
      */
     void addFunction(int fieldNumber, FloatReturnFuncDefs readValue);
@@ -77,39 +75,30 @@ class Loom_ThingSpeak : public MQTTComponent {
     /**
      * Add a new function to the list of functions that we are going to pass into ThingSpeak
      *
-     * @param fieldNumber The corresponding field number
+     * @param fieldNumber ThingSpeak field number, from 1 through 8
      * @param readValue Function called during publishing, with signature float someFunction(int)
      * @param parameter The parameter to supply to the function when we call it
      */
     void addFunction(int fieldNumber, FloatReturnFuncDefsWithParam readValue, int parameter);
 
   private:
-    static constexpr size_t MESSAGE_SIZE = 1024;
+    // "channels/" + a signed 32-bit channel ID + "/publish" + the final NUL fits in 29 bytes.
+    // Leave a little room without using the much larger general-purpose MQTT topic buffer.
+    static constexpr size_t TOPIC_SIZE = 32;
     static constexpr size_t MAX_FIELDS = 8;
 
     struct FieldFunction {
         int fieldNumber;
         FloatReturnFuncDefs readValue;
-    };
-    struct ParameterizedFieldFunction {
-        int fieldNumber;
-        FloatReturnFuncDefsWithParam readValue;
+        FloatReturnFuncDefsWithParam readParameterizedValue;
         int parameter;
     };
 
     Manager *manager;  // Instance of the manager
     int channelID = 0; // The channelID we are publishing to
 
-    /**
-     * Format the packet to be sent to ThingSpeak
-     * Example: field1=343&field2=421.4&created_at=2023-02-21T11:46:51Z&status=MQTTPUBLISH
-     *
-     * @param topic The topic buffer we should format to publish data to our given feed
-     * @param message The message buffer we should fill with our formatted packet
-     */
-    bool formatMessage(char topic[MAX_TOPIC_LENGTH], char message[MESSAGE_SIZE]);
-
-    // Keep the two lists separate: payloads historically emit no-argument fields first.
-    std::vector<FieldFunction> fieldsWithoutParameters;
-    std::vector<ParameterizedFieldFunction> fieldsWithParameters;
+    // The service accepts eight fields, so registration needs no growing heap allocation.
+    // Publish in two passes to retain the historical plain-before-parameterized grouping.
+    FieldFunction fields[MAX_FIELDS] = {};
+    size_t fieldCount = 0;
 };

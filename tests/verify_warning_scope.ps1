@@ -6,7 +6,7 @@ if (-not (Test-Path -LiteralPath $guardPath -PathType Leaf)) {
 }
 
 # Standard/runtime headers retain full diagnostics; only core/vendor includes are scoped.
-$standardHeaders = @('algorithm', 'array', 'cmath', 'cstdarg', 'cstdint', 'cstdio', 'cstring',
+$standardHeaders = @('algorithm', 'array', 'cmath', 'cstddef', 'cstdarg', 'cstdint', 'cstdio', 'cstdlib', 'cstring',
     'functional', 'initializer_list', 'limits', 'map', 'memory', 'tuple', 'utility', 'vector',
     'assert.h', 'ctype.h', 'errno.h', 'float.h', 'inttypes.h', 'limits.h', 'malloc.h', 'math.h',
     'stddef.h', 'stdint.h', 'stdio.h', 'stdlib.h', 'string.h', 'time.h')

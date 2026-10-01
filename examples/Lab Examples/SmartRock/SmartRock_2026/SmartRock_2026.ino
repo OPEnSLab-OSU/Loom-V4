@@ -2,11 +2,11 @@
  * In lab use case example for the SmartRock project
  * IN DEVELOPMENT CODE - MAY BE UNSTABLE
  * This project uses a hypnos, an ADS1115 and a MS5803
- * 
+ *
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 
-// Includede Libraries, Mostly OPEnS LOOM 
+// Includede Libraries, Mostly OPEnS LOOM
 
 // SmartRock 2026 deployment sketch.
 #include <Loom_Manager.h>
@@ -20,174 +20,198 @@
 
 // Loom Manager, Hypnos, and Sensor Constructors
 
-  //OPEnS Loom Constructors
+// OPEnS Loom Constructors
 Manager manager("US_Virgin_Islands_5", 1);
 Loom_Analog analog(manager);
 
-  // OPEnS Hypnos Constructors
+// OPEnS Hypnos Constructors
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 TimeSpan sleepInterval;
 
-  // Sensor Module Constructors from Loom
+// Sensor Module Constructors from Loom
 Loom_ADS1115 ads(manager);
 Loom_MS5803 ms(manager, 119);
-Adafruit_VCNL4010 vcnl; //VCNL4010 is not yet a Loom sensor module, so we are using the Adafruit library
+Adafruit_VCNL4010
+    vcnl; // VCNL4010 is not yet a Loom sensor module, so we are using the Adafruit library
 
 bool vcnlFlag = false;
-float Turb = 0; 
+float Turb = 0;
 //============================================================
 
 // Smart Rock Specific Function Declares
 
-  // Called when the interrupt is triggered 
+// Called when the interrupt is triggered
 void isrTrigger();
 
-  // Measures and packages sensor readings which are displayed to the serial monitor and sent to the SD card
+// Measures and packages sensor readings which are displayed to the serial monitor and sent to the
+// SD card
 void take_data(float, float, float, float, bool);
 //============================================================
 
-// Setup runs once, initializes the Hypnos rails and VCNL4010, and reads SD_config.json to get the sleep interval
+// Setup runs once, initializes the Hypnos rails and VCNL4010, and reads SD_config.json to get the
+// sleep interval
 void setup() {
 
     // Wait 20 seconds for the serial console to open
-  manager.beginSerial();
-  hypnos.setCompileTime(__DATE__, __TIME__);
+    manager.beginSerial();
+    hypnos.setCompileTime(__DATE__, __TIME__);
 
     // Enable the hypnos rails
-  hypnos.enable();
+    hypnos.enable();
 
     // Allow the switched sensor rail to stabilize before probing the ADS1115.
-  delay(1500);
+    delay(1500);
 
     // SmartRock uses the standard I2C bus at 100 kHz.
-  Wire.begin();
-  Wire.setClock(100000);
+    Wire.begin();
+    Wire.setClock(100000);
 
-  manager.initialize();
+    manager.initialize();
 
     // Gets sleep interval from SD card
-  sleepInterval = hypnos.getConfigFromSD("SD_config.json");
+    sleepInterval = hypnos.getConfigFromSD("SD_config.json");
     // Register the ISR and attach to the interrupt
-  hypnos.registerInterrupt(isrTrigger);
+    hypnos.registerInterrupt(isrTrigger);
 
-  //VCNL4010 Initialization indicator      
-  if (!vcnl.begin()){
-    Serial.println("VCNL4010 Not Found");
-    vcnlFlag = false;
-  } else{
-    Serial.println("VCNL4010 Initialized");
-    vcnlFlag = true;
-  }
-
-
+    // VCNL4010 Initialization indicator
+    if (!vcnl.begin()) {
+        Serial.println("VCNL4010 Not Found");
+        vcnlFlag = false;
+    } else {
+        Serial.println("VCNL4010 Initialized");
+        vcnlFlag = true;
+    }
 }
 //============================================================
 
-// Runs this loop indefinitely, sleeps for the interval set in SD_config.json between each iteration
+// SD_config.json sets the interval between sample starts, including measurement/logging time.
 void loop() {
 
-  // Set constants, these should be changed to match the intended use
+    // Start the clock BEFORE taking data. Later cycles keep this UTC phase instead of adding
+    // sensor work to the configured period. Long cycles skip missed slots before sleep.
+    if (!hypnos.setSampleInterval(sleepInterval)) {
+        Serial.println("Sample alarm could not be armed; this cycle will remain awake.");
+    }
 
-  // Experimentally determined EC and Turbidity calibration coefficients
-  // These are different for each Smart Rock, insert the proper values from calibration
-  float EC_slope = 0.00;      // EC calibration slope 
-  float EC_intercept = 0.00;  // EC calibration y-intercept 
-  float Turbidity_slope = .18688;      // Turbidity calibration slope
-  float Turbidity_intercept = -549.82;  // Turbidity calibration y-intercept
-  
-  // Troubleshooting mode enables extra status prints in the serial Monitor
-  bool troubleshooting_mode = 1; // 1 == on, 0 == off
-  //============================================================
+    // Set constants, these should be changed to match the intended use
 
-  // This is the wakeup cycle, everything outside of this scope happens while the device is "asleep"
+    // Experimentally determined EC and Turbidity calibration coefficients
+    // These are different for each Smart Rock, insert the proper values from calibration
+    float EC_slope = 0.00;               // EC calibration slope
+    float EC_intercept = 0.00;           // EC calibration y-intercept
+    float Turbidity_slope = .18688;      // Turbidity calibration slope
+    float Turbidity_intercept = -549.82; // Turbidity calibration y-intercept
+
+    // Troubleshooting mode enables extra status prints in the serial Monitor
+    bool troubleshooting_mode = 1; // 1 == on, 0 == off
+    //============================================================
+
+    // This is the wakeup cycle, everything outside of this scope happens while the device is
+    // "asleep"
 
     // Troubleshooting print 1
-  if(troubleshooting_mode==1){Serial.println("Woke Up!");}
+    if (troubleshooting_mode == 1) {
+        Serial.println("Woke Up!");
+    }
 
     // Smart Rock function to measure, package, calibrate, and display data
-  take_data(EC_slope, EC_intercept, Turbidity_slope, Turbidity_intercept, troubleshooting_mode);
+    take_data(EC_slope, EC_intercept, Turbidity_slope, Turbidity_intercept, troubleshooting_mode);
 
     // Troubleshooting print 7
-  if(troubleshooting_mode==1){Serial.println("Setting Alarm");}
+    if (troubleshooting_mode == 1) {
+        Serial.println("Preparing to Sleep");
+    }
 
-    // Set the RTC interrupt alarm to wake the device after the set sleep interval
-  hypnos.setInterruptDuration(sleepInterval);
+    // The next sample alarm was set at the beginning of this cycle.
 
     // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
-  hypnos.reattachRTCInterrupt();
-  
-    // Troubleshooting print 8
-  if(troubleshooting_mode==1){Serial.println("Going to Sleep");}
-  
-    // Put the device to sleep, operation HALTS here until the interrupt is triggered
-  hypnos.sleep(false);  // To disable sleep, DO NOT change the passed in bool, just comment this line out
-//============================================================
+    hypnos.reattachRTCInterrupt();
 
+    // Troubleshooting print 8
+    if (troubleshooting_mode == 1) {
+        Serial.println("Going to Sleep");
+    }
+
+    // Put the device to sleep, operation HALTS here until the interrupt is triggered
+    hypnos.sleep(
+        false); // To disable sleep, DO NOT change the passed in bool, just comment this line out
+    //============================================================
 }
 //============================================================
 
 // Smart Rock specific functions
 
-  // Called when the interrupt is triggered 
-void isrTrigger(){
-  hypnos.wakeup();
-}
+// Called when the interrupt is triggered
+void isrTrigger() { hypnos.wakeup(); }
 //===========================
 
-  // Smart Rock function to measure, package, calibrate, and display data 
-  // m: calibration slopes (EC and Turbidity)
-  // b: calibration y-intercepts (EC and Turbidity)
-void take_data(float ECm, float ECb, float Tm, float Tb, bool troubleshooting_mode){
+// Smart Rock function to measure, package, calibrate, and display data
+// m: calibration slopes (EC and Turbidity)
+// b: calibration y-intercepts (EC and Turbidity)
+void take_data(float ECm, float ECb, float Tm, float Tb, bool troubleshooting_mode) {
 
     // Troubleshooting print 2
-  if(troubleshooting_mode==1){Serial.println("Begin Taking Data");}
+    if (troubleshooting_mode == 1) {
+        Serial.println("Begin Taking Data");
+    }
 
     // Measure and package the data from the Loom modules into JSON packet
-  manager.measure();
-  manager.package();
+    manager.measure();
+    manager.package();
 
     // Troubleshooting print 3
-  if(troubleshooting_mode==1){Serial.println("Measured Data");}
-//===========================
-  // Applying Calibration Equations
-  
-    // This equation converts the measured conductance into EC in uS/cm
-  float EC = ((ads.getAnalog(2)/ads.getAnalog(1)) * ECm + ECb); // ECm and ECb are the passed in slope and y-intercept from the beginning of void loop()
+    if (troubleshooting_mode == 1) {
+        Serial.println("Measured Data");
+    }
+    //===========================
+    // Applying Calibration Equations
 
-  if (vcnlFlag) {
-    // This equation converts the measured infrared backscatter (proximity) into Turbidity in NTU
-  Turb = ((vcnl.readProximity()) * Tm + Tb); // Tm and Tb are the passed in slope and y-intercept from the beginning of void loop()
-  } else {
-    Serial.println("VCNL NOT INITIALIZED");
-  }
+    // This equation converts the measured conductance into EC in uS/cm
+    float EC = ((ads.getAnalog(2) / ads.getAnalog(1)) * ECm +
+                ECb); // ECm and ECb are the passed in slope and y-intercept from the beginning of
+                      // void loop()
+
+    if (vcnlFlag) {
+        // This equation converts the measured infrared backscatter (proximity) into Turbidity in
+        // NTU
+        Turb = ((vcnl.readProximity()) * Tm + Tb); // Tm and Tb are the passed in slope and
+                                                   // y-intercept from the beginning of void loop()
+    } else {
+        Serial.println("VCNL NOT INITIALIZED");
+    }
 
     // Troubleshooting print 4
-  if(troubleshooting_mode==1){Serial.println("EC and Turbidity Values Calculated");}
- //===========================
-  
+    if (troubleshooting_mode == 1) {
+        Serial.println("EC and Turbidity Values Calculated");
+    }
+    //===========================
+
     // Adds data under "Sensor Values" to the JSON packet
-  manager.addData("MS5803", "Pressure", ms.getPressure());          // MS5803 Pressure
-  manager.addData("MS5803", "Temperature", ms.getTemperature());    // MS5803 Temperature
+    manager.addData("MS5803", "Pressure", ms.getPressure());       // MS5803 Pressure
+    manager.addData("MS5803", "Temperature", ms.getTemperature()); // MS5803 Temperature
 
-  if (vcnlFlag){
-  manager.addData("vcnl4010","Ambient Light", vcnl.readAmbient());  // VCNL4010 Light
-  manager.addData("vcnl4010","Proximity", vcnl.readProximity());    // VCNL4010 Proximity
-  } else {
-    Serial.println("VCNL NOT INITIALIZED");
-  }
+    if (vcnlFlag) {
+        manager.addData("vcnl4010", "Ambient Light", vcnl.readAmbient()); // VCNL4010 Light
+        manager.addData("vcnl4010", "Proximity", vcnl.readProximity());   // VCNL4010 Proximity
+    } else {
+        Serial.println("VCNL NOT INITIALIZED");
+    }
 
-
-  manager.addData("Analog Values","Conductivity", EC);              // Calibrated EC in uS/cm
-  manager.addData("Analog Values","Turbidity", Turb);              //Calibrated Turbidity
+    manager.addData("Analog Values", "Conductivity", EC); // Calibrated EC in uS/cm
+    manager.addData("Analog Values", "Turbidity", Turb);  // Calibrated Turbidity
 
     // Troubleshooting print 5
-  if(troubleshooting_mode==1){Serial.println("Data Added to Packet");}
+    if (troubleshooting_mode == 1) {
+        Serial.println("Data Added to Packet");
+    }
 
     // Print the current JSON packet to Serial Monitor and log to SD card
-  manager.display_data();                   
-  hypnos.logToSD();
-  
+    manager.display_data();
+    hypnos.logToSD();
+
     // Troubleshooting print 6
-  if(troubleshooting_mode==1){Serial.println("Packet Logged to SD Card");}
+    if (troubleshooting_mode == 1) {
+        Serial.println("Packet Logged to SD Card");
+    }
 }
 //============================================================

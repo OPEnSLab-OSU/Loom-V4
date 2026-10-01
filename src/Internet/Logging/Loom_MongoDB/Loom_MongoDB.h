@@ -53,10 +53,19 @@ class Loom_MongoDB : public MQTTComponent {
      */
     bool publish(Loom_BatchSD &batchSD);
 
+    /** A LoRa hub queues several device identities. Opt in to topics from each record's id;
+     * ordinary single-device/custom batches keep the established Manager-based topic. */
+    void usePacketIdentityForBatch(bool enabled = true) { batchUsesPacketIdentity = enabled; }
+
     /**
      * Publish metadata to the database
      */
     bool publishMetadata(char *metadata);
+
+    /** Explicit metadata/heartbeat JSON, using the same device topic and no text buffer.
+     * Broker ACK proves acceptance by the broker, not final database insertion. */
+    bool publishMetadata(const JsonDocument &metadata);
+    bool publishHeartbeat(const JsonDocument &heartbeat);
 
     /**
      * Load the MQTT credentials from a JSON string, used to pull credentials from a file
@@ -68,8 +77,11 @@ class Loom_MongoDB : public MQTTComponent {
   private:
     static constexpr size_t TOPIC_COMPONENT_SIZE = 64;
 
-    void buildTopic();
+    bool buildTopic();
+    bool buildTopic(const char *deviceName, int instance);
+    bool buildBatchTopic(Stream &source);
 
+    bool batchUsesPacketIdentity = false;
     Manager *manInst; // Instance of the manager
 
     char topic[MAX_TOPIC_LENGTH];             // Topic we are publishing to

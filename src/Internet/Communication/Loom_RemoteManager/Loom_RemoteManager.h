@@ -1,10 +1,8 @@
 #pragma once
 
 #include "../../Logging/MQTTComponent/MQTTComponent.h"
-#include "Loom_Manager.h"
-#include "Module.h"
-
-#include "../../../Hardware/Loom_Hypnos/Loom_Hypnos.h"
+class Manager;
+class Loom_Hypnos;
 
 /**
  * Remote management class handles, altering settings on-the-fly OTA
@@ -54,14 +52,16 @@ class Loom_RemoteManager : public MQTTComponent {
     /**
      * Set an instance of the hypnos inside the RemoteManager
      *
-     * @param hypnos Reference to the Hypnos object
+     * @param board Reference to the Hypnos object
      */
-    void setHypnosInstance(Loom_Hypnos &hypnos) { this->hypnos = &hypnos; };
+    void setHypnosInstance(Loom_Hypnos &board) { hypnos = &board; };
 
     /* Publish the current status updates*/
     bool publish() override;
 
   private:
+    // Longest suffix + Manager's 63-character name + signed instance number fits in 128 bytes.
+    static constexpr size_t TOPIC_SIZE = 128;
     static constexpr size_t RETAINED_MESSAGE_SIZE = 256;
 
     Manager *manager = nullptr;    // Instance of the Loom Manager
@@ -73,7 +73,7 @@ class Loom_RemoteManager : public MQTTComponent {
     bool updateDeviceStatus(bool onOff);
 
     /* Hypnos */
-    void updateHypnosInterval(char topic[MAX_TOPIC_LENGTH], char message[RETAINED_MESSAGE_SIZE],
+    void updateHypnosInterval(char topic[TOPIC_SIZE], char message[RETAINED_MESSAGE_SIZE],
                               StaticJsonDocument<JSON_OBJECT_SIZE(4)> &json);
-    void updateHypnosTime(char topic[MAX_TOPIC_LENGTH], char message[RETAINED_MESSAGE_SIZE]);
+    void updateHypnosTime(char topic[TOPIC_SIZE], char message[RETAINED_MESSAGE_SIZE]);
 };

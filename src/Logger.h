@@ -13,21 +13,39 @@ LOOM_EXTERNAL_INCLUDE_END
 
 class SDManager;
 class Loom_Hypnos;
+class Loom_Trace;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Function summaries: show entry/exit timing and available memory during debugging.
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // FUNCTION_START begins a scoped debug summary. Its destructor records the exit on every
 // return path. FUNCTION_END marks the normal exit in source; it does not emit a second summary.
-// INSTRUMENT() remains available as the equivalent scoped spelling.
+// FUNCTION_START(this) also identifies the instance in an optional trace. The original
+// FUNCTION_START; syntax and INSTRUMENT() remain available without an object address.
 #define LOOM_LOGGER_JOIN_IMPL(a, b) a##b
 #define LOOM_LOGGER_JOIN(a, b) LOOM_LOGGER_JOIN_IMPL(a, b)
+#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
+#define LOOM_TRACE_FUNCTION_NAME __PRETTY_FUNCTION__
+#else
+#define LOOM_TRACE_FUNCTION_NAME nullptr
+#endif
 #define INSTRUMENT()                                                                               \
-    FunctionInstrumentor LOOM_LOGGER_JOIN(_loomInstrumentor_, __LINE__)(__FILE__, __func__,        \
-                                                                        __LINE__);
+    FunctionInstrumentor LOOM_LOGGER_JOIN(_loomInstrumentor_, __LINE__)(                           \
+        __FILE__, __func__, __LINE__, LOOM_TRACE_FUNCTION_NAME);
 
-#define FUNCTION_START INSTRUMENT()
+#define FUNCTION_START                                                                             \
+    const FunctionInstrumentor &LOOM_LOGGER_JOIN(_loomInstrumentor_, __LINE__) =                    \
+        FunctionInstrumentationContext(__FILE__, __func__, __LINE__, LOOM_TRACE_FUNCTION_NAME)
 #define FUNCTION_END
+
+// Compatibility spelling for code that used the first object-aware trace macro.
+#define FUNCTION_START_OBJECT(object) FUNCTION_START(object)
+
+// Compatibility aliases; FUNCTION_START is the shared entry point for summaries and tracing.
+#define TRACE_FUNCTION_START(object) FUNCTION_START(object)
+#define TRACE_FUNCTION_SCOPE(name, object) FUNCTION_START(object, name)
+#define TRACE_FUNCTION_START_OBJECT(object) TRACE_FUNCTION_START(object)
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Message helpers: LOG for progress, WARNING for a problem, ERROR for a failed operation.
@@ -82,6 +100,9 @@ class Logger {
     friend class FunctionInstrumentor;
 
     unsigned int stackDepth = 0;
+#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
+    Loom_Trace *trace = nullptr; // Borrowed; no event buffer exists unless the sketch opts in.
+#endif
 
     // Whether or not to use the SD card or log function summaries
     bool debugOutputEnabled = true;
@@ -201,10 +222,18 @@ class Logger {
     /* Avoid an RTC I2C transaction for every Serial log in constrained field sketches. */
     void disableRTCTimestamps() { rtcTimestampsEnabled = false; };
 
-    bool shouldLogSummaries() {
-        return debugOutputEnabled && enableFunctionSummaries && sdInst != nullptr &&
-               enableSDLogging;
+    bool shouldLogSummaries();
+
+    /** Attach only a started recorder with static/sketch lifetime. Extra toggle, independent
+     * of the legacy summaries. Setting debug output false also suppresses new trace scopes. */
+    void enableTrace(Loom_Trace &recorder) {
+#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
+        trace = &recorder;
+#else
+        (void)recorder;
+#endif
     }
+    bool flushTrace();
 
     /**
      * Truncate the __FILE__ output to just show the name instead of the whole path
@@ -225,8 +254,33 @@ class Logger {
     }
 };
 
+// Capture the call site before an optional (this) argument. This is only construction
+// metadata: the FunctionInstrumentor below owns the one entry/exit pair, including early
+// returns. No allocation or extra state is added to the retained scope guard.
+struct FunctionInstrumentationContext {
+    const char *file;
+    const char *func;
+    int lineNum;
+    const char *qualifiedFunc;
+    const void *object;
+
+    FunctionInstrumentationContext(const char *file, const char *func, int lineNum,
+                                   const char *qualifiedFunc, const void *object = nullptr)
+        : file(file), func(func), lineNum(lineNum), qualifiedFunc(qualifiedFunc), object(object) {}
+
+    FunctionInstrumentationContext operator()(const void *instance = nullptr,
+                                               const char *scopeName = nullptr) const {
+        return FunctionInstrumentationContext(file, func, lineNum,
+                                              scopeName != nullptr ? scopeName : qualifiedFunc,
+                                              instance);
+    }
+};
+
 class FunctionInstrumentor {
   private:
+#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
+    Loom_Trace *trace = nullptr;
+#endif
     // Keep formatting buffers out of the constructor/destructor frames when summaries are off.
     static __attribute__((noinline)) void
     writeSummary(Logger *logger, bool starting, const char *file, const char *func, int lineNum);
@@ -236,9 +290,21 @@ class FunctionInstrumentor {
     FunctionInstrumentor(const FunctionInstrumentor &) = delete;
     FunctionInstrumentor &operator=(const FunctionInstrumentor &) = delete;
 
-    FunctionInstrumentor(const char *file, const char *func, int lineNum) {
+    // Fold call-site metadata into the existing constructor instead of adding a helper call.
+    __attribute__((always_inline)) FunctionInstrumentor(const FunctionInstrumentationContext &context)
+        : FunctionInstrumentor(context.file, context.func, context.lineNum, context.qualifiedFunc,
+                               context.object) {}
+
+    FunctionInstrumentor(const char *file, const char *func, int lineNum,
+                         const char *qualifiedFunc = nullptr, const void *object = nullptr) {
         Logger *logger = Logger::getInstance();
         logger->stackDepth++;
+#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
+        beginTrace(logger, file, qualifiedFunc != nullptr ? qualifiedFunc : func, lineNum, object);
+#else
+        (void)qualifiedFunc;
+        (void)object;
+#endif
 
         if (logger->shouldLogSummaries()) {
             writeSummary(logger, true, file, func, lineNum);
@@ -247,10 +313,20 @@ class FunctionInstrumentor {
 
     ~FunctionInstrumentor() {
         Logger *logger = Logger::getInstance();
+#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
+        endTrace();
+#endif
         logger->stackDepth--;
 
         if (logger->shouldLogSummaries()) {
             writeSummary(logger, false, nullptr, nullptr, 0);
         }
     }
+
+  private:
+#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
+    void beginTrace(Logger *logger, const char *file, const char *func, int line,
+                    const void *object);
+    void endTrace();
+#endif
 };

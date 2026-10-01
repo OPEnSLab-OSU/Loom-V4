@@ -1,0 +1,98 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Wisp · Trace Studio</title>
+    <link rel="stylesheet" href="dist/index.css">
+</head>
+<body>
+<main>
+    <header><div><div class="eyebrow">WISP / LOOM</div><h1>Trace Studio</h1>
+        <p>Follow a call. See what memory it holds. Understand what stays behind.</p></div>
+        <span class="badge">Files stay in your browser</span></header>
+    <section id="drop" class="card drop">
+        <div><h2>Drop your SD trace here</h2><p class="muted">Use <code>trace_N.ndjson</code> or <code>trace_N.perfetto.json</code>. General Chrome JSON and Perfetto files open in the Perfetto view.</p></div>
+        <div class="toolbar"><label class="button">Choose a trace<input id="file" type="file" accept=".ndjson,.jsonl,.json,.pftrace,.perfetto-trace" hidden></label>
+            <button id="demo" class="secondary">Try a fictional Wisp cycle</button></div>
+        <p id="status" role="status" aria-live="polite">No recording loaded.</p>
+    </section>
+    <div class="toolbar actions"><button id="perfettoInline" disabled>View in Perfetto</button>
+        <button id="perfettoTab" class="secondary" disabled>Open full Perfetto ↗</button>
+        <button id="export" class="secondary" disabled>Download Perfetto JSON</button>
+        <button id="report" class="secondary" disabled>Download memory report</button></div>
+    <p id="handoff" class="muted" role="status"></p>
+    <nav class="tabs" aria-label="Trace views"><button class="selected" id="inspectTab">Memory & objects</button><button id="timelineTab">Perfetto timeline</button></nav>
+    <section id="perfettoView" class="hidden card"><h2>Perfetto timeline</h2>
+        <p class="muted">Nested calls, heap events, checkpoints, and SD recording overhead. Perfetto loads when you request it. The trace is passed to its browser frame; there is no trace upload service.</p>
+        <iframe id="perfettoFrame" title="Perfetto trace timeline"></iframe></section>
+    <div id="inspectView">
+        <section id="welcome" class="card welcome"><h2>From board to a readable memory story</h2>
+            <div class="steps"><p><strong>1. Record</strong>Build a Wisp debug sketch in <b>heap</b> mode and copy its trace pair from SD.</p>
+                <p><strong>2. Inspect</strong>Choose a call or checkpoint. Move through execution one recorded event at a time.</p>
+                <p><strong>3. Compare</strong>See live blocks, known sensor objects, and memory on call entry versus return.</p></div>
+            <p class="muted">No board recording handy? The fictional cycle demonstrates baseline mux sensors, a sensor refresh, temporary buffers, and retained memory.</p></section>
+        <div id="loaded" class="hidden">
+            <div class="metrics">
+                <div class="metric">Heap in use<strong id="heapbytes">—</strong><small id="heapwhen"></small></div>
+                <div class="metric">Free heap (reusable)<strong id="freebytes">—</strong><small>Allocator free blocks; may be fragmented</small></div>
+                <div class="metric">Available RAM estimate<strong id="availablebytes">—</strong><small id="gapwhen"></small></div>
+                <div class="metric">Live captured bytes<strong id="livebytes">—</strong><small id="livecount"></small></div>
+                <div class="metric">Known present objects<strong id="objectcount">—</strong><small>Observed containers, including baseline sensors</small></div>
+                <div class="metric">Recorded SD-save time<strong id="overhead">—</strong><small id="peak"></small></div>
+            </div>
+            <section class="card">
+                <div class="sectionHead"><div><h2>Calls & events</h2><p class="muted">Scroll sideways and down. Hover or focus a label for its full name; click to inspect memory at that event.</p></div>
+                    <button id="perfettoSelection" class="secondary">Show selection in Perfetto</button></div>
+                <div class="toolbar"><label for="timelineZoom">Label space</label><input id="timelineZoom" type="range" min="1" max="8" value="2"><span id="timelineZoomLabel">2×</span>
+                    <button id="timelineFollow" class="secondary">Find selected event</button></div>
+                <div class="toolbar"><input id="eventSearch" type="search" placeholder="Find an event, sensor, mux port, or address" aria-label="Search events">
+                    <select id="eventCategory" aria-label="Filter event types"></select></div>
+                <div class="toolbar"><button id="eventsPrevious" class="secondary">Earlier events</button><button id="eventsNext" class="secondary">Later events</button><span id="eventPage" class="muted"></span></div>
+                <p class="muted">Each page shows 100 matching events and the calls spanning them. Paging keeps long recordings responsive; times exclude standby.</p>
+                <div id="timelineScroll" tabindex="0" aria-label="Scrollable calls and events"><div id="eventTimeline"></div></div>
+                <p id="timelineHover" class="timelineDetail" role="status">Hover a function or event to read its full label.</p>
+                <details><summary>Selected event details</summary><p id="timelineSelection" class="timelineDetail"></p></details>
+                <details><summary>Browse event names</summary><div id="eventRows" class="scroll"></div></details>
+            </section>
+            <section class="card">
+                <div class="sectionHead"><div><h2>Memory through execution</h2><p class="muted">Hover for values. Drag to zoom; double-click to reset. Click to select a recorded event.</p></div><button id="resetZoom" class="secondary">Reset zoom</button></div>
+                <div id="graph"></div>
+                <div class="toolbar"><label for="checkpoint">Jump to a phase</label><select id="checkpoint"><option value="">Choose a checkpoint</option></select></div>
+                <label id="positionLabel" for="position">Select an event</label><input id="position" type="range" min="0" max="0" value="0">
+                <div class="toolbar"><button id="previous" class="secondary">Previous event</button><button id="next" class="secondary">Next event</button><span id="eventDescription" class="muted"></span></div>
+                <p id="quality" class="notice"></p>
+            </section>
+            <div class="split">
+                <section class="card"><h2>Call stack running here</h2><ol id="activeStack" class="stack"></ol><p id="noStack" class="muted"></p></section>
+                <section class="card"><h2>What these numbers mean</h2>
+                    <p><b>Heap in use</b> includes allocations from before tracing started, plus allocator rounding and overhead.</p>
+                    <p><b>Free heap</b> is reusable space inside the allocator. <b>Available RAM estimate</b> adds the measured stack-to-heap gap. It reserves no future stack growth and is not a guarantee that one allocation of that size will succeed.</p>
+                    <p><b>Live captured bytes</b> counts requested sizes of individually observed allocations still live at this event.</p>
+                    <p><b>Known present objects</b> identifies observed containers and mux sensors. Their internal buffers are separate allocations.</p>
+                    <p class="muted">These are separate measurements. An object label does not add heap bytes, and a retained block alone is not proof of a leak.</p></section>
+            </div>
+            <div class="split wide">
+                <section class="card"><h2>Choose a function call</h2><input id="callSearch" type="search" placeholder="Function or object name" aria-label="Find a function call">
+                    <div class="toolbar"><button id="entry" class="secondary" disabled>Call entry</button><button id="exit" class="secondary" disabled>Call return</button></div>
+                    <p id="callSummary" class="muted">Select a call to compare memory.</p><p id="callFreeSummary" class="muted"></p><div id="calls" class="scroll callList"></div><p id="callLimit" class="muted"></p></section>
+                <section class="card"><h2 id="selection">Live captured allocations</h2><p id="callDetail" class="muted"></p>
+                    <input id="blockSearch" type="search" placeholder="Block label, address, or object context" aria-label="Find a live allocation">
+                    <div class="scroll"><table><thead><tr><th>Block / address</th><th>Requested size</th><th>Created during</th></tr></thead><tbody id="blocks"></tbody></table></div>
+                    <p id="emptyBlocks" class="muted"></p>
+                    <details id="blockDetails"><summary>Selected allocation: lifetime and call stacks</summary><pre id="blockInfo">Select an allocation.</pre></details></section>
+            </div>
+            <section class="card"><div class="sectionHead"><div><h2>Objects present at this event</h2><p class="muted">Baseline objects can be known even when their allocation time is unavailable. Mux ports are numbered 0–7.</p></div></div>
+                <input id="objectSearch" type="search" placeholder="Sensor name, mux port, or address" aria-label="Find an observed object">
+                <div class="scroll"><table><thead><tr><th>Object / address</th><th>State</th><th>Allocation coverage</th><th>Owner / size</th></tr></thead><tbody id="objects"></tbody></table></div>
+                <p id="emptyObjects" class="muted"></p><details id="objectDetails"><summary>Selected object details</summary><pre id="objectInfo">Select an object.</pre></details></section>
+            <section class="card"><h2>Capture quality & coverage</h2><ul id="warnings"></ul></section>
+        </div>
+    </div>
+    <footer>Wisp Trace Studio · optional debug recording · active MCU time excludes standby</footer>
+</main>
+<script src="dist/index.js"></script>
+</body>
+</html>
+        

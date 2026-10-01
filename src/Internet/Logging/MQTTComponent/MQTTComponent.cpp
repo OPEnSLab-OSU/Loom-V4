@@ -19,9 +19,9 @@ void MQTTComponent::initialize() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool MQTTComponent::connectToBroker() {
-    FUNCTION_START;
-    if (!moduleInitialized || !internetClient.moduleInitialized) {
-        ERROR("Module or NetworkComponent not initialized!");
+    FUNCTION_START(this);
+    if (!moduleInitialized) {
+        ERROR("MQTT module not initialized!");
         return false;
     }
     if (address[0] == '\0' || port == 0) {
@@ -29,45 +29,63 @@ bool MQTTComponent::connectToBroker() {
         return false;
     }
 
-    int retryAttempts = 0;
-    while (!mqttClient.connected()) {
-        if (retryAttempts >= maxRetries) {
-            ERROR(F("MQTT Retry limit exceeded!"));
-            return false;
+    // poll() can discover a dead connection. Recheck afterwards instead of returning a stale
+    // connected result, and close the old TCP stream before each fresh MQTT handshake.
+    {
+        LoomWatchdogPause watchdogPause;
+        mqttClient.poll();
+        if (mqttClient.connected() && internetClient.moduleInitialized) {
+            return true;
         }
-        LOGF("Attempting to connect to broker: %s:%i", address, port);
-        if (!mqttClient.connect(address, port)) {
-            ERRORF("Failed to connect to broker: %s", getMQTTError());
+        mqttClient.stop(); // Release the old socket before the transport repairs its data session.
+    }
+    if (!internetClient.prepareConnection()) {
+        ERROR(F("Network data session unavailable; retaining data for the next upload attempt."));
+        return false;
+    }
+    for (int attempt = 0; attempt < maxRetries; ++attempt) {
+        LOGF("Attempting to connect to broker: %s:%i (%i/%i)", address, port, attempt + 1,
+             maxRetries);
+        bool connected = false;
+        {
+            // ArduinoMqttClient's handshake timeout is 30 seconds, longer than the Feather's
+            // watchdog. Restore the caller's watchdog before diagnostics or the next operation.
+            LoomWatchdogPause watchdogPause;
+            mqttClient.stop();
+            connected = mqttClient.connect(address, port) == 1;
+            if (connected) {
+                mqttClient.poll();
+                connected = mqttClient.connected();
+            }
+            if (!connected) {
+                mqttClient.stop();
+            }
+        }
+        if (connected) {
+            LOG(F("Successfully connected to broker!"));
+            return true;
+        }
+        ERRORF("Failed to connect to broker: %s", getMQTTError());
+        if (attempt + 1 < maxRetries) {
+            // A fixed backoff is expected idle time, even with a sketch's short watchdog period.
+            LoomWatchdogPause watchdogPause;
             delay(5000);
         }
-        ++retryAttempts;
     }
-    LOG(F("Successfully connected to broker!"));
-    mqttClient.poll();
+    ERROR(F("MQTT Retry limit exceeded; the next publish can retry a fresh connection."));
     FUNCTION_END;
-    return true;
+    return false;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool MQTTComponent::publishMessage(const char *topic, const char *message, bool retain, int qos) {
-    FUNCTION_START;
+    FUNCTION_START(this);
 
     if (topic == nullptr || topic[0] == '\0' || message == nullptr) {
         ERROR(F("Cannot publish an MQTT message with a null/empty topic or null payload."));
         return false;
     }
-
-    if (!moduleInitialized || !internetClient.moduleInitialized) {
-        ERROR("Module or NetworkComponent not initialized!");
-        return false;
-    }
-    if (!mqttClient.connected()) {
-        ERROR("MQTT Client not connected to broker ");
-        return false;
-    }
-    // Tell the broker we are still here
-    mqttClient.poll();
 
     const size_t messageLength = strlen(message);
     if (messageLength >= MAX_JSON_SIZE) {
@@ -76,69 +94,67 @@ bool MQTTComponent::publishMessage(const char *topic, const char *message, bool 
     }
     // Supplying the payload length selects ArduinoMqttClient's streaming path. The
     // unknown-length overload allocates and retains a transmit buffer on the heap.
-    if (mqttClient.beginMessage(topic, messageLength, retain, qos) != 1) {
-        ERROR(F("Failed to begin message!"));
+    if (!beginPublish(topic, messageLength, retain, qos)) {
         return false;
     }
 
-    if (mqttClient.write(reinterpret_cast<const uint8_t *>(message), messageLength) !=
-        messageLength) {
-        ERROR(F("Failed to write complete MQTT message!"));
-        mqttClient.stop();
+    bool wroteAll = false;
+    {
+        LoomWatchdogPause watchdogPause;
+        wroteAll = mqttClient.write(reinterpret_cast<const uint8_t *>(message), messageLength) ==
+                   messageLength;
+        if (!wroteAll) {
+            mqttClient.stop();
+        }
+    }
+    if (!wroteAll) {
+        ERROR(F("Failed to write complete MQTT message; connection closed!"));
         return false;
     }
 
     // Check to see if we are actually closing messages properly
-    if (mqttClient.endMessage() != 1) {
-        ERROR(F("Failed to close message!"));
+    if (!finishPublish()) {
         return false;
     }
-    LOG(F("Data has been successfully sent!"));
     FUNCTION_END;
     return true;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool MQTTComponent::publishDocument(const char *topic, const DynamicJsonDocument &document,
-                                    bool retain, int qos) {
-    FUNCTION_START;
+bool MQTTComponent::publishDocument(const char *topic, const JsonDocument &document, bool retain,
+                                    int qos) {
+    FUNCTION_START(this);
 
     if (!loomJsonIsComplete(document)) {
         ERROR(F("Refusing to publish an empty or overflowed JSON document."));
         return false;
     }
 
-    if (!moduleInitialized || !internetClient.moduleInitialized) {
-        ERROR(F("Module or NetworkComponent not initialized!"));
-        return false;
-    }
-    if (!mqttClient.connected()) {
-        ERROR(F("MQTT Client not connected to broker."));
-        return false;
-    }
-
-    mqttClient.poll();
     const size_t payloadLength = measureJson(document);
     if (payloadLength >= MAX_JSON_SIZE) {
         ERROR(F("JSON payload exceeds MAX_JSON_SIZE."));
         return false;
     }
-    if (mqttClient.beginMessage(topic, payloadLength, retain, qos) != 1) {
-        ERROR(F("Failed to begin message!"));
+    if (!beginPublish(topic, payloadLength, retain, qos)) {
         return false;
     }
-    if (serializeJson(document, mqttClient) != payloadLength) {
-        ERROR(F("Failed to write complete MQTT JSON payload!"));
-        mqttClient.stop();
+    bool wroteAll = false;
+    {
+        LoomWatchdogPause watchdogPause;
+        wroteAll = serializeJson(document, mqttClient) == payloadLength;
+        if (!wroteAll) {
+            mqttClient.stop();
+        }
+    }
+    if (!wroteAll) {
+        ERROR(F("Failed to write complete MQTT JSON payload; connection closed!"));
         return false;
     }
-    if (mqttClient.endMessage() != 1) {
-        ERROR(F("Failed to close message!"));
+    if (!finishPublish()) {
         return false;
     }
 
-    LOG(F("Data has been successfully sent!"));
     FUNCTION_END;
     return true;
 }
@@ -147,24 +163,14 @@ bool MQTTComponent::publishDocument(const char *topic, const DynamicJsonDocument
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool MQTTComponent::publishStream(const char *topic, Stream &source, size_t length, bool retain,
                                   int qos) {
-    FUNCTION_START;
+    FUNCTION_START(this);
 
-    if (!moduleInitialized || !internetClient.moduleInitialized) {
-        ERROR(F("Module or NetworkComponent not initialized!"));
-        return false;
-    }
-    if (!mqttClient.connected()) {
-        ERROR(F("MQTT Client not connected to broker."));
-        return false;
-    }
     if (length >= MAX_JSON_SIZE) {
         ERROR(F("MQTT stream payload exceeds MAX_JSON_SIZE."));
         return false;
     }
 
-    mqttClient.poll();
-    if (mqttClient.beginMessage(topic, length, retain, qos) != 1) {
-        ERROR(F("Failed to begin message!"));
+    if (!beginPublish(topic, length, retain, qos)) {
         return false;
     }
 
@@ -173,16 +179,23 @@ bool MQTTComponent::publishStream(const char *topic, Stream &source, size_t leng
     while (remaining > 0) {
         const size_t requested = min(remaining, sizeof(buffer));
         const size_t bytesRead = source.readBytes(reinterpret_cast<char *>(buffer), requested);
-        if (bytesRead == 0 || mqttClient.write(buffer, bytesRead) != bytesRead) {
-            ERROR(F("Failed while streaming MQTT payload!"));
-            mqttClient.stop();
+        bool wroteAll = false;
+        {
+            // Keep the watchdog active while reading SD; pause only the modem write/close.
+            LoomWatchdogPause watchdogPause;
+            wroteAll = bytesRead > 0 && mqttClient.write(buffer, bytesRead) == bytesRead;
+            if (!wroteAll) {
+                mqttClient.stop();
+            }
+        }
+        if (!wroteAll) {
+            ERROR(F("Failed while streaming MQTT payload; connection closed!"));
             return false;
         }
         remaining -= bytesRead;
     }
 
-    if (mqttClient.endMessage() != 1) {
-        ERROR(F("Failed to close message!"));
+    if (!finishPublish()) {
         return false;
     }
     FUNCTION_END;
@@ -191,10 +204,64 @@ bool MQTTComponent::publishStream(const char *topic, Stream &source, size_t leng
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool MQTTComponent::getCurrentRetained(const char *topic, char *message, size_t messageCapacity) {
-    FUNCTION_START;
+bool MQTTComponent::beginPublish(const char *topic, size_t length, bool retain, int qos) {
+    FUNCTION_START(this);
+    if (topic == nullptr || topic[0] == '\0' || strlen(topic) >= MAX_TOPIC_LENGTH ||
+        length >= MAX_JSON_SIZE || qos < 0 || qos > 2) {
+        ERROR(F("Invalid MQTT topic, payload length, or QoS."));
+        return false;
+    }
+    if (!moduleInitialized || !internetClient.moduleInitialized) {
+        ERROR(F("Module or NetworkComponent not initialized!"));
+        return false;
+    }
+    bool started = false;
+    {
+        LoomWatchdogPause watchdogPause;
+        mqttClient.poll();
+        // A failed heartbeat can close the socket during poll(). Never start a frame on it.
+        started =
+            mqttClient.connected() &&
+            mqttClient.beginMessage(topic, static_cast<unsigned long>(length), retain, qos) == 1;
+        if (!started) {
+            mqttClient.stop();
+        }
+    }
+    if (!started) {
+        ERROR(F("MQTT begin failed/disconnected; closed the stream for the next reconnect."));
+    }
+    FUNCTION_END;
+    return started;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    if (topic == nullptr || topic[0] == '\0' || message == nullptr || messageCapacity < 2) {
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool MQTTComponent::finishPublish() {
+    FUNCTION_START(this);
+    bool completed = false;
+    {
+        // QoS 1 waits for PUBACK; QoS 2 can wait for two responses. A timeout must discard the
+        // socket, otherwise a late acknowledgement can contaminate a later publish attempt.
+        LoomWatchdogPause watchdogPause;
+        completed = mqttClient.endMessage() == 1;
+        if (!completed) {
+            mqttClient.stop();
+        }
+    }
+    if (!completed) {
+        ERROR(F("MQTT finish/acknowledgement failed; closed the stream for the next reconnect."));
+    }
+    FUNCTION_END;
+    return completed;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool MQTTComponent::getCurrentRetained(const char *topic, char *message, size_t messageCapacity) {
+    FUNCTION_START(this);
+
+    if (topic == nullptr || topic[0] == '\0' || strlen(topic) >= MAX_TOPIC_LENGTH ||
+        message == nullptr || messageCapacity < 2) {
         ERROR(F("Cannot read a retained MQTT message with an invalid topic or output buffer."));
         return false;
     }
@@ -227,30 +294,32 @@ bool MQTTComponent::getCurrentRetained(const char *topic, char *message, size_t 
         if (messageSize > 0 && static_cast<size_t>(messageSize) < messageCapacity) {
             // parseMessage() reports payload bytes. The previous implementation accidentally
             // copied messageTopic(), so RemoteManager tried to parse its topic as JSON.
-            const size_t bytesRead = mqttClient.read(reinterpret_cast<uint8_t *>(message),
-                                                     static_cast<size_t>(messageSize));
-            message[bytesRead] = '\0';
-            received = bytesRead == static_cast<size_t>(messageSize);
+            // The SDK returns a signed count. Validate it before using it as a buffer index.
+            const int bytesRead = mqttClient.read(reinterpret_cast<uint8_t *>(message),
+                                                  static_cast<size_t>(messageSize));
+            const bool countValid = bytesRead >= 0 && bytesRead <= messageSize;
+            if (countValid) {
+                message[static_cast<size_t>(bytesRead)] = '\0';
+            } else {
+                message[0] = '\0';
+            }
+            received = countValid && bytesRead == messageSize;
             if (!received) {
                 ERROR(F("Retained MQTT payload ended before the advertised length."));
+                mqttClient.stop(); // Discard the incomplete frame, not the broker's retained value.
             }
         } else if (messageSize > 0 && static_cast<size_t>(messageSize) >= messageCapacity) {
             ERRORF("Retained MQTT payload exceeds the %u-byte caller buffer; discarding it.",
                    static_cast<unsigned int>(messageCapacity));
 
-            uint8_t discard[32];
-            while (mqttClient.available() > 0) {
-                const size_t count =
-                    min(static_cast<size_t>(mqttClient.available()), sizeof(discard));
-                if (mqttClient.read(discard, count) == 0) {
-                    break;
-                }
-            }
+            // Do not drain an arbitrarily large/continuous payload during command handling.
+            // Closing this socket leaves the broker's retained value available for diagnosis.
+            mqttClient.stop();
         } else {
             WARNING(F("No retained MQTT payload received before the timeout."));
         }
 
-        if (!mqttClient.unsubscribe(topic)) {
+        if (mqttClient.connected() && !mqttClient.unsubscribe(topic)) {
             WARNINGF("Failed to unsubscribe from topic: %s.", topic);
         }
 
@@ -273,7 +342,7 @@ bool MQTTComponent::deleteRetained(const char *topic) { return publishMessage(to
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 const char *MQTTComponent::getMQTTError() {
     // Convert error codes to actual descriptions
-    FUNCTION_START;
+    FUNCTION_START(this);
     switch (mqttClient.connectError()) {
     case -2:
         return "CONNECTION_REFUSED";

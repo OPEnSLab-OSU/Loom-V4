@@ -13,12 +13,13 @@ LOOM_EXTERNAL_INCLUDE_END
 LOOM_EXTERNAL_INCLUDE_BEGIN
 #include "Arduino.h"
 LOOM_EXTERNAL_INCLUDE_END
-#include "Internet/Connectivity/NetworkComponent.h"
 #include "Module.h"
 
 #include "Hardware/Loom_Hypnos/SDManager.h"
 #include "Loom_Manager.h"
-#include "Sensors/Loom_Analog/Loom_Analog.h"
+#include "Sensors/Loom_Analog/Loom_Analog_Config.h"
+
+class NetworkComponent;
 
 // Used to pass along the user defined interrupt callback
 using InterruptCallbackFunction = void (*)();
@@ -78,6 +79,10 @@ enum TIME_ZONE {
  * Type of interrupt to register
  */
 enum HypnosInterruptType : uint8_t { SLEEP, OTHER };
+
+namespace loomPower {
+class RechargePolicy;
+}
 
 /**
  * All in one driver for the Hypnos board. This allows users to use the Hypnos board in a more
@@ -156,6 +161,9 @@ class Loom_Hypnos : public Module {
      * @param config The configuration to apply and retain for wake-up
      */
     void setWakeConfiguration(POWERRAIL_CONFIG config);
+    /** Read configured rails for diagnostics; these values do not measure rail voltage. */
+    POWERRAIL_CONFIG getWakeConfiguration() const { return wakeModePowerConfig; }
+    POWERRAIL_CONFIG getSleepConfiguration() const { return sleepModePowerConfig; }
 
     /* SD Functionality */
 
@@ -191,9 +199,28 @@ class Loom_Hypnos : public Module {
 
     /**
      * Set the next interrupt to be triggered at a set interval in the future
-     * @param duration The time that will elapse before the next interrupt is triggered
+     * @param duration The time before the next interrupt, from 1 second through 27 days
      */
     void setInterruptDuration(const TimeSpan duration);
+
+    /**
+     * Schedule a relative RTC wake and return whether its alarm was verified successfully.
+     * Call sleep() separately. Use this when acknowledging a remote command or deciding
+     * whether it is safe to enter standby; the legacy void setter remains available.
+     */
+    bool scheduleWake(const TimeSpan duration);
+
+    /**
+     * Keep sample starts on a fixed UTC interval, including time spent measuring/uploading.
+     * Call at the TOP of loop(), before measuring, then call sleep() after logging. The first
+     * call anchors the schedule; later calls keep that phase and skip missed slots. A changed
+     * interval or an observed backwards RTC reading starts a new phase. Local/DST display is
+     * separate. Valid intervals are 1 second through 27 days; allow enough time for the actual
+     * work and sleep preparation, or missed slots will be skipped.
+     * Returns false if the alarm cannot be safely armed; sleep() then remains awake.
+     * Use setInterruptDuration() instead when you deliberately want a full rest AFTER work.
+     */
+    bool setSampleInterval(const TimeSpan interval);
 
     /**
      * Drops the Feather M0 and Hypnos board into a low power sleep waiting for an interrupt to wake
@@ -202,6 +229,26 @@ class Loom_Hypnos : public Module {
      * before continuing execution
      */
     void sleep(bool waitForSerial = false);
+
+    /**
+     * Gracefully shut down modules and sleep until the next battery check. Both sensor rails
+     * are switched off during standby. On return the RTC/SD/USB path is restored briefly,
+     * then sensor rails remain off and Manager does NOT restart LTE or sensor modules.
+     * Call enable() followed by Manager::power_up() only after voltage has recovered.
+     * Returns false if no safe RTC standby was entered. Requires the standard pin-12 RTC wake.
+     */
+    bool sleepForRecharge(const TimeSpan checkInterval = TimeSpan(3600));
+    /** Optional processor RTC wake instead of Hypnos RTC. Owns the ArduinoLowPower internal
+     *
+     * RTC alarm; do not combine with another RTCZero owner. Sensor rails remain off. */
+    bool sleepForRechargeInternal(const TimeSpan checkInterval = TimeSpan(3600));
+
+    /**
+     * Opt in to a battery check BEFORE modules restart after normal sleep. Policy/reader must
+     * remain alive for this Hypnos instance; a null reader or unconfigured policy is rejected.
+     * The sketch must also call sleepForRecharge() while its policy requests charging.
+     */
+    bool setRechargePolicy(loomPower::RechargePolicy &policy, float (*readBatteryVolts)());
 
     /** Opt-in runtime protection of wake reinitialization; 0 preserves legacy behavior.
      * Hypnos suspends this guard across standby and restores it before wake I/O.
@@ -212,6 +259,9 @@ class Loom_Hypnos : public Module {
      * Get the current time from the RTC
      */
     DateTime getCurrentTime();
+    // Checked UTC read: rejects oscillator-stop status, I2C faults and invalid calendar fields.
+    // Failure leaves the caller's time unchanged; use this for logging/scheduling/metadata.
+    bool tryGetCurrentTime(DateTime &utc);
 
     /**
      * Convert the current time to a ISO 8601 compatible time string
@@ -240,17 +290,25 @@ class Loom_Hypnos : public Module {
      * Read file from SD
      * @param fileName File to read from
      */
-    char *readFile(const char *fileName) { return sdMan->readFile(fileName); };
+    char *readFile(const char *fileName) { return sdMan ? sdMan->readFile(fileName) : nullptr; };
 
     /**
      * Get the default SD card file name
      */
-    const char *getDefaultFilename() { return sdMan->getDefaultFilename(); };
+    const char *getDefaultFilename() { return sdMan ? sdMan->getDefaultFilename() : ""; };
 
     /**
      * Get an instance of the SD manager, used for batch SD
      */
     SDManager *getSDManager() { return sdMan; };
+
+    /**
+     * Restart the MCU with an explicit reason (1..63 bytes). With SD enabled, first save intent
+     * durably; return false and stay awake if that fails. A successful request never returns.
+     * Call from ordinary sketch code, never an interrupt handler. Routine watchdog feeds do
+     * not use this method. No existing Loom path requests an automatic software reset.
+     */
+    bool requestReset(const char *reason);
 
     /* Set a network interface in the Hypnos so we can sync our time */
     void setNetworkInterface(NetworkComponent *component) { networkComponent = component; };
@@ -276,7 +334,13 @@ class Loom_Hypnos : public Module {
     /**
      * Set an alternative name to log data to
      */
-    void setLogName(const char *name) { sdMan->setLogName(name); };
+    void setLogName(const char *name) {
+        if (sdMan != nullptr) {
+            sdMan->setLogName(name);
+        } else {
+            printModuleName("Cannot select an SD log name because SD support is disabled.");
+        }
+    };
 
     /* Return initialization state of the RTC */
     bool isRTCInitialized() { return RTC_initialized; };
@@ -324,6 +388,8 @@ class Loom_Hypnos : public Module {
     /* SD configuration */
     SDManager *sdMan = nullptr; // SD Manager
     uint16_t wakeWatchdogMs = 0;
+    loomPower::RechargePolicy *rechargePolicy = nullptr; // Borrowed, configured by the sketch.
+    float (*readBatteryVolts)() = nullptr;
     void enableWakeWatchdog();
     int sd_chip_select; // Pin that the SD card will use to communicate with the Hypnos
     bool enableSD;      // Specifies whether or not the SD card should be enabled on the Hypnos
@@ -332,8 +398,9 @@ class Loom_Hypnos : public Module {
 
     /* Real-Time Clock Settings */
 
-    RTC_DS3231 RTC_DS;            // Real time clock reference
-    bool RTC_initialized = false; // Did the RTC initialize correctly?
+    RTC_DS3231 RTC_DS;               // Real time clock reference
+    bool RTC_initialized = false;    // Did the RTC initialize correctly?
+    bool rtcWriteUnverified = false; // A failed/partial time write blocks UTC until a verified set.
 
     bool custom_time = false; // Set the RTC to a user specified time
     char sketchCompileDate[12] = {};
@@ -371,8 +438,9 @@ class Loom_Hypnos : public Module {
     InterruptRegistration *findInterruptRegistration(int pin);
     int sleepInterruptPin = -1;
 
-    void initializeRTC();       // Initialize RTC
-    bool releaseRTCInterrupt(); // Consume a wake alarm and verify INT/SQW is deasserted.
+    void initializeRTC();                  // Initialize RTC
+    bool writeRtcUtc(const DateTime &utc); // One owner for write/readback and uncertain-time state.
+    bool releaseRTCInterrupt();            // Consume a wake alarm and verify INT/SQW is deasserted.
 
     DateTime getLocalTime(DateTime time); // Convert a given UTC time to local time
     TIME_ZONE timezone;                   // Timezone the RTC was set to
@@ -380,12 +448,18 @@ class Loom_Hypnos : public Module {
     DateTime time;      // UTC time
     DateTime localTime; // Local time
 
-    DateTime alarmTime; // Time the alarm has been set for
+    DateTime alarmTime;                 // Time the alarm has been set for
+    uint32_t sampleIntervalSeconds = 0; // Zero selects legacy relative-delay alarms.
+    uint32_t nextSampleUtc = 0;
+    uint32_t lastSampleClockUtc = 0;
+    bool armRTCAlarm(const DateTime target); // Shared checked DS3231 arm/readback sequence.
     bool alarmScheduled = false;
 
     /* Sleep functionality */
-    bool pre_sleep(); // Called just before the hypnos enters sleep. Returns false if the registered
-                      // wake source is not ready, without disconnecting the rails or serial bus.
-    void post_sleep(bool waitForSerial); // Called just after the hypnos wakes up, this reconnects
-                                         // the power rails and the serial bus
+    bool sleepImpl(bool waitForSerial, bool wakeModules);
+    bool restoreModulesAfterSleep(bool wakeModules); // Battery gate for normal and failed wakes.
+    bool pre_sleep(bool forceRailsOff = false, bool externalWake = true);
+    void post_sleep(bool waitForSerial,
+                    bool wakeModules); // Called just after the hypnos wakes up, this reconnects
+                                       // the power rails and the serial bus
 };

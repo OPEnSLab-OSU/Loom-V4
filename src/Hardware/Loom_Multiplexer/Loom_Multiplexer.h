@@ -36,6 +36,9 @@ class Loom_Multiplexer : public Module {
     void package() override;
     void power_down() override;
     void power_up() override;
+    void idle() override;
+    void resume() override;
+    bool canRemovePower() const override;
     bool retryPowerUpWhenUninitialized() const override { return true; }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -122,6 +125,9 @@ class Loom_Multiplexer : public Module {
 
     /** Re-scan enabled ports and rebuild the auto-loaded sensor list. */
     void refreshSensors();
+
+    /** Debug-only inventory of existing mux children. No scan or allocation is performed. */
+    void traceObjects();
 
   private:
     Manager *manInst;           // Instance of the manager

@@ -8,12 +8,13 @@ These checks do not invoke compilers:
 ./tests/verify_source_preflight.ps1 -DeploymentFolder 'C:\Users\brews\Documents\Arduino\WispV2_Deploy_2026'
 ```
 
-The PowerShell 7 entry point runs the four checks below and fails if any one fails. Pass
+The PowerShell 7 entry point runs the five checks below and fails if any one fails. Pass
 `-FormatterPath` with an installed `clang-format.exe` path to add a read-only formatting check.
 It does not start the compile-audit launchers or the host tests. Individual checks remain available:
 
 ```powershell
 ./tests/verify_warning_scope.ps1
+./tests/verify_example_includes.ps1
 ./tests/verify_wisp_example_mirrors.ps1 -DeploymentFolder 'C:\Users\brews\Documents\Arduino\WispV2_Deploy_2026'
 ./tests/verify_wisp_diagnostic_boundaries.ps1 -DeploymentFolder 'C:\Users\brews\Documents\Arduino\WispV2_Deploy_2026'
 ./tests/verify_patched_dependencies.ps1
@@ -22,16 +23,39 @@ It does not start the compile-audit launchers or the host tests. Individual chec
 Warning-scope verification checks the current external include groups. Diagnostic-boundary
 verification also checks that canonical logger/memory headers exist and are explicitly included
 by their sketches. A source-only pass does not substitute for a successful board build or runtime
-verification. Compiler execution remains deferred at the user's request.
+verification. Compiler execution was authorized earlier on 2026-09-30, then paused by the user.
+Do not run the native/firmware runners while that pause is in effect. New optional-feature tests
+are uncompiled source candidates; dated earlier results retain their exact source hashes.
+
+## Core and driver regression tests
+
+The local `.github/workflows/core-boundaries.yml` prepares these host/source/mock checks on
+push, PR and manual dispatch using Windows 2022 and pinned ArduinoJson v6.20.1. It has not been
+pushed, dispatched or remotely accepted. It complements the existing formatting workflow;
+it does not run the board firmware audit or prove physical behavior. Local compilers stay paused.
+
+Run `./tests/verify_core_boundaries.ps1` from the repository root. MSVC C++ Build Tools
+and the installed ArduinoJson headers are required. Assertions stay enabled; raw logs and
+compiler products stay in a unique temporary folder. The runner checks production date, CSV,
+watchdog, radio bookkeeping, SDI-12 parsing, averaging, AS5311, Analog and ADS1115 code, plus the
+reed-switch anemometer and MQTT failure paths. Ten new optional-feature/lifecycle cases bring the source
+inventory to 27 programs; the new cases and current source are uncompiled while compilers are
+paused. The fixtures exercise production helpers or selected implementations with fake clock,
+GPIO, Wire, watchdog and MQTT surfaces. They do not model real initialization register reads,
+interrupt synchronization, modem/carrier behavior, flash/SD durability or end-to-end database
+delivery. New sources include health journaling, GNSS metadata, heartbeat payloads, Manager
+lifecycle, checksums, scheduling and buffer-pool ownership. Changed sources need retesting even
+when an earlier version passed. See the [issue tally](../docs/ISSUE_TALLY.md) for current limits.
 
 ## Data safety regression tests
 
-Run `./verify_data_safety.ps1` on Windows with Visual Studio C++ Build Tools installed.
+Run `./tests/verify_data_safety.ps1` from the repository root on Windows with Visual Studio C++ Build Tools installed.
 It uses the package's ArduinoJson headers and writes compiler products only to a new temporary
 directory. These host tests inject failed SD reads and closes into the production helpers and
 cover sparse/orphaned filenames, case-insensitive matching, length/counter boundaries, JSON
 overflow and recovery, and equivalence of buffered versus streamed pretty JSON.
-They do not emulate SD hardware, MQTT transport, or prove that a board cannot freeze.
+They do not emulate SD hardware, MQTT transport, or prove that a board cannot freeze. The new
+JSON-row-tail cases and current replay source are uncompiled after the compiler pause.
 
 On a host with GCC, the same tests can be run with:
 
@@ -44,6 +68,32 @@ Hardware acceptance checks: remove/fault the SD card during batch replay, test f
 flushes, reboot with a sparse set of numbered files, and force JSON overflow before `logToSD()`
 and `publish()`. Failed packets must not enter CSV/batch output or be published; the next valid
 packet must work. Confirm `/debug/output_N.log` again includes the pretty JSON payload.
+
+## Selected firmware matrix
+
+`verify_sketch_compilation.ps1 -SketchList <file>` compiles every directory in a saved
+one-directory-per-line list. It preserves sketch bytes, renames only the main `.ino` to
+`LoomAudit.ino` in a validated temporary staging folder, and saves hashes, raw logs and firmware
+under `tests/sketch_compile_<timestamp>`. Parent-relative includes require the original-folder
+batch audit. Generated reports stay on disk and are ignored by Git.
+
+Use the normal mode for acceptance builds. For a large API/example sweep, the optional
+`-ReuseVerifiedLibraryObjects` mode restores only products whose board settings, source/header
+bytes, header search winners and compiler programs still match. Arduino still discovers libraries,
+compiles changed inputs and links each firmware. Cache fault tests run with
+`python -m unittest discover -s tests -p test_verified_library_cache.py`.
+
+A temporary archive can be made with `make_verified_audit_archive.py --cache <verified-libraries>
+--source <Loom> --output <new-temporary-library>`. Pass it as `-PrecompiledLoom <library>` to
+compile and link sketches against accepted library objects and byte-identical headers. This mode
+checks archive/input hashes and compiles any directly discovered SDKs normally. It is an API/link
+sweep, not a release firmware build: ordinary static-archive extraction can omit unreferenced
+initializers. Do not upload these accelerated artifacts or use their sizes as release memory
+measurements. Keep normal original-folder cold builds as the reference.
+
+All modes retain raw external warnings. Cached warnings are not independent clean-build evidence.
+`loom_warning_filter.ps1 -AdditionalLoomDirs` classifies verified copies of Loom headers as
+Loom-owned too; include traces through them do not relabel a vendor warning.
 
 ## Board-package verification
 
@@ -113,11 +163,11 @@ Loom\
     WARNING_SCOPE.md
 ```
 
-Version: `2026-07-15-v21-retry-failed`
+Version: `2026-09-30-v23-checked-artifact-copy`
 
-The warning-scope headers are temporary audit instrumentation. See
-[`WARNING_SCOPE.md`](WARNING_SCOPE.md) for the rules for adding them to new
-source files and removing the entire structure before release.
+The warning-scope headers remain present at the user's request. See
+[`WARNING_SCOPE.md`](WARNING_SCOPE.md) for their narrow scope and maintenance rules.
+Do not strip them as part of this branch's validation.
 
 Double-click `warning_scope_strip.cmd` to remove the source instrumentation
 while saving an exact restore patch. Double-click `warning_scope_restore.cmd`
@@ -135,7 +185,7 @@ Checks that quiet Wisp sketches contain no added telemetry or SD debug logging, 
 sketches retain compile-gated, tagged diagnostics, and both retain production watchdog/retry
 coverage. Both Wisp checks accept `-DeploymentFolder` to check the active deployment pair too.
 The marker policy is defined in
-[`SAMD21_CODING_PROFILE.md`](../docs/SAMD21_CODING_PROFILE.md).
+[Loom style guide](../docs/STYLE_GUIDE.md).
 
 ```powershell
 .\verify_wisp_example_mirrors.ps1
@@ -150,8 +200,7 @@ loom_compile_audit_wisp_no_bins.bat
 ```
 
 Manual warning-separated audit of the six library Wisp sketches. This launcher does not run
-automatically as part of the source-only checks. Compilation of the readability refactor is
-deferred at the user's request.
+automatically as part of the source-only checks. Builds are a separate manual validation step.
 
 ```bat
 loom_compile_get_cli_tools.bat
@@ -204,7 +253,7 @@ and does not change global compiler settings.
 loom_compile_audit_full.bat
 ```
 
-Same audit plus keeps build folders and copies firmware artifacts into `complete_builds`. Because the build root defaults to `%TEMP%`, the kept build folders are reported in `compile_report.csv` rather than nested under the audit folder.
+Same audit plus keeps build folders and copies firmware artifacts into `complete_builds`. Copy failures make the run fail; filenames use the sketch index and original product name. Because the build root defaults to `%TEMP%`, the kept build folders are reported in `compile_report.csv` rather than nested under the audit folder.
 
 ## Console warning policy
 
@@ -274,3 +323,44 @@ set STRICT_WARNINGS=0
 set CONSOLE_OUTPUT=important
 set CONSOLE_WARNINGS=suppress
 ```
+
+## Latest accepted results
+
+See the [current issue tally](../docs/ISSUE_TALLY.md) for the compiler pause and historical build limits. To combine staged reports, run `summarize_sketch_compilation.py --requested <list> --reports <oldest> ... <newest> --output <summary.json>`. It checks current input hashes and requires the latest result for every requested sketch to pass; an earlier success cannot mask a failed retest.
+
+
+## Offline bridge and viewer checks
+
+`tools/service_mock` is a local prototype; it does not contact a broker, MongoDB or an account.
+Open `viewer.html` in a browser to inspect explicitly fictional data or import a local receipt
+JSON export. Python's SQLite mock separates device measurement UTC, arrival and acknowledged
+mock insertion. Insertion failure retains pending work. Exact topic/payload retries share a mock
+document while each arrival remains visible. This is not production deduplication or durability.
+
+Routes accept `project/database/NameInstance`; the legacy two-part route uses `RemoteTest`.
+Configure actual project routes explicitly. Payloads/queues have bounds and backpressure. A live
+bridge still needs authentication, durable spooling, disk monitoring, actual broker client/IP
+metadata and database acknowledgments. Map measured wind, battery and location fields/units
+explicitly. Missing measurement UTC is never filled from receipt or insertion time.
+
+Offline replay input is JSONL with `topic`, `packet`, and optional `client_id`, `source_ip`,
+`received_utc`, `inserted_utc`, and `fail`. These interpreted checks do not invoke a compiler:
+
+```text
+python -B tools/service_mock/receipt_store.py replay.jsonl --output receipts.json
+python -B -m unittest discover -s tools/service_mock -v
+node tools/service_mock/test_viewer.js
+```
+
+Their success does not authorize firmware/native compiler execution or establish live delivery.
+
+## Optional call and heap recorder
+
+See [TRACE_DEBUGGING](../docs/TRACE_DEBUGGING.md) for the off/calls/heap debug toggle,
+SD record format, coverage, performance cost, and offline snapshot inspector.
+`node tests/test_trace_converter.cjs` checks live-block reconstruction, nested calls,
+reallocation success/failure, missing records, partial tails, baseline totals, and labels.
+Wisp mirror checks strip the separate trace blocks/tags while still comparing operational
+code; the deployment copy retains its own analog and mux configuration.
+
+Focused native programs `test_trace` and `test_trace_json_append` check both production serializers, copied object names, SD power-off buffering, bounded loss, stopped capture, JSON trailer restoration, short writes, sync/close faults and preservation of damaged tails. The final SD pair includes a directly loadable Chrome `.perfetto.json` plus recoverable `.ndjson`.

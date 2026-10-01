@@ -1,0 +1,66 @@
+{
+  "date": "2026-09-30",
+  "board": "loom4:samd:adafruit_feather_m0:usbstack=arduino,debug=off",
+  "recorder_bytes": 1872,
+  "builds": [
+    {
+      "mode": "heap",
+      "sketch": "deployment debug (A0 and custom mux settings)",
+      "bytes": 227444,
+      "root": "C:\\Users\\brews\\AppData\\Local\\Temp/loom-trace-173cac8e5dc048f3997f2cedf937fe9b",
+      "elf_sha256": "4934a9c86165e40f75ca186982aed0882a5343d8ca0a418002003e16f58d32ce"
+    },
+    {
+      "mode": "heap",
+      "sketch": "Wisp_Mux_BatchLogging_debug",
+      "bytes": 225428,
+      "root": "C:\\Users\\brews\\AppData\\Local\\Temp/loom-trace-0f85e63bdc2b46f695b10a6961f2cbc8",
+      "elf_sha256": "bde9131c8b935b83e9b1cbd96fd107bf509f5b0fda1f292d2e35638a1d2795b8"
+    },
+    {
+      "mode": "off",
+      "sketch": "deployment debug",
+      "bytes": 212012,
+      "root": "C:\\Users\\brews\\AppData\\Local\\Temp/loom-trace-b1d18271fcf7440ba5476f888d0a3619",
+      "note": "No recorder/hook symbols. Follow-up trace-only scopes compile out.",
+      "elf_sha256": "42c0593cf2d52ce497ec701ec88dbe535b64afe4af3599545e3eb4a69af8a7c8"
+    },
+    {
+      "mode": "calls",
+      "sketch": "deployment debug",
+      "bytes": 226412,
+      "root": "C:\\Users\\brews\\AppData\\Local\\Temp/loom-trace-d45289f0ec72485cb8c2ccfa293b0c35",
+      "note": "Compiled before final module-readiness arguments and additional sleep/wake scopes; final heap builds verify those shared trace changes.",
+      "elf_sha256": "24b48543fe86fbca2ee56dda3cf1f43e18dee5ef2d1146fcd06c53cb4056aa9a"
+    }
+  ],
+  "native_root": "C:\\Users\\brews\\AppData\\Local\\Temp/loom-core-boundaries-0bfa4ad4a862462da376c82cdc9419ba",
+  "checks": [
+    "22 desktop lifetime/object/call/free-memory/production-format tests PASS",
+    "production Chrome JSON parses and matches NDJSON histories PASS",
+    "native recorder/wrappers/power-off/loss tests PASS",
+    "native JSON trailer short-write/sync/rollback/close/damaged-tail tests PASS",
+    "manager lifecycle PASS (existing fake resetCause warning)",
+    "quiet/debug parity including deployment PASS",
+    "diagnostic boundaries PASS",
+    "warning scopes PASS",
+    "include discovery PASS",
+    "final heap builds: no Loom-owned warnings"
+  ],
+  "hardware_uploaded": false,
+  "hardware_acceptance": "SD latency, real allocator coverage, watchdog margin, power-cut durability and soak remain unverified",
+  "desktop": {
+    "tinybuild": "1.0.6",
+    "uplot": "1.6.32",
+    "url": "http://127.0.0.1:8080/",
+    "checks": [
+      "tinybuild build and localhost run PASS",
+      "fictional call-entry/return retained-block comparison PASS",
+      "creation/release stacks and baseline mux inventory PASS",
+      "embedded stable Perfetto import of fictional JSON PASS",
+      "direct production recorder JSON native fixture imported in same Perfetto frame PASS",
+      "free heap and available-RAM estimate rendered from recorded measurements PASS"
+    ],
+    "notes": "Fictional demo and native serializer fixture are not board recordings."
+  }
+}

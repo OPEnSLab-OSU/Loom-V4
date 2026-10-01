@@ -1,5 +1,11 @@
 # Loom 4.9.1
 
+Optional Wisp debug call/heap recording now saves directly loadable Chrome JSON and detailed
+NDJSON records to SD for Perfetto and an offline
+live-allocation inspector. Off/calls/heap modes keep the default extra toggle off; the recorder
+uses a fixed buffer, checked SD appends, explicit loss/coverage labels, and separate recording
+overhead. See `docs/TRACE_DEBUGGING.md` for scope, baseline limitations, and verification.
+
 GET NEW PACKAGE DEPENDENCIES HERE (too big for github): https://drive.google.com/file/d/1-3h9KJZLhEqDoYGxGSycEwhwRnLGpojW/view?usp=sharing
 
 Updated libraries in the zip (you cannot get all of these off Arduino library manager!):
@@ -30,6 +36,34 @@ Use the packaged OPEnS_RTC dependency instead of Adafruit RTClib for this stable
 
 Loom 4.9.1 is a bug-fix and hardware-support release built directly on Loom 4.9. It preserves the 4.9 APIs and packaged field names while correcting sleep, SD, multiplexer, LTE, networking, sensor, and example failures found during field deployment and the full example compile audit.
 
+The sensor/card timing pass validates SDI-12 M! replies, waits the advertised measurement time,
+reads all D blocks, accepts adjacent signed values and rejects stale/noisy discovery responses.
+TEROS 21 adds matric potential and TEROS 54 adds four depths; GS3/TER11/TER12 labels/order are
+preserved. Existing TER11/TER12 water-content labels still contain calibrated ADC counts; selecting
+soil calibration remains explicit future work. ADS1115 now checks I2C transfers, limits conversion
+polling to 25 ms, fixes differential-only reads, avoids the vendor helper allocation, and adds
+opt-in channel/voltage-column controls while retaining its default schema. Three sensor headers
+forward-declare Manager instead of exposing its packet dependency.
+
+SEN66 now waits the documented typical 30-second PM startup before sampling, retains running
+measurement on a powered sensor rail, checks raw unavailable sentinels per field and averages
+independently. The installed driver's 1000 ms stop delay is extended to the current 1400 ms
+requirement; duplicate reset delay is removed. Cold-start awake time increases; gas learning,
+physical power behavior and field accuracy remain bench concerns. Manufacturer references,
+local card status and remaining acceptance work are consolidated in `docs/ISSUE_TALLY.md`.
+Compilation was authorized earlier on 2026-09-30; host parser/averaging, watchdog, CSV, ADC
+and reed-switch regressions passed at those revisions. Compilers are now paused again; those
+results do not validate subsequent source changes or physical behavior.
+
+The follow-through adds opt-in Analog raw/millivolt columns (both remain enabled by default),
+separates its Manager/JSON implementation dependency, validates seven-bit I2C addresses before
+narrowing, and gives the AS5311 reader portable constant-time parity checking. Three E102 examples
+now explicitly include Hypnos. A small, allocation-free reed-switch anemometer samples an explicitly
+calibrated two-second interrupt window; it adds no weather-kit dependency. Its example documents
+SparkFun SEN-15901 calibration and excludes powered analog-output hardware. Calibration/contact
+bounce and interrupt wiring still need physical validation. Manual CI formatting now fails on errors
+instead of silently succeeding.
+
 The compatibility-preserving professionalism pass also bounds string/config parsing; removes the
 duplicate 2 KB OLED, 1 KB Max, and 1 KB Freewave JSON workspaces; removes LoRa/Freewave manager heap
 allocations; corrects retained MQTT and EZO payload handling; makes hardware ownership explicit;
@@ -54,6 +88,83 @@ and radio framing.
 
 Comparison used for this changelog: Git tag `v4.9` through branch `4.9-joshfixes`.
 
+### 2026-09-29 SD/network/Dendrometer follow-through (not compiled)
+
+- **#207:** share a checked sync/rollback/close finalizer between batch and text/pretty-JSON debug
+  appends. Preserve uncertain debug files and stop SD debug output for that boot; skip summaries
+  before SD initialization. Remove the five-second stall from unavailable optional debug logging.
+  This hardens software failure handling; it does not establish the root cause of FAT corruption.
+- **#288:** share MQTT frame start/finish checks across text, JSON and stream publishing, recheck
+  connection after poll, and close failed frames before a later reconnect. Restore cellular PDP
+  before retrying TCP; preserve watchdog state around blocking network operations. Give MongoDB
+  the physical Feather's stable MQTT client ID; verify the broker's 32-character/ACL support.
+- **#349:** correct the Dendrometer node's ambiguous LoRa constructor, optional includes/radio path,
+  unbounded alignment/Serial startup, bad AS5311 conversion handling and position rollover average.
+  Make the hub queue/retry on SD and preserve each queued node's topic with an explicit opt-in;
+  restore hub identity for heartbeats and remove the missing private secrets-header prerequisite.
+  The card's AS5111/checked-in AS5311 discrepancy and 4.8 hardware compatibility remain unresolved.
+- **#318:** source review finds exact/yearly North American transition rules, MST and UTC/local/SD
+  timezone separation already present. Extend deferred tests to the card's 2027-2029 boundaries.
+- **#345/#341:** add file/offset/topic/length diagnostics and precise broker-ACK messages. Server
+  receipt/insert-time evidence and bounded broker/database logging remain external follow-ups.
+- Source-only warning scopes, quiet/debug pairs, diagnostic boundaries, installed dependency/core
+  hashes and formatting passed. Additional fault/rollover/DST tests are written but uncompiled and
+  unexecuted. No compilers, firmware uploads, server changes or GitHub card mutations were used.
+
+### 2026-09-29 major task-board candidates (not compiled)
+
+Major-card work resumed at the user's request. Current per-card status and remaining work
+are consolidated in `docs/ISSUE_TALLY.md`.
+
+- **#353 / LoRa:** bound the whole receive loop by elapsed time and datagram count; expire
+  abandoned fragments, distinguish fresh full/custom packets from module fragments, track batch
+  counts by sender and release failed blocking batch loops. Reject oversized/truncated outbound
+  bodies and headers while retaining existing padded RadioHead framing.
+- **#268 / SD CSV:** stream correct CSV quoting for text/nested JSON, compare existing headers
+  exactly and rotate CSV independently from pending upload batches. Use actual file size for new
+  headers, check header byte writes and preserve uncertain append/close outcomes before using a
+  fresh CSV. Ordinary cells, column ordering and filename patterns remain unchanged.
+- **#328 / sampling:** add opt-in `Hypnos::setSampleInterval()` with a fixed UTC grid, skipped
+  overrun slots and shared checked alarm arming. All three SmartRock examples now schedule before
+  measurement. `setInterruptDuration()` keeps its existing relative rest-after-work meaning.
+- **#346 / SEN55:** discard startup PM readings for 30 seconds before the existing averaging
+  window; mark missing/current-cycle failures as unavailable instead of zero/stale readings.
+  Retain real zero values and existing field labels. Query firmware before direct mode switching;
+  older/unknown firmware keeps PM running between reads rather than resetting gas-learning state.
+  This adds awake-time/power cost and does not prove long-term optical degradation is resolved.
+- **Validation:** source-only warning headers, four quiet/debug pairs, diagnostic boundaries,
+  reviewed dependency/official core integrity and source formatting passed. Added portable
+  regression cases remain uncompiled and unexecuted. Radio/SD/sampling/sensor integration, hardware
+  soak, golden outputs and RAM/stack measurements remain pending. No GitHub cards were closed.
+
+### 2026-09-29 restore comparison and focused source fixes (not compiled)
+
+All 15 `4.8-restore` remote heads were compared by SHA/history/source. Existing DST, UTC/local
+separation, ISO formatting, lower SD speed, and memory fixes were distinguished from missing
+features and incompatible older designs. Significant fixes were selectively applied instead
+of importing a whole legacy branch. The latest saved 55-card membership and remaining work
+are consolidated in `docs/ISSUE_TALLY.md`.
+
+- **Watchdog/sleep:** suspend even runtime-enabled SAMD watchdogs during standby and bounded LTE
+  operations, then restore the retained configuration on every return. Add opt-in Serial feed
+  call-site tracing; retain existing no-argument progress callbacks and function start/end cues.
+- **Reset health:** record raw hardware causes, Feather serial, intent status, and CSV session in
+  a separate boot JSONL journal, independent of ordinary SD debug logging. Add an explicit Hypnos
+  reset-request method that commits SD intent before resetting, or stays awake on a write failure.
+  This does not introduce automatic resets or claim every field watchdog issue is resolved.
+- **LTE:** disconnect before shutdown, honor its acknowledgment, probe uncertain power state
+  before another power pulse, avoid off-modem connectivity queries, and bound response readers
+  under continuous UART input. Keep the R4/R5 adapters and existing batch/data contracts.
+- **Configuration/time:** reject invalid original UTC fields before narrowing, checked-accumulate
+  SD interval seconds, and reject malformed MQTT configuration before copying null strings.
+- **Core boundaries:** isolate SD reset diagnostics in their own source, split analog settings
+  from the sensor implementation, forward-declare the network interface, lazily initialize the
+  hardware ID for early SD startup, and guard SD-disabled convenience methods.
+
+Source-only preflight and formatting were used. New portable date/interval and watchdog-pause
+regression cases are written but not run. No compiler, firmware upload, or board soak was run;
+RAM measurements and hardware/fault validation remain deferred.
+
 Line-level review anchors below use line numbers from `4.9-joshfixes`; they identify the main implementation entry points, while the accompanying file bundles describe the complete affected surface.
 
 ## Issue and field-report traceability
@@ -63,7 +174,7 @@ All paths below are relative to the Loom repository root. “Implementation” i
 | Report | 4.9.1 status and resolution | Exact implementation and validation files |
 | --- | --- | --- |
 | [#252 — SARA-R4 to SARA-R5 conversion](https://github.com/OPEnSLab-OSU/Loom-V4/issues/252) | **Addressed in Loom.** Added runtime R4/R5 selection, separate TinyGSM adapters, Jolteon power timing, AT/PDP diagnostics, retry handling, and Arduino IDE-compatible R5 sketches. Updated TinyGSM and SparkFun LTE libraries are included in the package archive. Final Jolteon end-to-end hardware validation is still recommended. | **Implementation:** `src/Internet/Connectivity/Loom_LTE/Loom_LTE.cpp`, `src/Internet/Connectivity/Loom_LTE/Loom_LTE.h`, `src/Internet/Connectivity/Loom_LTE/Loom_LTE_Config.h`, `src/Internet/Connectivity/Loom_LTE/Loom_LTE_Modem.cpp`, `src/Internet/Connectivity/Loom_LTE/Loom_LTE_Modem.h`, `src/Internet/Connectivity/Loom_LTE/Loom_LTE_SaraR4.cpp`, `src/Internet/Connectivity/Loom_LTE/Loom_LTE_SaraR5.cpp`, `src/Internet/Connectivity/Loom_LTE/Loom_LTE_TinyGsmAdapter.h`.<br>**Validation/examples:** `examples/Lab Examples/Jolteon/Loomified_LTE_R5_example/Loomified_LTE_R5_example.ino`, `examples/Lab Examples/Jolteon/Loomified_LTE_R5_debug_passthrough/Loomified_LTE_R5_debug_passthrough.ino`, `examples/Lab Examples/Jolteon/SARA_R5_Test_No_Loom/SARA_R5_Test_No_Loom.ino`, `examples/Lab Examples/Jolteon/WC_FastRegisterR5Compat/WC_FastRegisterR5Compat.ino`; packaged `TinyGSM` and `SparkFun_LTE_Shield_Arduino_Library-master`. |
-| [#268 — SD log bounds checks and Arduino String removal](https://github.com/OPEnSLab-OSU/Loom-V4/issues/268) | **Partially addressed.** Bounded SD header, row, filename, and batch-name construction; corrected initialization/open status; checked exact-size reads; and rolled failed row/record writes back to the prior file size. CSV escaping, FNV schema rotation, complete dependency-level `String` removal, and a memory-pool pipeline are not part of 4.9.1. | **Implementation:** `src/Hardware/Loom_Hypnos/SDManager.cpp`, `src/Hardware/Loom_Hypnos/SDManager.h`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.h`.<br>**Validation/examples:** `examples/Lab Examples/SmartRock/SmartRock/SD_config_nested_example.json`, `examples/Lab Examples/Evaporometer/Evaporometer_V1_fixed/Evaporometer_V1_fixed.ino`. |
+| [#268 — SD log bounds checks and Arduino String removal](https://github.com/OPEnSLab-OSU/Loom-V4/issues/268) | **Partially addressed.** Bounded SD header, row, filename, and batch-name construction; corrected initialization/open status; checked exact-size reads; and rolled failed row/record writes back to the prior file size. Later source candidates add CSV escaping, exact header comparison/rotation and optional row checksums. Complete dependency-level `String` removal and a framework-wide memory-pool pipeline remain outside this pass. | **Implementation:** `src/Hardware/Loom_Hypnos/SDManager.cpp`, `src/Hardware/Loom_Hypnos/SDManager.h`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.h`.<br>**Validation/examples:** `examples/Lab Examples/SmartRock/SmartRock/SD_config_nested_example.json`, `examples/Lab Examples/Evaporometer/Evaporometer_V1_fixed/Evaporometer_V1_fixed.ino`. |
 | [#288 — LoRa + LTE Mongo upload failures](https://github.com/OPEnSLab-OSU/Loom-V4/issues/288) | **Targeted; soak testing required.** MQTT uses QoS 1, supports Loom-sized payloads, and propagates publish/delete status. LTE separates boot, registration, PDP, and socket failures. LoRa rejects incomplete fragment sets. The reported multi-day degradation still requires a long-running hub test. | **Implementation:** `src/Internet/Logging/MQTTComponent/MQTTComponent.cpp`, `src/Internet/Logging/MQTTComponent/MQTTComponent.h`; `src/Internet/Logging/Loom_MongoDB/Loom_MongoDB.cpp`; `src/Internet/Connectivity/Loom_LTE/Loom_LTE.cpp`, `src/Internet/Connectivity/Loom_LTE/Loom_LTE.h`; `src/Radio/Loom_LoRa/Loom_LoRa.cpp`.<br>**Validation/examples:** `examples/Lab Examples/LoRa_To_4G/LoRa_To_4G.ino`, `examples/Internet/Logging/LTEMongoDBBatch/LTEMongoDBBatch.ino`. |
 | [#290 — AS7263 example typo](https://github.com/OPEnSLab-OSU/Loom-V4/issues/290) | **Addressed.** Replaced the invalid `Loom_AwS7262` type with `Loom_AS7263` and corrected the constructor documentation. | **Example:** `examples/Sensors/I2C/AS7263/AS7263.ino`. |
 | [#291 — Various example compile errors](https://github.com/OPEnSLab-OSU/Loom-V4/issues/291) | **Partially addressed.** Corrected invalid sketch-folder/main-file layouts, duplicate SmartRock entry points, stale class/method names, missing constants, and R5 selection. Credential-bearing examples still require local ignored secrets. | **Renamed/fixed sketches:** `examples/ClassExamples/E102/Adalogger_i2cSensorsSD_STEMMA/Adalogger_i2cSensorsSD_STEMMA.ino`; `examples/Lab Examples/MultipleInterrupts/MultipleInterrupts.ino`; `examples/Lab Examples/SmartRock/SmartRock_2026/SmartRock_2026.ino`; `examples/Lab Examples/WC_FastRegister/WC_FastRegister.ino`; `examples/Lab Examples/WeatherChimes/Configurable_Chime_Code_2026/Configurable_Chime_Code_2026.ino`; `examples/Lab Examples/WeatherChimes/Cumulative_Chimes_Code_2025/Cumulative_Chimes_Code_2025.ino`; `examples/Lab Examples/Wisp/Wisp_Batch_Logging/Wisp_Batch_Logging.ino`; `examples/Sensors/I2C/VCNL2/VCNL2.ino`.<br>**Audit files:** `tests/loom_compile_engine.bat`, `tests/loom_compile_audit_no_bins.bat`, `tests/loom_compile_retry_failed.bat`, `tests/loom_retry_failed.ps1`. |
@@ -83,16 +194,19 @@ All paths below are relative to the Loom repository root. “Implementation” i
 | SmartRock: freeze on first wake with the EC/I2C board attached or longer sleep intervals | **Targeted; stack validation recommended.** Hypnos wake behavior is independently hardware-verified; SmartRock configuration, rail settling, ADS1115 startup, and MS5803 paths are corrected. | **Implementation:** `src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp`, `src/Hardware/Loom_Hypnos/Loom_Hypnos.h`; `src/Sensors/I2C/Loom_ADS1115/Loom_ADS1115.cpp`; `src/Sensors/I2C/Loom_MS5803/Loom_MS5803.cpp`, `src/Sensors/I2C/Loom_MS5803/Loom_MS5803.h`.<br>**Examples:** `examples/Lab Examples/SmartRock/SmartRock/SmartRock.ino`, `examples/Lab Examples/SmartRock/SmartRock2.5/SmartRock2.5.ino`, `examples/Lab Examples/SmartRock/SmartRock_2026/SmartRock_2026.ino`. |
 | Slow first compile and hundreds of warnings exposed by the CLI audit | **Partially addressed.** Cleaned Loom-owned errors, missing returns, signedness issues, unsafe formatting, and unused locals. The audit distinguishes Loom and dependency warnings; dependency pruning remains future work. | **Audit engine/filter:** `tests/loom_compile_engine.bat`, `tests/loom_warning_filter.ps1`.<br>**Entry points:** `tests/loom_compile_audit_full.bat`, `tests/loom_compile_audit_no_bins.bat`, `tests/loom_compile_smoke_no_logs_or_bins.bat`, `tests/loom_compile_audit_jolteon_r5_no_bins.bat`.<br>**Retry/state tooling:** `tests/loom_compile_retry_failed.bat`, `tests/loom_retry_failed.ps1`, `tests/warning_scope_architecture.ps1`, `tests/warning_scope_strip.cmd`, `tests/warning_scope_restore.cmd`, `tests/.warning_scope_state/restore.patch`. |
 
-### Open issues reviewed but not claimed by 4.9.1
+### Additional cards and current source limits
 
-| Issue | Status in this release |
+The latest source status below supersedes the initial release review. These optional candidates
+remain uncompiled under the current compiler pause. Full per-card status is in `docs/ISSUE_TALLY.md`.
+
+| Issue | Current local status |
 | --- | --- |
-| [#220 — LTE location metadata](https://github.com/OPEnSLab-OSU/Loom-V4/issues/220) | Not implemented. LTE identity, diagnostics, and connectivity changed, but location acquisition and CSV/metadata integration were not added. |
-| [#267 — Memory pools](https://github.com/OPEnSLab-OSU/Loom-V4/issues/267) | Not implemented. This release reduces several unsafe allocations but does not add a shared deterministic pool. |
-| [#271 — LoRa groups and scheduling](https://github.com/OPEnSLab-OSU/Loom-V4/issues/271) | Not implemented. Fragment handling was corrected, but address partitioning and time-slot scheduling were not added. |
-| [#272 — Sensor dependency review](https://github.com/OPEnSLab-OSU/Loom-V4/issues/272) | Updated dependency replacements are packaged, but the full review and removal of unused libraries is not complete. |
-| [#273](https://github.com/OPEnSLab-OSU/Loom-V4/issues/273) / [#281](https://github.com/OPEnSLab-OSU/Loom-V4/issues/281) — Manager idle/standby mode | Not implemented. Existing full power-down and Hypnos standby behavior was repaired; a separate manager idle mode was not introduced. |
-| [#287 — Logger filename truncation](https://github.com/OPEnSLab-OSU/Loom-V4/issues/287) | The reported missing first character is already corrected in the 4.9 baseline. No separate 4.9.1 behavior change is claimed. |
+| [#220 — LTE location metadata](https://github.com/OPEnSLab-OSU/Loom-V4/issues/220) | Optional R5 GNSS acquisition, fresh metadata and stable nullable CSV columns are implemented as source candidates. Defaults stay off; hardware and live schema acceptance remain. |
+| [#267 — Memory pools](https://github.com/OPEnSLab-OSU/Loom-V4/issues/267) | Optional fixed receive slots and bounded allocation utilities are present. Whole-framework/SDK migration and a measured runtime budget remain larger work. |
+| [#271 — LoRa groups and scheduling](https://github.com/OPEnSLab-OSU/Loom-V4/issues/271) | Optional group filtering and UTC slots are source candidates; radio ACKs are not application authorization or storage acceptance. Airtime, retries and RTC synchronization need bench checks. |
+| [#272 — Sensor dependency review](https://github.com/OPEnSLab-OSU/Loom-V4/issues/272) | Direct include cleanup and dependency profiling tools are retained. Required drivers remain; team review and a slim board package are still separate work. |
+| [#273](https://github.com/OPEnSLab-OSU/Loom-V4/issues/273) / [#281](https://github.com/OPEnSLab-OSU/Loom-V4/issues/281) — Manager idle/standby mode | Optional Manager hooks and mux forwarding support SEN55/SEN66 retained-rail standby. Unsupported drivers stay powered; Dendrometer/Evaporometer contracts and broader ownership redesign remain. |
+| [#287 — Logger filename truncation](https://github.com/OPEnSLab-OSU/Loom-V4/issues/287) | Already corrected in the 4.9 baseline; retained without claiming a new fix. |
 
 ## Core correctness and compatibility
 
@@ -197,3 +311,45 @@ All paths below are relative to the Loom repository root. “Implementation” i
 - **Passed:** Wisp V2 Deploy sketch has correct timestamps.
 - **Compile coverage:** the audit harness discovers the complete example tree and the 4.9.1 fixes address the Loom-owned failures found during the 123-sketch run.
 - **Still recommended:** a multi-day LoRa/LTE/MongoDB soak test, a complete Wisp V2 SEN66/DF-gas mux sleep test, final SmartRock EC-board wake validation, and final Jolteon SARA-R5 end-to-end validation.
+
+- Build follow-through: restore top-level Loom include discovery before nested BatchSD includes in
+  LTE/WiFi batch examples and both Wisp batch pairs; retain all operational code and visual cues.
+- Add host fault coverage for production MQTT publishing/reconnect/retained-message paths, including
+  short writes, failed completion, post-poll disconnect, bounded retries and watchdog restoration.
+
+- Earlier 2026-09-30 validation accepted 126 sketch/API-link checks, four beta-diagnostic-off
+  builds, nine normal cold reference builds, eleven host programs and the data-safety suite,
+  with zero Loom-owned compiler warnings at those revisions. Later accepted host coverage
+  reached 17 programs. Current source changes and ten additional host programs remain
+  uncompiled under the renewed compiler pause. See `docs/ISSUE_TALLY.md` for current limits;
+  retained build products describe historical results, not acceptance of the current source.
+
+
+### 2026-09-30 optional support and final source refinements (not compiled)
+
+- Add optional Manager idle/resume and borrowed health-observer hooks; preserve the watchdog
+  and supported retained-rail sensor behavior. Observer completion events do not prove driver
+  success. Flash health remains an infrequent two-slot opt-in with writes/automatic attempts off
+  by default, not a durable record of every operation before a crash.
+- Keep optional R5 GNSS separate from measurement UTC and modem network operations. Validate
+  checksums/calendar/coordinates/freshness; provide metadata and stable nullable CSV location
+  fields. The example defaults GNSS and SD off and does not assume GNSS hardware is installed.
+- Add optional CSV identity suppression, row checksums, sensor column selection, radio groups/
+  UTC slots and heartbeat modes while preserving defaults, packet identity and pending batches.
+  CSV identity suppression affects CSV only; sensor column selection also changes sample JSON.
+- Add optional recharge hysteresis using the user's 3.7/4.2 V policy, bounded loop-side brownout
+  handling, and an internal-timer sleep choice. MCU supply/flash safety, current and recovery
+  margins remain physical acceptance work.
+- Extend checked RTC reads, bounded AT replies, stream forwarding, receive-buffer ownership,
+  packet-view lifetime and command/publish failure handling. Retain explicit function start/end
+  debug spelling, thorough comments, slash dividers and the compiler warning-scope header.
+- Retain offline receipt/routing/dashboard mocks and their interpreted checks. They separate
+  measurement, receipt and insertion times without claiming production-service integration.
+- Prepare read-only source/host/mock CI with pinned ArduinoJson v6.20.1 and preserve separate
+  Loom/external warning audits. The workflow has not been pushed, dispatched or accepted.
+- Consolidate the saved 55-card audit into `docs/ISSUE_TALLY.md` and beginner/embedded coding
+  guidance into `docs/STYLE_GUIDE.md`. Remove generated narrative reports, board snapshots and
+  redundant new READMEs at the user's request; retain original project documentation, code,
+  functional build manifests, tests/tools and existing build products.
+- Source-only/interpreted checks passed before consolidation. No compiler or hardware test
+  validates these latest candidates; the current compiler pause remains in effect.

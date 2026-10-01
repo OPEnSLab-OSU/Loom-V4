@@ -1,5 +1,6 @@
 #include "Loom_Manager.h"
 #include "Logger.h"
+#include "Utilities/Loom_ResetDiagnostics.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 Manager::Manager(const char *devName, uint32_t instanceNum)
@@ -18,6 +19,12 @@ void Manager::registerModule(Module *module) {
     if (module == nullptr) {
         ERROR(F("Cannot register a null module."));
         return;
+    }
+    for (Module *registered : modules) {
+        if (registered == module) {
+            WARNING(F("This module is already registered; keeping one measurement cycle."));
+            return; // Reusing one object must not rename it or measure it twice.
+        }
     }
 
     // The packet needs distinct labels for modules of the same type. Match the base name even
@@ -71,7 +78,11 @@ void Manager::beginSerial(bool waitForSerial) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::measure() {
-    FUNCTION_START;
+    FUNCTION_START(this);
+    if (modulesIdle) {
+        WARNING(F("Resume the idle modules before measuring."));
+        return;
+    }
     if (!hasInitialized) {
         ERROR(F("Unable to collect data as the manager and thus all sensors connected to it have "
                 "not been initialized! Call manager.initialize() to fix this."));
@@ -79,7 +90,9 @@ void Manager::measure() {
         LOG(F("** Measuring **"));
         for (Module *module : modules) {
             if (module->moduleInitialized) {
+                FUNCTION_START(module, "Module dispatch: measure()");
                 module->measure();
+                LOOM_FEED_WATCHDOG(); // One module finished; a stalled next driver stays guarded.
             } else {
                 WARNINGF("%s Not initialized!", module->getModuleName());
             }
@@ -87,12 +100,15 @@ void Manager::measure() {
     }
     LOG(F("** Measuring Complete **"));
     FUNCTION_END;
+    if (hasInitialized) {
+        notifyHealth(HealthEvent::Measured);
+    }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::package() {
-    FUNCTION_START;
+    FUNCTION_START(this);
 
     LOG(F("** Packaging **"));
 
@@ -102,7 +118,7 @@ void Manager::package() {
     doc["id"]["name"] = get_device_name();
     doc["id"]["instance"] = get_instance_num();
 
-    contentsArray = doc.createNestedArray("contents");
+    doc.createNestedArray("contents");
 
     // Add the packet number to the JSON document
     JsonObject json = get_data_object("Packet");
@@ -110,7 +126,9 @@ void Manager::package() {
 
     for (Module *module : modules) {
         if (module->moduleInitialized) {
+            FUNCTION_START(module, "Module dispatch: package()");
             module->package();
+            LOOM_FEED_WATCHDOG(); // Feed after completed work, never during a blocked call.
         } else {
             WARNINGF("%s Not initialized!", module->getModuleName());
         }
@@ -124,6 +142,7 @@ void Manager::package() {
 
     LOG(F("** Packaging Complete **"));
     FUNCTION_END;
+    notifyHealth(HealthEvent::Packaged);
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -131,14 +150,21 @@ void Manager::package() {
 JsonObject Manager::get_data_object(const char *moduleName) {
     const char *safeModuleName = moduleName ? moduleName : "";
 
-    for (JsonObject moduleEntry : contentsArray) {
+    // getDocument() lets radios/sketches clear or replace the packet. Resolve this view from
+    // the CURRENT document each time; a cached array could point into the previous packet.
+    JsonArray contents = doc["contents"].as<JsonArray>();
+    if (contents.isNull()) {
+        contents = doc.createNestedArray("contents");
+    }
+
+    for (JsonObject moduleEntry : contents) {
         const char *existingName = moduleEntry["module"].as<const char *>();
         if (existingName != nullptr && strcmp(existingName, safeModuleName) == 0) {
             return moduleEntry["data"];
         }
     }
 
-    JsonObject moduleEntry = contentsArray.createNestedObject();
+    JsonObject moduleEntry = contents.createNestedObject();
     moduleEntry["module"] = safeModuleName;
     return moduleEntry.createNestedObject("data");
 }
@@ -150,64 +176,113 @@ void Manager::power_up() { power_up(0); }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::power_up(int wakeWatchdogMs) {
-    FUNCTION_START;
+    FUNCTION_START(this);
+    modulesIdle = false; // Full power-up supersedes retained-rail idle mode.
     if (wakeWatchdogMs > 0) {
         Watchdog.enable(wakeWatchdogMs);
     } else {
         WD_TIMER_ENABLE;
     }
     for (Module *module : modules) {
-        loomResetWatchdogIfEnabled();
+        LOOM_FEED_WATCHDOG();
         if (module->moduleInitialized || module->retryPowerUpWhenUninitialized()) {
-            // LTE startup may legitimately take minutes. Limit the exception to that call,
-            // then restore protection before the following sensor/SD module is touched.
-            const bool isLTE = strcmp(module->getModuleName(), "LTE") == 0;
-            if (isLTE) {
-                if (wakeWatchdogMs > 0) {
-                    Watchdog.disable();
-                } else {
-                    WD_TIMER_DISABLE;
-                }
-            }
+            // Drivers own any temporary watchdog pause they need. LTE already restores its
+            // caller's timer after startup, so the following sensor stays protected too.
+            // Module labels are only for people/data; renaming one must not change protection.
+            FUNCTION_START(module, "Module dispatch: power_up()");
             module->power_up();
-            if (isLTE && wakeWatchdogMs > 0) {
-                Watchdog.enable(wakeWatchdogMs);
-            }
         } else {
             WARNINGF("%s Not initialized!", module->getModuleName());
         }
-        loomResetWatchdogIfEnabled();
+        LOOM_FEED_WATCHDOG();
     }
 
-    // If we didn't already disable the timer from finding the LTE we should disable it now
+    // Preserve the legacy compile-time timer policy. A positive wake guard stays enabled;
+    // a sketch's runtime timer is left alone when WATCHDOG_ENABLE is not defined.
     if (wakeWatchdogMs <= 0) {
         WD_TIMER_DISABLE;
     }
     FUNCTION_END;
+    notifyHealth(HealthEvent::PoweredUp);
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::power_down() {
-    FUNCTION_START;
+    FUNCTION_START(this);
+    modulesIdle = false;
     for (Module *module : modules) {
-        if (module->moduleInitialized) {
+        LOOM_FEED_WATCHDOG();
+        if (module->moduleInitialized || !module->canRemovePower()) {
+            FUNCTION_START(module, "Module dispatch: power_down()");
             module->power_down();
         } else {
             WARNINGF("%s Not initialized!", module->getModuleName());
         }
+        LOOM_FEED_WATCHDOG();
     }
     FUNCTION_END;
+    notifyHealth(HealthEvent::PoweredDown);
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Manager::canRemovePower() const {
+    for (Module *module : modules) {
+        if (!module->canRemovePower()) {
+            return false;
+        }
+    }
+    return true;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void Manager::idle() {
+    FUNCTION_START(this);
+    if (!hasInitialized || modulesIdle) {
+        return;
+    }
+    for (Module *module : modules) {
+        if (module->moduleInitialized) {
+            FUNCTION_START(module, "Module dispatch: idle()");
+            module->idle();
+        }
+        LOOM_FEED_WATCHDOG();
+    }
+    modulesIdle = true;
+    FUNCTION_END;
+    notifyHealth(HealthEvent::Idle);
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void Manager::resume() {
+    FUNCTION_START(this);
+    if (!modulesIdle) {
+        return;
+    }
+    for (Module *module : modules) {
+        if (module->moduleInitialized) {
+            FUNCTION_START(module, "Module dispatch: resume()");
+            module->resume();
+        }
+        LOOM_FEED_WATCHDOG();
+    }
+    modulesIdle = false;
+    FUNCTION_END;
+    notifyHealth(HealthEvent::Resumed);
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::display_data() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     if (!doc.isNull()) {
 
         // Display data for modules that support it
         for (Module *module : modules) {
+            FUNCTION_START(module, "Module dispatch: display_data()");
             module->display_data();
         }
 
@@ -222,7 +297,8 @@ void Manager::display_data() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Manager::initialize() {
-    FUNCTION_START;
+    FUNCTION_START(this);
+    notifyHealth(HealthEvent::BeforeInitialize);
     // If you are using a hypnos board that has not been enabled, this needs to occur before
     // initializing sensors
     if (usingHypnos && !hypnosEnabled) {
@@ -233,12 +309,24 @@ void Manager::initialize() {
 
     LOG(F("** Initializing Modules **"));
     read_serial_num();
+    const uint8_t resetCause = loomReset::bootCause();
+    LOGF("Boot reset cause: %s (raw flags 0x%02X).", loomReset::causeName(resetCause),
+         static_cast<unsigned int>(resetCause));
     for (Module *module : modules) {
         module->initialize();
     }
     hasInitialized = true;
     LOG(F("** Setup Complete ** "));
     FUNCTION_END;
+    notifyHealth(HealthEvent::Initialized);
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void Manager::notifyHealth(HealthEvent event) {
+    if (healthObserver != nullptr) {
+        healthObserver(*this, event, healthContext);
+    }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

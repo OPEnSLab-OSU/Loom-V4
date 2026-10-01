@@ -24,6 +24,9 @@ void setup()
   // Start the serial interface
   manager.beginSerial();
 
+  // Optional: keep only millivolt packet columns (readings/getters still work).
+  // analog.setOutputColumns(false, true);
+
   // Initialize the manager
   manager.initialize();
 }

@@ -17,6 +17,8 @@ function Test-SketchPair([string] $cleanPath, [string] $debugPath) {
     $debug = [IO.File]::ReadAllText($debugPath) -replace '\r\n', [string][char]10
     $projected = $debug -replace '(?s)// BEGIN LOOM_BETA_DIAGNOSTICS\n.*?// END LOOM_BETA_DIAGNOSTICS\n', ''
     $projected = $projected -replace '(?m)^.*// LOOM_BETA_DIAGNOSTIC.*\n', ''
+    $projected = $projected -replace '(?s)// BEGIN LOOM_TRACE_DIAGNOSTICS\n.*?// END LOOM_TRACE_DIAGNOSTICS\n', ''
+    $projected = $projected -replace '(?m)^.*// LOOM_TRACE_DIAGNOSTIC.*\n', ''
     $projected = $projected.Replace('ENABLE_SD_LOGGING;', 'Logger::getInstance()->setDebugOutput(false);')
     $projected = $projected.Replace('manager.beginSerial();', 'manager.beginSerial(false);')
     $projected = $projected -replace '(?m)^\s*manager\.display_data\(\);\n', ''

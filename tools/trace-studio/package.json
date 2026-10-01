@@ -1,0 +1,14 @@
+{
+  "name": "loom-trace-studio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local Wisp call, heap and object inspector with embedded Perfetto",
+  "scripts": {
+    "start": "tinybuild",
+    "build": "tinybuild build"
+  },
+  "dependencies": {
+    "uplot": "1.6.32"
+  }
+}

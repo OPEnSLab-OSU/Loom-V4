@@ -15,7 +15,7 @@ Loom_SHT31::Loom_SHT31(Manager &man, int address, bool useMux)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SHT31::initialize() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     if (!sht.begin(i2c_address)) {
         ERROR(F("Failed to initialize SHT31! Check connections and try again..."));
         moduleInitialized = false;
@@ -30,7 +30,7 @@ void Loom_SHT31::initialize() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SHT31::measure() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     if (!moduleInitialized) {
         return;
     }
@@ -67,7 +67,7 @@ void Loom_SHT31::measure() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_SHT31::package() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     if (moduleInitialized) {
         JsonObject json = manInst->get_data_object(getModuleName());
         json["Temperature_C"] = sensorData[0];

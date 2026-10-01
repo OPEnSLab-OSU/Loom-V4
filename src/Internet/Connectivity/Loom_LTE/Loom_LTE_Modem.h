@@ -26,6 +26,12 @@ class Loom_LTE_Modem {
     virtual IPAddress localIP() = 0;
     virtual bool isGprsConnected() = 0;
     virtual void poweroff() = 0;
+    // Keep the existing adapter method for custom drivers. Legacy void adapters can perform
+    // shutdown, but cannot report its acknowledgment; retain an uncertain state in that case.
+    virtual bool poweroffChecked() {
+        poweroff();
+        return false;
+    }
     virtual int getSimStatus() = 0;
     virtual int getRegistrationStatus() = 0;
     virtual bool waitForNetwork(uint32_t timeoutMs) = 0;

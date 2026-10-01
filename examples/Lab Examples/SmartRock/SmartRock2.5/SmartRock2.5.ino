@@ -1,10 +1,10 @@
 /**
  * SmartRock 2.5 (2020)
- * 
+ *
  * In lab use case example for the SmartRock project, this version does not use an ADS115
- * 
+ *
  * This project uses a hypnos and a MS5803
- * 
+ *
  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE
  */
 #include <Loom_Manager.h>
@@ -24,45 +24,45 @@ Loom_MS5803 ms(manager, 119);
 
 TimeSpan sleepInterval;
 
-// Called when the interrupt is triggered 
-void isrTrigger(){
-  hypnos.wakeup();
-}
+// Called when the interrupt is triggered
+void isrTrigger() { hypnos.wakeup(); }
 
 void setup() {
 
-  // Wait 20 seconds for the serial console to open
-  manager.beginSerial();
-  hypnos.setCompileTime(__DATE__, __TIME__);
+    // Wait 20 seconds for the serial console to open
+    manager.beginSerial();
+    hypnos.setCompileTime(__DATE__, __TIME__);
 
-  // Enable the hypnos rails
-  hypnos.enable();
-  manager.initialize();
+    // Enable the hypnos rails
+    hypnos.enable();
+    manager.initialize();
 
-  sleepInterval = hypnos.getConfigFromSD("SD_config.json");
-  // Register the ISR and attach to the interrupt
-  hypnos.registerInterrupt(isrTrigger);
+    sleepInterval = hypnos.getConfigFromSD("SD_config.json");
+    // Register the ISR and attach to the interrupt
+    hypnos.registerInterrupt(isrTrigger);
 }
 
 void loop() {
-  
-  // Set the RTC interrupt alarm to wake the device in 10 seconds, at the top to schedule next interrupt asap
-  hypnos.setInterruptDuration(sleepInterval);
 
-  // Measure and package the data
-  manager.measure();
-  manager.package();
+    // Schedule before measuring so sensor/logging work is part of the configured period.
+    // Subsequent cycles keep the first cycle's UTC phase and skip missed slots after overruns.
+    if (!hypnos.setSampleInterval(sleepInterval)) {
+        Serial.println("Sample alarm could not be armed; this cycle will remain awake.");
+    }
 
-  // Print the current JSON packet
-  manager.display_data();            
+    // Measure and package the data
+    manager.measure();
+    manager.package();
 
-  // Log the data to the SD card              
-  hypnos.logToSD();
+    // Print the current JSON packet
+    manager.display_data();
 
+    // Log the data to the SD card
+    hypnos.logToSD();
 
-  // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
-  hypnos.reattachRTCInterrupt();
-  
-  // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
-  hypnos.sleep(false);
+    // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
+    hypnos.reattachRTCInterrupt();
+
+    // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
+    hypnos.sleep(false);
 }

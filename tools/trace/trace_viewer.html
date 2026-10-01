@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Loom · Calls and heap inspector</title>
+<style>
+    :root { color-scheme: light; font: 15px/1.5 system-ui, sans-serif; color: #163333; background: #f2f6f5; }
+    * { box-sizing: border-box; } body { margin: 0; } main { max-width: 1440px; margin: auto; padding: 30px; }
+    h1 { font-size: 29px; margin: 0; letter-spacing: -.6px; } h2 { font-size: 18px; margin: 0 0 12px; }
+    p { margin: 7px 0 14px; } .subtle { color: #526a69; } .card { background: white; border: 1px solid #d6e2df; border-radius: 12px; padding: 20px; margin-top: 18px; }
+    .toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; } button, .pick { background: #136559; color: white; border: 0; padding: 10px 16px; border-radius: 7px; font: inherit; cursor: pointer; }
+    button.secondary { color: #136559; background: #e7f1ed; } button:disabled { opacity: .45; cursor: default; }
+    .drop { border: 2px dashed #a5c9bf; padding: 22px; border-radius: 10px; background: #f8fbfa; }
+    #status { font-weight: 600; } .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 18px; }
+    .metric { padding: 16px; background: #eaf2ef; border-radius: 8px; } .metric strong { display: block; font-size: 24px; }
+    .split { display: grid; grid-template-columns: minmax(240px, 340px) minmax(0, 1fr); gap: 18px; }
+    .scroll { max-height: 480px; overflow: auto; } #calls button { display: block; background: white; color: #163333; text-align: left; border-radius: 0; border-bottom: 1px solid #e3ece8; width: 100%; padding: 10px 8px; font-size: 13px; }
+    #calls button:hover, #calls button.selected { background: #e6f2eb; } input[type=search] { width: 100%; padding: 9px; margin-bottom: 10px; border: 1px solid #bfd4cc; border-radius: 6px; font: inherit; }
+    input[type=range] { width: 100%; accent-color: #136559; } table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th { text-align: left; color: #526a69; font-weight: 600; position: sticky; top: 0; background: white; }
+    td, th { padding: 10px 8px; border-bottom: 1px solid #e2ebe7; vertical-align: top; } td small { display: block; color: #526a69; }
+    .mono { font-family: ui-monospace, monospace; font-size: 12px; } .notice { background: #fff5db; border-left: 3px solid #d8a736; padding: 12px 16px; border-radius: 6px; }
+    .selectrow { cursor: pointer; } .selectrow:hover { background: #f0f7f3; } #graph { width: 100%; height: 130px; }
+    .chartlabel { font-size: 12px; color: #526a69; } .hidden { display: none; } a { color: #136559; }
+    details { margin-top: 10px; } pre { white-space: pre-wrap; font-size: 12px; background: #f3f7f5; padding: 12px; border-radius: 7px; }
+    @media (max-width: 850px) { main { padding: 16px; } .split { grid-template-columns: 1fr; } .metrics { grid-template-columns: repeat(2,1fr); } }
+</style>
+<main>
+    <h1>Calls and heap inspector</h1>
+    <p class="subtle">Follow function execution. See the captured memory blocks still live at each point.</p>
+    <section class="card">
+        <div class="drop" id="drop">
+            <div class="toolbar">
+                <label class="pick">Open SD trace<input type="file" id="file" accept=".ndjson,.jsonl,.json" hidden></label>
+                <button class="secondary" id="demo">Explore a fictional example</button>
+                <button id="export" disabled>Download Perfetto JSON</button>
+                <button class="secondary" id="report" disabled>Download memory report</button>
+                <a href="https://ui.perfetto.dev/" target="_blank" rel="noopener">Open Perfetto ↗</a>
+            </div>
+            <p class="subtle">Or drop <span class="mono">/debug/trace_N.ndjson</span> here. This viewer reads files locally and sends nothing to a server.</p>
+        </div>
+        <p id="status" role="status">No recording loaded.</p>
+        <div class="notice">“Live captured bytes” counts requested sizes for individually observed blocks. “Heap bytes in use” comes from allocator totals and includes earlier allocations and allocator overhead. Those two numbers are different measurements.</div>
+        <details><summary>What this recording can tell you</summary>
+            <p>Captured blocks have an address, requested size, creation time, release time if observed, the instrumented call stack, object context when supplied, and a raw caller instruction address. A caller address can be resolved using the matching firmware ELF.</p>
+            <p>Object context tells you which object’s method was running; it does not prove that object owns the block. Static object labels are not counted as heap allocations. Retained blocks are not automatically memory leaks.</p>
+            <p>Initialization allocations, interrupt work, custom allocators and trace-saving internals are outside individual capture. Their memory can still contribute to allocator totals. Standby time is excluded. Lost events and incomplete calls are explicitly labelled.</p>
+        </details>
+    </section>
+    <div id="loaded" class="hidden">
+        <div class="metrics">
+            <div class="metric">Live captured bytes<strong id="livebytes">—</strong><small id="livecount"></small></div>
+            <div class="metric">Heap bytes in use<strong id="heapbytes">—</strong><small id="heapwhen">Latest checkpoint</small></div>
+            <div class="metric">Free heap (reusable)<strong id="freebytes">—</strong><small>Free blocks may be fragmented</small></div>
+            <div class="metric">Available RAM estimate<strong id="availablebytes">—</strong><small id="gapwhen">Free heap + stack-to-heap gap; no future stack reserve</small></div>
+            <div class="metric">Peak captured bytes<strong id="peak">—</strong><small>Requested sizes within capture</small></div>
+            <div class="metric">Recorded SD-save time<strong id="overhead">—</strong><small>Visible separately in Perfetto</small></div>
+        </div>
+        <section class="card">
+            <h2>Memory over execution time</h2>
+            <div class="chartlabel">Green: live captured requested bytes · Blue: allocator heap bytes in use</div>
+            <svg id="graph" viewBox="0 0 1000 130" preserveAspectRatio="none" aria-label="Memory timeline"></svg>
+            <label for="position" id="positionLabel">Select an event</label><input type="range" id="position" min="0" max="0" value="0">
+            <div class="toolbar"><button class="secondary" id="previous">Previous event</button><button class="secondary" id="next">Next event</button></div>
+            <p id="quality" class="subtle"></p>
+        </section>
+        <div class="split">
+            <section class="card">
+                <h2>Function calls</h2>
+                <input type="search" id="search" placeholder="Find a function or object" aria-label="Find a function or object">
+                <p class="subtle">Select a call, then inspect its entry or exit.</p>
+                <div class="toolbar"><button class="secondary" id="entry" disabled>Call entry</button><button class="secondary" id="exit" disabled>Call exit</button></div>
+                <div id="calls" class="scroll"></div>
+            </section>
+            <section class="card">
+                <h2 id="selection">Memory at this event</h2>
+                <p id="callDetail" class="subtle"></p>
+                <div class="scroll"><table>
+                    <thead><tr><th>Block / address</th><th>Requested size</th><th>Created during</th><th>Created at</th></tr></thead>
+                    <tbody id="blocks"></tbody>
+                </table></div>
+                <p id="empty" class="subtle"></p>
+                <details id="blockDetails"><summary>Selected allocation details</summary><pre id="blockInfo">Select a block to see its recorded call stack and lifetime.</pre></details>
+            </section>
+        </div>
+        <section class="card"><h2>Capture quality and limits</h2><ul id="warnings"></ul></section>
+    </div>
+</main>
+<script src="trace_converter.js"></script>
+<script>
+    'use strict';
+    const $ = id => document.getElementById(id);
+    let converted = null, selectedCall = null, baseName = 'loom-trace';
+    const ms = us => (us / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 }) + ' ms';
+    const bytes = n => n.toLocaleString() + ' B';
+    function download(value, suffix) {
+        const url = URL.createObjectURL(new Blob([JSON.stringify(value)], { type: 'application/json' }));
+        const link = document.createElement('a'); link.href = url; link.download = baseName + suffix;
+        link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    function load(content, name, fictional = false) {
+        try {
+            converted = LoomTrace.convert(content); selectedCall = null;
+            baseName = name.replace(/\.[^.]*$/, '');
+            const report = converted.report;
+            $('status').textContent = (fictional ? 'FICTIONAL EXAMPLE · ' : '') + name + ' · ' +
+                report.calls.length + ' calls · ' + report.allocations.length + ' observed allocations · ' +
+                (report.session.heap_hooks ? 'Heap capture enabled' : 'Call-only capture');
+            $('loaded').classList.remove('hidden'); $('export').disabled = false; $('report').disabled = false;
+            $('entry').disabled = true; $('exit').disabled = true;
+            $('position').max = Math.max(0, report.history.length - 1); $('position').value = 0;
+            $('peak').textContent = bytes(report.peakTrackedBytes); $('overhead').textContent = ms(report.overheadUs);
+            $('warnings').replaceChildren(...report.warnings.map(message => {
+                const item = document.createElement('li'); item.textContent = message; return item;
+            }));
+            renderCalls(); drawGraph(); showPosition();
+        } catch (error) {
+            converted = null; $('loaded').classList.add('hidden');
+            $('export').disabled = true; $('report').disabled = true;
+            $('status').textContent = 'Could not read this trace: ' + error.message;
+        }
+    }
+    async function readFile(file) {
+        if (!file) return;
+        if (file.size > 50 * 1024 * 1024) {
+            $('status').textContent = 'This browser viewer accepts up to 50 MB. Use trace_to_perfetto.js for a larger recording.';
+            return;
+        }
+        load(await file.text(), file.name);
+    }
+    function renderCalls() {
+        if (!converted) return;
+        const query = $('search').value.toLowerCase();
+        const matched = converted.report.calls.filter(call => (call.name + ' ' + call.objectLabel).toLowerCase().includes(query));
+        $('calls').replaceChildren(...matched.slice(0, 2000).map(call => {
+            const button = document.createElement('button');
+            button.textContent = '· '.repeat(Math.min(call.depth, 8)) + call.name + ' · ' + ms(call.startUs);
+            if (call.id === selectedCall?.id) button.className = 'selected';
+            button.title = call.signature + '\n' + call.objectLabel;
+            button.onclick = () => { selectedCall = call; $('entry').disabled = false;
+                $('exit').disabled = false; $('position').value = call.startIndex; renderCalls(); showPosition(); };
+            return button;
+        }));
+        if (matched.length > 2000) {
+            const note = document.createElement('p'); note.textContent = 'Showing first 2,000 matches. Search to narrow the list.'; $('calls').append(note);
+        }
+    }
+    function showPosition() {
+        if (!converted) return;
+        const report = converted.report, index = Number($('position').value);
+        const snapshot = LoomTrace.snapshot(report, index);
+        $('positionLabel').textContent = 'Event ' + (index + 1) + ' · ' + ms(snapshot.timeUs) + ' active time';
+        $('livebytes').textContent = report.session.heap_hooks ? bytes(snapshot.liveBytes) : 'Not captured';
+        $('livecount').textContent = snapshot.live.length + ' individually observed blocks';
+        $('heapbytes').textContent = snapshot.checkpoint ? bytes(snapshot.checkpoint.usedBytes) : 'No checkpoint yet';
+        $('heapwhen').textContent = snapshot.checkpoint ? snapshot.checkpoint.name + ' at ' + ms(snapshot.checkpoint.timeUs) : 'Measured only at checkpoints';
+        const memory = snapshot.checkpoint;
+        $('freebytes').textContent = memory ? bytes(memory.freeBytes) : 'No measurement';
+        $('availablebytes').textContent = memory ? bytes(memory.freeBytes + Math.max(0, memory.gapBytes)) : 'No measurement';
+        $('gapwhen').textContent = memory ? 'Includes ' + bytes(memory.gapBytes) + ' stack-to-heap gap; no future stack reserve or single-block guarantee' : 'Measured at checkpoints and call boundaries';
+        $('quality').textContent = snapshot.incomplete ? 'Incomplete allocation history after missing or ambiguous events. This is the currently observed segment.' :
+            'Showing captured blocks created since recording began. Earlier allocations are represented only in allocator totals.';
+        $('selection').textContent = 'Live blocks at ' + ms(snapshot.timeUs);
+        $('callDetail').textContent = selectedCall ? selectedCall.name + ' · ' + selectedCall.objectLabel +
+            ' · Recorded exit: ' + ms(selectedCall.endUs) + ' (' + selectedCall.status + ') · ' +
+            selectedCall.file + ':' + selectedCall.line : 'Choose a function to compare memory on entry and exit.';
+        $('blocks').replaceChildren(...snapshot.live.slice().sort((a, b) => b.size - a.size).slice(0, 1000).map(block => {
+            const row = document.createElement('tr'); row.className = 'selectrow';
+            const values = [block.label + '\n' + block.address, bytes(block.size),
+                (block.stack[block.stack.length - 1] || 'Outside traced calls') + '\n' + block.owner,
+                ms(block.startUs)];
+            for (const value of values) { const cell = document.createElement('td'); cell.textContent = value;
+                cell.style.whiteSpace = 'pre-line'; row.append(cell); }
+            row.onclick = () => {
+                $('blockInfo').textContent = 'Allocation #' + block.id + '\nLabel: ' + block.label +
+                    '\nAddress: ' + block.address + '\nRequested size: ' + bytes(block.size) +
+                    '\nCreated: ' + ms(block.startUs) + '\nEnd: ' + (block.endUs === null ? 'Still live at the last captured event; not proof of a leak' : ms(block.endUs) + ' · ' + block.endReason) +
+                    '\nObject context: ' + block.owner + ' (' + block.ownerAddress + ')' +
+                    '\nCaller instruction address: ' + block.callerPc +
+                    '\nInstrumented call stack:\n' + (block.stack.join('\n  → ') || 'Outside traced calls');
+                $('blockDetails').open = true;
+            }; return row;
+        }));
+        $('empty').textContent = !report.session.heap_hooks ? 'Individual blocks require the optional heap-capture build.' :
+            snapshot.live.length === 0 ? 'No individually captured blocks are live here. Allocator totals may still include earlier blocks.' :
+            snapshot.live.length > 1000 ? 'Showing the largest 1,000 blocks; the memory report contains all blocks.' : 'Select a block for its lifetime and recorded call stack.';
+        $('previous').disabled = index === 0; $('next').disabled = index >= report.history.length - 1;
+    }
+    function drawGraph() {
+        const report = converted.report, svg = $('graph'); svg.replaceChildren();
+        const height = 110, duration = Math.max(1, report.durationUs);
+        const max = report.checkpoints.reduce((value, row) => Math.max(value, row.usedBytes),
+            Math.max(1, report.peakTrackedBytes));
+        for (const [data, color] of [[report.history, '#136559'], [report.checkpoints, '#4673b9']]) {
+            const stride = Math.max(1, Math.ceil(data.length / 3000));
+            const points = data.filter((_, i) => i % stride === 0 || i === data.length - 1).map(row =>
+                (row.timeUs / duration * 1000) + ',' + (height - (row.bytes ?? row.usedBytes) / max * 95));
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+            path.setAttribute('points', points.join(' ')); path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', color); path.setAttribute('stroke-width', '2'); svg.append(path);
+        }
+    }
+    $('file').onchange = event => readFile(event.target.files[0]);
+    $('drop').ondragover = event => event.preventDefault();
+    $('drop').ondrop = event => { event.preventDefault(); readFile(event.dataTransfer.files[0]); };
+    $('position').oninput = showPosition; $('search').oninput = renderCalls;
+    $('previous').onclick = () => { $('position').value = Math.max(0, Number($('position').value) - 1); showPosition(); };
+    $('next').onclick = () => { $('position').value = Math.min(Number($('position').max), Number($('position').value) + 1); showPosition(); };
+    $('entry').onclick = () => { $('position').value = selectedCall.startIndex; showPosition(); };
+    $('exit').onclick = () => { $('position').value = Math.min(Number($('position').max), selectedCall.endIndex); showPosition(); };
+    $('export').onclick = () => download(converted.perfetto, '.perfetto.json');
+    $('report').onclick = () => download(converted.report, '.memory.json');
+    $('demo').onclick = () => {
+        const rows = [{ kind: 'session', v: 1, clock: 'active_us', heap_hooks: true }];
+        const add = (kind, ts, values = {}) => rows.push({ kind, ts, addr: '0x0', old: '0x0',
+            size: 0, gap: 18000, line: 0, file: '', name: '', ...values });
+        add('T', 1000, { addr: '0x20000100', name: 'MQTT publisher' });
+        add('C', 1001, { name: 'Cycle start (fictional)', size: 6000, line: 1200 });
+        add('B', 1100, { name: 'void loop()', file: 'fictional.ino', line: 20 });
+        add('B', 1200, { name: 'bool Loom_MongoDB::publish()', addr: '0x20000100', file: 'fictional.cpp', line: 40 });
+        add('A', 1300, { addr: '0x20004000', size: 512, line: 12345 });
+        add('A', 1400, { addr: '0x20005000', size: 128, line: 12347 });
+        add('T', 1500, { addr: '0x20004000', name: 'MQTT temporary packet buffer' });
+        add('C', 1600, { name: 'During upload (fictional)', size: 6700, line: 500 });
+        add('F', 2100, { addr: '0x20004000' });
+        add('E', 2300); add('C', 2400, { name: 'After upload (fictional)', size: 6150, line: 1050 });
+        add('E', 2500); add('O', 2600, { size: 90 });
+        load(rows.map(row => JSON.stringify(row)).join('\n') + '\n', 'fictional-example.ndjson', true);
+    };
+</script>
+</html>

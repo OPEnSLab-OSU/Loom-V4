@@ -24,6 +24,7 @@ Loom_AS7262::Loom_AS7262(Manager &man, bool useMux, int addr, uint8_t gain, uint
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7262::initialize() {
+    FUNCTION_START(this);
 
     // If we have less than 2 bytes of json from the sensor
     if (!asInst.begin()) {
@@ -41,6 +42,7 @@ void Loom_AS7262::initialize() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7262::measure() {
+    FUNCTION_START(this);
     if (!moduleInitialized) {
         return;
     }
@@ -87,6 +89,7 @@ void Loom_AS7262::measure() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7262::package() {
+    FUNCTION_START(this);
     if (moduleInitialized) {
         JsonObject json = manInst->get_data_object(getModuleName());
         json["Color_450nm"] = color[0];
@@ -101,6 +104,7 @@ void Loom_AS7262::package() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_AS7262::power_up() {
+    FUNCTION_START(this);
     if (moduleInitialized) {
         asInst.setGain(gain);
         asInst.setMeasurementMode(mode);

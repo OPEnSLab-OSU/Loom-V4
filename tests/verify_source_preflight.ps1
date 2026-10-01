@@ -23,6 +23,7 @@ if ($PackageLibraries) {
 
 $checks = @(
     @{ Name = 'Warning scopes'; Script = 'verify_warning_scope.ps1'; Arguments = @() },
+    @{ Name = 'Example include discovery'; Script = 'verify_example_includes.ps1'; Arguments = $deploymentArguments },
     @{ Name = 'Quiet/debug parity'; Script = 'verify_wisp_example_mirrors.ps1'; Arguments = $deploymentArguments },
     @{ Name = 'Diagnostic boundaries'; Script = 'verify_wisp_diagnostic_boundaries.ps1'; Arguments = $deploymentArguments },
     @{ Name = 'Dependencies and official core'; Script = 'verify_patched_dependencies.ps1'; Arguments = $dependencyArguments }

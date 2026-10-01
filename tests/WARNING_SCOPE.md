@@ -1,9 +1,10 @@
-# Temporary warning-scope instrumentation
+# Warning-scope instrumentation
 
-This structure exists only to make the compile audit distinguish warnings from
-Loom code from warnings emitted by the Arduino core or third-party libraries.
-Keep it in a separate, instrumentation-only commit so it can be reverted before
-shipping a Loom release.
+This structure makes the compile audit distinguish warnings from Loom code from
+warnings emitted by the Arduino core or third-party libraries. Keep the header
+and its scopes present on `4.9-joshfixes`, as requested by the user. The strip and
+restore tools below are optional maintenance tools; removal is not a release step
+or an automatic part of the audit.
 
 The structure consists of:
 
@@ -61,7 +62,7 @@ Then run one of the audit entry points documented in `tests/README.md`.
 The verifier itself runs no compiler and rejects scopes around Loom code or standard/runtime
 headers. It can run before compiler audits are authorized.
 
-## Removing the structure
+## Optional removal for a separately requested maintenance task
 
 ### Reversible one-click removal
 
@@ -99,7 +100,7 @@ in `tests` while the source instrumentation is stripped.
 
 ### Permanent/manual removal
 
-The preferred removal is to revert the dedicated instrumentation commit:
+If a dedicated instrumentation commit exists, it can be reverted:
 
 ```text
 git revert <instrumentation-commit>

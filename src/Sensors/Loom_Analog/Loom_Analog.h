@@ -2,29 +2,10 @@
 
 #include <vector>
 
-#include "Loom_Manager.h"
 #include "Module.h"
+#include "Loom_Analog_Config.h"
 
-// Project-wide build flags may override these defaults. The LOOM_ prefix
-// avoids collisions with common sketch macros such as VREF and VBATPIN.
-#ifndef LOOM_ANALOG_BATTERY_PIN
-#define LOOM_ANALOG_BATTERY_PIN A7
-#endif
-#ifndef LOOM_ANALOG_ADC_RESOLUTION_BITS
-#define LOOM_ANALOG_ADC_RESOLUTION_BITS 12
-#endif
-#ifndef LOOM_ANALOG_ADC_REFERENCE_VOLTAGE
-#define LOOM_ANALOG_ADC_REFERENCE_VOLTAGE 3.3f
-#endif
-#ifndef LOOM_ANALOG_BATTERY_DIVIDER_SCALE
-#define LOOM_ANALOG_BATTERY_DIVIDER_SCALE 2.0f
-#endif
-#ifndef LOOM_ANALOG_BATTERY_SAMPLE_COUNT
-#define LOOM_ANALOG_BATTERY_SAMPLE_COUNT 8
-#endif
-#ifndef LOOM_ANALOG_ADC_MAX_READING
-#define LOOM_ANALOG_ADC_MAX_READING ((1UL << LOOM_ANALOG_ADC_RESOLUTION_BITS) - 1UL)
-#endif
+class Manager;
 
 // One monitored pin: its packet label and the latest reading in both supported representations.
 struct AnalogMapping {
@@ -83,13 +64,13 @@ class Loom_Analog : public Module {
         pinMappings.reserve(sizeof...(additionalPins) + 2);
         const int pins[] = {static_cast<int>(firstPin), static_cast<int>(additionalPins)...};
         for (int pin : pins) {
-            pinMappings.emplace_back(pin, 0, 0);
+            pinMappings.emplace_back(pin, 0.0f, 0.0f);
         }
         const float batteryVoltage = readBatteryVoltage();
         pinMappings.emplace_back(batteryPin, "Vbat", batteryVoltage, batteryVoltage * 1000.0f);
 
         // Register the module with the manager
-        manInst->registerModule(this);
+        registerWithManager();
     };
 
     /**
@@ -97,21 +78,12 @@ class Loom_Analog : public Module {
      * @param man Reference to the
      * manager
      */
-    Loom_Analog(Manager &man) : Module("Analog"), manInst(&man) {
-        analogReadResolution(adcResolutionBits);
-        pinMappings.reserve(1);
-        const float batteryVoltage = readBatteryVoltage();
-        pinMappings.emplace_back(batteryPin, "Vbat", batteryVoltage, batteryVoltage * 1000.0f);
-
-        // Register the module with the manager
-        manInst->registerModule(this);
-    };
+    Loom_Analog(Manager &man);
 
     /**
      * Read battery voltage in volts, averaging sampleCount ADC readings. The dividerScale
-     *
      * accounts for the board's battery-divider circuit. A zero sample count/range returns zero.
- */
+     */
     static float getBatteryVoltage(int batteryPin = LOOM_ANALOG_BATTERY_PIN,
                                    uint8_t resolutionBits = LOOM_ANALOG_ADC_RESOLUTION_BITS,
                                    float referenceVoltage = LOOM_ANALOG_ADC_REFERENCE_VOLTAGE,
@@ -121,24 +93,36 @@ class Loom_Analog : public Module {
 
     /**
      * Get the most recently measured millivolts of a registered pin; an unknown pin returns zero.
-
-     * * @param pin The pin to get the data from eg. A0, A1, ...
+     * @param pin The pin to get the data from eg. A0, A1, ...
      */
     float getMV(int pin);
 
     /**
      * Get the latest ADC count for a registered pin, or volts for the battery pin.
-     * An
-     * unknown pin returns zero. Call measure() first when a fresh reading is needed.
-     * @param
-     * pin The pin to get the data from eg. A0, A1, ...
+     * An unknown pin returns zero. Call measure() first when a fresh reading is needed.
+     * @param pin The pin to get the data from eg. A0, A1, ...
      */
     float getAnalog(int pin);
 
+    /**
+     * Choose packet columns before the first sample. Both are enabled by default.
+     * Raw means ADC counts for ordinary pins, but volts for Vbat (the existing format).
+     * Millivolts means the _MV column for every pin. Readings and getters stay available
+     * even when their packet columns are hidden. Example: setOutputColumns(false, true)
+     * records only millivolts, avoiding the duplicate Vbat voltage representation.
+     */
+    void setOutputColumns(bool includeRaw, bool includeMillivolts) {
+        outputRaw = includeRaw;
+        outputMillivolts = includeMillivolts;
+    }
+
   private:
+    bool outputRaw = true;
+    bool outputMillivolts = true;
     float analogToMV(int analog); // Convert the analog voltage to mV
     float readBatteryVoltage() const;
-    Manager *manInst;                       // Instance of the manager
+    void registerWithManager(); // Keep Manager/JSON dependencies in the implementation file.
+    Manager *manInst;           // Instance of the manager
     std::vector<AnalogMapping> pinMappings; // Contains a struct for each pin we are monitoring
     int batteryPin = LOOM_ANALOG_BATTERY_PIN;
     uint8_t adcResolutionBits = LOOM_ANALOG_ADC_RESOLUTION_BITS;

@@ -10,8 +10,9 @@ void checkDST(const __FlashStringHelper *label, TIME_ZONE zone, int year, int mo
         DateTime(year, month, day, hour, minute, second), zone);
     Serial.print(actual == expected ? F("PASS: ") : F("FAIL: "));
     Serial.println(label);
-    if (actual != expected)
+    if (actual != expected) {
         ++failures;
+    }
 }
 } // namespace
 
@@ -30,6 +31,20 @@ void setup() {
     checkDST(F("EST spring transition"), EST, 2026, 3, 8, 7, 0, 0, true);
     checkDST(F("EST second before fall transition"), EST, 2026, 11, 1, 5, 59, 59, true);
     checkDST(F("EST fall transition"), EST, 2026, 11, 1, 6, 0, 0, false);
+
+    // Card #318 lists these future transitions. Test the actual UTC instant, not local month
+    // boundaries, and include MST (the DST-observing Mountain convention used by this enum).
+    checkDST(F("MST 2027 spring second before"), MST, 2027, 3, 14, 8, 59, 59, false);
+    checkDST(F("MST 2027 spring instant"), MST, 2027, 3, 14, 9, 0, 0, true);
+    checkDST(F("PST 2027 fall second before"), PST, 2027, 11, 7, 8, 59, 59, true);
+    checkDST(F("PST 2027 fall instant"), PST, 2027, 11, 7, 9, 0, 0, false);
+    checkDST(F("PST 2028 spring second before"), PST, 2028, 3, 12, 9, 59, 59, false);
+    checkDST(F("PST 2028 spring instant"), PST, 2028, 3, 12, 10, 0, 0, true);
+    checkDST(F("PST 2028 fall second before"), PST, 2028, 11, 5, 8, 59, 59, true);
+    checkDST(F("PST 2028 fall instant"), PST, 2028, 11, 5, 9, 0, 0, false);
+    checkDST(F("PST 2029 spring second before"), PST, 2029, 3, 11, 9, 59, 59, false);
+    checkDST(F("PST 2029 spring instant"), PST, 2029, 3, 11, 10, 0, 0, true);
+    checkDST(F("PST 2028 leap day remains standard"), PST, 2028, 2, 29, 12, 0, 0, false);
 
     checkDST(F("AKST summer"), AKST, 2026, 7, 1, 12, 0, 0, true);
     checkDST(F("HST never observes DST"), HST, 2026, 7, 1, 12, 0, 0, false);

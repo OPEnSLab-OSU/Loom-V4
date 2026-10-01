@@ -62,7 +62,7 @@ Loom_MS5803::Loom_MS5803(Manager &man, byte address, bool useMux)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MS5803::initialize() {
-    FUNCTION_START;
+    FUNCTION_START(this);
 
     // The legacy MS5803_02 library has historically returned an unreliable status from
     // initializeMS_5803(). Determine presence from the actual I2C device and calibration PROM
@@ -95,7 +95,7 @@ void Loom_MS5803::initialize() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MS5803::measure() {
-    FUNCTION_START;
+    FUNCTION_START(this);
 
     if (!moduleInitialized) {
         // Allow recovery after a temporary power or bus fault.
@@ -125,7 +125,7 @@ void Loom_MS5803::measure() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MS5803::package() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     if (moduleInitialized) {
         JsonObject json = manInst->get_data_object(getModuleName());
         json["Temperature_°C"] = sensorData[0];
@@ -137,7 +137,7 @@ void Loom_MS5803::package() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_MS5803::power_up() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     initialize();
     FUNCTION_END;
 }

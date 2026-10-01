@@ -12,6 +12,7 @@ param(
 
     [string]$OutputPath = "",
     [string]$LoomDir = "",
+    [string[]]$AdditionalLoomDirs = @(),
     [string]$BuildDir = "",
     [string]$SketchDir = ""
 )
@@ -37,11 +38,12 @@ function Test-LoomWarningLine {
     param([string]$Line)
 
     $normalizedLine = $Line.Replace("/", "\").ToLowerInvariant()
-    $loomRoot = Normalize-PathFragment $LoomDir
     $buildRoot = Normalize-PathFragment $BuildDir
     $sketchRoot = Normalize-PathFragment $SketchDir
 
-    if ($loomRoot -ne "") {
+    foreach ($root in (@($LoomDir) + $AdditionalLoomDirs)) {
+        $loomRoot = Normalize-PathFragment $root
+        if ($loomRoot -eq "") { continue }
         if ($normalizedLine.Contains("$loomRoot\src\")) {
             return $true
         }

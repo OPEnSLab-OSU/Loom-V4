@@ -59,6 +59,21 @@ class SDManager : public Module {
     /** Retry only a rolled-back batch append for the same packaged sample; never writes CSV. */
     bool retryBatch();
 
+    /** Optional additive-16 column and daily UTC verification. Changing the setting rotates
+     * CSV via the existing schema check. The upload batch format is unchanged. */
+    void setCsvChecksums(bool enabled = true) {
+        if (csvChecksums != enabled) {
+            csvChecksums = enabled;
+            lastChecksumDay = 0;
+        }
+    }
+    bool verifyCsvChecksums(const char *filename);
+
+    /** Optional researcher-facing CSV without repeated name/instance columns (#314).
+     * Set before the first log. A later change rotates CSV through header comparison.
+     * Device identity stays in JSON/upload batches and the existing serial-number preamble. */
+    void setCsvIdentityColumns(bool enabled = true) { csvIdentityColumns = enabled; }
+
     /**
      * Read the contents of a given file on the SD card and return them as a string
      *
@@ -93,8 +108,28 @@ class SDManager : public Module {
      */
     bool writeLineToFile(const char *filename, const char *content);
 
+    /** Stream one bounded diagnostic batch through the same checked append/rollback path.
+     * The callback borrows the handle for this call only; it must not reenter SD or Logger. */
+    bool writeDebugRecords(const char *filename, bool (*writer)(Print &, void *), void *context);
+
+    /** Append comma-prefixed Chrome events before a checked JSON trailer. Restores the
+     * previous trailer on failure; the independent NDJSON recording remains recoverable. */
+    bool appendDebugTrace(const char *filename, bool (*writer)(Print &, void *), void *context);
+
     /** Append pretty JSON to the debug log without a document-sized RAM buffer. */
     bool writeJsonToFile(const char *filename, const DynamicJsonDocument &document);
+
+    /** Debug logging is optional. Stop it for this boot after an uncertain SD append; keep
+     * Serial diagnostics and the independent sample/batch storage paths available. */
+    bool canWriteDebugLogs() const { return sdInitialized && !debugAppendBlocked; }
+    SDWriteStatus getLastDebugWriteStatus() const { return lastDebugWriteStatus; }
+
+    /**
+     * Save a bounded reason before Hypnos requests an MCU reset. Separate from ordinary debug
+     * logging; false means the intent could not be saved and the caller should stay awake.
+     * Use Hypnos::requestReset() to save this marker and actually restart the board together.
+     */
+    bool prepareForReset(const char *reason);
 
     /** Enable direct-Serial phase markers around single-line SD writes for beta diagnosis. */
     void setWriteDebug(bool enabled = true) { writeDebug = enabled; };
@@ -162,11 +197,12 @@ class SDManager : public Module {
             recoveryScanPending = true;
             batchClearPending = false;
             batchAppendBlocked = false;
+            csvAppendBlocked = false;
         }
     };
 
-    /* Get whatever number we are currently appending to the SD fileNames*/
-    int getCurrentFileNumber() { return file_count; };
+    /** Current CSV number. Schema changes may rotate CSV while its upload batch stays put. */
+    int getCurrentFileNumber() { return csvFileNumber; };
 
   private:
     static constexpr size_t LOG_BASENAME_SIZE = Manager::DEVICE_NAME_SIZE;
@@ -193,24 +229,36 @@ class SDManager : public Module {
     bool recoveryScanPending = true;
     bool batchClearPending = false;  // Already acknowledged; retry clearing before further replay
     bool batchAppendBlocked = false; // An uncertain rollback must not corrupt the next record
+    bool csvAppendBlocked = false;   // Preserve a possibly torn CSV; select a fresh file next time.
     SDLogResult lastLogResult;
+    bool csvChecksums = false;
+    bool csvIdentityColumns = true; // Keep existing CSV bytes unless the sketch opts out.
+    uint32_t lastChecksumDay = 0;
     uint32_t lastLogPacket = 0;
 
-    int batch_size = -1;   // How many packets to log per batch
-    int current_batch = 0; // Current count of the batch
-    int file_count = 0;    // What file number are we logging to
+    int batch_size = -1;        // How many packets to log per batch
+    int current_batch = 0;      // Current count of the batch
+    int batchSessionNumber = 0; // Fixed for this session so recovery excludes its active batch.
+    int csvFileNumber = 0;      // May advance independently after a CSV schema/write failure.
 
-    bool sdInitialized = false;   // Whether the card is reachable for the current operation
-    bool logFileSelected = false; // Whether this MCU boot session already chose its CSV filename
-    bool writeDebug = false;      // Direct-Serial beta trace; never written through Logger
+    bool sdInitialized = false;      // Whether the card is reachable for the current operation
+    bool logFileSelected = false;    // Whether this MCU boot session already chose its CSV filename
+    bool writeDebug = false;         // Direct-Serial beta trace; never written through Logger
+    bool debugAppendBlocked = false; // An uncertain debug append needs inspection after this boot.
+    SDWriteStatus lastDebugWriteStatus = SDWriteStatus::NotAttempted;
+    SDWriteStatus bootResetStatus = SDWriteStatus::NotAttempted; // One record per boot, not wake
+    bool resetIntentCleanupPending = false;
 
-    bool logCsv(DateTime currentTime);
+    SDWriteStatus logCsv(DateTime currentTime);
     SDWriteStatus logBatch(); // Append one JSON record to the current session's batch file
     bool findRecoveryBatch(); // Select another pre-boot batch without changing its bytes
 
-    bool finishDebugWrite(File &file, bool wroteAll);
+    bool finishDebugWrite(File &file, uint32_t start, bool wroteAll);
+    void recordBootReset(); // Best effort; a failed append is retried after SD recovery.
 
-    bool writeHeaders(); // Create the headers for the CSV file based off what info we are storing
+    // One emitter writes or compares the exact headers. No schema hash or large header buffer.
+    bool writeHeaders(Print &output);
+    bool selectNextCsvFile(); // Rotate CSV alone; pending batch records/counters keep their names.
     bool updateCurrentFileName(); // Update the current file name to log to based on files already
                                   // existing on the SD card
 };

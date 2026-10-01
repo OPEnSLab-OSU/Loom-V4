@@ -16,11 +16,12 @@ class I2CDevice : public Module {
 
     /* Checks if the given I2C device is currently connected*/
     bool checkDeviceConnection() {
-        FUNCTION_START;
-        if (module_address == -1) {
+        FUNCTION_START(this);
+        if (module_address < 0 || module_address > 0x7F) {
             return false;
         }
-        Wire.beginTransmission(module_address);
+        // Reject an unset/out-of-range 7-bit address before narrowing it for Wire.
+        Wire.beginTransmission(static_cast<uint8_t>(module_address));
         if (Wire.endTransmission() == 0) {
             return true;
         }

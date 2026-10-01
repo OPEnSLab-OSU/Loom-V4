@@ -81,6 +81,28 @@ class Manager {
      */
     void initialize();
 
+    // Optional diagnostics belong to the sketch, so ordinary Manager needs no flash/SD driver.
+    // BeforeInitialize lets it print the last saved checkpoint BEFORE module states change.
+    // Other events report a completed call, not proof that every driver succeeded.
+    enum class HealthEvent {
+        BeforeInitialize,
+        Initialized,
+        Measured,
+        Packaged,
+        PoweredUp,
+        PoweredDown,
+        Idle,
+        Resumed
+    };
+    using HealthObserver = void (*)(Manager &, HealthEvent, void *);
+    /** Borrow callback/context until replaced or cleared with nullptr. Main-loop calls only.
+     * Keep it bounded: no Manager operations, watchdog changes, blocking modem work or ISR use.
+     * A storage observer must rate-limit writes and verify supply separately. */
+    void setHealthObserver(HealthObserver observer, void *context = nullptr) {
+        healthObserver = observer;
+        healthContext = context;
+    }
+
     /**
      *  Calls the measure function to pull data from the sensors on all added modules
      */
@@ -101,6 +123,14 @@ class Manager {
      *  Calls the power_down function on each module to safely enter sleep
      */
     void power_down();
+
+    /** Enter/leave driver standby with the shared rails still powered. Calls are idempotent.
+     * measure() is paused while idle; package()/storage remain available for the last sample.
+     * Module defaults do nothing. Deep sleep still uses power_down()/power_up(). */
+    void idle();
+    void resume();
+    bool isIdle() const { return modulesIdle; }
+    bool canRemovePower() const;
 
     /**
      * Prints out the current JSON Document to the Serial bus
@@ -153,7 +183,14 @@ class Manager {
      * Get the unique serial number of the Feather m0
      * @return Unique serial number
      */
-    const char *get_serial_num() { return serial_num; };
+    const char *get_serial_num() {
+        // Hypnos can initialize SD before Manager::initialize(). Read the ID on first use so
+        // its early boot journal never sees an uninitialized buffer. No heap allocation.
+        if (serial_num[0] == '\0') {
+            read_serial_num();
+        }
+        return serial_num;
+    };
 
     /**
      * Called by the Hypnos on construction to tell the manager it is in use
@@ -183,17 +220,20 @@ class Manager {
     char deviceName[DEVICE_NAME_SIZE]; // Name of the device
     uint32_t instanceNumber;           // Instance number of the device
     uint32_t packetNumber = 1;         // Tracks the current packet number
-    char serial_num[33];
+    char serial_num[33] = {};
 
     void read_serial_num(); // Read the serial number out of the feather's registers
 
     /* Module Data */
     DynamicJsonDocument doc;       // One heap pool, allocated in the constructor and reused.
-    JsonArray contentsArray;       // View into that pool, rebuilt by package().
     std::vector<Module *> modules; // Borrowed pointers, in registration order.
 
     /* Validation */
     bool hasInitialized = false;
+    bool modulesIdle = false;
     bool usingHypnos = false;
     bool hypnosEnabled = false; // Sensor power must be on before initialization.
+    HealthObserver healthObserver = nullptr;
+    void *healthContext = nullptr; // Borrowed; Manager owns no diagnostic storage or allocations.
+    void notifyHealth(HealthEvent event);
 };

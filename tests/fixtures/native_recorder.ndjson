@@ -1,0 +1,14 @@
+{"v":1,"kind":"session","heap_hooks":true,"clock":"active_us"}
+{"kind":"I","ts":10125,"addr":"0x0","old":"0x0","size":0,"gap":0,"line":0,"file":"","name":"trace started: pre-existing allocations are outside capture"}
+{"kind":"C","ts":10125,"addr":"0x4","old":"0x100","size":3000,"gap":12000,"line":512,"file":"","name":"capture baseline"}
+{"kind":"I","ts":10125,"addr":"0x0","old":"0x0","size":0,"gap":0,"line":0,"file":"","name":"Heap hooks enabled: allocations after capture are recorded"}
+{"kind":"B","ts":10125,"addr":"0x20004000","old":"0x200","size":3000,"gap":12000,"line":12,"file":"source.cpp","name":"void Example::run()"}
+{"kind":"A","ts":10125,"addr":"0x20004000","old":"0x0","size":128,"gap":0,"line":4097,"file":"","name":""}
+{"kind":"F","ts":10125,"addr":"0x20004000","old":"0x0","size":0,"gap":0,"line":4097,"file":"","name":""}
+{"kind":"N","ts":10125,"addr":"0x0","old":"0x20004000","size":1024,"gap":0,"line":4097,"file":"","name":""}
+{"kind":"Z","ts":10125,"addr":"0x20004000","old":"0x20004000","size":0,"gap":0,"line":4097,"file":"","name":""}
+{"kind":"T","ts":10125,"addr":"0x20004000","old":"0x0","size":0,"gap":0,"line":0,"file":"","name":"quote\" slash\\ newline\u000a"}
+{"kind":"U","ts":10125,"addr":"0x20004000","old":"0x20001000","size":0,"gap":68,"line":3,"file":"ready","name":"SHT31_2"}
+{"kind":"D","ts":10125,"addr":"0x20004000","old":"0x0","size":0,"gap":0,"line":0,"file":"","name":""}
+{"kind":"C","ts":10125,"addr":"0x4","old":"0x100","size":3000,"gap":12000,"line":512,"file":"","name":"After sensor test"}
+{"kind":"E","ts":10125,"addr":"0x0","old":"0x200","size":3000,"gap":12000,"line":0,"file":"","name":""}

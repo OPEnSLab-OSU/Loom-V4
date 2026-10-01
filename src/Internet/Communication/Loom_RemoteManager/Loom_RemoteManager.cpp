@@ -1,5 +1,8 @@
 #include "Loom_RemoteManager.h"
 #include "Logger.h"
+#include "Loom_Manager.h"
+#include "Hardware/Loom_Hypnos/Loom_Hypnos.h"
+#include "Utilities/Loom_RemoteConfig.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_RemoteManager::Loom_RemoteManager(Manager &man, NetworkComponent &internet_client,
@@ -17,6 +20,7 @@ Loom_RemoteManager::Loom_RemoteManager(Manager &man, NetworkComponent &internet_
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_RemoteManager::Loom_RemoteManager(Manager &man, NetworkComponent &internet_client)
     : MQTTComponent("RemoteManager", internet_client), manager(&man) {
+    moduleInitialized = false; // SD credentials must arrive before any status/command exchange.
     manager->registerModule(this);
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -39,7 +43,7 @@ void Loom_RemoteManager::power_down() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_RemoteManager::publish() {
-    char topic[MAX_TOPIC_LENGTH];
+    char topic[TOPIC_SIZE];
     char message[RETAINED_MESSAGE_SIZE];
     StaticJsonDocument<JSON_OBJECT_SIZE(4)> tempDoc;
 
@@ -107,10 +111,10 @@ void Loom_RemoteManager::loadConfigFromJSON(char *json) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_RemoteManager::updateHypnosInterval(char topic[MAX_TOPIC_LENGTH],
+void Loom_RemoteManager::updateHypnosInterval(char topic[TOPIC_SIZE],
                                               char message[RETAINED_MESSAGE_SIZE],
                                               StaticJsonDocument<JSON_OBJECT_SIZE(4)> &json) {
-    memset(topic, '\0', MAX_TOPIC_LENGTH);
+    topic[0] = '\0';
     memset(message, '\0', RETAINED_MESSAGE_SIZE);
     json.clear();
 
@@ -124,8 +128,13 @@ void Loom_RemoteManager::updateHypnosInterval(char topic[MAX_TOPIC_LENGTH],
             "seconds": 0
         }
     */
-    snprintf(topic, MAX_TOPIC_LENGTH, "RemoteManager/%s%i/Hypnos/setSleepInterval",
-             manager->get_device_name(), manager->get_instance_num());
+    const int topicLength =
+        snprintf(topic, TOPIC_SIZE, "RemoteManager/%s%i/Hypnos/setSleepInterval",
+                 manager->get_device_name(), manager->get_instance_num());
+    if (topicLength < 0 || static_cast<size_t>(topicLength) >= TOPIC_SIZE) {
+        ERROR(F("Remote sleep-command topic does not fit."));
+        return;
+    }
     if (!getCurrentRetained(topic, message, RETAINED_MESSAGE_SIZE)) {
         return;
     }
@@ -135,25 +144,15 @@ void Loom_RemoteManager::updateHypnosInterval(char topic[MAX_TOPIC_LENGTH],
         ERRORF("Invalid retained Hypnos interval JSON: %s", error.c_str());
         return;
     }
-    const int days = json["days"] | 0;
-    const int hours = json["hours"] | 0;
-    const int minutes = json["minutes"] | 0;
-    const int seconds = json["seconds"] | 0;
-    if (days < 0 || days > 24854 || hours < 0 || hours > 23 || minutes < 0 || minutes > 59 ||
-        seconds < 0 || seconds > 59) {
-        ERROR(F("Retained Hypnos interval contains an out-of-range field."));
+    int32_t intervalSeconds = 0;
+    if (!loomRemote::parseSleepInterval(json.as<JsonObjectConst>(), intervalSeconds)) {
+        ERROR(F("Retained Hypnos interval has invalid types, ranges, or duration."));
         return;
     }
-
-    const TimeSpan time(static_cast<int16_t>(days), static_cast<int8_t>(hours),
-                        static_cast<int8_t>(minutes), static_cast<int8_t>(seconds));
-
-    if (time.totalseconds() <= 0) {
-        ERROR(F("Retained Hypnos interval must be greater than zero."));
+    if (!hypnos->scheduleWake(TimeSpan(intervalSeconds))) {
+        ERROR(F("Remote wake alarm could not be verified; retaining the request for retry."));
         return;
     }
-
-    hypnos->setInterruptDuration(time);
 
     // Acknowledge only after validating and applying the interval.
     deleteRetained(topic);
@@ -161,14 +160,18 @@ void Loom_RemoteManager::updateHypnosInterval(char topic[MAX_TOPIC_LENGTH],
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_RemoteManager::updateHypnosTime(char topic[MAX_TOPIC_LENGTH],
+void Loom_RemoteManager::updateHypnosTime(char topic[TOPIC_SIZE],
                                           char message[RETAINED_MESSAGE_SIZE]) {
-    memset(topic, '\0', MAX_TOPIC_LENGTH);
+    topic[0] = '\0';
     memset(message, '\0', RETAINED_MESSAGE_SIZE);
 
     // The retained message's presence requests a clock update; its payload is unused.
-    snprintf(topic, MAX_TOPIC_LENGTH, "RemoteManager/%s%i/Hypnos/setRTC",
-             manager->get_device_name(), manager->get_instance_num());
+    const int topicLength = snprintf(topic, TOPIC_SIZE, "RemoteManager/%s%i/Hypnos/setRTC",
+                                     manager->get_device_name(), manager->get_instance_num());
+    if (topicLength < 0 || static_cast<size_t>(topicLength) >= TOPIC_SIZE) {
+        ERROR(F("Remote clock-command topic does not fit."));
+        return;
+    }
     if (!getCurrentRetained(topic, message, RETAINED_MESSAGE_SIZE)) {
         return;
     }
@@ -184,15 +187,15 @@ void Loom_RemoteManager::updateHypnosTime(char topic[MAX_TOPIC_LENGTH],
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_RemoteManager::updateDeviceStatus(bool onOff) {
-    StaticJsonDocument<JSON_OBJECT_SIZE(1)> json;
-    char message[100] = {};
-    char topic[MAX_TOPIC_LENGTH] = {};
-
-    json["online"] = onOff;
-    serializeJson(json, message, sizeof(message));
-
-    snprintf(topic, MAX_TOPIC_LENGTH, "RemoteManager/%s%i/status", manager->get_device_name(),
-             manager->get_instance_num());
-    return publishMessage(topic, message);
+    char topic[TOPIC_SIZE];
+    const int topicLength = snprintf(topic, sizeof(topic), "RemoteManager/%s%i/status",
+                                     manager->get_device_name(), manager->get_instance_num());
+    if (topicLength < 0 || static_cast<size_t>(topicLength) >= sizeof(topic)) {
+        ERROR(F("Remote status topic does not fit."));
+        return false;
+    }
+    // There are only two status messages. Literal text keeps their JSON bytes unchanged without
+    // building a document and a second character buffer for each status update.
+    return publishMessage(topic, onOff ? "{\"online\":true}" : "{\"online\":false}");
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////

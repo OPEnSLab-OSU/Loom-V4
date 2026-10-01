@@ -1,10 +1,10 @@
 #pragma once
 
 #include "Loom_WarningGuards.h"
+#include "Utilities/Loom_Watchdog.h"
 
 LOOM_EXTERNAL_INCLUDE_BEGIN
 #include "Arduino.h"
-#include <Adafruit_SleepyDog.h>
 LOOM_EXTERNAL_INCLUDE_END
 #include <stdio.h>
 #include <string.h>
@@ -18,30 +18,12 @@ LOOM_EXTERNAL_INCLUDE_END
 #if defined(WATCHDOG_ENABLE)
 #define WD_TIMER_ENABLE Watchdog.enable(WATCHDOG_TIMEOUT)
 #define WD_TIMER_DISABLE Watchdog.disable()
-#define WD_TIMER_RESET Watchdog.reset()
+#define WD_TIMER_RESET LOOM_FEED_WATCHDOG()
 #else
 #define WD_TIMER_ENABLE
 #define WD_TIMER_DISABLE
 #define WD_TIMER_RESET
 #endif
-
-// Field sketches may enable SleepyDog at runtime rather than defining WATCHDOG_ENABLE for every
-// Loom translation unit. Long sensor averaging loops use this helper so a healthy SAMD21 sample
-// can exceed one watchdog period without hiding a genuinely stuck I2C transaction.
-inline void loomResetWatchdogIfEnabled() {
-#if defined(ARDUINO_ARCH_SAMD)
-#if defined(__SAMD51__)
-    const bool watchdogEnabled = WDT->CTRLA.bit.ENABLE;
-#else
-    const bool watchdogEnabled = WDT->CTRL.bit.ENABLE;
-#endif
-    if (watchdogEnabled) {
-        Watchdog.reset();
-    }
-#elif defined(WATCHDOG_ENABLE)
-    Watchdog.reset();
-#endif
-}
 
 #ifndef TIMER_ENABLE
 #define TIMER_ENABLE WD_TIMER_ENABLE
@@ -91,6 +73,13 @@ class Module {
     virtual void power_down() = 0; // Prepare the hardware for sleep.
     // A failed module normally stays skipped; some connections can recover on the next wake.
     virtual bool retryPowerUpWhenUninitialized() const { return false; }
+
+    // Idle keeps Hypnos rails on. A driver may stop its fan/conversions here and restart them
+    // in resume(); the default leaves hardware alone, so older drivers remain compatible.
+    virtual void idle() {}
+    virtual void resume() {}
+    // A connection can refuse rail removal after an unacknowledged graceful shutdown.
+    virtual bool canRemovePower() const { return true; }
 
     // Not required overrides
     virtual void display_data() {}; // Called by the manager to allow OLED to display data at the

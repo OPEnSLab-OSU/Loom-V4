@@ -40,6 +40,9 @@ class Loom_MemoryDiagnostics {
 
         const struct mallinfo heapInfo = mallinfo();
         const int32_t topFree = heapInfo.keepcost > 0 ? heapInfo.keepcost : 0;
+        const int32_t heapUsed = heapInfo.uordblks > 0 ? heapInfo.uordblks : 0;
+        const int32_t heapChange = hasSample ? heapUsed - previousHeapUsed : 0;
+        previousHeapUsed = heapUsed;
         latestHeapFree = heapInfo.fordblks > 0 ? heapInfo.fordblks : 0;
         latestFragmentedFree = latestHeapFree > topFree ? latestHeapFree - topFree : 0;
         latestFreeChunks = heapInfo.ordblks > 0 ? heapInfo.ordblks : 0;
@@ -58,40 +61,49 @@ class Loom_MemoryDiagnostics {
         previousGap = latestGap;
         hasSample = true;
 
-        Serial.print(F("[MEM] c="));
+        Serial.print(F("[MEMORY] cycle "));
         Serial.print(cycle);
-        Serial.print(F(" ms="));
-        Serial.print(millis());
-        Serial.print(F(" reset=0x"));
-        Serial.print(Watchdog.resetCause(), HEX);
-        Serial.print(F(" phase="));
+        Serial.print(F(" | "));
         Serial.print(phase);
-        Serial.print(F(" gap="));
-        Serial.print(latestGap);
-        Serial.print(F(" min="));
-        Serial.print(minimumGap);
-        Serial.print(F(" delta="));
-        Serial.print(delta);
-        Serial.print(F(" brk=0x"));
-        Serial.print(latestBreak, HEX);
-        Serial.print(F(" contig="));
-        Serial.print(latestContiguous);
-        Serial.print(F(" min_contig="));
-        Serial.print(minimumContiguous);
-        Serial.print(F(" heap_free="));
+        Serial.print(F(" | active time "));
+        Serial.print(millis());
+        Serial.println(F(" ms"));
+        Serial.print(F("  Heap in use: "));
+        Serial.print(heapUsed);
+        Serial.print(F(" B | change since previous checkpoint: "));
+        if (heapChange >= 0) { Serial.print('+'); }
+        Serial.print(heapChange);
+        Serial.print(F(" B | reusable free: "));
         Serial.print(latestHeapFree);
-        Serial.print(F(" frag="));
-        Serial.print(latestFragmentedFree);
-        Serial.print(F(" holes="));
+        Serial.print(F(" B in "));
         Serial.print(latestFreeChunks);
-        Serial.print(F(" json="));
+        Serial.println(F(" chunks"));
+        Serial.print(F("  Stack-to-heap gap estimate: "));
+        Serial.print(latestGap);
+        Serial.print(F(" B | lowest checkpoint gap: "));
+        Serial.print(minimumGap);
+        Serial.print(F(" B | gap change: "));
+        Serial.print(delta);
+        Serial.println(F(" B"));
+        Serial.print(F("  Free outside top chunk: "));
+        Serial.print(latestFragmentedFree);
+        Serial.print(F(" B | top-chunk-plus-gap estimate: "));
+        Serial.print(latestContiguous);
+        Serial.print(F(" B | lowest estimate: "));
+        Serial.print(minimumContiguous);
+        Serial.println(F(" B"));
+        Serial.print(F("  JSON pool used/capacity: "));
         Serial.print(document.memoryUsage());
         Serial.print('/');
         Serial.print(document.capacity());
-        Serial.print(F(" ovf="));
-        Serial.print(document.overflowed() ? 1 : 0);
-        Serial.print(F(" batch="));
-        Serial.println(currentBatch);
+        Serial.print(F(" B (already included in heap totals) | overflow: "));
+        Serial.print(document.overflowed() ? F("YES") : F("no"));
+        Serial.print(F(" | batch records: "));
+        Serial.print(currentBatch);
+        Serial.print(F(" | heap end: 0x"));
+        Serial.print(latestBreak, HEX);
+        Serial.print(F(" | reset cause: 0x"));
+        Serial.println(Watchdog.resetCause(), HEX);
     }
 
     /**
@@ -125,6 +137,7 @@ class Loom_MemoryDiagnostics {
     int32_t latestGap = 0;
     int32_t minimumGap = 0;
     int32_t previousGap = 0;
+    int32_t previousHeapUsed = 0;
     int32_t latestContiguous = 0;
     int32_t minimumContiguous = 0;
     int32_t latestHeapFree = 0;

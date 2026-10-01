@@ -95,7 +95,7 @@ Loom_DFMultiGasSensor::Loom_DFMultiGasSensor(Manager &man, uint8_t address,
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_DFMultiGasSensor::initialize() {
-    FUNCTION_START;
+    FUNCTION_START(this);
 
     LOG(F("Begin DFRobot Multi Gas Sensor Initialization..."));
 
@@ -125,7 +125,7 @@ void Loom_DFMultiGasSensor::initialize() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_DFMultiGasSensor::measure() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     if (!moduleInitialized) {
         return;
     }
@@ -153,7 +153,7 @@ void Loom_DFMultiGasSensor::measure() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_DFMultiGasSensor::package() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     if (moduleInitialized) {
         JsonObject json = manInst->get_data_object(getModuleName());
         json[currentGasType] = currentConcentration;
@@ -165,7 +165,7 @@ void Loom_DFMultiGasSensor::package() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_DFMultiGasSensor::power_up() {
-    FUNCTION_START;
+    FUNCTION_START(this);
 
     bool reconnected = false;
     if (powersDown || !moduleInitialized) {
@@ -195,11 +195,11 @@ void Loom_DFMultiGasSensor::power_up() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_DFMultiGasSensor::attemptConnectionToSensor() {
-    FUNCTION_START;
+    FUNCTION_START(this);
 
     /* Attempt a set number of times to initialize the sensor */
     for (uint8_t retryCount = 0; retryCount < retryLimit; retryCount++) {
-        loomResetWatchdogIfEnabled();
+        LOOM_FEED_WATCHDOG();
         LOGF("Attempting to connect to sensor... Attempt %u / %u ", retryCount + 1, retryLimit);
 
         // If we do successfully begin the sensor we want to stop the loop immediatly and move on to
@@ -234,6 +234,7 @@ bool Loom_DFMultiGasSensor::attemptConnectionToSensor() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_DFMultiGasSensor::configureSensorProperties(DFRobot_GAS::eMethod_t aquireMode,
                                                       DFRobot_GAS::eSwitch_t gasCompMode) {
+    FUNCTION_START(this);
     // Set aquire mode to passive so we are able to request data from it whenever
     LOG(F("Setting Acquire Mode to..."));
     gasSensor.changeAcquireMode(aquireMode);

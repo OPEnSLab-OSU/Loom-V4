@@ -2,13 +2,13 @@
 echo.
 echo ================================================================================
 echo Loom compile test engine starting.
-echo Version: 2026-07-15-v22-runtime-lte-profile
+echo Version: 2026-09-30-v23-checked-artifact-copy
 echo Script: %~f0
 echo Tests folder: %~dp0
 echo ================================================================================
 setlocal EnableExtensions EnableDelayedExpansion
 
-set "LOOM_TESTS_VERSION=2026-07-15-v22-runtime-lte-profile"
+set "LOOM_TESTS_VERSION=2026-09-30-v23-checked-artifact-copy"
 if not defined LOOM_COMPILE_MODE set "LOOM_COMPILE_MODE=SMOKE"
 if not defined AUTO_INSTALL_TOOLS set "AUTO_INSTALL_TOOLS=1"
 if not defined FQBN set "FQBN=loom4:samd:adafruit_feather_m0:usbstack=arduino,debug=off"
@@ -285,8 +285,21 @@ for /f "usebackq delims=" %%D in ("%SKETCH_DIRS%") do (
     )
 
     if "%SAVE_ARTIFACTS%"=="1" if "!EXITCODE!"=="0" (
-        for /r "!BUILD_DIR!" %%A in (*.bin *.hex *.elf *.map *.uf2 *.eep) do (
-            copy /y "%%~fA" "%COMPLETE_DIR%\!PAD!_!SAFE_NAME!_%%~nxA" >nul 2>nul
+        rem FOR /R parses its root before delayed expansion. Use the current directory
+        rem so each sketch's actual build is searched, rather than the literal !BUILD_DIR!.
+        pushd "!BUILD_DIR!" >nul
+        if errorlevel 1 (
+            call :Red "Could not open the completed build folder for artifact copying."
+            set "FINAL_RC=1"
+        ) else (
+            for /r %%A in (*.bin *.hex *.elf *.map *.uf2 *.eep) do (
+                copy /y "%%~fA" "%COMPLETE_DIR%\!PAD!_%%~nxA" >nul
+                if errorlevel 1 (
+                    call :Red "Could not save firmware artifact: %%~nxA"
+                    set "FINAL_RC=1"
+                )
+            )
+            popd >nul
         )
     )
 

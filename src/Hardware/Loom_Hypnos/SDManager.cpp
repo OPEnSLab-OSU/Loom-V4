@@ -1,9 +1,69 @@
 #include "SDManager.h"
 #include "Logger.h"
 #include "Utilities/Loom_SDUtils.h"
+#include "Utilities/Loom_CsvUtils.h"
+#include "Utilities/Loom_CsvChecksum.h"
 
 namespace {
 constexpr size_t MAX_SD_READ_BYTES = 4999;
+
+// SdFat and Arduino Print keep different write-error flags. Observe the actual write count
+// rather than asking a Print reference for a flag that SdFat's write() does not update.
+class CheckedCsvOutput : public Print {
+  public:
+    explicit CheckedCsvOutput(Print &output) : output(output) {}
+    size_t write(uint8_t value) override {
+        if (getWriteError() || output.write(value) != 1) {
+            setWriteError(1);
+            return 0;
+        }
+        checksum = static_cast<uint16_t>(checksum + value);
+        return 1;
+    }
+
+    uint16_t getChecksum() const { return checksum; }
+
+  private:
+    uint16_t checksum = 0;
+    Print &output;
+};
+
+// Compare generated header bytes directly with the file. A layout change is detected exactly,
+// including column order, without keeping the header in RAM or relying on hash collisions.
+class CsvHeaderComparison : public Print {
+  public:
+    explicit CsvHeaderComparison(File &file) : file(file) {}
+    size_t write(uint8_t value) override {
+        if (!matches || file.read() != value) {
+            matches = false;
+            return 0;
+        }
+        return 1;
+    }
+    bool matched() const { return matches; }
+
+  private:
+    File &file;
+    bool matches = true;
+};
+
+bool writeCsvJsonValue(Print &file, JsonVariant value) {
+    if (value.is<const char *>()) {
+        const JsonString text = value.as<JsonString>();
+        return loomCsv::writeText(file, text.c_str(), text.size());
+    }
+    const size_t expected = measureJson(value);
+    if (value.is<JsonArray>() || value.is<JsonObject>()) {
+        if (file.write('"') != 1) {
+            return false;
+        }
+        loomCsv::QuotedJsonWriter<Print> escaped(file);
+        const bool complete = serializeJson(value, escaped) == expected;
+        const bool closedQuote = file.write('"') == 1;
+        return complete && closedQuote;
+    }
+    return serializeJson(value, file) == expected;
+}
 
 void copyBounded(char *destination, size_t destinationSize, const char *source,
                  size_t maxSourceCharacters) {
@@ -47,14 +107,22 @@ void buildNumberedName(char *destination, size_t destinationSize, const char *ba
     appendLiteral(destination, destinationSize, suffix);
 }
 
-void writeCsvTimestamp(File &file, const char *timestamp) {
-    if (timestamp == nullptr) {
-        return;
+bool writeCsvTimestamp(Print &file, JsonString timestamp) {
+    if (timestamp.isNull()) {
+        return true;
     }
-
-    for (size_t index = 0; timestamp[index] != '\0' && timestamp[index] != 'Z'; ++index) {
-        file.write(index == 10 ? ' ' : timestamp[index]);
+    // Loom timestamps are 19 characters plus optional Z. Keep the established T-to-space
+    // normalization, but reject embedded NUL/overlong text and escape unusual cell contents.
+    if (timestamp.size() > 20 || memchr(timestamp.c_str(), '\0', timestamp.size()) != nullptr) {
+        return false;
     }
+    char normalized[21];
+    size_t length = 0;
+    while (length < timestamp.size() && timestamp.c_str()[length] != 'Z') {
+        normalized[length] = length == 10 ? ' ' : timestamp.c_str()[length];
+        ++length;
+    }
+    return loomCsv::writeText(file, normalized, length);
 }
 } // namespace
 
@@ -72,14 +140,13 @@ SDManager::SDManager(Manager *man, int sd_chip_select)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::writeLineToFile(const char *filename, const char *content) {
     if (filename == nullptr || filename[0] == '\0' || content == nullptr) {
+        lastDebugWriteStatus = SDWriteStatus::Rejected;
         printModuleName("Cannot write a null/empty filename or null content!");
         return false;
     }
 
-    if (!sdInitialized) {
-        printModuleName(
-            "SD Card was improperly initialized and as such this functionality was disabled!");
-        delay(5000); // Preserve the existing failure delay.
+    if (!canWriteDebugLogs()) {
+        // Optional debug output must never stall startup or every instrumented function.
         return false;
     }
     if (writeDebug) {
@@ -98,27 +165,35 @@ bool SDManager::writeLineToFile(const char *filename, const char *content) {
             Serial.println(F("[SD DEBUG] write"));
         }
 
+        const uint32_t start = outputFile.fileSize();
         outputFile.clearWriteError();
         const size_t contentLength = strlen(content);
         const bool wroteContent = outputFile.print(content) == contentLength;
         const bool wroteNewline = outputFile.println() == 2;
         const bool writeComplete = wroteContent && wroteNewline && !outputFile.getWriteError();
-        return finishDebugWrite(outputFile, writeComplete);
+        return finishDebugWrite(outputFile, start, writeComplete);
     }
     if (writeDebug) {
         Serial.println(F("[SD DEBUG] open failed"));
     }
+    lastDebugWriteStatus = SDWriteStatus::Failed;
     printModuleName("Failed to Open File!");
     return false;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool SDManager::finishDebugWrite(File &file, bool wroteAll) {
+bool SDManager::finishDebugWrite(File &file, uint32_t start, bool wroteAll) {
     if (writeDebug) {
-        Serial.println(F("[SD DEBUG] close"));
+        Serial.println(F("[SD DEBUG] sync/rollback/close"));
     }
-    const bool complete = loomSD::closeAfterWrite(file, wroteAll);
+    lastDebugWriteStatus = loomSD::finishAppend(file, start, wroteAll).status;
+    const bool complete = lastDebugWriteStatus == SDWriteStatus::Saved;
+    if (lastDebugWriteStatus == SDWriteStatus::Uncertain) {
+        debugAppendBlocked = true;
+        // Report directly: sending this through Logger would attempt another SD write.
+        Serial.println(F("[SD DEBUG] uncertain append; SD debug logging paused until reboot."));
+    }
     if (writeDebug) {
         Serial.println(complete ? F("[SD DEBUG] done") : F("[SD DEBUG] failed"));
     }
@@ -130,8 +205,30 @@ bool SDManager::finishDebugWrite(File &file, bool wroteAll) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool SDManager::writeDebugRecords(const char *filename, bool (*writer)(Print &, void *),
+                                  void *context) {
+    if (!canWriteDebugLogs() || filename == nullptr || filename[0] == '\0' || writer == nullptr) {
+        return false;
+    }
+    File file = sd.open(filename, O_RDWR | O_CREAT | O_APPEND);
+    if (!file) {
+        lastDebugWriteStatus = SDWriteStatus::Failed;
+        return false;
+    }
+    const uint32_t start = file.fileSize();
+    file.clearWriteError();
+    const bool complete = writer(file, context) && !file.getWriteError();
+    return finishDebugWrite(file, start, complete);
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::writeJsonToFile(const char *filename, const DynamicJsonDocument &document) {
-    if (!sdInitialized || filename == nullptr || filename[0] == '\0') {
+    if (!canWriteDebugLogs()) {
+        return false;
+    }
+    if (filename == nullptr || filename[0] == '\0' || document.overflowed() || document.isNull()) {
+        lastDebugWriteStatus = SDWriteStatus::Rejected;
         return false;
     }
     if (writeDebug) {
@@ -143,68 +240,109 @@ bool SDManager::writeJsonToFile(const char *filename, const DynamicJsonDocument 
         if (writeDebug) {
             Serial.println(F("[SD DEBUG] open failed"));
         }
+        lastDebugWriteStatus = SDWriteStatus::Failed;
         printModuleName("Failed to open JSON debug file!");
         return false;
     }
     if (writeDebug) {
         Serial.println(F("[SD DEBUG] write"));
     }
+    const uint32_t start = outputFile.fileSize();
     outputFile.clearWriteError();
     const size_t expected = measureJsonPretty(document);
     const size_t written = serializeJsonPretty(document, outputFile);
     const bool newlineComplete = outputFile.println() == 2;
-    return finishDebugWrite(outputFile,
+    return finishDebugWrite(outputFile, start,
                             written == expected && newlineComplete && !outputFile.getWriteError());
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+bool SDManager::appendDebugTrace(const char *filename, bool (*writer)(Print &, void *),
+                                  void *context) {
+    if (!canWriteDebugLogs() || filename == nullptr || writer == nullptr) {
+        return false;
+    }
+    File file = sd.open(filename, O_RDWR);
+    if (!file) {
+        lastDebugWriteStatus = SDWriteStatus::Failed;
+        return false;
+    }
+    const loomSD::AppendResult result = loomSD::appendTraceEvents(
+        file, [writer, context](File &output) { return writer(output, context); });
+    lastDebugWriteStatus = result.status;
+    if (result.status == SDWriteStatus::Uncertain) {
+        debugAppendBlocked = true;
+        Serial.println(F("[TRACE] uncertain JSON append; SD debug logging paused until reboot"));
+    }
+    return result.status == SDWriteStatus::Saved;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool SDManager::writeHeaders() {
+bool SDManager::writeHeaders(Print &output) {
+    CheckedCsvOutput checked(output);
     // Preserve the legacy byte layout: the serial text contained an LF before println() added its
     // normal line ending, leaving the established blank separator without a 513-byte stack array.
-    myFile.print(manInst->get_serial_num());
-    myFile.write('\n');
-    myFile.println();
+    checked.print(manInst->get_serial_num());
+    checked.write('\n');
+    checked.println();
 
     JsonObject document = manInst->getDocument().as<JsonObject>();
 
     // Write the first header directly. Building both headers in RAM previously consumed 1 KB of
     // stack on a Cortex-M0 just before an SD write.
-    myFile.print(F("ID,,"));
+    if (csvIdentityColumns) {
+        checked.print(F("ID,,"));
+    }
 
     // If there is a key that contains timestamp data when need to include that separately
     if (document.containsKey("timestamp")) {
-        myFile.print(F("timestamp,,"));
+        checked.print(F("timestamp,,"));
     }
 
     JsonArray contentsArray = document["contents"].as<JsonArray>();
     for (JsonVariant v : contentsArray) {
-        myFile.print(v.as<JsonObject>()["module"].as<const char *>());
+        const JsonString module = v.as<JsonObject>()["module"].as<JsonString>();
+        if (!loomCsv::writeText(checked, module.c_str(), module.size())) {
+            return false;
+        }
         size_t fieldCount = v.as<JsonObject>()["data"].as<JsonObject>().size();
-        while (fieldCount-- > 0) {
-            myFile.print(',');
+        while (fieldCount > 0) {
+            checked.print(',');
+            --fieldCount;
         }
     }
-    myFile.println();
+    if (csvChecksums) {
+        checked.print(F("checksum"));
+    }
+    checked.println();
 
     // The second header is a separate pass over the small in-memory JSON tree.
-    myFile.print(F("name,instance,"));
+    if (csvIdentityColumns) {
+        checked.print(F("name,instance,"));
+    }
     if (document.containsKey("timestamp")) {
-        myFile.print(F("time_utc,time_local,"));
+        checked.print(F("time_utc,time_local,"));
     }
     for (JsonVariant v : contentsArray) {
         for (JsonPair keyValue : v.as<JsonObject>()["data"].as<JsonObject>()) {
-            myFile.print(keyValue.key().c_str());
-            myFile.print(',');
+            const JsonString key = keyValue.key();
+            if (!loomCsv::writeText(checked, key.c_str(), key.size())) {
+                return false;
+            }
+            checked.print(',');
         }
     }
-    myFile.println();
-    return !myFile.getWriteError();
+    if (csvChecksums) {
+        checked.print(F("checksum"));
+    }
+    checked.println();
+    return !checked.getWriteError();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::log(DateTime currentTime) {
+    FUNCTION_START(this);
     lastLogResult = SDLogResult{};
     lastLogPacket = manInst->get_packet_number();
     if (!manInst->isPacketValid()) {
@@ -213,11 +351,10 @@ bool SDManager::log(DateTime currentTime) {
         printModuleName("Refusing to save an empty or overflowed JSON packet!");
         return false;
     }
-    if (!logCsv(currentTime)) {
-        lastLogResult.csv = SDWriteStatus::Failed;
+    lastLogResult.csv = logCsv(currentTime);
+    if (lastLogResult.csv != SDWriteStatus::Saved) {
         return false;
     }
-    lastLogResult.csv = SDWriteStatus::Saved;
     if (batch_size <= 0) {
         return true;
     }
@@ -228,6 +365,7 @@ bool SDManager::log(DateTime currentTime) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::retryBatch() {
+    FUNCTION_START(this);
     if (!loomSD::canRetryBatch(lastLogResult, lastLogPacket, manInst->get_packet_number())) {
         return false;
     }
@@ -237,58 +375,113 @@ bool SDManager::retryBatch() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool SDManager::logCsv(DateTime currentTime) {
+SDWriteStatus SDManager::logCsv(DateTime currentTime) {
+    FUNCTION_START(this);
     // An overflowed document is syntactically valid but incomplete. Reject it
     // before creating headers, appending a row, or incrementing the batch.
     if (!manInst->isPacketValid()) {
         printModuleName("Refusing to save an empty or overflowed JSON packet!");
-        return false;
+        return SDWriteStatus::Rejected;
     }
     if (!sdInitialized) {
         printModuleName("Failed to log! SD card not Initialized!");
-        return false;
+        return SDWriteStatus::Failed;
+    }
+    const uint32_t utcDay = currentTime.unixtime() / 86400UL;
+    if (csvChecksums && lastChecksumDay != 0 && lastChecksumDay != utcDay) {
+        if (!verifyCsvChecksums(fileName)) {
+            printModuleName("Daily checksum/read check failed; preserving the CSV and rotating.");
+            if (!selectNextCsvFile()) {
+                return SDWriteStatus::Failed;
+            }
+        }
+        // Preserve any damaged file; future rows use a new CSV, while batches stay queued.
+        lastChecksumDay = utcDay;
+    }
+    if (csvAppendBlocked) {
+        if (!selectNextCsvFile()) {
+            return SDWriteStatus::Uncertain;
+        }
+        csvAppendBlocked = false;
     }
     myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
     if (!myFile) {
         printModuleName("Failed to open log file!");
-        return false;
+        return SDWriteStatus::Failed;
     }
 
     myFile.clearWriteError();
 
+    if (myFile.fileSize() > 0) {
+        if (!myFile.seekSet(0)) {
+            myFile.close();
+            printModuleName("Cannot read the CSV header; refusing to append a row!");
+            return SDWriteStatus::Failed;
+        }
+        CsvHeaderComparison comparison(myFile);
+        const bool sameHeaders = writeHeaders(comparison) && comparison.matched();
+        const bool readFailed = myFile.getError() != 0;
+        if (readFailed) {
+            myFile.close();
+            printModuleName("SD read failed during CSV header comparison!");
+            return SDWriteStatus::Failed;
+        }
+        if (!sameHeaders) {
+            if (!myFile.close() || !selectNextCsvFile()) {
+                return SDWriteStatus::Failed;
+            }
+            printModuleName("CSV layout changed; using a new file and keeping the upload batch.");
+            myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
+            if (!myFile || myFile.fileSize() != 0) {
+                myFile.close();
+                return SDWriteStatus::Failed;
+            }
+        }
+    }
+
     // If this file has never been written to before we need to create and write the proper
     // headers to the file
-    if (myFile.available() <= 3) {
+    // available() measures unread bytes, not file size; append handles may already be at EOF.
+    if (myFile.fileSize() == 0) {
         const uint32_t originalSize = myFile.fileSize();
         // Set the date created timestamp of the File
         myFile.timestamp(T_CREATE, currentTime.year(), currentTime.month(), currentTime.day(),
                          currentTime.hour(), currentTime.minute(), currentTime.second());
 
-        if (!writeHeaders() || !myFile.sync()) {
-            myFile.truncate(originalSize);
-            myFile.close();
+        if (!writeHeaders(myFile) || !myFile.sync()) {
+            const bool rolledBack = myFile.truncate(originalSize) && myFile.sync();
+            const bool closed = myFile.close();
+            csvAppendBlocked = !rolledBack || !closed;
             printModuleName("Failed while writing CSV headers!");
-            return false;
+            return csvAppendBlocked ? SDWriteStatus::Uncertain : SDWriteStatus::Failed;
         }
     }
 
     const uint32_t recordStart = myFile.fileSize();
     myFile.clearWriteError();
 
-    // Write the Instance data that isn't included in the JSON packet
-    myFile.print(manInst->get_device_name());
-    myFile.print(',');
-    myFile.print(manInst->get_instance_num());
-    myFile.print(',');
+    CheckedCsvOutput row(myFile);
+    // Checksum covers exactly the same streamed bytes as storage, including identity.
+    bool fieldsComplete = true;
+    if (csvIdentityColumns) {
+        fieldsComplete = loomCsv::writeText(row, manInst->get_device_name());
+        row.print(',');
+        row.print(manInst->get_instance_num());
+        row.print(',');
+    }
 
     JsonObject document = manInst->getDocument().as<JsonObject>();
 
     // If there is a key that contains timestamp data when need to include that separately
     if (document.containsKey("timestamp")) {
-        writeCsvTimestamp(myFile, document["timestamp"]["time_utc"].as<const char *>());
-        myFile.print(',');
-        writeCsvTimestamp(myFile, document["timestamp"]["time_local"].as<const char *>());
-        myFile.print(',');
+        fieldsComplete =
+            writeCsvTimestamp(row, document["timestamp"]["time_utc"].as<JsonString>()) &&
+            fieldsComplete;
+        row.print(',');
+        fieldsComplete =
+            writeCsvTimestamp(row, document["timestamp"]["time_local"].as<JsonString>()) &&
+            fieldsComplete;
+        row.print(',');
     }
 
     // Stream fields in the same order as the CSV headers.
@@ -297,19 +490,19 @@ bool SDManager::logCsv(DateTime currentTime) {
     for (JsonVariant v : contentsArray) {
 
         for (JsonPair keyValue : v.as<JsonObject>()["data"].as<JsonObject>()) {
-            JsonVariant value = keyValue.value();
-            if (value.is<const char *>()) {
-                myFile.print(value.as<const char *>());
-            } else {
-                serializeJson(value, myFile);
-            }
-            myFile.print(',');
+            fieldsComplete = writeCsvJsonValue(row, keyValue.value()) && fieldsComplete;
+            row.print(',');
         }
     }
 
-    myFile.println();
+    if (csvChecksums) {
+        const uint16_t checksum = row.getChecksum();
+        row.print(checksum);
+    }
+    row.println();
 
-    const bool recordComplete = !myFile.getWriteError() && myFile.sync();
+    const bool recordComplete =
+        fieldsComplete && !row.getWriteError() && !myFile.getWriteError() && myFile.sync();
 
     // Set the last modified date
     if (recordComplete) {
@@ -317,20 +510,96 @@ bool SDManager::logCsv(DateTime currentTime) {
                          currentTime.hour(), currentTime.minute(), currentTime.second());
     }
 
-    if (!recordComplete) {
-        myFile.truncate(recordStart);
-    }
+    const bool rolledBack = recordComplete || (myFile.truncate(recordStart) && myFile.sync());
 
     // Close the file
-    myFile.close();
+    const bool closed = myFile.close();
+    csvAppendBlocked = !rolledBack || !closed;
+    if (csvAppendBlocked) {
+        printModuleName("CSV write/close is uncertain; preserving this file before the next row.");
+        return SDWriteStatus::Uncertain;
+    }
 
     if (!recordComplete) {
         printModuleName("Failed while writing CSV data!");
-        return false;
+        return SDWriteStatus::Failed;
     }
 
     // Inform the user that we have successfully written to the file
     LOGF("Successfully logged data to %s", fileName);
+    if (csvChecksums) {
+        lastChecksumDay = utcDay;
+    }
+    return SDWriteStatus::Saved;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool SDManager::verifyCsvChecksums(const char *filename) {
+    if (!sdInitialized || filename == nullptr) {
+        return false;
+    }
+    File input = sd.open(filename, O_RDONLY);
+    if (!input) {
+        return false;
+    }
+    loomCsv::ChecksumVerifier verifier;
+    const uint32_t length = input.fileSize();
+    bool valid = true;
+    uint8_t bytes[32]; // Small fixed chunks reduce SD calls without buffering a whole CSV row.
+    uint32_t offset = 0;
+    while (offset < length && valid) {
+        const uint32_t remaining = length - offset;
+        const size_t count = remaining < sizeof(bytes) ? remaining : sizeof(bytes);
+        if (input.read(bytes, count) != static_cast<int>(count)) {
+            valid = false;
+            break;
+        }
+        for (size_t i = 0; i < count; ++i) {
+            if (!verifier.consume(bytes[i])) {
+                valid = false;
+                break;
+            }
+        }
+        offset += count;
+        LOOM_FEED_WATCHDOG(); // A bounded chunk was read; a stalled SDK read remains guarded.
+    }
+    valid = valid && verifier.finish() && input.getError() == 0;
+    const bool closed = input.close();
+    return valid && closed;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool SDManager::selectNextCsvFile() {
+    if (!root.open("/", O_RDONLY)) {
+        return false;
+    }
+    const char *base = overrideFileName[0] ? overrideFileName : device_name;
+    char candidate[LOG_FILENAME_SIZE];
+    int nextNumber = 0;
+    while (scanningFile.openNext(&root)) {
+        const bool named = scanningFile.getName(candidate, sizeof(candidate));
+        const bool closed = scanningFile.close();
+        if (!named || !closed || !loomSD::advanceLogNumber(candidate, base, nextNumber)) {
+            root.close();
+            return false;
+        }
+        LOOM_FEED_WATCHDOG(); // A directory entry was consumed; the scan made forward progress.
+    }
+    const bool scanFailed = root.getError() != 0 || scanningFile.getError() != 0;
+    const bool closed = root.close();
+    if (scanFailed || !closed) {
+        return false;
+    }
+    buildNumberedName(candidate, sizeof(candidate), base, nextNumber, ".csv");
+    if (sd.exists(candidate)) {
+        return false;
+    }
+    memcpy(fileName, candidate, strlen(candidate) + 1);
+    csvFileNumber = nextNumber;
+    // batchSessionNumber, batchFileName, recovery cursor and batch counters describe the upload
+    // queue. They intentionally remain unchanged when only the CSV schema changes.
     return true;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -400,6 +669,7 @@ bool SDManager::begin() {
     }
 
     sdInitialized = true;
+    recordBootReset(); // Independent of ENABLE_SD_LOGGING; does not alter sample/batch files.
 
     if (batchClearPending) {
         clearBatch(); // Idempotent: no new records may be appended to this selected file yet.
@@ -420,14 +690,14 @@ bool SDManager::begin() {
 bool SDManager::updateCurrentFileName() {
     char f_name[LOG_FILENAME_SIZE];
     const char *base = overrideFileName[0] ? overrideFileName : device_name;
-    file_count = 0;
+    batchSessionNumber = 0;
 
     // Select above the highest existing CSV OR batch number. Counting files reuses names
     // after a deletion or a failed half-pair write, and mixes old records with a new RAM counter.
     while (scanningFile.openNext(&root)) {
         const bool named = scanningFile.getName(f_name, sizeof(f_name));
         scanningFile.close();
-        if (!named || !loomSD::advanceLogNumber(f_name, base, file_count)) {
+        if (!named || !loomSD::advanceLogNumber(f_name, base, batchSessionNumber)) {
             printModuleName("Cannot safely select a new SD log number!");
             return false;
         }
@@ -440,13 +710,15 @@ bool SDManager::updateCurrentFileName() {
         return false;
     }
 
-    buildNumberedName(fileName, sizeof(fileName), base, file_count, ".csv");
-    buildNumberedName(batchFileName, sizeof(batchFileName), base, file_count, "-Batch.txt");
+    buildNumberedName(fileName, sizeof(fileName), base, batchSessionNumber, ".csv");
+    buildNumberedName(batchFileName, sizeof(batchFileName), base, batchSessionNumber, "-Batch.txt");
     if (sd.exists(fileName) || sd.exists(batchFileName)) {
         printModuleName("Selected SD log name already exists; refusing to mix sessions!");
         return false;
     }
     current_batch = 0;
+    csvFileNumber = batchSessionNumber;
+    csvAppendBlocked = false;
 
     printModuleName("Data will be logged to:");
     printModuleName(fileName);
@@ -472,8 +744,8 @@ bool SDManager::findRecoveryBatch() {
     }
     const char *base = overrideFileName[0] ? overrideFileName : device_name;
     const loomSD::RecoveryResult result = loomSD::scanRecoveryFiles(
-        root, scanningFile, base, file_count, recoveryScanPosition, recoveryFileName, recoveryCount,
-        MAX_JSON_SIZE, loomResetWatchdogIfEnabled, [this](const char *name) {
+        root, scanningFile, base, batchSessionNumber, recoveryScanPosition, recoveryFileName,
+        recoveryCount, MAX_JSON_SIZE, loomResetWatchdogIfEnabled, [this](const char *name) {
             printModuleName("Batch has incomplete/oversized records; preserved for inspection:");
             printModuleName(name);
         });
@@ -494,6 +766,7 @@ bool SDManager::findRecoveryBatch() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 char *SDManager::readFile(const char *fileName) {
+    FUNCTION_START(this);
     if (!sdInitialized) {
         printModuleName("Failed to read! SD card not Initialized!");
         return nullptr;
@@ -541,6 +814,7 @@ char *SDManager::readFile(const char *fileName) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 SDWriteStatus SDManager::logBatch() {
+    FUNCTION_START(this);
     if (!sdInitialized || batch_size <= 0) {
         return SDWriteStatus::Failed;
     }
@@ -588,6 +862,7 @@ SDWriteStatus SDManager::logBatch() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::clearBatch() {
+    FUNCTION_START(this);
     if (!sdInitialized || batch_size <= 0 || batchFileName[0] == '\0') {
         printModuleName("Cannot clear batch because SD batch logging is unavailable!");
         return false;

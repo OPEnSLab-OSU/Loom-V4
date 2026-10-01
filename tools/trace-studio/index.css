@@ -1,0 +1,9 @@
+#floatingDiv {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    background-color: red;
+    text-align: center;
+    vertical-align: middle;
+    line-height: 100px;       /* The same as your div height */
+}

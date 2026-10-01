@@ -1,0 +1,113 @@
+{
+  "client_date": "2026-09-30",
+  "board": "loom4:samd:adafruit_feather_m0:usbstack=arduino,debug=off",
+  "builds": [
+    {
+      "mode": "off",
+      "result": "PASS",
+      "sketch_bytes": 210548,
+      "note": "Canonical debug example; recorder and wrapper symbols absent.",
+      "build_root": "C:\\Users\\brews\\AppData\\Local\\Temp\\loom-trace-fb66be8a10a74f9db23cce7b7fc89bd2",
+      "elf_sha256": "B560138DB7B82ABEB3C106AEDF99F2FA50C8DA2001FD62AFA71FEE0A86E13BCE",
+      "flags": [
+        "compile",
+        "--fqbn",
+        "loom4:samd:adafruit_feather_m0:usbstack=arduino,debug=off",
+        "--warnings",
+        "all",
+        "--jobs",
+        "4",
+        "--build-path",
+        "C:\\Users\\brews\\AppData\\Local\\Temp\\loom-trace-fb66be8a10a74f9db23cce7b7fc89bd2\\build",
+        "--build-property",
+        "compiler.cpp.extra_flags=-DLOOM_ENABLE_TRACE=0 -DLOOM_WISP_TRACE=0 -DLOOM_WISP_TRACE_HEAP=0",
+        "--libraries",
+        "C:\\Users\\brews\\AppData\\Local\\Arduino15\\packages\\loom4\\hardware\\samd\\4.9\\libraries",
+        "--libraries",
+        "C:\\Users\\brews\\Documents\\Arduino\\libraries"
+      ],
+      "loom_owned_warnings": 0
+    },
+    {
+      "mode": "calls",
+      "result": "PASS",
+      "sketch_bytes": 218708,
+      "note": "Deployment debug with custom sensor settings; allocator wrapper symbols absent.",
+      "build_root": "C:\\Users\\brews\\AppData\\Local\\Temp\\loom-trace-41111312dd1849bc970f08a983c9b72a",
+      "elf_sha256": "82A83149968E0FFC9EBC4A1352FB5E6B848A3E62B9211602F13EF6D2FC1F8D0D",
+      "flags": [
+        "compile",
+        "--fqbn",
+        "loom4:samd:adafruit_feather_m0:usbstack=arduino,debug=off",
+        "--warnings",
+        "all",
+        "--jobs",
+        "4",
+        "--build-path",
+        "C:\\Users\\brews\\AppData\\Local\\Temp\\loom-trace-41111312dd1849bc970f08a983c9b72a\\build",
+        "--build-property",
+        "compiler.cpp.extra_flags=-DLOOM_ENABLE_TRACE=1 -DLOOM_WISP_TRACE=1 -DLOOM_WISP_TRACE_HEAP=0",
+        "--libraries",
+        "C:\\Users\\brews\\AppData\\Local\\Arduino15\\packages\\loom4\\hardware\\samd\\4.9\\libraries",
+        "--libraries",
+        "C:\\Users\\brews\\Documents\\Arduino\\libraries"
+      ],
+      "loom_owned_warnings": 0
+    },
+    {
+      "mode": "heap",
+      "result": "PASS",
+      "sketch_bytes": 219356,
+      "note": "Deployment debug with custom sensor settings; new/delete route to wrapped malloc/free.",
+      "build_root": "C:\\Users\\brews\\AppData\\Local\\Temp\\loom-trace-2c665b284ffb4687b2d34f21d4533813",
+      "elf_sha256": "04FD162CF32200EBE6CDA5F6B7652C8C127F9FF557E23E2BBE08EC240D4568B0",
+      "flags": [
+        "compile",
+        "--fqbn",
+        "loom4:samd:adafruit_feather_m0:usbstack=arduino,debug=off",
+        "--warnings",
+        "all",
+        "--jobs",
+        "4",
+        "--build-path",
+        "C:\\Users\\brews\\AppData\\Local\\Temp\\loom-trace-2c665b284ffb4687b2d34f21d4533813\\build",
+        "--build-property",
+        "compiler.cpp.extra_flags=-DLOOM_ENABLE_TRACE=1 -DLOOM_WISP_TRACE=1 -DLOOM_WISP_TRACE_HEAP=1",
+        "--libraries",
+        "C:\\Users\\brews\\AppData\\Local\\Arduino15\\packages\\loom4\\hardware\\samd\\4.9\\libraries",
+        "--libraries",
+        "C:\\Users\\brews\\Documents\\Arduino\\libraries",
+        "--build-property",
+        "compiler.c.elf.extra_flags=-Wl,--wrap=malloc,--wrap=calloc,--wrap=realloc,--wrap=free,--wrap=_malloc_r,--wrap=_calloc_r,--wrap=_realloc_r,--wrap=_free_r"
+      ],
+      "loom_owned_warnings": 0
+    }
+  ],
+  "recorder_storage_bytes": 1056,
+  "interpreted_converter_cases": 15,
+  "interpreted_converter_result": "PASS",
+  "native_recorder_cases": [
+    "serializer and wrappers",
+    "bounded overflow and no SD in allocator hooks",
+    "interrupt exclusion",
+    "partial writer failure",
+    "clock rollover"
+  ],
+  "native_recorder_result": "PASS",
+  "manager_lifecycle_result": "PASS (existing unused reset-cause fixture warning)",
+  "source_checks": [
+    "quiet/debug parity including deployment settings",
+    "debug boundaries",
+    "warning scopes",
+    "125 sketch include-discovery checks"
+  ],
+  "browser_check": "Fictional example: nested call selection, entry/exit, time slider, live-block table",
+  "limitations": [
+    "No physical board/SD test",
+    "No upload",
+    "Capture begins after initialization",
+    "Individual allocations in recorder/interrupt/custom allocator paths are outside capture",
+    "Enabled SD recording adds latency"
+  ],
+  "note": "Off uses canonical example; calls/heap use deployment sensor settings. Byte counts are not a controlled off-vs-on overhead comparison. Formatter-only Logger macro whitespace changed after compilation; no semantics changed."
+}

@@ -1,11 +1,19 @@
 #include "Loom_WarningGuards.h"
 
 #include "Loom_Hypnos.h"
+#include "Utilities/Loom_RechargePolicy.h"
 LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <ArduinoLowPower.h>
 #include <Wire.h>
 LOOM_EXTERNAL_INCLUDE_END
 #include "Logger.h"
+#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
+#include "Diagnostics/Loom_Trace.h"
+#endif
+#include "Internet/Connectivity/NetworkComponent.h"
+#include "Sensors/Loom_Analog/Loom_Analog.h"
+#include "Utilities/Loom_TimeUtils.h"
+#include "Utilities/Loom_ClockRead.h"
 
 namespace {
 struct TimezoneEntry {
@@ -184,17 +192,20 @@ Loom_Hypnos::~Loom_Hypnos() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::package() {
     JsonObject json = manInst->getDocument().createNestedObject("timestamp");
-    char timeStr[21];
-    char localStr[21];
-
-    time = getCurrentTime();
+    if (!tryGetCurrentTime(time)) {
+        // Keep both keys/schema, but never label a failed I2C read as a real default date.
+        json["time_utc"] = nullptr;
+        json["time_local"] = nullptr;
+        WARNING(F("RTC read failed; this packet's timestamps are unavailable."));
+        return;
+    }
     localTime = getLocalTime(time);
-
-    dateTime_toString(time, timeStr);
-    json["time_utc"] = timeStr;
-
-    dateTime_toString(localTime, localStr, true);
-    json["time_local"] = localStr;
+    // ArduinoJson copies mutable text on assignment. Reuse one 21-byte buffer for both values.
+    char text[21];
+    dateTime_toString(time, text);
+    json["time_utc"] = text;
+    dateTime_toString(localTime, text, true);
+    json["time_local"] = text;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -218,6 +229,7 @@ void Loom_Hypnos::enable() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::enable(bool enable33, bool enable5) {
+    FUNCTION_START(this);
 
     // Enable the configured 3.3v and 5v rails on the Hypnos
     setPowerRails(enable33, enable5);
@@ -230,6 +242,11 @@ void Loom_Hypnos::enable(bool enable33, bool enable5) {
         pinMode(sd_chip_select, OUTPUT);
 
         sdMan->begin();
+#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
+        if (Loom_Trace *trace = Loom_Trace::current()) {
+            trace->setStorageAvailable(sdMan->hasSDInitialized());
+        }
+#endif
     }
 
     // If the RTC hasn't already been initialized then do so now
@@ -259,6 +276,13 @@ void Loom_Hypnos::applyWakeConfiguration() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::disable(bool disable33, bool disable5) {
+#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
+    if (enableSD) {
+        if (Loom_Trace *trace = Loom_Trace::current()) {
+            trace->setStorageAvailable(false);
+        }
+    }
+#endif
     // Disable the configured 3.3v and 5v rails on the Hypnos
     setPowerRails(!disable33, !disable5);
     digitalWrite(LED_BUILTIN, LOW);
@@ -324,7 +348,7 @@ Loom_Hypnos::InterruptRegistration *Loom_Hypnos::findInterruptRegistration(int p
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int interruptPin,
                                     HypnosInterruptType interruptType, int triggerState) {
-    FUNCTION_START;
+    FUNCTION_START(this);
     pinMode(interruptPin, INPUT_PULLUP); //  Set interrupt pin input mode
     LOG(F("Registering interrupt..."));
 
@@ -380,7 +404,7 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin) {
-    FUNCTION_START;
+    FUNCTION_START(this);
     InterruptRegistration *registered = findInterruptRegistration(interruptPin);
     if (registered == nullptr) {
         ERROR(F("Failed to reattach interrupt! Interrupt has not previously been registered..."));
@@ -397,8 +421,13 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin) {
         // it has not elapsed, recover a stale alarm flag before attaching. The
         // previous behavior returned success without attaching anything, which
         // allowed sleep() to enter standby with no usable wake source.
+        DateTime now;
+        if (RTC_initialized && alarmScheduled && !tryGetCurrentTime(now)) {
+            ERROR(F("Cannot verify the active RTC alarm; wake interrupt was not attached."));
+            return false;
+        }
         const bool alarmElapsed =
-            RTC_initialized && alarmScheduled && alarmTime.unixtime() <= RTC_DS.now().unixtime();
+            RTC_initialized && alarmScheduled && alarmTime.unixtime() <= now.unixtime();
         if (alarmElapsed) {
             LOG(F("RTC alarm is already active; deferring callback to the sleep overrun handler."));
             return true;
@@ -454,13 +483,14 @@ void Loom_Hypnos::setCompileTime(const char *buildDate, const char *buildTime) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::initializeRTC() {
-    FUNCTION_START;
+    FUNCTION_START(this);
+    RTC_initialized = false; // A failed reinitialization must not retain an earlier success.
+    alarmScheduled = false;  // An old alarm is not evidence for this initialization attempt.
     LOG("Initializing DS3231....");
 
-    // If the RTC failed to start inform the user and hang
+    // Failed initialization returns without arming sleep; the sketch can report/retry it.
     if (!RTC_DS.begin()) {
-        ERROR(F("Couldn't start RTC! Check your connections... Execution will now hang as this is "
-                "likely a fatal error"));
+        ERROR(F("Couldn't start RTC! Check connections; RTC sleep remains unavailable."));
         return;
     }
 
@@ -477,14 +507,15 @@ void Loom_Hypnos::initializeRTC() {
         WARNING(F("RTC lost power."));
 
         if (hasSketchCompileTime) {
-            if (!RTC_DS.adjustChecked(
-                    compileUtcTime(timezone, sketchCompileDate, sketchCompileTime))) {
-                ERRORF("Could not set DS3231 compile time (I2C error %u).",
+            if (!writeRtcUtc(compileUtcTime(timezone, sketchCompileDate, sketchCompileTime))) {
+                ERRORF("Could not verify DS3231 compile time (I2C status %u; 0 can mean a time "
+                       "mismatch).",
                        static_cast<unsigned int>(RTC_DS.lastI2CError()));
                 return;
             }
         } else if (custom_time && Serial) {
             set_custom_time();
+            RTC_initialized = false; // This outer initialization still has to configure alarms.
         } else {
             WARNING(F("RTC was not adjusted because no explicit time source was provided. Call "
                       "setCompileTime(__DATE__, __TIME__) before enable(), enable custom time, or "
@@ -498,9 +529,10 @@ void Loom_Hypnos::initializeRTC() {
                    static_cast<unsigned int>(RTC_DS.lastI2CError()));
             return;
         }
-        if (rtcTime.unixtime() < compileUTC.unixtime() && !RTC_DS.adjustChecked(compileUTC)) {
-            ERRORF("Could not set DS3231 compile time (I2C error %u).",
-                   static_cast<unsigned int>(RTC_DS.lastI2CError()));
+        if (rtcTime.unixtime() < compileUTC.unixtime() && !writeRtcUtc(compileUTC)) {
+            ERRORF(
+                "Could not verify DS3231 compile time (I2C status %u; 0 can mean a time mismatch).",
+                static_cast<unsigned int>(RTC_DS.lastI2CError()));
             return;
         }
     }
@@ -516,7 +548,11 @@ void Loom_Hypnos::initializeRTC() {
     // We successfully started the RTC
     LOG(F("DS3231 Real-Time Clock Initialized Successfully!"));
     RTC_initialized = true;
-    DateTime t = getCurrentTime();
+    DateTime t;
+    if (!tryGetCurrentTime(t)) {
+        WARNING(F("RTC is configured, but UTC is unavailable; establish time before logging."));
+        return;
+    }
     char tbuf[21];
     dateTime_toString(t, tbuf);
     LOGF("DS3231 current time: %s", tbuf);
@@ -624,8 +660,35 @@ DateTime Loom_Hypnos::getCurrentTime() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::tryGetCurrentTime(DateTime &utc) {
+    if (!RTC_initialized || rtcWriteUnverified) {
+        return false;
+    }
+    // Recheck status rather than caching it: the RTC can lose oscillator power between wakes.
+    return loomTime::readEstablishedUtc(RTC_DS, utc);
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::writeRtcUtc(const DateTime &utc) {
+    const bool verified = loomTime::writeVerifiedUtc(RTC_DS, utc, millis);
+    // A failed write can leave plausible but mixed date bytes while OSF is already clear.
+    // Remember that uncertainty for this session; only a verified explicit set clears it.
+    rtcWriteUnverified = !verified;
+    if (!verified) {
+        alarmScheduled = false;
+    }
+    return verified;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::networkTimeUpdate() {
-    FUNCTION_START;
+    FUNCTION_START(this);
+    if (!RTC_initialized) {
+        ERROR(F("Initialize Hypnos/RTC before requesting a network time update."));
+        return false;
+    }
     if (networkComponent == nullptr) {
         ERROR("Network component not set in Hypnos; RTC time was not updated.");
         return false;
@@ -651,12 +714,23 @@ bool Loom_Hypnos::networkTimeUpdate() {
 
         // Attempt to retrieve the current time from our network component
         if (networkComponent->getNetworkTime(&year, &month, &day, &hour, &minute, &second, &tz)) {
-            if (!RTC_DS.adjustChecked(DateTime(year, month, day, hour, minute, second))) {
-                ERRORF("Failed to write network time to DS3231 (I2C error %u).",
+            // Validate the original integers before DateTime narrows its fields to bytes.
+            // Otherwise a corrupt modem response (for example month=257) can become January.
+            if (!loomTime::validUtcFields(year, month, day, hour, minute, second)) {
+                ERROR(F("Network returned an invalid UTC date; RTC was not changed."));
+                continue;
+            }
+            if (!writeRtcUtc(DateTime(year, month, day, hour, minute, second))) {
+                ERRORF("Could not verify DS3231 network time (I2C status %u; 0 can mean a time "
+                       "mismatch).",
                        static_cast<unsigned int>(RTC_DS.lastI2CError()));
                 continue;
             }
-            DateTime t = getCurrentTime();
+            DateTime t;
+            if (!tryGetCurrentTime(t)) {
+                ERROR(F("RTC read failed after network time update; success not confirmed."));
+                continue;
+            }
             char tbuf[21];
             dateTime_toString(t, tbuf);
             LOGF("Network time successfully set to: %s", tbuf);
@@ -693,7 +767,7 @@ void Loom_Hypnos::dateTime_toString(DateTime time, char array[21], bool isLocal)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::set_custom_time() {
-    FUNCTION_START;
+    FUNCTION_START(this);
 
     // Let the user know that they should enter local time
     LOG(F("Please use UTC time, not local!"));
@@ -707,15 +781,19 @@ void Loom_Hypnos::set_custom_time() {
     const int second = readSerialInteger(F("Enter the Second (0 ~ 59)"), "second", 0, 59);
 
     // Set the RTC to the custom time
-    if (!RTC_DS.adjustChecked(DateTime(year, month, day, hour, minute, second))) {
-        ERRORF("Failed to set custom DS3231 time (I2C error %u).",
+    if (!writeRtcUtc(DateTime(year, month, day, hour, minute, second))) {
+        ERRORF("Could not verify custom DS3231 time (I2C status %u; 0 can mean a time mismatch).",
                static_cast<unsigned int>(RTC_DS.lastI2CError()));
         return;
     }
     RTC_initialized = true;
 
     // Output
-    DateTime t = getCurrentTime();
+    DateTime t;
+    if (!tryGetCurrentTime(t)) {
+        ERROR(F("RTC read failed after setting custom time; success not confirmed."));
+        return;
+    }
     char tbuf[21];
     dateTime_toString(t, tbuf);
     LOGF("Custom time successfully set to: %s", tbuf);
@@ -725,19 +803,92 @@ void Loom_Hypnos::set_custom_time() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::setInterruptDuration(const TimeSpan duration) {
-    FUNCTION_START;
+    FUNCTION_START(this);
+    (void)scheduleWake(duration);
+    FUNCTION_END;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::scheduleWake(const TimeSpan duration) {
+    FUNCTION_START(this);
+
+    sampleIntervalSeconds = 0; // Explicitly return to the established relative sleep API.
+    nextSampleUtc = 0;
 
     if (!RTC_initialized) {
         ERROR(F("Cannot set an RTC alarm before the RTC is initialized."));
         alarmScheduled = false;
-        return;
+        return false;
     }
 
-    if (duration.totalseconds() <= 0) {
-        ERROR(F("RTC alarm duration must be greater than zero."));
+    if (!loomTime::validRtcWakeDelay(duration.totalseconds())) {
+        ERROR(F("RTC alarm duration must be 1 second through 27 days."));
         alarmScheduled = false;
-        return;
+        return false;
     }
+
+    DateTime now;
+    if (!tryGetCurrentTime(now)) {
+        ERROR(F("Cannot read the RTC to schedule a relative wake alarm."));
+        alarmScheduled = false;
+        return false;
+    }
+    const uint32_t lastSupportedUtc = DateTime(2099, 12, 31, 23, 59, 59).unixtime();
+    if (now.unixtime() > lastSupportedUtc - static_cast<uint32_t>(duration.totalseconds())) {
+        ERROR(F("Relative wake time is outside the supported RTC calendar."));
+        alarmScheduled = false;
+        return false;
+    }
+    const bool scheduled = armRTCAlarm(now + duration);
+    FUNCTION_END;
+    return scheduled;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::setSampleInterval(const TimeSpan interval) {
+    FUNCTION_START(this);
+    const int32_t seconds = interval.totalseconds();
+    // DS3231 Alarm 1 compares day-of-month, not month/year. A short interval prevents an
+    // earlier monthly match. Longer schedules require periodic wake/rearm, a separate feature.
+    if (!RTC_initialized || !loomTime::validRtcWakeDelay(seconds)) {
+        ERROR(F("Sample interval requires an initialized RTC and 1 second through 27 days."));
+        alarmScheduled = false;
+        sampleIntervalSeconds = 0;
+        nextSampleUtc = 0;
+        return false;
+    }
+    DateTime now;
+    if (!tryGetCurrentTime(now)) {
+        ERROR(F("Cannot read the RTC to schedule the next sample."));
+        alarmScheduled = false;
+        return false;
+    }
+    const uint32_t nowUtc = now.unixtime();
+    if (sampleIntervalSeconds != static_cast<uint32_t>(seconds) || nowUtc < lastSampleClockUtc) {
+        nextSampleUtc = 0; // Changed period or backwards clock adjustment: use a fresh anchor.
+    }
+    uint32_t targetUtc = 0;
+    if (!loomTime::nextSampleTime(nowUtc, static_cast<uint32_t>(seconds), nextSampleUtc,
+                                  targetUtc) ||
+        targetUtc > DateTime(2099, 12, 31, 23, 59, 59).unixtime()) {
+        ERROR(F("Next sample time is outside the supported RTC calendar."));
+        alarmScheduled = false;
+        return false;
+    }
+    sampleIntervalSeconds = static_cast<uint32_t>(seconds);
+    nextSampleUtc = targetUtc;
+    lastSampleClockUtc = nowUtc;
+    return armRTCAlarm(DateTime(targetUtc));
+    FUNCTION_END;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::armRTCAlarm(const DateTime target) {
+    FUNCTION_START(this);
+    alarmScheduled = false;
 
     // Reset both alarm sources before replacement so neither can hold the shared
     // active-low INT/SQW line asserted. The hardened OPEnS driver repeats this
@@ -747,26 +898,18 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration) {
         ERRORF("Could not reset DS3231 alarms (I2C error %u); sleep will be aborted.",
                static_cast<unsigned int>(RTC_DS.lastI2CError()));
         alarmScheduled = false;
-        return;
+        return false;
     }
     if (sleepInterruptPin >= 0) {
         clearPendingExternalInterrupt(sleepInterruptPin);
     }
 
-    // The time in the future that the alarm will be set for
-    const DateTime currentRtcTime = RTC_DS.now();
-    if (!RTC_DS.lastOperationSucceeded()) {
-        ERRORF("Could not read DS3231 time (I2C error %u); sleep will be aborted.",
-               static_cast<unsigned int>(RTC_DS.lastI2CError()));
-        alarmScheduled = false;
-        return;
-    }
-    alarmTime = currentRtcTime + duration;
+    alarmTime = target;
     alarmScheduled = RTC_DS.setAlarm1(alarmTime, DS3231_A1_Date);
     if (!alarmScheduled) {
         ERRORF("Failed to set RTC alarm 1 (I2C error %u).",
                static_cast<unsigned int>(RTC_DS.lastI2CError()));
-        return;
+        return false;
     }
 
     // Independently read the alarm registers back so an interrupted/failed I2C
@@ -785,7 +928,7 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration) {
         alarmScheduled = false;
         ERROR(
             F("RTC alarm readback did not match the requested wake time; sleep will be aborted."));
-        return;
+        return false;
     }
 
     // Clear a match flag that may have become pending while the alarm registers
@@ -796,20 +939,28 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration) {
         ERRORF("Could not clear the programmed DS3231 alarm flag (I2C error %u); sleep will be "
                "aborted.",
                static_cast<unsigned int>(RTC_DS.lastI2CError()));
-        return;
+        return false;
     }
     if (sleepInterruptPin >= 0) {
         clearPendingExternalInterrupt(sleepInterruptPin);
     }
 
-    // Print the time that the next interrupt is set to trigger
-    DateTime t = getLocalTime(RTC_DS.now());
+    // A clock fault during alarm preparation must not be reported as a successful schedule.
+    DateTime utc;
+    if (!tryGetCurrentTime(utc)) {
+        alarmScheduled = false;
+        (void)RTC_DS.disableAlarm(1); // Best effort; the sketch remains awake even if I2C fails.
+        ERROR(F("RTC UTC became unavailable during alarm preparation; sleep aborted."));
+        return false;
+    }
+    DateTime t = getLocalTime(utc);
     char tbuf[21];
     dateTime_toString(t, tbuf);
-    LOGF("Current Time (Local): %s", tbuf, true);
+    LOGF("Current Time (Local): %s", tbuf);
     t = getLocalTime(alarmTime);
     dateTime_toString(t, tbuf);
-    LOGF("Next interrupt alarm set for: %s", tbuf, true);
+    LOGF("Next interrupt alarm set for: %s", tbuf);
+    return true;
     FUNCTION_END;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -817,17 +968,94 @@ void Loom_Hypnos::setInterruptDuration(const TimeSpan duration) {
 /* Sleep Functionality */
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::sleep(bool waitForSerial) {
+void Loom_Hypnos::sleep(bool waitForSerial) { (void)sleepImpl(waitForSerial, true); }
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::sleepForRecharge(const TimeSpan checkInterval) {
+    FUNCTION_START(this);
+    if (sleepInterruptPin != 12) {
+        ERROR(F("Recharge sleep requires the registered Hypnos RTC wake on pin 12."));
+        return false;
+    }
+    // Restore the RTC/SD control path, but do not call Manager::power_up() here. Sensors and
+    // LTE must stay logically asleep until the sketch has measured a recovered battery.
+    enable();
+    if (!scheduleWake(checkInterval)) {
+        manInst->power_down();
+        disable();
+        return false;
+    }
+    const bool slept = sleepImpl(false, false);
+    if (!slept) {
+        disable();
+    }
+    FUNCTION_END;
+    return slept;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::sleepForRechargeInternal(const TimeSpan checkInterval) {
+    FUNCTION_START(this);
+    const int32_t seconds = checkInterval.totalseconds();
+    if (!loomTime::validRtcWakeDelay(seconds)) {
+        return false;
+    }
+    manInst->power_down();
+    if (!manInst->canRemovePower()) {
+        ERROR(F("Recharge aborted: a module has not acknowledged shutdown."));
+        return false;
+    }
+    if (RTC_initialized && alarmScheduled) {
+        if (!releaseRTCInterrupt()) {
+            return false;
+        }
+        alarmScheduled = false;
+    }
+    if (sleepInterruptPin >= 0) {
+        detachInterrupt(digitalPinToInterrupt(sleepInterruptPin));
+    }
+    if (!pre_sleep(true, false)) {
+        return false;
+    }
+    shouldPowerUp = true;
+    {
+        LoomWatchdogPause watchdogPause;
+        LowPower.sleep(static_cast<uint32_t>(seconds) * 1000UL);
+    }
+    // Restore control/USB only. The next voltage check determines when work can resume.
+    post_sleep(false, false);
+    FUNCTION_END;
+    return true;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::setRechargePolicy(loomPower::RechargePolicy &policy, float (*reader)()) {
+    if (!policy.isConfigured() || reader == nullptr) {
+        ERROR(F("Recharge policy needs valid thresholds and a battery-voltage reader."));
+        return false;
+    }
+    rechargePolicy = &policy;
+    readBatteryVolts = reader;
+    return true;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::sleepImpl(bool waitForSerial, bool wakeModules) {
+    FUNCTION_START(this);
 
     if (sleepInterruptPin < 0) {
         ERROR(F("Sleep aborted because no SLEEP interrupt is registered."));
-        return;
+        return false;
     }
 
     const bool rtcWakeSource = sleepInterruptPin == 12;
     if (rtcWakeSource && (!RTC_initialized || !alarmScheduled)) {
         ERROR(F("Sleep aborted because no valid RTC alarm is scheduled."));
-        return;
+        return false;
     }
 
     // If the alarm set time is less than the current time we missed our next alarm so we need to
@@ -842,7 +1070,14 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
         // Compare against the exact DateTime captured when the alarm was set.
         // Reconstructing getAlarm1() with the current month breaks across month/year boundaries.
         if (rtcWakeSource) {
-            const DateTime now = RTC_DS.now();
+            DateTime now;
+            if (!tryGetCurrentTime(now)) {
+                ERROR(F("Sleep aborted: cannot check the RTC wake deadline."));
+                if (wakeModules) {
+                    restoreModulesAfterSleep(wakeModules);
+                }
+                return false;
+            }
             hasAlarmTriggered = alarmTime.unixtime() <= now.unixtime();
         }
 
@@ -851,30 +1086,60 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
         delay(50);
     }
 
+    if (rtcWakeSource && hasAlarmTriggered && sampleIntervalSeconds > 0) {
+        // Work took longer than this period. Skip missed grid slots before sleeping instead
+        // of immediately collecting a burst of catch-up samples. Relative-delay users retain
+        // the established resample behavior below.
+        WARNING(F("Sample interval overrun; skipping missed slots and keeping the UTC phase."));
+        if (!setSampleInterval(TimeSpan(static_cast<int32_t>(sampleIntervalSeconds)))) {
+            if (shouldPowerUp && wakeModules) {
+                restoreModulesAfterSleep(wakeModules);
+            }
+            return false;
+        }
+        hasAlarmTriggered = false;
+    }
+
     // Prepare the wake source before entering standby. If the RTC alarm becomes
     // active during that preparation, handle it through the normal overrun path
     // instead of treating the asserted line as an attachment failure.
     if (!hasAlarmTriggered) {
-        if (!pre_sleep()) {
-            if (rtcWakeSource && alarmScheduled &&
-                alarmTime.unixtime() <= RTC_DS.now().unixtime()) {
+        if (!pre_sleep(!wakeModules)) {
+            DateTime now;
+            const bool missedRtcAlarm = rtcWakeSource && tryGetCurrentTime(now) && alarmScheduled &&
+                                        alarmTime.unixtime() <= now.unixtime();
+            if (missedRtcAlarm && sampleIntervalSeconds > 0) {
+                // Preparation itself can cross the deadline. Retry preparation once after
+                // advancing the grid; tiny periods must not create an unbounded sleep loop.
+                if (!setSampleInterval(TimeSpan(static_cast<int32_t>(sampleIntervalSeconds))) ||
+                    !pre_sleep(!wakeModules)) {
+                    ERROR(F("Sleep preparation exceeded the sample interval; staying awake."));
+                    if (shouldPowerUp && wakeModules) {
+                        restoreModulesAfterSleep(wakeModules);
+                    }
+                    return false;
+                }
+            } else if (missedRtcAlarm) {
                 hasAlarmTriggered = true;
             } else {
                 ERROR(F("Sleep aborted because the registered wake source was not ready."));
-                if (shouldPowerUp) {
-                    manInst->power_up(wakeWatchdogMs);
+                if (shouldPowerUp && wakeModules) {
+                    restoreModulesAfterSleep(wakeModules);
                 }
-                return;
+                return false;
             }
         }
     }
 
     if (!hasAlarmTriggered) {
         shouldPowerUp = true;
-        if (wakeWatchdogMs > 0) {
-            Watchdog.disable(); // SAMD21 WDT runs in standby; guard only the active phases.
+        {
+            // SAMD WDT keeps running in standby. Suspend even a sketch-enabled watchdog, then
+            // restore its exact configuration before wake I/O. A configured wake guard below
+            // deliberately takes precedence over that restored timeout.
+            LoomWatchdogPause watchdogPause;
+            LowPower.sleep();
         }
-        LowPower.sleep(); // Go to sleep and hang
         enableWakeWatchdog();
     }
     // If it has we want to trigger a resample which requires powering the sensors back up
@@ -887,8 +1152,8 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
         if (sleepInterruptPin >= 0) {
             clearPendingExternalInterrupt(sleepInterruptPin);
         }
-        if (shouldPowerUp) {
-            manInst->power_up(wakeWatchdogMs);
+        if (shouldPowerUp && wakeModules) {
+            restoreModulesAfterSleep(wakeModules);
         }
         InterruptRegistration *registered = findInterruptRegistration(sleepInterruptPin);
         if (registered != nullptr && registered->callback != nullptr) {
@@ -899,31 +1164,40 @@ void Loom_Hypnos::sleep(bool waitForSerial) {
 
     // If the alarm hadn't triggered last time we want to wake up like normal
     if (!hasAlarmTriggered) {
-        post_sleep(waitForSerial); // Wake up
+        post_sleep(waitForSerial, wakeModules); // Wake up
     }
+    return !hasAlarmTriggered;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_Hypnos::pre_sleep() {
-    bool disable5 = is5VDisabled(DEVICE_STATE::ENTERING_SLEEP);
-    bool disable33 = is3VDisabled(DEVICE_STATE::ENTERING_SLEEP);
+bool Loom_Hypnos::pre_sleep(bool forceRailsOff, bool externalWake) {
+    FUNCTION_START(this);
+    const bool disable5 = forceRailsOff || is5VDisabled(DEVICE_STATE::ENTERING_SLEEP);
+    const bool disable33 = forceRailsOff || is3VDisabled(DEVICE_STATE::ENTERING_SLEEP);
     delay(1000);
 
     // Validate and attach the wake source while Serial and the sensor rails are
     // still available. A failure is now visible to the user and leaves the
     // device awake instead of silently entering unbounded standby.
-    if (sleepInterruptPin < 0 || !reattachRTCInterrupt(sleepInterruptPin)) {
+    if (externalWake && (sleepInterruptPin < 0 || !reattachRTCInterrupt(sleepInterruptPin))) {
         ERROR(F("Could not attach the registered wake interrupt before standby."));
         return false;
     }
 
-    if (sleepInterruptPin == 12 && digitalRead(sleepInterruptPin) == LOW) {
-        if (RTC_initialized && alarmScheduled && alarmTime.unixtime() <= RTC_DS.now().unixtime()) {
+    if (externalWake && sleepInterruptPin == 12 && digitalRead(sleepInterruptPin) == LOW) {
+        DateTime now;
+        if (RTC_initialized && alarmScheduled && tryGetCurrentTime(now) &&
+            alarmTime.unixtime() <= now.unixtime()) {
             WARNING(F("RTC alarm became active during pre-sleep preparation; skipping standby."));
         } else {
             ERROR(F("RTC INT is LOW before its scheduled time; refusing to enter standby."));
         }
+        return false;
+    }
+
+    if (!manInst->canRemovePower()) {
+        ERROR(F("A module has not acknowledged shutdown; peripheral rails stay on."));
         return false;
     }
 
@@ -938,19 +1212,20 @@ bool Loom_Hypnos::pre_sleep() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Hypnos::post_sleep(bool waitForSerial) {
+void Loom_Hypnos::post_sleep(bool waitForSerial, bool wakeModules) {
+    FUNCTION_START(this);
     // Enable the Watchdog timer when waking up
     enableWakeWatchdog();
-    loomResetWatchdogIfEnabled();
+    LOOM_FEED_WATCHDOG();
 
     if (shouldPowerUp) {
         USBDevice.attach();
-        loomResetWatchdogIfEnabled();
+        LOOM_FEED_WATCHDOG();
         Serial.begin(115200);
-        loomResetWatchdogIfEnabled();
+        LOOM_FEED_WATCHDOG();
 
         enable();
-        loomResetWatchdogIfEnabled();
+        LOOM_FEED_WATCHDOG();
 
         // Acknowledge immediately after restoring the RTC bus, before the
         // ordinary wake delay and module reinitialization. The pin is a level,
@@ -962,9 +1237,8 @@ void Loom_Hypnos::post_sleep(bool waitForSerial) {
                     ERRORF("Could not read the DS3231 Alarm 1 wake flag (I2C error %u).",
                            static_cast<unsigned int>(RTC_DS.lastI2CError()));
                 } else if (!alarm1Fired) {
-                    const DateTime wakeTime = RTC_DS.now();
-                    if (RTC_DS.lastOperationSucceeded() &&
-                        wakeTime.unixtime() < alarmTime.unixtime()) {
+                    DateTime wakeTime;
+                    if (tryGetCurrentTime(wakeTime) && wakeTime.unixtime() < alarmTime.unixtime()) {
                         WARNINGF(
                             "Woke %lu s before the DS3231 Alarm 1 match; INT pin is %s. "
                             "Check for another wake source or noise on the RTC interrupt line.",
@@ -976,22 +1250,23 @@ void Loom_Hypnos::post_sleep(bool waitForSerial) {
             releaseRTCInterrupt();
             alarmScheduled = false;
         }
-        loomResetWatchdogIfEnabled();
+        LOOM_FEED_WATCHDOG();
         delay(1000);
-        loomResetWatchdogIfEnabled();
+        LOOM_FEED_WATCHDOG();
 
         LOG(F("Device has awoken from sleep!"));
-        loomResetWatchdogIfEnabled();
+        LOOM_FEED_WATCHDOG();
 
-        // Re-init the modules that need it
-        manInst->power_up(wakeWatchdogMs);
+        // Ordinary wakes reinitialize modules. A recharge check restores only the control
+        // path; starting the modem/fans now would spend energy before checking the battery.
+        const bool resumeModules = restoreModulesAfterSleep(wakeModules);
 
         // We want to wait for the user to re-open the serial monitor before continuing to see
         // readouts
-        if (waitForSerial) {
+        if (waitForSerial && resumeModules) {
             const uint32_t serialWaitStarted = millis();
             while (!Serial && static_cast<uint32_t>(millis() - serialWaitStarted) < WAIT_TIME_MS) {
-                loomResetWatchdogIfEnabled();
+                LOOM_FEED_WATCHDOG();
                 delay(1);
             }
         }
@@ -1001,6 +1276,20 @@ void Loom_Hypnos::post_sleep(bool waitForSerial) {
         }
         WD_TIMER_DISABLE;
     }
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::restoreModulesAfterSleep(bool wakeModules) {
+    FUNCTION_START(this);
+    // Use the same voltage gate after standby, an alarm overrun, or an aborted sleep.
+    // An error path must not accidentally restart LTE while the battery is charging.
+    if (!loomPower::allowModuleWake(wakeModules, rechargePolicy, readBatteryVolts)) {
+        disable();
+        return false;
+    }
+    manInst->power_up(wakeWatchdogMs);
+    return true;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1016,7 +1305,7 @@ void Loom_Hypnos::enableWakeWatchdog() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 TimeSpan Loom_Hypnos::getConfigFromSD(const char *fileName) {
-    FUNCTION_START;
+    FUNCTION_START(this);
     // Maximum supported layout is a two-member outer object (timezone + nested interval) and a
     // four-member interval object. Mutable input keeps the strings zero-copy.
     StaticJsonDocument<JSON_OBJECT_SIZE(6)> doc;
@@ -1062,7 +1351,8 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char *fileName) {
             LOGF("Selected timezone: %s, UTC offset: %i minutes", timezoneStr,
                  timezoneOffsetMinutes(timezone));
         } else {
-            WARNINGF("Unknown timezone '%s'; retaining configured timezone.", timezoneStr);
+            WARNINGF("Unknown timezone '%s'; retaining configured timezone.",
+                     timezoneStr ? timezoneStr : "(not a string)");
         }
     }
 
@@ -1082,24 +1372,64 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char *fileName) {
         }
     }
 
-    const int days = intervalFound ? intervalJson["days"].as<int>() : 0;
-    const int hours = intervalFound ? intervalJson["hours"].as<int>() : 0;
-    const int minutes = intervalFound ? intervalJson["minutes"].as<int>() : 0;
-    const int seconds = intervalFound ? intervalJson["seconds"].as<int>() : 0;
-    const TimeSpan interval(days, hours, minutes, seconds);
+    // Missing individual fields mean zero; supplied fields must be non-negative integers.
+    // Accumulate seconds with overflow checks rather than passing wide JSON integers to
+    // TimeSpan's narrow days/hours/minutes constructor (hours=256 used to become zero).
+    const char *fields[] = {"days", "hours", "minutes", "seconds"};
+    const int32_t scales[] = {86400, 3600, 60, 1};
+    int32_t totalSeconds = 0;
+    bool validInterval = intervalFound;
+    for (size_t index = 0; index < 4 && validInterval; ++index) {
+        JsonVariant value = intervalJson[fields[index]];
+        if (!intervalJson.containsKey(fields[index])) {
+            continue;
+        }
+        validInterval = value.is<int32_t>() &&
+                        loomTime::addIntervalPart(value.as<int32_t>(), scales[index], totalSeconds);
+    }
 
-    LOGF("Sampling interval layout: %s; days=%d hours=%d minutes=%d seconds=%d",
-         intervalFound ? intervalLayout : "missing", days, hours, minutes, seconds);
+    LOGF("Sampling interval layout: %s", intervalFound ? intervalLayout : "missing");
     free(fileRead);
 
-    if (!intervalFound || interval.totalseconds() <= 0) {
-        ERROR(F("Sampling interval is missing or zero; using 20 minutes."));
+    if (!validInterval || totalSeconds <= 0) {
+        ERROR(F("Sampling interval is missing, invalid, zero, or too large; using 20 minutes."));
         return fallback;
     }
 
-    LOGF("Sampling interval loaded from SD: %ld seconds.", (long)interval.totalseconds());
+    LOGF("Sampling interval loaded from SD: %ld seconds.", (long)totalSeconds);
     FUNCTION_END;
-    return interval;
+    return TimeSpan(totalSeconds);
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::requestReset(const char *reason) {
+#if defined(ARDUINO_ARCH_SAMD)
+    if (reason == nullptr || reason[0] == '\0') {
+        ERROR(F("Reset canceled: supply a reason."));
+        return false;
+    }
+    size_t length = 0;
+    while (length < 64 && reason[length] != '\0') {
+        ++length;
+    }
+    if (length == 64) {
+        ERROR(F("Reset canceled: reason must fit in 63 bytes."));
+        return false;
+    }
+    LoomWatchdogPause watchdogPause;
+    if (enableSD && (sdMan == nullptr || !sdMan->prepareForReset(reason))) {
+        return false;
+    }
+    // Print directly: Logger could issue another SD write after the committed intent.
+    Serial.print(F("[MCU RESET REQUEST] "));
+    Serial.println(reason);
+    NVIC_SystemReset();
+#else
+    (void)reason;
+    ERROR(F("Recorded MCU reset requests are supported only on SAMD."));
+#endif
+    return false;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1107,12 +1437,17 @@ TimeSpan Loom_Hypnos::getConfigFromSD(const char *fileName) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::logToSD() {
-    FUNCTION_START;
+    FUNCTION_START(this);
     if (sdMan == nullptr) {
         ERROR(F("Cannot log to SD because Hypnos SD support is disabled."));
         return false;
     }
-    bool logged = sdMan->log(getCurrentTime());
+    DateTime utc;
+    if (!tryGetCurrentTime(utc)) {
+        ERROR(F("Cannot log a timed sample because the RTC read failed."));
+        return false;
+    }
+    const bool logged = sdMan->log(utc);
     FUNCTION_END;
     return logged;
 }
@@ -1122,7 +1457,7 @@ bool Loom_Hypnos::logToSD() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Hypnos::checkVoltage(float vmin, int analogPin, float scale, bool mv, int num_samples) {
-    FUNCTION_START;
+    FUNCTION_START(this);
     if (num_samples <= 0) {
         ERROR(F("Voltage check requires at least one sample."));
         voltage_flags = 0;

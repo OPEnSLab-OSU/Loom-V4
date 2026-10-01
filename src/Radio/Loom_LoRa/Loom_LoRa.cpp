@@ -3,6 +3,9 @@
 #include "Loom_LoRa.h"
 #include "Hardware/Loom_BatchSD/Loom_BatchSD.h"
 #include "Loom_Manager.h"
+#include "Utilities/Loom_LoRaPacketHeader.h"
+#include "Utilities/Loom_HeartbeatPayload.h"
+#include "Utilities/Loom_SDUtils.h"
 LOOM_EXTERNAL_INCLUDE_BEGIN
 #include "ArduinoJson.hpp"
 #include "FatLib/ArduinoFiles.h"
@@ -15,20 +18,20 @@ LOOM_EXTERNAL_INCLUDE_END
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_LoRa::Loom_LoRa(Manager &manager, const uint8_t address, const uint8_t powerLevel,
                      const uint8_t sendMaxRetries, const uint8_t receiveMaxRetries,
-                     const uint16_t retryTimeout)
+                     const uint16_t retryTimeout, Mode mode)
     : Module("LoRa"), manager(&manager), radioDriver{RFM95_CS, RFM95_INT},
       radioManager(radioDriver, address), deviceAddress(address), powerLevel(powerLevel),
       sendRetryCount(sendMaxRetries), receiveRetryCount(receiveMaxRetries),
-      retryTimeout(retryTimeout), expectedOutstandingPackets(0) {
+      retryTimeout(retryTimeout), transmissionMode(mode) {
     this->manager->registerModule(this);
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_LoRa::Loom_LoRa(Manager &manager, const uint8_t powerLevel, const uint8_t retryCount,
-                     const uint16_t retryTimeout)
+                     const uint16_t retryTimeout, Mode mode)
     : Loom_LoRa(manager, manager.get_instance_num(), powerLevel, retryCount, retryCount,
-                retryTimeout) {}
+                retryTimeout, mode) {}
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -128,6 +131,34 @@ void Loom_LoRa::setAddress(const uint8_t newAddress) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::loadScheduleFromJSON(const char *json, loomLoRa::Schedule &value) {
+    if (json == nullptr) {
+        return false;
+    }
+    StaticJsonDocument<256> settings;
+    if (deserializeJson(settings, json) || settings.overflowed() ||
+        !settings["window_length"].is<uint32_t>() || !settings["num_devices"].is<unsigned int>()) {
+        return false;
+    }
+    const unsigned int devices = settings["num_devices"].as<unsigned int>();
+    if (devices > 16 ||
+        (!settings["cycle_seconds"].isNull() && !settings["cycle_seconds"].is<uint32_t>()) ||
+        (!settings["early_wake_seconds"].isNull() &&
+         !settings["early_wake_seconds"].is<uint32_t>())) {
+        return false;
+    }
+    if (!value.configure(settings["window_length"].as<uint32_t>(), static_cast<uint8_t>(devices),
+                         settings["cycle_seconds"] | 3600UL,
+                         settings["early_wake_seconds"] | 60UL)) {
+        return false;
+    }
+    setSchedule(value);
+    restrictToGroup();
+    return true;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::receiveFromLoRa(uint8_t *buf, uint8_t bufferCapacity, uint8_t &receivedLength,
                                 uint timeout, uint8_t *fromAddress) {
     bool status = true;
@@ -167,6 +198,10 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy, uint8_t
     if (!recvStatus) {
         return FragReceiveStatus::Error;
     }
+    if (groupRestricted && !loomLoRa::Schedule::sameGroup(deviceAddress, *fromAddress)) {
+        return FragReceiveStatus::Incomplete; // Drop before touching a packet or partial state.
+    }
+    expireReceiveState();
 
     LOGF("Received packet from %i", *fromAddress);
 
@@ -183,28 +218,39 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy, uint8_t
 
     bool isReady = false;
     if (workingDoc.containsKey("batch_size")) {
-        isReady = handleBatchHeader(workingDoc);
+        isReady = handleBatchHeader(workingDoc, *fromAddress);
     } else if (workingDoc.containsKey("numPackets")) {
         isReady = handleFragHeader(workingDoc, *fromAddress);
-    } else if (fragmentActive && fragmentSender == *fromAddress) {
-        isReady = handleFragBody(workingDoc, *fromAddress);
     } else if (workingDoc.containsKey("module")) {
-        isReady = handleLostFrag(workingDoc, *fromAddress);
+        // Only a module object is a fragment body. A fresh full packet or heartbeat must
+        // never be appended to an abandoned packet merely because its sender is the same.
+        isReady = fragmentActive && fragmentSender == *fromAddress
+                      ? handleFragBody(workingDoc, *fromAddress)
+                      : handleLostFrag(workingDoc, *fromAddress);
     } else {
+        if (fragmentActive && fragmentSender == *fromAddress) {
+            WARNING(F("Fresh LoRa packet replaces this sender's incomplete fragments"));
+            resetFragmentState();
+        }
         isReady = handleSingleFrag(workingDoc);
     }
 
     if (isReady) {
-        if (shouldProxy) {
-            const char *name = manager->getDocument()["id"]["name"];
-            manager->set_device_name(name);
-
-            int instNum = manager->getDocument()["id"]["instance"];
-            manager->set_instance_num(instNum);
+        if (shouldProxy && workingDoc.containsKey("id")) {
+            const JsonObjectConst identity = workingDoc["id"].as<JsonObjectConst>();
+            if (!loomHeartbeat::validIdentity(identity)) {
+                ERROR(F("LoRa proxy identity is incomplete or too long; packet rejected."));
+                workingDoc.clear();
+                return FragReceiveStatus::Error;
+            }
+            // Validate both fields before changing either. Truncating only the name could
+            // otherwise publish this packet under a different device's Mongo topic.
+            manager->set_device_name(identity["name"].as<const char *>());
+            manager->set_instance_num(identity["instance"].as<int>());
         }
 
-        if (expectedOutstandingPackets > 0) {
-            expectedOutstandingPackets--;
+        if (manager->getDocument()["type"] == "data") {
+            batchReceive.complete(*fromAddress, millis());
         }
         return FragReceiveStatus::Complete;
     } else {
@@ -214,14 +260,14 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy, uint8_t
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LoRa::handleBatchHeader(JsonDocument &tempDoc) {
+bool Loom_LoRa::handleBatchHeader(JsonDocument &tempDoc, uint8_t fromAddress) {
     int batch_size = tempDoc["batch_size"];
-    if (batch_size <= 0 || batch_size > 255) {
+    if (!tempDoc["batch_size"].is<int>() || batch_size <= 0 || batch_size > 255) {
         ERROR(F("LoRa batch header contains an invalid packet count"));
         return false;
     }
     LOGF("Received batch header, expecting %i packets", batch_size);
-    expectedOutstandingPackets += batch_size;
+    batchReceive.start(fromAddress, static_cast<uint8_t>(batch_size), millis());
     return false;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -229,7 +275,10 @@ bool Loom_LoRa::handleBatchHeader(JsonDocument &tempDoc) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::handleFragHeader(JsonDocument &workingDoc, uint8_t fromAddress) {
     int expectedFragCount = workingDoc["numPackets"].as<int>();
-    if (expectedFragCount <= 0 || expectedFragCount > MAX_FRAGMENT_COUNT) {
+    if (!workingDoc["numPackets"].is<int>() || expectedFragCount <= 0 ||
+        expectedFragCount > MAX_FRAGMENT_COUNT || !workingDoc["contents"].is<JsonArray>() ||
+        workingDoc["contents"].size() != 0 ||
+        !loomHeartbeat::validIdentity(workingDoc["id"].as<JsonObjectConst>())) {
         ERRORF("Rejecting LoRa fragment count %i", expectedFragCount);
         return false;
     }
@@ -240,7 +289,7 @@ bool Loom_LoRa::handleFragHeader(JsonDocument &workingDoc, uint8_t fromAddress) 
     }
 
     if (fragmentWorking.capacity() < MAX_JSON_SIZE) {
-        fragmentWorking = DynamicJsonDocument(MAX_JSON_SIZE);
+        fragmentWorking = FragmentDocument(MAX_JSON_SIZE, loomMemory::JsonAllocator(receivePool));
         if (fragmentWorking.capacity() < MAX_JSON_SIZE) {
             ERROR(F("Unable to allocate the LoRa fragment workspace"));
             resetFragmentState();
@@ -259,6 +308,7 @@ bool Loom_LoRa::handleFragHeader(JsonDocument &workingDoc, uint8_t fromAddress) 
     remainingFragments = expectedFragCount;
     fragmentSender = fromAddress;
     fragmentActive = true;
+    lastFragmentProgress = millis();
     return false;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -267,6 +317,11 @@ bool Loom_LoRa::handleFragHeader(JsonDocument &workingDoc, uint8_t fromAddress) 
 bool Loom_LoRa::handleFragBody(JsonDocument &workingDoc, uint8_t fromAddress) {
     if (!fragmentActive || fragmentSender != fromAddress || remainingFragments <= 0) {
         WARNINGF("Dropping unexpected fragmented packet body from %i", fromAddress);
+        return false;
+    }
+    if (!workingDoc["module"].is<const char *>() || !workingDoc["data"].is<JsonObject>()) {
+        ERROR(F("LoRa fragment body is missing its module name or data object"));
+        resetFragmentState();
         return false;
     }
 
@@ -278,6 +333,7 @@ bool Loom_LoRa::handleFragBody(JsonDocument &workingDoc, uint8_t fromAddress) {
     }
 
     remainingFragments--;
+    lastFragmentProgress = millis();
 
     if (remainingFragments == 0) {
         // overwrite the manager document by deep-copying the finalized packet
@@ -289,7 +345,7 @@ bool Loom_LoRa::handleFragBody(JsonDocument &workingDoc, uint8_t fromAddress) {
             ERROR(F("Completed LoRa packet exceeds the Manager JSON capacity"));
             return false;
         }
-        return true;
+        return handleSingleFrag(manager->getDocument());
     }
     return false;
 }
@@ -301,13 +357,30 @@ void Loom_LoRa::resetFragmentState() {
     remainingFragments = 0;
     fragmentSender = 0;
     fragmentActive = false;
+    lastFragmentProgress = 0;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LoRa::expireReceiveState() {
+    const uint32_t now = millis();
+    if (fragmentActive &&
+        static_cast<uint32_t>(now - lastFragmentProgress) >= RECEIVE_IDLE_LIMIT_MS) {
+        WARNINGF("Discarding stalled LoRa fragments from %i", fragmentSender);
+        resetFragmentState();
+    }
+    if (batchReceive.expire(now, RECEIVE_IDLE_LIMIT_MS)) {
+        WARNING(F("LoRa batch stalled; releasing the outstanding packet estimate"));
+    }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::handleSingleFrag(JsonDocument &workingDoc) {
     // receiveFrag() already parsed this packet into the Manager document.
-    return !workingDoc.overflowed();
+    // send(address, JsonObject) also supports custom objects and legacy heartbeats without
+    // contents. Keep that API; proxy identity is updated only when its fields are present.
+    return !workingDoc.overflowed() && workingDoc.is<JsonObject>() && workingDoc.size() > 0;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -326,20 +399,32 @@ bool Loom_LoRa::receive(uint timeout, uint8_t *fromAddress, bool shouldProxy) {
         return false;
     }
 
-    int retryCount = receiveRetryCount;
-    while (retryCount > 0) {
-        FragReceiveStatus status = receiveFrag(timeout, shouldProxy, fromAddress);
-
-        switch (status) {
-        case FragReceiveStatus::Incomplete:
-            break;
-        case FragReceiveStatus::Complete:
-            return true;
-        case FragReceiveStatus::Error:
-            retryCount--;
+    *fromAddress = 0;
+    expireReceiveState();
+    const uint32_t started = millis();
+    int errorsRemaining = receiveRetryCount > 0 ? receiveRetryCount : 1;
+    // Two independent bounds: total wall time and number of datagrams. Even a stream of
+    // incomplete headers cannot monopolize the hub. timeout == 0 polls available traffic.
+    for (int inspected = 0; inspected < MAX_DATAGRAMS_PER_RECEIVE; ++inspected) {
+        const uint32_t elapsed = static_cast<uint32_t>(millis() - started);
+        if (timeout > 0 && elapsed >= timeout) {
             break;
         }
+        // RadioHead's blocking timeout is uint16_t; do not narrow a longer caller budget.
+        const uint32_t remaining = timeout > 0 ? timeout - elapsed : 0;
+        const uint wait = remaining > UINT16_MAX ? UINT16_MAX : remaining;
+        const FragReceiveStatus status = receiveFrag(wait, shouldProxy, fromAddress);
+        if (status == FragReceiveStatus::Complete) {
+            return true;
+        }
+        if (status == FragReceiveStatus::Error) {
+            --errorsRemaining;
+            if (errorsRemaining == 0 || timeout == 0) {
+                break;
+            }
+        }
     }
+    expireReceiveState();
     return false;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -352,17 +437,26 @@ bool Loom_LoRa::receive(uint timeout, bool shouldProxy) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LoRa::transmitToLoRa(JsonObject json, uint8_t destinationAddress) {
+bool Loom_LoRa::transmitToLoRa(JsonObjectConst json, uint8_t destinationAddress) {
+    if (groupRestricted && (destinationAddress == 0xff ||
+                            !loomLoRa::Schedule::sameGroup(deviceAddress, destinationAddress))) {
+        ERROR(F("Grouped LoRa requires a unicast destination in this address group."));
+        return false; // Also covers batch/fragment headers that bypass the public send() helper.
+    }
     uint8_t buffer[MAX_MESSAGE_LENGTH] = {};
-    bool status = false;
-
-    status = serializeMsgPack(json, buffer, MAX_MESSAGE_LENGTH);
-    if (!status) {
-        ERROR(F("Failed to convert JSON to MsgPack"));
+    const size_t expected = measureMsgPack(json);
+    if (json.isNull() || expected == 0 || expected > sizeof(buffer) ||
+        serializeMsgPack(json, buffer, sizeof(buffer)) != expected) {
+        ERROR(F("LoRa packet is invalid or too large; refusing a truncated MsgPack send"));
         return false;
     }
 
-    status = radioManager.sendtoWait(buffer, sizeof(buffer), destinationAddress);
+    // Legacy mode retains padded framing. The new heartbeat-only opt-in sends just its
+    // encoded bytes, reducing airtime without changing the MessagePack field names.
+    const uint8_t wireLength = transmissionMode == Mode::HeartbeatOnly
+                                   ? static_cast<uint8_t>(expected)
+                                   : static_cast<uint8_t>(sizeof(buffer));
+    const bool status = radioManager.sendtoWait(buffer, wireLength, destinationAddress);
     if (!status) {
         ERROR(F("Failed to send packet to specified address!"));
         return false;
@@ -392,6 +486,17 @@ bool Loom_LoRa::sendFragmentedPacket(JsonObject json, uint8_t destinationAddress
         return false;
     }
     int numFrags = json["contents"].size();
+    if (numFrags <= 0 || numFrags > MAX_FRAGMENT_COUNT) {
+        ERROR(F("LoRa packet contains an unsupported fragment count"));
+        return false;
+    }
+    // Preflight every body before announcing a packet the receiver could never assemble.
+    for (JsonVariant fragment : json["contents"].as<JsonArray>()) {
+        if (!fragment.is<JsonObject>() || measureMsgPack(fragment) > MAX_MESSAGE_LENGTH) {
+            ERROR(F("A LoRa module fragment exceeds the radio payload limit"));
+            return false;
+        }
+    }
 
     status = sendPacketHeader(json, destinationAddress);
     if (!status) {
@@ -418,30 +523,20 @@ bool Loom_LoRa::sendFragmentedPacket(JsonObject json, uint8_t destinationAddress
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::sendPacketHeader(JsonObject json, uint8_t destinationAddress) {
-    StaticJsonDocument<MAX_MESSAGE_LENGTH * 2> sendDoc;
-
-    sendDoc["type"] = json["type"].as<const char *>();
-    sendDoc["numPackets"] = json["contents"].size();
-
-    JsonObject objId = sendDoc.createNestedObject("id");
-    objId["name"] = json["id"]["name"].as<const char *>();
-    objId["instance"] = json["id"]["instance"].as<int>();
-
-    sendDoc.createNestedArray("contents");
-
-    if (!json["timestamp"].isNull()) {
-        JsonObject objTimestamp = sendDoc.createNestedObject("timestamp");
-        objTimestamp["time_utc"] = json["timestamp"]["time_utc"].as<const char *>();
-        objTimestamp["time_local"] = json["timestamp"]["time_local"].as<const char *>();
+    StaticJsonDocument<loomLoRa::FRAGMENT_HEADER_CAPACITY> sendDoc;
+    if (!loomLoRa::buildFragmentHeader(sendDoc, json)) {
+        ERROR(F("LoRa fragment header exceeds its JSON capacity"));
+        return false;
     }
-
-    JsonObject sendOut = sendDoc.as<JsonObject>();
-    return transmitToLoRa(sendOut, destinationAddress);
+    return transmitToLoRa(sendDoc.as<JsonObject>(), destinationAddress);
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::send(const uint8_t destinationAddress) {
+    if (transmissionMode == Mode::HeartbeatOnly) {
+        return sendHeartbeat(destinationAddress);
+    }
     if (!manager->isPacketValid()) {
         ERROR(F("Refusing to send an empty or overflowed JSON packet."));
         return false;
@@ -451,7 +546,39 @@ bool Loom_LoRa::send(const uint8_t destinationAddress) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::sendHeartbeat(const uint8_t destinationAddress) {
+    StaticJsonDocument<256> heartbeat;
+    if (!loomHeartbeat::buildStatusPayload(heartbeat, manager->get_device_name(),
+                                           manager->get_instance_num())) {
+        return false;
+    }
+    return sendHeartbeat(destinationAddress, heartbeat);
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LoRa::sendHeartbeat(const uint8_t destinationAddress, const JsonDocument &heartbeat) {
+    const JsonObjectConst packet = heartbeat.as<JsonObjectConst>();
+    if (!moduleInitialized || !loomJsonIsComplete(heartbeat) ||
+        !loomHeartbeat::isStatusPayload(packet) || measureMsgPack(packet) > MAX_MESSAGE_LENGTH) {
+        ERROR(F("Cannot send an unavailable, incomplete or oversized LoRa heartbeat."));
+        return false;
+    }
+    return transmitToLoRa(packet, destinationAddress);
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::send(const uint8_t destinationAddress, JsonObject json) {
+    if (transmissionMode == Mode::HeartbeatOnly &&
+        (!loomHeartbeat::isStatusPayload(json) || measureMsgPack(json) > MAX_MESSAGE_LENGTH)) {
+        ERROR(F("Heartbeat-only LoRa requires one status frame with no measurements."));
+        return false;
+    }
+    if (groupRestricted && !loomLoRa::Schedule::sameGroup(deviceAddress, destinationAddress)) {
+        ERROR(F("LoRa destination is outside the configured address group."));
+        return false;
+    }
     if (!moduleInitialized) {
         ERROR(F("Module not initialized!"));
         return false;
@@ -467,9 +594,10 @@ bool Loom_LoRa::send(const uint8_t destinationAddress, JsonObject json) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
-    bool allSucceeded = true;
-    bool attempted = false;
-
+    if (transmissionMode == Mode::HeartbeatOnly) {
+        WARNING(F("Heartbeat-only LoRa does not transmit or clear an SD batch."));
+        return false;
+    }
     if (!moduleInitialized) {
         ERROR(F("Module not initialized!"));
         return false;
@@ -499,34 +627,40 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
     const int recordsToSend = batchSD->getCurrentBatch();
     int recordsSeen = 0;
 
-    for (int i = 0; i < recordsToSend && fileOutput.available(); i++) {
-        recordsSeen++;
+    for (int i = 0; i < recordsToSend; ++i) {
+        uint32_t lineStart = 0;
+        size_t lineLength = 0;
+        bool terminated = false;
+        const loomSD::RecordResult record =
+            loomSD::nextRecord(fileOutput, lineStart, lineLength, MAX_JSON_SIZE, &terminated);
+        if (record != loomSD::RecordResult::Ready || !terminated ||
+            !fileOutput.seekSet(lineStart)) {
+            ERROR(F("Batch record is missing, damaged or unterminated; retaining the batch."));
+            fileOutput.close();
+            return false;
+        }
         // Parse one JSON value directly from the SD stream. The old path reserved a 2 KB local
         // packet buffer on the SAMD21 stack and parsed uninitialized bytes after short lines.
         const DeserializationError error = deserializeJson(manager->getDocument(), fileOutput);
-        if (error != DeserializationError::Ok) {
-            ERRORF("Failed to parse batch packet %i: %s", i + 1, error.c_str());
+        if (error != DeserializationError::Ok ||
+            !loomSD::finishJsonRecord(fileOutput, lineStart + lineLength) ||
+            fileOutput.getError() != 0) {
+            ERRORF("Batch packet %i rejected: JSON=%s; check row boundary and SD read status.",
+                   i + 1, error.c_str());
             // A failed SD read may leave available() positive forever. Do not drain a
             // damaged record; stop this replay and keep the batch for diagnosis/retry.
             fileOutput.close();
             return false;
         }
 
-        while (fileOutput.peek() == '\r' || fileOutput.peek() == '\n') {
-            if (fileOutput.read() < 0) {
-                ERROR(F("SD read failed after batch packet; retaining the batch."));
-                fileOutput.close();
-                return false;
-            }
-        }
-
-        attempted = true;
+        ++recordsSeen;
         const bool status = send(destinationAddress);
-        allSucceeded = status && allSucceeded;
         if (status) {
             LOGF("Successfully transmitted packet (%i/%i)", i + 1, recordsToSend);
         } else {
             ERRORF("Failed to transmit packet (%i/%i)", i + 1, recordsToSend);
+            fileOutput.close();
+            return false; // Stop wasting airtime; replay the retained batch on a later attempt.
         }
 
         delay(500);
@@ -534,8 +668,17 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
         Serial.println();
     }
 
-    const bool recordCountMatches = recordsSeen == recordsToSend && !fileOutput.available();
-    fileOutput.close();
+    uint32_t extraStart = 0;
+    size_t extraLength = 0;
+    const bool recordCountMatches = recordsSeen == recordsToSend &&
+                                    loomSD::nextRecord(fileOutput, extraStart, extraLength,
+                                                       MAX_JSON_SIZE) == loomSD::RecordResult::End;
+    const bool readSucceeded = fileOutput.getError() == 0;
+    const bool closed = fileOutput.close();
+    if (!readSucceeded || !closed) {
+        ERROR(F("Batch reader failed or did not close; retaining the upload queue."));
+        return false;
+    }
     if (!recordCountMatches) {
         ERRORF("BatchSD record/count mismatch (%i file records inspected, %i counted); retaining "
                "the file.",
@@ -543,7 +686,7 @@ bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
         return false;
     }
 
-    if (!attempted || !allSucceeded) {
+    if (recordsSeen == 0) {
         return false;
     }
 
@@ -569,7 +712,12 @@ bool Loom_LoRa::receiveBatch(uint timeout, int *numberOfPackets, uint8_t *fromAd
         return false;
     }
     bool status = receive(timeout, fromAddress, true);
-    *numberOfPackets = expectedOutstandingPackets;
+    if (!status && timeout > 0) {
+        // The missing node may never return. Release the caller's do/while loop; saved data
+        // on the sender remains its responsibility and can be replayed on a later attempt.
+        batchReceive.cancel();
+    }
+    *numberOfPackets = batchReceive.remaining();
     return status;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////

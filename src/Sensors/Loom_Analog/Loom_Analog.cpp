@@ -1,7 +1,24 @@
 #include "Loom_Analog.h"
+#include "Loom_Manager.h"
+#include "Logger.h"
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+Loom_Analog::Loom_Analog(Manager &man) : Module("Analog"), manInst(&man) {
+    analogReadResolution(adcResolutionBits);
+    pinMappings.reserve(1);
+    const float batteryVoltage = readBatteryVoltage();
+    pinMappings.emplace_back(batteryPin, "Vbat", batteryVoltage, batteryVoltage * 1000.0f);
+    registerWithManager();
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Analog::registerWithManager() { manInst->registerModule(this); }
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Analog::measure() {
+    FUNCTION_START(this);
 
     // Read the data from the given analog pin
     for (size_t i = 0; i < pinMappings.size(); i++) {
@@ -17,7 +34,7 @@ void Loom_Analog::measure() {
         /* If its a normal pin then just read the value and update the previous values */
         else {
             int analogData = analogRead(pinMappings[i].pinNumber);
-            pinMappings[i].analog = analogData;
+            pinMappings[i].analog = static_cast<float>(analogData);
             pinMappings[i].analog_mv = analogToMV(analogData);
         }
     }
@@ -26,18 +43,20 @@ void Loom_Analog::measure() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Analog::package() {
+    FUNCTION_START(this);
     char output[10];
     JsonObject json = manInst->get_data_object(getModuleName());
 
     /* Loop over the list of pins and pull out the data to formulate the JSON entries*/
-    for (size_t i = 0; i < pinMappings.size(); i++) {
-        memset(output, '\0', 10);
-        json[pinMappings[i].name] = pinMappings[i].analog;
-
-        /* Append MV to the name to differentiate between normal analog and the millivolt
-         * representation */
-        snprintf(output, sizeof(output), "%s_MV", pinMappings[i].name);
-        json[output] = pinMappings[i].analog_mv;
+    for (const AnalogMapping &mapping : pinMappings) {
+        if (outputRaw) {
+            json[mapping.name] = mapping.analog;
+        }
+        if (outputMillivolts) {
+            // snprintf writes the terminator; clearing the whole buffer is unnecessary.
+            snprintf(output, sizeof(output), "%s_MV", mapping.name);
+            json[output] = mapping.analog_mv;
+        }
     }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -67,6 +86,7 @@ float Loom_Analog::getBatteryVoltage(int batteryPin, uint8_t resolutionBits, flo
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 float Loom_Analog::readBatteryVoltage() const {
+    FUNCTION_START(this);
     return getBatteryVoltage(batteryPin, adcResolutionBits, adcReferenceVoltage,
                              batteryDividerScale, batterySampleCount, adcMaxReading);
 }
