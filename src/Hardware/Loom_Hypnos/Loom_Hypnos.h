@@ -222,6 +222,15 @@ class Loom_Hypnos : public Module {
      */
     bool setSampleInterval(const TimeSpan interval);
 
+    /** Read the cached, verified UTC wake deadline without another RTC transaction. */
+    bool getScheduledWakeTime(DateTime &utc) const {
+        if (!alarmScheduled) {
+            return false;
+        }
+        utc = alarmTime;
+        return true;
+    }
+
     /**
      * Drops the Feather M0 and Hypnos board into a low power sleep waiting for an interrupt to wake
      * it up and pull it out of sleep

@@ -1023,10 +1023,10 @@ bool Loom_Hypnos::armRTCAlarm(const DateTime target) {
     }
     DateTime t = getLocalTime(utc);
     char tbuf[21];
-    dateTime_toString(t, tbuf);
+    dateTime_toString(t, tbuf, true);
     LOGF("Current Time (Local): %s", tbuf);
     t = getLocalTime(alarmTime);
-    dateTime_toString(t, tbuf);
+    dateTime_toString(t, tbuf, true);
     LOGF("Next interrupt alarm set for: %s", tbuf);
     return true;
     FUNCTION_END;

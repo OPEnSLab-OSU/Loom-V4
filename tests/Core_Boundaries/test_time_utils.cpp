@@ -52,5 +52,20 @@ int main() {
     assert(target == 1360);
     assert(!loomTime::nextSampleTime(UINT32_MAX, 60, UINT32_MAX, target));
     assert(target == 1360); // Rejected calculations never partially change the output.
+
+    // Wisp log: first alarm at 06:55:50; restoration and logging finish at 06:56:24.
+    // Schedule from the previous alarm, so the 34 seconds of work do not accumulate.
+    const uint32_t firstWake = 6UL * 3600 + 55UL * 60 + 50;
+    target = firstWake;
+    assert(loomTime::nextSampleTime(firstWake + 34, 180, target, target));
+    assert(target == firstWake + 180);
+    assert(target - (firstWake + 34) == 146);
+    for (uint32_t cycle = 2; cycle <= 100; ++cycle) {
+        const uint32_t finishedWork = target + 32 + cycle % 3;
+        assert(loomTime::nextSampleTime(finishedWork, 180, target, target));
+        assert(target == firstWake + cycle * 180); // Variable work never moves the grid.
+    }
+    assert(loomTime::nextSampleTime(target + 400, 180, target, target));
+    assert(target == firstWake + 103UL * 180); // Skip two missed deadlines after a slow cycle.
     return 0;
 }
