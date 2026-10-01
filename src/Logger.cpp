@@ -1,29 +1,43 @@
 #include "Logger.h"
-#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
-#include "Diagnostics/Loom_Trace.h"
-#endif
 #include "Hardware/Loom_Hypnos/Loom_Hypnos.h"
 #include "Utilities/Loom_MemoryUtils.h"
 
-#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
-bool Logger::flushTrace() { return trace != nullptr && trace->flush(); }
+bool Logger::flushTrace() {
+    return traceCallbacks != nullptr && traceCallbacks->flush(trace);
+}
+
+void Logger::setTraceStorageAvailable(bool available) {
+    if (traceCallbacks != nullptr) {
+        traceCallbacks->storage(trace, available);
+    }
+}
+
+void Logger::traceObject(const char *name, const void *address, uint32_t bytes, const void *owner,
+                         int port, int i2cAddress, bool ready) {
+    if (traceCallbacks != nullptr) {
+        traceCallbacks->object(trace, name, address, bytes, owner, port, i2cAddress, ready);
+    }
+}
+
+void Logger::retireTraceObject(const void *address) {
+    if (traceCallbacks != nullptr) {
+        traceCallbacks->retire(trace, address);
+    }
+}
 
 void FunctionInstrumentor::beginTrace(Logger *logger, const char *file, const char *func, int line,
                                       const void *object) {
-    if (logger->debugOutputEnabled && logger->trace != nullptr &&
-        logger->trace->enter(file, func, static_cast<uint32_t>(line), object)) {
+    if (logger->debugOutputEnabled && logger->traceCallbacks != nullptr &&
+        logger->traceCallbacks->enter(logger->trace, file, func, static_cast<uint32_t>(line), object)) {
         trace = logger->trace;
     }
 }
 
 void FunctionInstrumentor::endTrace() {
     if (trace != nullptr) {
-        trace->leave();
+        Logger::getInstance()->traceCallbacks->leave(trace);
     }
 }
-#else
-bool Logger::flushTrace() { return false; }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Logger::log(char *message, bool silent) {

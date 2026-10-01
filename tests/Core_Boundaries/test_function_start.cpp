@@ -28,6 +28,7 @@ static unsigned summaryEntries = 0;
 static unsigned summaryExits = 0;
 
 bool Logger::shouldLogSummaries() { return enableFunctionSummaries; }
+void Logger::enableTrace(Loom_Trace &recorder) { trace = &recorder; }
 void FunctionInstrumentor::writeSummary(Logger *, bool starting, const char *, const char *, int) {
     if (starting) {
         ++summaryEntries;
@@ -35,7 +36,6 @@ void FunctionInstrumentor::writeSummary(Logger *, bool starting, const char *, c
         ++summaryExits;
     }
 }
-#if LOOM_ENABLE_TRACE
 void FunctionInstrumentor::beginTrace(Logger *logger, const char *file, const char *func, int line,
                                      const void *object) {
     if (logger->trace != nullptr) {
@@ -49,9 +49,6 @@ void FunctionInstrumentor::endTrace() {
     }
 }
 static_assert(sizeof(FunctionInstrumentor) == sizeof(void *), "Scope guard must not grow");
-#else
-static_assert(sizeof(FunctionInstrumentor) == 1, "Off guard must remain empty");
-#endif
 
 void legacySyntax() { FUNCTION_START; }
 void emptySyntax() { FUNCTION_START(); }
@@ -93,7 +90,6 @@ int main() {
     device.run(false);
     device.compatibilitySyntax();
     assert(summaryEntries == 0 && summaryExits == 0); // Trace never enables summaries.
-#if LOOM_ENABLE_TRACE
     assert(entries.size() == 10 && exits == 10);
     for (unsigned i = 0; i < 4; ++i) {
         assert(entries[i].object == nullptr && entries[i].depth == 1);
@@ -105,17 +101,10 @@ int main() {
     }
     assert(strcmp(entries[5].name, "Read channel") == 0);
     assert(strcmp(entries[7].name, "Read channel") == 0);
-#else
-    assert(entries.empty() && exits == 0); // Attaching a recorder cannot enable compiled-out trace.
-#endif
 
     Logger::getInstance()->enableSummaries();
     legacySyntax();
     device.run(true);
     assert(summaryEntries == 3 && summaryExits == 3);
-#if LOOM_ENABLE_TRACE
     assert(entries.size() == 13 && exits == 13); // Both sinks share one balanced scope guard.
-#else
-    assert(entries.empty() && exits == 0); // Summaries work with trace compiled out.
-#endif
 }

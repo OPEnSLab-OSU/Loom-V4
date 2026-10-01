@@ -7,9 +7,6 @@ LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Wire.h>
 LOOM_EXTERNAL_INCLUDE_END
 #include "Logger.h"
-#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
-#include "Diagnostics/Loom_Trace.h"
-#endif
 #include "Internet/Connectivity/NetworkComponent.h"
 #include "Sensors/Loom_Analog/Loom_Analog.h"
 #include "Utilities/Loom_TimeUtils.h"
@@ -21,30 +18,6 @@ namespace {
 // JSON/log contents continue to use UTC. FAT stores local wall time without a timezone.
 Loom_Hypnos *fileTimestampHypnos = nullptr;
 loomTime::FileTimestampCache fileTimestampCache;
-
-void sdFileDateTime(uint16_t *date, uint16_t *time) {
-    // Creation callbacks receive empty fields. Give those a defined fallback, but preserve
-    // an existing file's date during a transient clock fault instead of redating it to 2000.
-    if (*date == 0) {
-        *date = FAT_DEFAULT_DATE;
-        *time = FAT_DEFAULT_TIME;
-    }
-    if (fileTimestampHypnos == nullptr) {
-        return;
-    }
-    if (!fileTimestampCache.fresh(millis())) {
-        DateTime utc;
-        // This checked read updates the cache and never logs or reenters SD/trace output.
-        (void)fileTimestampHypnos->tryGetCurrentTime(utc);
-    }
-    uint32_t utcSeconds = 0;
-    if (!fileTimestampCache.get(millis(), utcSeconds)) {
-        return;
-    }
-    const DateTime local = fileTimestampHypnos->getLocalTime(DateTime(utcSeconds));
-    *date = FAT_DATE(local.year(), local.month(), local.day());
-    *time = FAT_TIME(local.hour(), local.minute(), local.second());
-}
 
 struct TimezoneEntry {
     const char *name;
@@ -218,6 +191,32 @@ int readSerialInteger(const __FlashStringHelper *prompt, const char *label, int 
 } // namespace
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::sdFileDateTime(uint16_t *date, uint16_t *time) {
+    // Creation callbacks receive empty fields. Give those a defined fallback, but preserve
+    // an existing file's date during a transient clock fault instead of redating it to 2000.
+    if (*date == 0) {
+        *date = FAT_DEFAULT_DATE;
+        *time = FAT_DEFAULT_TIME;
+    }
+    if (fileTimestampHypnos == nullptr) {
+        return;
+    }
+    if (!fileTimestampCache.fresh(millis())) {
+        DateTime utc;
+        // This checked read updates the cache and never logs or reenters SD/trace output.
+        (void)fileTimestampHypnos->tryGetCurrentTime(utc);
+    }
+    uint32_t utcSeconds = 0;
+    if (!fileTimestampCache.get(millis(), utcSeconds)) {
+        return;
+    }
+    const DateTime local = fileTimestampHypnos->getLocalTime(DateTime(utcSeconds));
+    *date = FAT_DATE(local.year(), local.month(), local.day());
+    *time = FAT_TIME(local.hour(), local.minute(), local.second());
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Hypnos::Loom_Hypnos(Manager &man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time,
                          bool useSD)
     : Module("Hypnos"), manInst(&man), sd_chip_select(version), enableSD(useSD), batch_size(0),
@@ -329,11 +328,7 @@ void Loom_Hypnos::enable(bool enable33, bool enable5) {
         pinMode(sd_chip_select, OUTPUT);
 
         sdMan->begin();
-#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
-        if (Loom_Trace *trace = Loom_Trace::current()) {
-            trace->setStorageAvailable(sdMan->hasSDInitialized());
-        }
-#endif
+        Logger::getInstance()->setTraceStorageAvailable(sdMan->hasSDInitialized());
     }
 
     manInst->setEnableState(true);
@@ -361,13 +356,9 @@ void Loom_Hypnos::disable(bool disable33, bool disable5) {
     if (fileTimestampHypnos == this) {
         fileTimestampCache.invalidate();
     }
-#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
     if (enableSD) {
-        if (Loom_Trace *trace = Loom_Trace::current()) {
-            trace->setStorageAvailable(false);
-        }
+        Logger::getInstance()->setTraceStorageAvailable(false);
     }
-#endif
     // Disable the configured 3.3v and 5v rails on the Hypnos
     setPowerRails(!disable33, !disable5);
     digitalWrite(LED_BUILTIN, LOW);

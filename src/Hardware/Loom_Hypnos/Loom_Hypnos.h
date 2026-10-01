@@ -451,6 +451,7 @@ class Loom_Hypnos : public Module {
     bool writeRtcUtc(const DateTime &utc); // One owner for write/readback and uncertain-time state.
     bool releaseRTCInterrupt();            // Consume a wake alarm and verify INT/SQW is deasserted.
 
+    static void sdFileDateTime(uint16_t *date, uint16_t *time); // SdFat create/sync clock callback
     DateTime getLocalTime(DateTime time); // Convert a given UTC time to local time
     TIME_ZONE timezone;                   // Timezone the RTC was set to
 

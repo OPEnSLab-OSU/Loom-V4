@@ -1,7 +1,7 @@
 // Optional linker wrapping. Wrap public and newlib reentrant allocator entry points.
 // A nesting guard prevents duplicate events when malloc delegates to _malloc_r.
 #include "Loom_Trace.h"
-#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
+#if defined(LOOM_TRACE_LINKER_HEAP_HOOKS) && LOOM_TRACE_LINKER_HEAP_HOOKS
 #include <cstddef>
 #include <cstdint>
 

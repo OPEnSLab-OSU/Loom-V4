@@ -1,5 +1,4 @@
 #include "Loom_Trace.h"
-#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
 #include "Hardware/Loom_Hypnos/SDManager.h"
 #include "Utilities/Loom_MemoryUtils.h"
 #include <cstdio>
@@ -557,4 +556,3 @@ bool Loom_Trace::flush() {
     }
     return saved;
 }
-#endif

@@ -17,9 +17,6 @@
 #include "../../Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h"
 #include "../../Sensors/I2C/Loom_ZXGesture/Loom_ZXGesture.h"
 #include "Logger.h"
-#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
-#include "Diagnostics/Loom_Trace.h"
-#endif
 LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Arduino.h>
 LOOM_EXTERNAL_INCLUDE_END
@@ -30,7 +27,6 @@ namespace {
 const byte DEFAULT_ADDRESSES[] = {0x10, 0x11, 0x15, 0x1C, 0x1D, 0x29, 0x36, 0x44, 0x45,
                                   0x48, 0x49, 0x69, 0x6B, 0x70, 0x74, 0x75, 0x76, 0x77};
 constexpr size_t DEFAULT_ADDRESS_COUNT = sizeof(DEFAULT_ADDRESSES) / sizeof(DEFAULT_ADDRESSES[0]);
-#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
 // The loader fixes each address's concrete type. Sizes describe containers only, not
 // their internal allocations. Object names are copied by the recorder before deletion.
 uint32_t traceSensorBytes(byte address) {
@@ -57,7 +53,7 @@ uint32_t traceSensorBytes(byte address) {
     }
 }
 
-void observeMuxSensor(Loom_Trace &trace, Module *sensor, byte address, uint8_t port,
+void observeMuxSensor(Logger &trace, Module *sensor, byte address, uint8_t port,
                       const void *mux, bool ready) {
     const char *name = sensor->getModuleName();
     char gasName[32];
@@ -68,9 +64,8 @@ void observeMuxSensor(Loom_Trace &trace, Module *sensor, byte address, uint8_t p
             name = gasName; // Actual queried gas type; never infer it from bench port wiring.
         }
     }
-    trace.object(name, sensor, traceSensorBytes(address), mux, port, address, ready);
+    trace.traceObject(name, sensor, traceSensorBytes(address), mux, port, address, ready);
 }
-#endif
 
 } // namespace
 
@@ -367,11 +362,7 @@ void Loom_Multiplexer::clearSensors() {
     debugLogFormatted("Clearing %u auto-loaded mux sensor(s)", (unsigned int)sensors.size());
 
     for (const MuxSensor &sensor : sensors) {
-#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
-        if (Loom_Trace *trace = Loom_Trace::current()) {
-            trace->retireObject(sensor.module);
-        }
-#endif
+        Logger::getInstance()->retireTraceObject(sensor.module);
         delete sensor.module;
     }
 
@@ -447,11 +438,9 @@ void Loom_Multiplexer::scanAndLoadSensors() {
             snprintf(moduleName, sizeof(moduleName), "%s_%i", sensor->getModuleName(), port);
             sensor->setModuleName(moduleName);
 
-#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
-            if (Loom_Trace *trace = Loom_Trace::current()) {
-                observeMuxSensor(*trace, sensor, addr, port, this, false);
+            if (Logger::getInstance()->hasTrace()) {
+                observeMuxSensor(*Logger::getInstance(), sensor, addr, port, this, false);
             }
-#endif
 
             debugLogFormatted("Initializing sensor %s", sensor->getModuleName());
             sensor->initialize();
@@ -460,22 +449,16 @@ void Loom_Multiplexer::scanAndLoadSensors() {
             if (!sensor->moduleInitialized) {
                 ERRORF("Sensor %s failed initialization and will not be loaded",
                        sensor->getModuleName());
-#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
-                if (Loom_Trace *trace = Loom_Trace::current()) {
-                    trace->retireObject(sensor);
-                }
-#endif
+                Logger::getInstance()->retireTraceObject(sensor);
                 delete sensor;
                 continue;
             }
 
             // The mux owns successfully loaded sensors and deletes them on refresh/destruction.
             sensors.push_back({addr, sensor, port});
-#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
-            if (Loom_Trace *trace = Loom_Trace::current()) {
-                observeMuxSensor(*trace, sensor, addr, port, this, true);
+            if (Logger::getInstance()->hasTrace()) {
+                observeMuxSensor(*Logger::getInstance(), sensor, addr, port, this, true);
             }
-#endif
             LOGF("Loaded sensor %s on port %i", sensor->getModuleName(), port);
             debugLogFormatted("Loaded sensor %s on port %i", sensor->getModuleName(), port);
         }
@@ -917,12 +900,10 @@ Module *Loom_Multiplexer::loadSensor(const byte addr) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Loom_Multiplexer::traceObjects() {
-#if defined(LOOM_ENABLE_TRACE) && LOOM_ENABLE_TRACE
-    if (Loom_Trace *trace = Loom_Trace::current()) {
+    if (Logger::getInstance()->hasTrace()) {
         for (const MuxSensor &sensor : sensors) {
-            observeMuxSensor(*trace, sensor.module, sensor.address, sensor.port, this,
+            observeMuxSensor(*Logger::getInstance(), sensor.module, sensor.address, sensor.port, this,
                              sensor.module->moduleInitialized);
         }
     }
-#endif
 }

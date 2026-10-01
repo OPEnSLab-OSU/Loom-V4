@@ -1,13 +1,26 @@
 # Optional calls and heap recording
 
-All three Wisp **debug** examples and the local Wisp V2 deployment debug copy have an extra trace toggle, off by default. A recording
+The Wisp **debug** examples and the local Wisp V2 deployment debug copy have an extra trace toggle. The active standalone `WispV2_Deploy_2026_debug` copy now defaults to ON; the library examples retain their existing defaults. A recording
 shows the nested instrumented calls, individual captured allocations, and allocator totals
-at named checkpoints. Normal and trace-off builds contain no trace buffer, allocator wrappers,
-expanded function signatures, or additional trace work in `FUNCTION_START`.
+at named checkpoints. Trace-off sketches omit the recorder buffer and SD trace writes. Logger
+keeps a fixed interface and lightweight null-hook checks, so separately compiled library code
+can obey a sketch-only flag without different class layouts.
 
 ## Choose the extra debug mode
 
-From the Loom folder, compile one of these modes. The helper only compiles; it never uploads.
+In the active standalone debug sketch, change this flag and use ordinary Arduino IDE
+Verify/Upload; no global compiler flags are needed for calls, objects and memory checkpoints:
+
+```cpp
+#define LOOM_WISP_TRACE 1 // 0 = off; 1 = calls, active objects, heap/free-RAM checkpoints
+```
+
+Individual malloc/free/realloc events additionally require the existing allocator linker hooks.
+Use the heap build helper for those; a sketch macro cannot set linker options. The startup log
+states whether the build requests allocation hooks. The saved session's `heap_hooks` field and
+the trace's initial marker report whether the hooks are actually linked.
+
+From the Loom folder, compile one of these modes. The helper only compiles by default.
 It prints the temporary build folder, including its log and the matching firmware ELF.
 
 ```powershell
@@ -19,6 +32,7 @@ It prints the temporary build folder, including its log and the matching firmwar
 - `off`: ordinary Wisp debug behavior, with the extra recording disabled.
 - `calls`: nested calls and allocator-total checkpoints, without allocator interception.
 - `heap`: calls plus allocation, free, realloc, and failure events. Use this to inspect live blocks.
+- `sketch`: use the sketch's own flags with no extra compiler/linker settings, like an IDE build.
 
 For the mux example:
 
@@ -29,16 +43,23 @@ For the mux example:
 To build the deployment copy with its own sensor settings:
 
 ```powershell
-./tools/build_wisp_trace.ps1 -Mode heap -Sketch "$env:USERPROFILE/Documents/Arduino/WispV2_Deploy_2026/WispV2_Deploy_2026_debug"
+./tools/build_wisp_trace.ps1 -Mode heap -Sketch "$env:USERPROFILE/Documents/Arduino/WispV2_Deploy_2026_debug"
 ```
 
-The helper sets `LOOM_WISP_TRACE` and the library-wide `LOOM_ENABLE_TRACE` together. Heap mode
-also sets `LOOM_WISP_TRACE_HEAP` and the GNU linker wrapping flags. Changing a sketch-local
-macro alone cannot change separately compiled library code; the sketch reports that mismatch
-instead of silently producing an empty recording. Use a fresh build when changing modes.
+The helper overrides the sketch toggle for comparison builds. Heap mode also sets
+`LOOM_WISP_TRACE_HEAP`, `LOOM_TRACE_LINKER_HEAP_HOOKS` and the GNU linker wrapping flags.
+The legacy library examples still require their original shared build flag. The active
+standalone debug copy uses Logger's shared callback interface and supports its own sketch flag.
+Use a fresh build when changing linker modes.
 The board's existing `debug=off` setting and this recording toggle are independent.
 
-Upload the selected build through your normal firmware workflow. At runtime the debug sketch
+To compile and upload that exact mode, add `-Upload -Port COM5` (replace COM5 with your board's
+port). Upload is optional and requires an explicit port. The helper uploads the verified binary
+without recompiling. An ordinary Arduino IDE upload honors the standalone sketch's trace flag,
+but does not add the heap linker options. The active deployment debug sketch prints an explicit
+`[TRACE] SD trace capture OFF` message when recording is compiled out.
+
+At runtime the debug sketch
 starts capture after `manager.initialize()`, when SD is available. It selects a new
 `/debug/trace_N.ndjson` and `/debug/trace_N.perfetto.json` pair for each boot, independent of CSV rotation. The sketch prints both exact paths. Trace-file selection
 is bounded to 9,999 names. Remove/archive old trace files manually when that range is exhausted.
@@ -46,6 +67,15 @@ Setup and cycle returns are saved by a scoped guard. Hypnos also drains the reco
 measures **active MCU time**; SAMD standby is not added to call durations.
 
 ## Load the SD file directly in Perfetto
+
+Hypnos supplies a checked RTC clock for all SD file/folder creation and file modification dates,
+including debug, trace, batch and settings files. FAT metadata stores configured local wall time
+(with DST), with two-second modified-time precision; JSON timestamps and RTC alarms remain UTC.
+RTC observations are shared for less than one second to avoid a new I2C read for every write;
+the cache is invalidated before standby and refreshed on wake and after clock corrections.
+Existing files acquire a current modified date on their next write. Old creation dates and
+archived files are not retroactively guessed. A clock fault preserves an existing date; new
+files without established RTC time retain SdFat's default date.
 
 Copy `/debug/trace_N.perfetto.json` from the SD card and choose **Open trace file** at
 [Perfetto](https://ui.perfetto.dev/). This is standard Chrome Trace Event JSON; no conversion is

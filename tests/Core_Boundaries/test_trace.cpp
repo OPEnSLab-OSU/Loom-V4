@@ -1,4 +1,5 @@
 #define LOOM_ENABLE_TRACE 1
+#define LOOM_TRACE_LINKER_HEAP_HOOKS 1
 #define ARDUINO_ARCH_SAMD 1
 #include <cassert>
 #include <iostream>
