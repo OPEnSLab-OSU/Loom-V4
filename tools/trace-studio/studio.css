@@ -45,5 +45,8 @@ section[id] { scroll-margin-top:var(--event-navigator-height,16px); }
 .eventNavigator strong { font-size:14px; } .eventNavigator summary { margin:8px 0; }
 #eventNumber { width:90px; font:inherit; padding:6px; border:1px solid #abc5bb; border-radius:6px; }
 #memorySnapshot .metrics { margin-top:12px; } #memorySnapshot { margin:24px 0; }
+.timelineZoomBand { fill:#527dbe30; stroke:#527dbe; stroke-width:1; }
+#eventTimeline svg { touch-action:pan-y; user-select:none; }
+#localTimezone { font:inherit; padding:7px; border:1px solid #abc5bb; border-radius:6px; max-width:220px; }
 @media(max-width:950px) { main { padding:18px; }.split,.split.wide { grid-template-columns:1fr; }.metrics { grid-template-columns:repeat(2,1fr); }.badge { display:none; } }
 @media(max-width:540px) { h1 { font-size:31px; }.card { padding:16px; }.steps { grid-template-columns:1fr; gap:8px; }.metric { padding:14px; }.metric strong { font-size:24px; }.sectionHead { flex-wrap:wrap; }.scroll { overflow:auto; } }

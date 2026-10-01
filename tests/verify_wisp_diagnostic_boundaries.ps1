@@ -73,7 +73,7 @@ foreach ($sketch in $sketches) {
     if ($inside -or $begins -ne 2 -or $ends -ne 2 -or $calls -eq 0) {
         throw "Incomplete diagnostic blocks/calls: $($sketch.FullName)"
     }
-    if (-not $text.Contains('#if LOOM_WISP_BETA_DIAGNOSTICS') -or
+    if (-not $text.Contains('#if LOOM_DEBUG_DIAGNOSTICS') -or
         ([regex]::Matches($text, '(?m)^\s*ENABLE_SD_LOGGING;\s*$').Count -ne 1) -or
         $text.Contains('DISABLE_RTC_LOG_TIMESTAMPS')) {
         throw "Debug build lost its gate or timestamped SD logging: $($sketch.FullName)"

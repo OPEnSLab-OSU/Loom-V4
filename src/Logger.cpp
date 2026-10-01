@@ -1,6 +1,6 @@
 #include "Logger.h"
 #include "Hardware/Loom_Hypnos/Loom_Hypnos.h"
-#include "Utilities/Loom_MemoryUtils.h"
+
 
 bool Logger::flushTrace() {
     return traceCallbacks != nullptr && traceCallbacks->flush(trace);
@@ -121,33 +121,9 @@ void Logger::logDocument(const DynamicJsonDocument &document) {
 bool Logger::shouldLogSummaries() {
     // Summaries use SD only. Skip them before initialization and after an uncertain append,
     // even while Serial output and FUNCTION_START/FUNCTION_END tracking remain active.
-    return debugOutputEnabled && enableFunctionSummaries && enableSDLogging && sdInst != nullptr &&
+    return debugOutputEnabled && summaryWriter != nullptr && enableSDLogging && sdInst != nullptr &&
            sdInst->canWriteDebugLogs();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void FunctionInstrumentor::writeSummary(Logger *logger, bool starting, const char *file,
-                                        const char *func, int lineNum) {
-    const int freemem = LoomMemory::freeMemoryBytes();
-    char logfileName[48];
-    snprintf_P(logfileName, sizeof(logfileName), PSTR("/debug/funcSummaries_%i.log"),
-               logger->sdInst->getDebugFileNumber());
-
-    char output[OUTPUT_SIZE] = {};
-    if (starting) {
-        char fileName[LOGGER_FILENAME_SIZE] = {};
-        Logger::truncateFileName(fileName, sizeof(fileName), file);
-        snprintf_P(output, sizeof(output), PSTR("start,%d,%s,%s,%d,%d,%lu"),
-                   static_cast<int>(logger->stackDepth - 1), fileName, func, lineNum, freemem,
-                   millis());
-    } else {
-        snprintf_P(output, sizeof(output), PSTR("end,%d, , , ,%d,%lu"),
-                   static_cast<int>(logger->stackDepth), freemem, millis());
-    }
-
-    if (!logger->sdInst->writeLineToFile(logfileName, output)) {
-        Serial.println(F("Could not write instrumentation to file!"));
-    }
-}
 ////////////////////////////////////////////////////////////////////////////////////////////////////

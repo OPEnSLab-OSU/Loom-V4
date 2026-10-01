@@ -7,7 +7,9 @@ import { perfettoUrl, sendTrace, scrollTrace } from './perfetto.js';
 import { createEventTimeline } from './event-timeline.js';
 import { selectionRange } from './selection.js';
 import { mountSensorCsv } from './sensor-csv.js';
-import { reconstructWallClock, utcLabel } from './wall-clock.js';
+import { reconstructWallClock } from './wall-clock.js';
+import { traceDisplayClock, clockTicks, zoneOffset } from './display-clock.js';
+import { perfettoWallTrace, wallSelectionRange } from './perfetto-wall.js';
 
 const $ = id => document.getElementById(id);
 const ms = us => (us / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 }) + ' ms';
@@ -17,6 +19,18 @@ let converted = null, selectedCall = null, sourceBlob = null, sourceName = '', w
 let loadId = 0, plot = null, plotRows = [], snapshotCache = null;
 let eventTimeline = null, wallClock = null;
 let perfettoFrameLoadId = null, perfettoRequest = 0;
+let perfettoDocumentKey = null;
+let localZone = Intl.DateTimeFormat().resolvedOptions().timeZone, wallBlob = null;
+$('localTimezone').value = localZone;
+$('timezoneInfo').textContent = 'Local display uses ' + localZone + '; recorded UTC stays unchanged.';
+const displayClock = () => traceDisplayClock(converted.report, wallClock, $('memoryClock').value, localZone);
+function perfettoClockInfo() {
+    $('perfettoClock').options[1].disabled = !wallClock;
+    $('exportWall').disabled = !wallClock;
+    $('perfettoClockInfo').textContent = $('perfettoClock').value === 'wall' && wallClock ?
+        'Estimated wall time includes standby. If tracks are folded, click Perfetto’s Expand all groups (↕) button. In its search box, type > and choose “Set timestamp and duration format”, then “Realtime (UTC)” or “Custom Timezone”. For ' + localZone + ', choose ' + zoneOffset(wallClock.startUtcUs, localZone) + ' for this recording’s start (Perfetto uses a fixed offset). Calls are split around standby; details retain whole-call durations. Counters are last observed values; RAM was not sampled during standby.' :
+        'Awake execution excludes standby. In Perfetto, use the native timestamp format “Timecode” or “Seconds” for this clock. ' + (wallClock ? 'Choose Wall time to enable UTC / time-zone display with a REALTIME clock anchor.' : 'This file has no trustworthy Loom RTC anchors; wall time is unavailable.');
+}
 
 function buttons() {
     for (const id of ['perfettoInline', 'perfettoTab']) $(id).disabled = !sourceBlob;
@@ -40,7 +54,8 @@ function download(value, suffix) {
 function prepare(name) {
     worker?.terminate(); worker = null; ++loadId;
     plot?.destroy(); plot = null; plotRows = [];
-    converted = null; selectedCall = null; sourceBlob = null; sourceName = name; snapshotCache = null; eventTimeline = null; wallClock = null;
+    converted = null; selectedCall = null; sourceBlob = null; sourceName = name; snapshotCache = null; eventTimeline = null; wallClock = null; wallBlob = null;
+    $('perfettoClock').value = 'active'; perfettoClockInfo();
     $('loaded').classList.add('hidden'); $('welcome').classList.remove('hidden');
     $('entry').disabled = true; $('exit').disabled = true;
     $('handoff').textContent = ''; $('blockDetails').open = false; $('objectDetails').open = false;
@@ -72,7 +87,9 @@ function analyze(content, name, fictional = false, rawBlob = null, preparedId = 
         const report = converted.report;
         wallClock = reconstructWallClock(report);
         $('memoryClock').options[0].disabled = !wallClock;
+        $('memoryClock').options[1].disabled = !wallClock;
         $('memoryClock').value = wallClock ? 'utc' : 'active';
+        perfettoClockInfo();
         $('allocationCapture').textContent = report.session.heap_hooks ?
             'Individual allocation capture was enabled. Only allocations observed after recording began have lifetimes; earlier object allocation times remain unknown.' :
             'Individual allocation capture was OFF for this recording. The object list identifies observed containers; it does not prove when they were allocated. Heap totals are measured, but block addresses, malloc/free events and allocation lifetimes were not recorded. Use the heap build mode for the next recording; this file cannot recover those events.';
@@ -92,7 +109,7 @@ function analyze(content, name, fictional = false, rawBlob = null, preparedId = 
             option.textContent = row.name + ' · ' + ms(row.timeUs); return option;
         }));
         renderCalls(); drawGraph();
-        eventTimeline = createEventTimeline({ report, select: setPosition, selectCall: call => {
+        eventTimeline = createEventTimeline({ report, getClock: displayClock, select: setPosition, selectCall: call => {
             selectedCall = call || null; renderCalls();
         } });
         if (fictional) {
@@ -167,13 +184,13 @@ function showPosition() {
     const snapshot = snapshotCache?.index === index ? snapshotCache.value : LoomTrace.snapshot(report, index);
     snapshotCache = { index, value: snapshot };
     $('positionLabel').textContent = 'Event ' + (index + 1) + ' of ' + report.history.length + ' · ' + ms(snapshot.timeUs) + ' active time';
-    if (wallClock) $('positionLabel').textContent += ' · ≈ ' + utcLabel(wallClock.rows[index].utcUs);
+    if (wallClock && displayClock().wall) $('positionLabel').textContent += ' · ≈ ' + displayClock().format(displayClock().at(index));
     $('eventNumber').max = report.history.length; $('eventNumber').value = index + 1;
     $('selectedContext').textContent = report.history[index]?.context ? 'During: ' + report.history[index].context : 'Outside an instrumented call';
     $('snapshotHeading').textContent = 'Memory at event ' + (index + 1);
     $('heapbytes').textContent = snapshot.checkpoint ? bytes(snapshot.checkpoint.usedBytes) : 'No measurement';
     $('heapwhen').textContent = snapshot.checkpoint ? 'Measured at event ' + (snapshot.checkpoint.index + 1) + ': ' + snapshot.checkpoint.name +
-        (wallClock ? ' · ≈ ' + utcLabel(wallClock.rows[snapshot.checkpoint.index].utcUs) : ' · ' + ms(snapshot.checkpoint.timeUs) + ' awake') : 'Measured at checkpoints and call boundaries';
+        (displayClock().wall ? ' · ≈ ' + displayClock().format(displayClock().at(snapshot.checkpoint.index)) : ' · ' + ms(snapshot.checkpoint.timeUs) + ' awake') : 'Measured at checkpoints and call boundaries';
     const memory = snapshot.checkpoint;
     $('freebytes').textContent = memory ? bytes(memory.freeBytes) : 'No measurement';
     $('availablebytes').textContent = memory ? bytes(memory.freeBytes + Math.max(0, memory.gapBytes)) : 'No measurement';
@@ -248,9 +265,9 @@ function stackText(frames, fallback) {
 }
 function drawGraph() {
     plot?.destroy(); const report = converted.report;
-    const utc = $('memoryClock').value === 'utc' && wallClock;
+    const clock = displayClock(), utc = clock.wall;
     $('memoryClockInfo').textContent = utc ?
-        utcLabel(wallClock.startUtcUs) + ' → ' + utcLabel(wallClock.endUtcUs) + '. Estimated from captured RTC seconds and measured wake/restoration timing. Sleep gaps are blank: no memory was measured in standby. Fine timing remains available in the awake-execution view.' :
+        clock.format(wallClock.startUtcUs) + ' → ' + clock.format(wallClock.endUtcUs) + '. Estimated from captured RTC seconds and measured wake/restoration timing. Sleep gaps are blank: no memory was measured in standby. Fine timing remains available in the awake-execution view.' :
         'Awake execution time only: standby is excluded. ' + (wallClock ? 'Choose UTC wall time to include the sleep gaps.' : 'This recording has no complete, trustworthy RTC/wake anchors for a wall-clock reconstruction.');
     const unique = new Map();
     for (const row of report.history) unique.set(row.timeUs, row);
@@ -282,16 +299,11 @@ function drawGraph() {
     plotRows = points.map(point => point.row);
     const opts = {
         width: Math.max(280, $('graph').clientWidth), height: 230, scales: { x: { time: false } },
-        axes: [{ label: utc ? 'UTC wall time (estimated; includes sleep gaps)' : 'Awake execution (seconds; excludes sleep)',
-            splits: utc ? (u, axis, min, max) => {
-                const step = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400].find(value => value >= (max - min) / 8) || 86400;
-                const ticks = [];
-                for (let tick = Math.ceil(min / step) * step; tick <= max; tick += step) ticks.push(tick);
-                return ticks;
-            } : undefined,
-            values: (u, values) => values.map(value => utc ? new Date(value * 1000).toISOString().slice(11, 19) : value.toLocaleString()) },
+        axes: [{ label: clock.label,
+            splits: (u, axis, min, max) => clockTicks(min, max),
+            values: (u, values) => values.map(value => clock.tick(value * 1e6)) },
             { values: (u, values) => values.map(n => n.toLocaleString() + ' B'), size: 74 }],
-        series: [{ label: utc ? 'Estimated UTC' : 'Awake execution', value: (u, v) => v === null ? '—' : utc ? utcLabel(v * 1e6) : v.toFixed(3) + ' s' },
+        series: [{ label: clock.label, value: (u, v) => v === null ? '—' : clock.format(v * 1e6) },
             { label: 'Live captured bytes', stroke: '#176c58', width: 2, paths: uPlot.paths.stepped({ align: 1 }),
                 value: (u, v) => v === null ? (report.session.heap_hooks ? '—' : 'Not captured') : bytes(v) },
             { label: 'Heap in use (last measurement)', stroke: '#527dbe', width: 2, points: { show: !!utc, size: 9 }, paths: uPlot.paths.stepped({ align: 1 }),
@@ -321,9 +333,12 @@ new ResizeObserver(entries => {
 }).observe(document.querySelector('.eventNavigator'));
 async function openPerfetto(external = false, selection = false) {
     if (!sourceBlob) return;
-    const blob = sourceBlob, name = sourceName, id = loadId;
+    const wall = $('perfettoClock').value === 'wall' && wallClock;
+    if (wall && !wallBlob) wallBlob = new Blob([perfettoWallTrace(converted, wallClock, localZone)], { type: 'application/octet-stream' });
+    const blob = wall ? wallBlob : sourceBlob, name = sourceName + (wall ? ' · estimated wall time' : ' · awake execution'), id = loadId;
+    const frameKey = id + ':' + (wall ? 'wall:' + localZone : 'active');
     const row = converted?.report.history[Number($('position').value)];
-    const range = selection ? selectionRange(row, selectedCall) : null;
+    const range = selection ? (wall ? wallSelectionRange(converted.report, wallClock, row, selectedCall) : selectionRange(row, selectedCall)) : null;
     const request = ++perfettoRequest;
     const isCurrent = () => id === loadId && request === perfettoRequest;
     let target;
@@ -332,16 +347,29 @@ async function openPerfetto(external = false, selection = false) {
         if (!target) { $('handoff').textContent = 'Your browser blocked the new tab. Use View in Perfetto or download the JSON.'; return; }
     } else {
         view(true);
-        if (perfettoFrameLoadId === id && !selection) return; // Keep the existing zoom/SQL/selection.
-        if (!$('perfettoFrame').getAttribute('src')) $('perfettoFrame').src = perfettoUrl;
+        if (perfettoFrameLoadId === frameKey && !selection) return; // Keep the existing zoom/SQL/selection.
+        if (perfettoDocumentKey !== frameKey) {
+            // Importing two clocks concurrently into the same Perfetto document can
+            // let the older load win. Give each clock/file a fresh document.
+            perfettoDocumentKey = frameKey;
+            await new Promise((resolve, reject) => {
+                const previous = $('perfettoFrame'), frame = previous.cloneNode(false);
+                frame.removeAttribute('src'); previous.replaceWith(frame); perfettoFrameLoadId = null;
+                const timeout = setTimeout(() => { frame.removeEventListener('load', ready); reject(new Error('Perfetto did not load. Check your connection.')); }, 30000);
+                function ready() { clearTimeout(timeout); resolve(); }
+                frame.addEventListener('load', ready, { once: true });
+                frame.src = perfettoUrl; // Fresh frame; preserve Perfetto's supported URL.
+            });
+            if (!isCurrent()) return;
+        }
         target = $('perfettoFrame').contentWindow;
     }
     $('handoff').textContent = 'Opening ' + name + ' in Perfetto…';
     try {
-        const sent = !external && perfettoFrameLoadId === id && range ?
+        const sent = !external && perfettoFrameLoadId === frameKey && range ?
             await scrollTrace(target, range, isCurrent) : await sendTrace(target, blob, name, range, isCurrent);
         if (sent && isCurrent()) {
-            if (!external) perfettoFrameLoadId = id;
+            if (!external) perfettoFrameLoadId = frameKey;
             $('handoff').textContent = range ? 'Selected time range sent to Perfetto.' : 'Trace sent to Perfetto for local processing.';
         }
     } catch (error) { if (isCurrent()) $('handoff').textContent = error.message; }
@@ -368,10 +396,27 @@ $('blockSearch').oninput = showPosition; $('objectSearch').oninput = showPositio
 $('entry').onclick = () => setPosition(selectedCall.startIndex);
 $('exit').onclick = () => setPosition(selectedCall.endIndex);
 $('resetZoom').onclick = () => { if (plot && converted) plot.setScale('x', { min: plot.data[0][0], max: Math.max(plot.data[0][0] + .001, plot.data[0].at(-1)) }); };
-$('memoryClock').onchange = drawGraph;
+$('memoryClock').onchange = () => { if (converted) { drawGraph(); eventTimeline?.refresh(); showPosition(); } };
+$('applyTimezone').onclick = () => {
+    try { new Intl.DateTimeFormat('en', { timeZone: $('localTimezone').value }).format(); }
+    catch { $('timezoneInfo').textContent = 'Enter a valid IANA zone, such as America/Los_Angeles.'; return; }
+    localZone = $('localTimezone').value; wallBlob = null;
+    $('timezoneInfo').textContent = 'Local display uses ' + localZone + '; recorded UTC stays unchanged.';
+    if (converted) { drawGraph(); eventTimeline?.refresh(); showPosition(); }
+    sensorCsv.refresh(); perfettoClockInfo();
+    if (!$('perfettoView').classList.contains('hidden') && $('perfettoClock').value === 'wall' && sourceBlob) openPerfetto();
+};
+$('perfettoClock').onchange = () => { perfettoClockInfo(); if (sourceBlob) openPerfetto(); };
+$('exportWall').onclick = () => {
+    if (!wallClock) return;
+    const url = URL.createObjectURL(new Blob([perfettoWallTrace(converted, wallClock, localZone)], { type: 'application/octet-stream' }));
+    const link = document.createElement('a'); link.href = url;
+    link.download = sourceName.replace(/\.(?:perfetto\.)?(ndjson|jsonl|json)$/i, '') + '.wall.pftrace';
+    link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
 $('zoomEvent').onclick = () => {
     if (!plot || !converted) return;
-    const index = Number($('position').value), utc = $('memoryClock').value === 'utc' && wallClock;
+    const index = Number($('position').value), utc = displayClock().wall;
     const center = utc ? wallClock.rows[index].utcUs / 1e6 : converted.report.history[index].timeUs / 1e6;
     const radius = utc ? 30 : 1;
     plot.setScale('x', { min: Math.max(plot.data[0][0], center - radius), max: Math.min(plot.data[0].at(-1), center + radius) });
@@ -383,5 +428,5 @@ $('perfettoInline').onclick = () => openPerfetto(); $('perfettoTab').onclick = (
 $('perfettoSelection').onclick = () => openPerfetto(false, true);
 $('inspectTab').onclick = () => view(false);
 $('csvTab').onclick = () => view('samples');
-mountSensorCsv(uPlot, view);
+const sensorCsv = mountSensorCsv(uPlot, view, () => localZone);
 $('timelineTab').onclick = () => { if (sourceBlob) openPerfetto(); else { view(true); $('handoff').textContent = 'Load a recording first, or try the fictional Wisp cycle.'; } };

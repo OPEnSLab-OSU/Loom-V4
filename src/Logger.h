@@ -112,7 +112,8 @@ class Logger {
 
     // Whether or not to use the SD card or log function summaries
     bool debugOutputEnabled = true;
-    bool enableFunctionSummaries = false;
+    using SummaryWriter = void (*)(Logger *, bool, const char *, const char *, int);
+    SummaryWriter summaryWriter = nullptr;
     bool enableSDLogging = false;
     bool rtcTimestampsEnabled = true;
 
@@ -220,7 +221,8 @@ class Logger {
     void setDebugOutput(bool enabled) { debugOutputEnabled = enabled; }
 
     /* Enable function summaries to view memory usage */
-    void enableSummaries() { enableFunctionSummaries = true; };
+    // The opt-in definition lives with the writer; unused builds never reference it.
+    void enableSummaries();
 
     /* Save flash write by not logging everything to SD */
     void enableSD() { enableSDLogging = true; };
@@ -283,6 +285,7 @@ struct FunctionInstrumentationContext {
 
 class FunctionInstrumentor {
   private:
+    friend class Logger;
     Loom_Trace *trace = nullptr;
     // Keep formatting buffers out of the constructor/destructor frames when summaries are off.
     static __attribute__((noinline)) void
@@ -305,7 +308,7 @@ class FunctionInstrumentor {
         beginTrace(logger, file, qualifiedFunc != nullptr ? qualifiedFunc : func, lineNum, object);
 
         if (logger->shouldLogSummaries()) {
-            writeSummary(logger, true, file, func, lineNum);
+            logger->summaryWriter(logger, true, file, func, lineNum);
         }
     }
 
@@ -315,7 +318,7 @@ class FunctionInstrumentor {
         logger->stackDepth--;
 
         if (logger->shouldLogSummaries()) {
-            writeSummary(logger, false, nullptr, nullptr, 0);
+            logger->summaryWriter(logger, false, nullptr, nullptr, 0);
         }
     }
 

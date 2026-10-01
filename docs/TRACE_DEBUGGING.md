@@ -56,6 +56,40 @@ All three source Wisp debug examples and the live deployment copy use the same r
 Use a fresh build when changing linker modes.
 The board's existing `debug=off` setting and this recording toggle are independent.
 
+## Select mux drivers in a sketch
+
+Place an optional list **before the first mux header include**:
+
+```cpp
+#define LOOM_MUX_COMPILED_ADDRESSES 0x74, 0x6B, 0x44
+#include <Hardware/Loom_Multiplexer/Loom_Multiplexer.h>
+
+Loom_Multiplexer mux(manager); // Scans only the selected addresses by default.
+```
+
+The factory references only the listed sensor types; the linker removes the full loader and
+unreferenced driver implementations. This is firmware/link-time removal: sensor headers are
+still parsed, and Arduino may compile unused library/dependency objects. Defining the list in
+the sketch works with ordinary IDE builds because the constructor receives a selected loader
+at the call site, with one consistent class layout in sketch and library files.
+
+Omit the define to retain the original full automatic loader and address list. Existing vector
+and brace-list constructors still work; their runtime scan list is independent of the compiled
+driver list. An address without a compiled factory produces no sensor object and reports the
+missing loader. Unsupported compile-list addresses fail compilation instead of silently adding
+all drivers. The original address-to-driver mapping is preserved; an address cannot distinguish
+different sensor models that share the same I2C address.
+
+The live V2 debug copy selects `0x74,0x6B,0x44,0x45,0x36,0x49,0x29`; the source V2 debug
+example selects its original `0x74,0x15,0x6B,0x44`. Their scan lists use the same sketch macro.
+TSL2591 gain/integration, SEN66 options, gas power retention, and traced object sizes still use
+the selected sensor's actual type and existing runtime settings.
+
+For repeatable size comparisons, `-MuxDrivers all` uses the full loader while preserving the
+sketch's scan list. `-MuxDrivers selected -MuxAddresses '0x74,0x15,0x6B,0x44'` selects drivers
+for a sketch without editing its source. The default `-MuxDrivers sketch` obeys the sketch.
+The comparison override is `LOOM_MUX_FORCE_ALL_DRIVERS=1`.
+
 To compile and upload that exact mode, add `-Upload -Port COM5` (replace COM5 with your board's
 port). Upload is optional and requires an explicit port. The helper uploads the verified binary
 without recompiling. An ordinary Arduino IDE upload honors the standalone sketch's trace flag,
@@ -344,6 +378,33 @@ name a block. Labelling a container gives object context and does not identify i
 allocated internal storage.
 
 ## Verification
+
+Additional debug-sketch size controls are independent of tracing:
+`LOOM_DEBUG_DIAGNOSTICS=0` removes the extra memory checkpoint helper and skips enabling verbose
+mux scans/SD write commentary. `LOOM_DEBUG_PRINT_SAMPLES=0` omits full sensor JSON printing.
+They do not remove sensor measurement, packaging, normal CSV saving, or batch storage.
+`build_loom_trace.ps1 -Diagnostics off` applies both switches plus
+`LOOM_COMPILE_MUX_DEBUG=0` and `LOOM_COMPILE_SD_WRITE_DEBUG=0` to a fresh build. These latter
+library switches remove the verbose implementation/message strings, rather than just leaving
+them disabled at runtime. Mux diagnostic arguments are removed too. SD failure warnings and
+append safety checks remain. Pass the library switches through `compiler.cpp.extra_flags`
+for every translation unit; defining them only inside an `.ino` does not configure library
+source files. Both default to `1` to preserve existing runtime setter behavior.
+
+The function-summary writer is linked only when a sketch calls `ENABLE_FUNC_SUMMARIES`
+or `Logger::enableSummaries()`. Omitting that call removes the writer and summary format strings
+without another build define. Lightweight `FUNCTION_START` bookkeeping still remains for
+normal debug logging and optional traces. This is link-time removal: Arduino may compile an
+unused source file, but its implementation occupies no space in the resulting firmware.
+The live/source V2 debug sketches use generic sleep labels and `loom_sleep_settings.json`;
+the sketch writes/read-verifies it using Loom's existing SleepInterval layout. Configured
+intervals and mux wiring are unchanged by the label update.
+
+LTE captures raw CSQ signal quality while initializing/connecting with the modem awake,
+then refreshes it during packaging if the modem is already powered. A single `RSSI_cached`
+boolean marks a reused valid reading; `RSSI: null` means no valid reading has been captured
+in this boot. Raw CSQ 99/transport failures do not replace a valid cache. No SD persistence,
+age/timestamp strings, or modem wake-up is added for RSSI. The cache itself is one byte.
 
 The converter's allocation/lifetime and corruption checks run with no compiler or dependencies:
 

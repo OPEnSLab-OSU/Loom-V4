@@ -129,6 +129,7 @@ LOOM_EXTERNAL_INCLUDE_END
 
 #include "../NetworkComponent.h"
 #include "Loom_LTE_Modem.h"
+#include "Utilities/Loom_SignalQualityCache.h"
 
 class Manager;
 class Loom_BatchSD;
@@ -232,6 +233,9 @@ class Loom_LTE : public NetworkComponent {
      * Add LTE signal quality to the Loom data package.
      */
     void package() override;
+    /** Cache a live raw CSQ reading only while the modem is already AT-ready.
+     * Called at boot and after connections; never wakes a powered-down modem. */
+    bool sampleSignalQuality();
 
     /**
      * Read the modem CCLK wall time and normalize its reported quarter-hour offset to UTC
@@ -375,6 +379,7 @@ class Loom_LTE : public NetworkComponent {
     // True means ON or UNKNOWN after touching PWR_ON. It is not proof of AT readiness;
     // moduleInitialized records readiness, and only checked shutdown proves OFF again.
     bool powerMayBeOn = false;
+    loomSignal::QualityCache signalQuality;
     enum class GnssState : uint8_t { OFF, RUNNING, UNKNOWN };
     GnssState gnssState = GnssState::OFF;
 };

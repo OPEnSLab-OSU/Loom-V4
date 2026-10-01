@@ -2,8 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 (async () => {
-    const source = fs.readFileSync(path.join(__dirname, '../tools/trace-studio/sensor-csv.js'), 'utf8');
-    const { parseSensorCsv } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+    const { parseSensorCsv } = await import(require('node:url').pathToFileURL(path.join(__dirname, '../tools/trace-studio/sensor-csv.js')).href);
     const preamble = 'device-serial\r\n\r\nID,timestamp,Gas,,\r\nname,time_utc,CO,Temp(C),\r\n';
     const data = parseSensorCsv(preamble + 'Wisp,2026-10-01 09:17:26,2,28,\r\nWisp,2026-10-01 09:20:26,3,29,\r\n');
     assert.deepEqual(data.intervals, [180]);

@@ -1,5 +1,8 @@
 param(
     [ValidateSet('sketch', 'off', 'calls', 'heap')] [string] $Mode = 'off',
+    [ValidateSet('sketch', 'off')] [string] $Diagnostics = 'sketch',
+    [ValidateSet('sketch', 'all', 'selected')] [string] $MuxDrivers = 'sketch',
+    [string] $MuxAddresses = '',
     [string] $Sketch = '',
     [string] $ArduinoCli = "$env:LOCALAPPDATA\Programs\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe",
     [string] $Fqbn = 'loom4:samd:adafruit_feather_m0:usbstack=arduino,debug=off',

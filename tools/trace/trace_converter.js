@@ -160,8 +160,12 @@
         const firstTs = records.length ? records[0].ts : 0;
         const lastTs = records.length ? records[records.length - 1].ts : firstTs;
         const ts = row => row.ts - firstTs;
+        let currentRecordIndex = 0;
         function event(ph, name, time, args = {}, tid = 1, extra = {}) {
-            events.push({ ph, name, ts: time, pid: 1, tid, cat: 'Loom', args, ...extra });
+            name = name.replace(/Stress /g, 'Sleep ');
+            // Chrome treats every numeric counter argument as another plotted series.
+            events.push({ ph, name, ts: time, pid: 1, tid, cat: 'Loom', loomEventIndex: currentRecordIndex,
+                args: ph === 'C' ? args : { ...args, 'Loom event index': currentRecordIndex }, ...extra });
         }
         function instant(name, time, args = {}, tid = 3) {
             event('I', name, time, args, tid, { s: 't' });
@@ -201,6 +205,8 @@
                     'Only allocations created after capture began'
             };
             args.Function = call.name; args['Call ID'] = call.id;
+            args['Call entry event index'] = call.startIndex;
+            args['Call exit event index'] = call.endIndex;
             event('X', (status === 'returned' ? '' : '[incomplete] ') + call.displayName,
                 call.startUs, args, 1, { dur: Math.max(0, time - call.startUs) });
         }
@@ -255,9 +261,10 @@
             }, 2);
         }
         for (let index = 0; index < records.length; ++index) {
+            currentRecordIndex = index;
             const row = records[index], time = ts(row);
             const frame = stack.at(-1), label = labels.get(row.addr) || row.addr;
-            let eventName = row.name, category = 'Checkpoints', callId = frame?.id || null;
+            let eventName = (row.name || '').replace(/Stress /g, 'Sleep '), category = 'Checkpoints', callId = frame?.id || null;
             if (row.kind === 'E') { eventName = 'Return: ' + (frame?.displayName || 'uncaptured function'); category = 'Calls'; }
             if (['A', 'F', 'R', 'N', 'Z'].includes(row.kind)) {
                 category = 'Heap';
@@ -278,7 +285,9 @@
                     liveBytesAtEntry: bytes, liveBlocksAtEntry: live.size,
                     heapUsedAtEntry: row.size, heapFreeAtEntry: Number(BigInt(row.old)), gapAtEntry: row.gap
                 };
-                call.displayName = name + (labels.has(row.addr) ? ' · ' + labels.get(row.addr) : '');
+                // Readable aliases for older bench traces; recorded signatures stay intact.
+                const displayName = name.replace('waitForStressWake', 'waitForScheduledWake').replace('prepareStressSettings', 'prepareSleepSettings').replace('writeStressSettings', 'writeSleepSettings').replace('printStressRtcTime', 'printSleepRtcTime');
+                call.displayName = displayName + (labels.has(row.addr) ? ' · ' + labels.get(row.addr) : '');
                 eventName = 'Enter: ' + call.displayName; category = 'Calls'; callId = call.id;
                 calls.push(call); stack.push(call);
                 event('C', 'Stack-to-heap gap (estimate)', time, { 'Bytes': row.gap }, 2);
@@ -370,7 +379,7 @@
             }
             case 'C': {
                 const checkpoint = {
-                    name: row.name, timeUs: time, index, usedBytes: row.size,
+                    name: row.name.replace(/Stress /g, 'Sleep '), timeUs: time, index, usedBytes: row.size,
                     freeBytes: row.line, gapBytes: row.gap,
                     freeChunks: Number(BigInt(row.addr)), topFreeBytes: Number(BigInt(row.old)),
                     trackedBytes: bytes, trackedBlocks: live.size,

@@ -6,11 +6,18 @@
 // BEGIN LOOM_BETA_DIAGNOSTICS
 // Soak-test diagnostics. Use the sibling sketch without _debug for deployment.
 // Set this switch to 0 to compare builds without memory/mux/SD trace instrumentation.
-#ifndef LOOM_WISP_BETA_DIAGNOSTICS
-#define LOOM_WISP_BETA_DIAGNOSTICS 1
+#ifndef LOOM_DEBUG_DIAGNOSTICS
+#ifdef LOOM_WISP_BETA_DIAGNOSTICS
+#define LOOM_DEBUG_DIAGNOSTICS LOOM_WISP_BETA_DIAGNOSTICS
+#else
+#define LOOM_DEBUG_DIAGNOSTICS 1
+#endif
+#endif
+#ifndef LOOM_DEBUG_PRINT_SAMPLES
+#define LOOM_DEBUG_PRINT_SAMPLES 1
 #endif
 
-#if LOOM_WISP_BETA_DIAGNOSTICS
+#if LOOM_DEBUG_DIAGNOSTICS
 #include <Diagnostics/Loom_MemoryDiagnostics.h>
 #endif
 // END LOOM_BETA_DIAGNOSTICS
@@ -66,7 +73,7 @@ Loom_MongoDB mqtt(manager, lte);
 Loom_BatchSD batchSD(hypnos, 72);
 
 // BEGIN LOOM_BETA_DIAGNOSTICS
-#if LOOM_WISP_BETA_DIAGNOSTICS
+#if LOOM_DEBUG_DIAGNOSTICS
 Loom_MemoryDiagnostics memoryDiagnostics;
 #define WISP_DIAGNOSTIC_BEGIN_CYCLE() memoryDiagnostics.beginCycle()
 #define WISP_DIAGNOSTIC_CHECKPOINT(phaseLabel)                                                     \
@@ -195,12 +202,14 @@ void loop() {
     LOOM_TRACE_CHECKPOINT("After packaging sensor JSON"); // LOOM_TRACE_DIAGNOSTIC
 
     // Print the current JSON packet
+#if LOOM_DEBUG_PRINT_SAMPLES
     WISP_DIAGNOSTIC_CHECKPOINT("Before displaying sensor JSON"); // LOOM_BETA_DIAGNOSTIC
     LOOM_TRACE_CHECKPOINT("Before displaying sensor JSON"); // LOOM_TRACE_DIAGNOSTIC
     manager.display_data();
     Watchdog.reset();
     WISP_DIAGNOSTIC_CHECKPOINT("After displaying sensor JSON"); // LOOM_BETA_DIAGNOSTIC
     LOOM_TRACE_CHECKPOINT("After displaying sensor JSON"); // LOOM_TRACE_DIAGNOSTIC
+#endif
 
     // Log the data to the SD
     WISP_DIAGNOSTIC_CHECKPOINT("Before saving sample and batch to SD"); // LOOM_BETA_DIAGNOSTIC

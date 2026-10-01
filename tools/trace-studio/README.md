@@ -24,7 +24,7 @@ Use **Choose sensor CSV** to load the matching Loom sensor file alongside the tr
 scrollable table, with 100 samples per page. It reports the recorded UTC range, sample intervals
 and whether optional additive-16 row checksums are present and valid. It preserves both files
 when switching tabs. CSV times include sleep; the trace active clock excludes sleep, so these
-clocks are shown separately. CSV inspection accepts up to 10 MB. Files remain in the browser.
+clocks can be selected independently. CSV inspection accepts up to 10 MB. Files remain in the browser.
 
 The selected-event navigator stays visible above the inspector while scrolling. It shows the
 event number/name, awake time, estimated UTC where available and enclosing call. Step, enter
@@ -48,8 +48,12 @@ The memory chart defaults to estimated UTC wall time when complete RTC/sleep dia
 Captured pre/post RTC seconds are anchored to measured wake/restoration timing, rather than the
 later diagnostic-write time. Standby gaps are blank, and event positions also show estimated UTC.
 Choose **Awake execution time** for precise profiling in seconds. Missing wake diagnostics,
-lost events or backwards reconstructed time leave the chart in awake time. Perfetto and the
-call/event timeline keep their precise active-time clock. Wall reconstruction does not imply
+lost events or backwards reconstructed time leave the chart in awake time. Calls/events and memory
+share a UTC/local/awake selector. Drag across the calls/events SVG to zoom its current 100-event
+page; double-click or Reset restores the page. Zoom to selected event and horizontal scrolling
+make short calls and labels easier to inspect. Sensor samples offer recorded UTC, local time,
+or elapsed seconds since the first sample (including sleep); their hover labels show timestamps.
+The IANA local zone setting handles daylight saving time. Wall reconstruction does not imply
 that memory was sampled during standby. Allocation-capture status is stated above the timeline.
 
 **View in Perfetto** opens the embedded timeline. **Open full Perfetto** uses a new browser
@@ -61,6 +65,19 @@ its zoom, selection and SQL workspace; **Show selection in Perfetto** moves to t
 or event without importing the recording again. **Find selected event** brings the selected marker
 into the scrollable inspector timeline. Exported Perfetto JSON also preserves the original Loom
 records, so reopening a download retains the memory and object inspection.
+
+**Perfetto clock → Wall time** generates a native `.wall.pftrace` with a REALTIME clock snapshot.
+Expand Perfetto's **Calls and memory** group (or use **Expand all groups**, ↕) to reveal tracks.
+Nested calls are ordered above memory totals. Calls spanning standby are split into awake portions;
+the Standby gaps track identifies periods without RAM measurements. Slice details retain
+whole-call awake and wall elapsed durations. Counters represent last observed values.
+In Perfetto's search box, type `>`, choose **Set timestamp and duration format**, then
+**Realtime (UTC)** or **Custom Timezone** (for example, `-07:00` for Los Angeles in October).
+This is Perfetto's native format control; the stable embedding API cannot set it externally.
+The Studio's local zone controls its own charts and the local-time annotations in the trace.
+Changing file/clock recreates the Perfetto document to prevent overlapping imports from showing
+the previous clock. Merely switching tabs or navigating to a selected event preserves its state.
+Awake-mode Chrome JSON remains available unchanged in units; native wall exports require RTC anchors.
 
 Files are read locally in a worker and are not posted to the localhost server. Perfetto loads
 its UI and processing engine from ui.perfetto.dev when requested; trace data is passed to that

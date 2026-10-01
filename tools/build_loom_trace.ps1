@@ -1,5 +1,8 @@
 param(
     [ValidateSet('sketch', 'off', 'calls', 'heap')] [string] $Mode = 'off',
+    [ValidateSet('sketch', 'off')] [string] $Diagnostics = 'sketch',
+    [ValidateSet('sketch', 'all', 'selected')] [string] $MuxDrivers = 'sketch',
+    [string] $MuxAddresses = '',
     [string] $Sketch = '',
     [string] $ArduinoCli = "$env:LOCALAPPDATA\Programs\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe",
     [string] $Fqbn = 'loom4:samd:adafruit_feather_m0:usbstack=arduino,debug=off',
@@ -36,11 +39,35 @@ foreach ($file in Get-ChildItem -LiteralPath $source -File) {
 $enabled = if ($Mode -eq 'off') { 0 } else { 1 }
 $heap = if ($Mode -eq 'heap') { 1 } else { 0 }
 $cppFlags = "-DLOOM_TRACE=$enabled -DLOOM_TRACE_HEAP=$heap -DLOOM_TRACE_LINKER_HEAP_HOOKS=$heap"
+if ($Mode -eq 'sketch') { $cppFlags = '' }
+if ($Diagnostics -eq 'off') {
+    $cppFlags += ' -DLOOM_DEBUG_DIAGNOSTICS=0 -DLOOM_DEBUG_PRINT_SAMPLES=0 -DLOOM_COMPILE_MUX_DEBUG=0 -DLOOM_COMPILE_SD_WRITE_DEBUG=0'
+}
+if ($MuxDrivers -eq 'all') { $cppFlags += ' -DLOOM_MUX_FORCE_ALL_DRIVERS=1' }
+if ($MuxDrivers -eq 'selected') {
+    $supported = @(0x10, 0x11, 0x15, 0x1C, 0x1D, 0x29, 0x36, 0x44, 0x45,
+                   0x48, 0x49, 0x69, 0x6B, 0x70, 0x74, 0x75, 0x76, 0x77)
+    $selectedAddresses = @($MuxAddresses -split ',' | ForEach-Object {
+        $address = $_.Trim()
+        if ($address -notmatch '^0[xX][0-9a-fA-F]{1,2}$') {
+            throw 'Specify -MuxAddresses as comma-separated hexadecimal sensor addresses, for example 0x74,0x6B,0x44.'
+        }
+        $value = [Convert]::ToByte($address.Substring(2), 16)
+        if ($value -notin $supported) { throw "Unsupported mux sensor address: $address" }
+        '0x{0:X2}' -f $value
+    })
+    if (($selectedAddresses | Select-Object -Unique).Count -ne $selectedAddresses.Count) {
+        throw 'Mux sensor addresses must not be duplicated.'
+    }
+    $cppFlags += ' -DLOOM_MUX_FORCE_ALL_DRIVERS=0 -DLOOM_MUX_COMPILED_ADDRESSES=' + ($selectedAddresses -join ',')
+} elseif ($MuxAddresses) {
+    throw '-MuxAddresses requires -MuxDrivers selected.'
+}
 $properties = @('compile', '--fqbn', $Fqbn, '--warnings', 'all', '--jobs', '4',
     '--build-path', $build,
     '--libraries', (Split-Path -Parent $loomRoot),
     '--libraries', (Join-Path $env:USERPROFILE 'Documents/Arduino/libraries'))
-if ($Mode -ne 'sketch') {
+if (-not [string]::IsNullOrWhiteSpace($cppFlags)) {
     $properties += @('--build-property', "compiler.cpp.extra_flags=$cppFlags")
 }
 if ($heap) {
@@ -53,7 +80,8 @@ if (Test-Path -LiteralPath (Join-Path $source 'src') -PathType Container) {
     Copy-Item -LiteralPath (Join-Path $source 'src') -Destination (Join-Path $stage 'src') -Recurse
 }
 # Preserve the exact flags with the output, so the matching ELF can symbolize caller addresses.
-[ordered]@{ mode = $Mode; sketch = $source; board = $Fqbn; arguments = $properties } |
+[ordered]@{ mode = $Mode; diagnostics = $Diagnostics; muxDrivers = $MuxDrivers;
+            muxAddresses = $MuxAddresses; sketch = $source; board = $Fqbn; arguments = $properties } |
     ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $buildRoot 'trace-build.json')
 $properties += $stage
 Write-Output "Building optional trace mode: $Mode"

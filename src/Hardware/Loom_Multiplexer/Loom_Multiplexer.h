@@ -1,9 +1,20 @@
 #pragma once
 
 #include "Loom_WarningGuards.h"
+#include "../../Loom_DebugFeatures.h"
 
 #include "../../Loom_Manager.h"
 #include "../../Module.h"
+#include "Loom_MuxSensorLoader.h"
+
+// Defaults are chosen at the sketch's call site. Library code receives the chosen
+// loader explicitly, so an .ino-only define can safely omit the full loader.
+#if defined(LOOM_MUX_COMPILED_ADDRESSES) && !LOOM_MUX_FORCE_ALL_DRIVERS
+#include "Loom_MuxSelectedSensors.h"
+#define LOOM_MUX_DEFAULT_SENSOR_LOADER loomMuxSelectedSensors<LOOM_MUX_COMPILED_ADDRESSES>()
+#else
+#define LOOM_MUX_DEFAULT_SENSOR_LOADER (&loomMuxAllSensors)
+#endif
 
 LOOM_EXTERNAL_INCLUDE_BEGIN
 #include "Wire.h"
@@ -50,7 +61,7 @@ class Loom_Multiplexer : public Module {
      *
      * @param man Reference to the manager
      */
-    Loom_Multiplexer(Manager &man);
+    Loom_Multiplexer(Manager &man, const LoomMuxSensorLoader *loader = LOOM_MUX_DEFAULT_SENSOR_LOADER);
 
     /**
      * Construct a new Multiplexer with a specified sensor address list.
@@ -58,10 +69,12 @@ class Loom_Multiplexer : public Module {
      * @param man Reference to the manager
      * @param addresses I2C sensor addresses to scan for behind the mux
      */
-    Loom_Multiplexer(Manager &man, const std::vector<byte> &addresses);
+    Loom_Multiplexer(Manager &man, const std::vector<byte> &addresses,
+                     const LoomMuxSensorLoader *loader = LOOM_MUX_DEFAULT_SENSOR_LOADER);
 
     /** Construct from a brace list without allocating a temporary std::vector. */
-    Loom_Multiplexer(Manager &man, std::initializer_list<byte> addresses);
+    Loom_Multiplexer(Manager &man, std::initializer_list<byte> addresses,
+                     const LoomMuxSensorLoader *loader = LOOM_MUX_DEFAULT_SENSOR_LOADER);
 
     // Destructor removes all auto-loaded sensor instances.
     ~Loom_Multiplexer();
@@ -145,7 +158,9 @@ class Loom_Multiplexer : public Module {
     };
     std::vector<MuxSensor> sensors;
 
-    Loom_Multiplexer(Manager &man, const byte *addresses, size_t count);
+    const LoomMuxSensorLoader *sensorLoader;
+    Loom_Multiplexer(Manager &man, const byte *addresses, size_t count,
+                     const LoomMuxSensorLoader *loader);
     void assignKnownAddresses(const byte *addresses, size_t count);
     byte findMultiplexer();
 
@@ -160,6 +175,9 @@ class Loom_Multiplexer : public Module {
     void clearSensors();                 // Deletes auto-loaded sensor instances
     void scanAndLoadSensors();           // Scans enabled ports and loads matching sensors
     Module *loadSensor(const byte addr); // Load the correct sensor based on the I2C address
+    uint32_t sensorObjectBytes(byte address) const {
+        return sensorLoader && sensorLoader->objectBytes ? sensorLoader->objectBytes(address) : 0;
+    }
 
     void debugLog(const char *message); // Print a diagnostic line when debug is enabled
     void debugLogFormatted(const char *format, ...);
@@ -168,12 +186,7 @@ class Loom_Multiplexer : public Module {
     std::vector<byte> known_addresses = {};
     std::array<bool, 8> portEnabled = {true, true, true, true, true, true, true, true};
 
-    tsl2591Gain_t tsl2591Gain = TSL2591_GAIN_MED;
-    tsl2591IntegrationTime_t tsl2591IntegrationTime = TSL2591_INTEGRATIONTIME_100MS;
-
-    bool sen66MeasurePM = true;
-    bool sen66ReadNumVals = true;
-    bool dfGasPowerRetained = false; // Preserve the existing power-cycle behavior by default.
+    LoomMuxSensorOptions sensorOptions;
 
     bool debugOutput = false;
     bool scanDebugOutput = false;
@@ -183,3 +196,4 @@ class Loom_Multiplexer : public Module {
      */
     const std::array<byte, 8> alt_addresses = {0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77};
 };
+#undef LOOM_MUX_DEFAULT_SENSOR_LOADER

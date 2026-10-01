@@ -27,7 +27,8 @@ static unsigned exits = 0;
 static unsigned summaryEntries = 0;
 static unsigned summaryExits = 0;
 
-bool Logger::shouldLogSummaries() { return enableFunctionSummaries; }
+bool Logger::shouldLogSummaries() { return summaryWriter != nullptr; }
+void Logger::enableSummaries() { summaryWriter = &FunctionInstrumentor::writeSummary; }
 void Logger::enableTrace(Loom_Trace &recorder) { trace = &recorder; }
 void FunctionInstrumentor::writeSummary(Logger *, bool starting, const char *, const char *, int) {
     if (starting) {

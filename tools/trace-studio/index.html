@@ -25,12 +25,16 @@
         <button id="report" class="secondary" disabled>Download memory report</button></div>
     <p id="handoff" class="muted" role="status"></p>
     <nav class="tabs" aria-label="Trace views"><button class="selected" id="inspectTab">Memory & objects</button><button id="timelineTab">Perfetto timeline</button><button id="csvTab">Sensor samples</button></nav>
+    <div class="toolbar"><label for="localTimezone">Local time zone</label><input id="localTimezone" type="text" aria-describedby="timezoneInfo"><button id="applyTimezone" class="secondary">Apply time zone</button><span id="timezoneInfo" class="muted"></span></div>
     <section id="csvView" class="hidden card"><h2>Sensor samples from CSV</h2>
         <p id="csvStatus" role="status">Choose the sensor CSV from the same recording session.</p>
         <p class="muted">Sample times use the CSV's recorded UTC clock. Trace execution time excludes standby, so these clocks are displayed separately.</p>
         <div id="csvLoaded" class="hidden">
             <p id="csvRange"></p><p id="csvIntegrity" class="notice"></p><p id="csvWarnings" class="notice"></p>
-            <div class="toolbar"><label for="csvField">Plot a sensor field</label><select id="csvField"></select></div>
+            <div class="toolbar"><label for="csvField">Plot a sensor field</label><select id="csvField"></select>
+                <label for="csvClock">Sample chart clock</label><select id="csvClock"><option value="utc">Recorded UTC</option><option value="local">Local time</option><option value="elapsed">Elapsed since first sample</option></select>
+                <button id="csvResetZoom" class="secondary">Reset zoom</button></div>
+            <p id="csvClockInfo" class="muted"></p>
             <div id="csvGraph"></div><p class="muted">Hover for values; drag to zoom and double-click to reset. Scroll the table sideways for every recorded sensor field.</p>
             <div class="toolbar"><button id="csvPrevious" class="secondary">Earlier samples</button><button id="csvNext" class="secondary">Later samples</button><span id="csvPage"></span></div>
             <div class="scroll csvTable"><table><thead id="csvHead"></thead><tbody id="csvRows"></tbody></table></div>
@@ -38,6 +42,8 @@
     </section>
     <section id="perfettoView" class="hidden card"><h2>Perfetto timeline</h2>
         <p class="muted">Nested calls, heap events, checkpoints, and SD recording overhead. Perfetto loads when you request it. The trace is passed to its browser frame; there is no trace upload service.</p>
+        <div class="toolbar"><label for="perfettoClock">Perfetto clock</label><select id="perfettoClock"><option value="active">Awake execution</option><option value="wall">Wall time · UTC / local</option></select><button id="exportWall" class="secondary" disabled>Download wall-time Perfetto trace</button></div>
+        <p id="perfettoClockInfo" class="notice"></p>
         <iframe id="perfettoFrame" title="Perfetto trace timeline"></iframe></section>
     <div id="inspectView">
         <section id="welcome" class="card welcome"><h2>From board to a readable memory story</h2>
@@ -46,6 +52,7 @@
                 <p><strong>3. Compare</strong>See live blocks, known sensor objects, and memory on call entry versus return.</p></div>
             <p class="muted">No board recording handy? The fictional cycle demonstrates baseline mux sensors, a sensor refresh, temporary buffers, and retained memory.</p></section>
         <div id="loaded" class="hidden">
+            <div class="toolbar clockControls"><label for="memoryClock">Calls / memory clock</label><select id="memoryClock"><option value="utc">UTC wall time (estimated)</option><option value="local">Local wall time (estimated)</option><option value="active">Awake execution time</option></select></div>
             <nav class="jumpLinks" aria-label="Inspector sections"><a href="#callsTimeline">Calls & events</a><a href="#memorySection">Memory chart</a><a href="#stackSection">Running call stack</a><a href="#allocationSection">Allocations</a><a href="#objectSection">Objects</a></nav>
             <section class="eventNavigator" aria-label="Selected event and navigation">
                 <p id="positionLabel" aria-live="polite">Select an event</p><strong id="eventDescription"></strong><small id="selectedContext"></small>
@@ -68,14 +75,15 @@
             <p id="allocationCapture" class="notice"></p>
             <p id="quality" class="notice"></p></section>
             <section class="card" id="callsTimeline">
-                <div class="sectionHead"><div><h2>Calls & events</h2><p class="muted">Scroll sideways and down. Hover or focus a label for its full name; click to inspect memory at that event.</p></div>
+                <div class="sectionHead"><div><h2>Calls & events</h2><p class="muted">Drag across the lanes to zoom; double-click to reset. Scroll sideways and down. Hover for full names; click to inspect the event.</p></div>
                     <button id="perfettoSelection" class="secondary">Show selection in Perfetto</button></div>
                 <div class="toolbar"><label for="timelineZoom">Label space</label><input id="timelineZoom" type="range" min="1" max="8" value="2"><span id="timelineZoomLabel">2×</span>
-                    <button id="timelineFollow" class="secondary">Find selected event</button></div>
+                    <button id="timelineFollow" class="secondary">Find selected event</button><button id="timelineZoomSelected" class="secondary">Zoom to selected event</button><button id="timelineReset" class="secondary">Reset timeline zoom</button></div>
+                <p id="timelineRange" class="notice"></p>
                 <div class="toolbar"><input id="eventSearch" type="search" placeholder="Find an event, sensor, mux port, or address" aria-label="Search events">
                     <select id="eventCategory" aria-label="Filter event types"></select></div>
                 <div class="toolbar"><button id="eventsPrevious" class="secondary">Earlier events</button><button id="eventsNext" class="secondary">Later events</button><span id="eventPage" class="muted"></span></div>
-                <p class="muted">Each page shows 100 matching events and the calls spanning them. Paging keeps long recordings responsive; times exclude standby.</p>
+                <p class="muted">Each page covers 100 matching events and the calls spanning them. Zoom changes the time range within that page. Wall time includes sleep; awake time excludes it.</p>
                 <div id="timelineScroll" tabindex="0" aria-label="Scrollable calls and events"><div id="eventTimeline"></div></div>
                 <p id="timelineHover" class="timelineDetail" role="status">Hover a function or event to read its full label.</p>
                 <details><summary>Selected event details</summary><p id="timelineSelection" class="timelineDetail"></p></details>
@@ -83,8 +91,7 @@
             </section>
             <section class="card" id="memorySection">
                 <div class="sectionHead"><div><h2>Memory through execution</h2><p class="muted">Hover for values. Drag to zoom; double-click to reset. Click to select a recorded event.</p></div><button id="resetZoom" class="secondary">Reset zoom</button></div>
-                <div class="toolbar"><label for="memoryClock">Memory chart clock</label><select id="memoryClock"><option value="utc">UTC wall time (estimated)</option><option value="active">Awake execution time</option></select>
-                    <button id="zoomEvent" class="secondary">Zoom to selected event</button></div>
+                <div class="toolbar"><button id="zoomEvent" class="secondary">Zoom to selected event</button></div>
                 <p id="memoryClockInfo" class="notice"></p>
                 <div id="graph"></div>
             </section>

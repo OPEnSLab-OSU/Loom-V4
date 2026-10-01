@@ -149,7 +149,7 @@ bool SDManager::writeLineToFile(const char *filename, const char *content) {
         // Optional debug output must never stall startup or every instrumented function.
         return false;
     }
-    if (writeDebug) {
+    if (LOOM_COMPILE_SD_WRITE_DEBUG && writeDebug) {
         Serial.print(F("[SD DEBUG] Opening SD file: "));
         Serial.println(filename);
     }
@@ -161,7 +161,7 @@ bool SDManager::writeLineToFile(const char *filename, const char *content) {
 
     // Check if the file was actually opened, if so write the content to the file
     if (outputFile) {
-        if (writeDebug) {
+        if (LOOM_COMPILE_SD_WRITE_DEBUG && writeDebug) {
             Serial.println(F("[SD DEBUG] Writing the record"));
         }
 
@@ -173,7 +173,7 @@ bool SDManager::writeLineToFile(const char *filename, const char *content) {
         const bool writeComplete = wroteContent && wroteNewline && !outputFile.getWriteError();
         return finishDebugWrite(outputFile, start, writeComplete);
     }
-    if (writeDebug) {
+    if (LOOM_COMPILE_SD_WRITE_DEBUG && writeDebug) {
         Serial.println(F("[SD DEBUG] Could not open the file"));
     }
     lastDebugWriteStatus = SDWriteStatus::Failed;
@@ -184,7 +184,7 @@ bool SDManager::writeLineToFile(const char *filename, const char *content) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::finishDebugWrite(File &file, uint32_t start, bool wroteAll) {
-    if (writeDebug) {
+    if (LOOM_COMPILE_SD_WRITE_DEBUG && writeDebug) {
         Serial.println(F("[SD DEBUG] Saving the file; rolling back a partial write if needed; closing"));
     }
     lastDebugWriteStatus = loomSD::finishAppend(file, start, wroteAll).status;
@@ -194,7 +194,7 @@ bool SDManager::finishDebugWrite(File &file, uint32_t start, bool wroteAll) {
         // Report directly: sending this through Logger would attempt another SD write.
         Serial.println(F("[SD DEBUG] The append result is uncertain; SD debug logging is paused until reboot."));
     }
-    if (writeDebug) {
+    if (LOOM_COMPILE_SD_WRITE_DEBUG && writeDebug) {
         Serial.println(complete ? F("[SD DEBUG] File saved successfully") : F("[SD DEBUG] File save failed"));
     }
     if (!complete) {
@@ -231,20 +231,20 @@ bool SDManager::writeJsonToFile(const char *filename, const DynamicJsonDocument 
         lastDebugWriteStatus = SDWriteStatus::Rejected;
         return false;
     }
-    if (writeDebug) {
+    if (LOOM_COMPILE_SD_WRITE_DEBUG && writeDebug) {
         Serial.print(F("[SD DEBUG] Opening SD file: "));
         Serial.println(filename);
     }
     File outputFile = sd.open(filename, O_RDWR | O_CREAT | O_APPEND);
     if (!outputFile) {
-        if (writeDebug) {
+        if (LOOM_COMPILE_SD_WRITE_DEBUG && writeDebug) {
             Serial.println(F("[SD DEBUG] Could not open the file"));
         }
         lastDebugWriteStatus = SDWriteStatus::Failed;
         printModuleName("Failed to open JSON debug file!");
         return false;
     }
-    if (writeDebug) {
+    if (LOOM_COMPILE_SD_WRITE_DEBUG && writeDebug) {
         Serial.println(F("[SD DEBUG] Writing the JSON record"));
     }
     const uint32_t start = outputFile.fileSize();

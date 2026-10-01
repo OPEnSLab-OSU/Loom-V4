@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Loom_WarningGuards.h"
+#include "../../Loom_DebugFeatures.h"
 
 LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <OPEnS_RTC.h>
@@ -136,7 +137,7 @@ class SDManager : public Module {
     bool prepareForReset(const char *reason);
 
     /** Enable direct-Serial phase markers around single-line SD writes for beta diagnosis. */
-    void setWriteDebug(bool enabled = true) { writeDebug = enabled; };
+    void setWriteDebug(bool enabled = true) { writeDebug = LOOM_COMPILE_SD_WRITE_DEBUG && enabled; };
 
     /**
      * Get the default SD card file name

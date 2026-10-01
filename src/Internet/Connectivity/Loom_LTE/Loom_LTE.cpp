@@ -569,6 +569,9 @@ void Loom_LTE::initialize() {
     // Connect to the LTE network and open the APN/PDP data session.
     moduleInitialized = true;
     const bool connected = connect();
+    // Boot is the normal chance to capture signal before batch mode powers LTE off.
+    if (!connected) sampleSignalQuality();
+    const bool signalSampled = signalQuality.hasValue();
 
     // If we successfully connected to the LTE network print out some information.
     if (connected) {
@@ -578,7 +581,7 @@ void Loom_LTE::initialize() {
         LOGF("APN: %s", apnName);
 
         // Print signal quality as reported by the modem.
-        LOGF("Signal State: %i", modem->getSignalQuality());
+        if (signalSampled) LOGF("Signal State (raw CSQ): %i", signalQuality.value());
 
         // Log IP address.
         ipToString(modem->localIP(), ip);
@@ -743,16 +746,19 @@ void Loom_LTE::package() {
     // Batch deployments deliberately power the modem off between uploads. Do not issue AT
     // commands (or trigger TinyGSM String churn) merely because it initialized earlier.
     JsonObject json = manager->get_data_object(getModuleName());
-    if (moduleInitialized && powerMayBeOn) {
-        json["RSSI"] = modem->getSignalQuality();
-    } else {
-        // Keep the same columns/order on every wake. Null means no live signal reading,
-        // rather than a fabricated or stale RSSI; no modem I/O occurs in this branch.
-        json["RSSI"] = nullptr;
-    }
+    const bool live = sampleSignalQuality(); // No AT commands when LTE is off.
+    if (signalQuality.hasValue()) json["RSSI"] = signalQuality.value();
+    else json["RSSI"] = nullptr;
+    json["RSSI_cached"] = signalQuality.hasValue() && !live;
     FUNCTION_END;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool Loom_LTE::sampleSignalQuality() {
+    if (!moduleInitialized || !powerMayBeOn || !modem) return false;
+    const int quality = modem->getSignalQuality();
+    return signalQuality.observe(quality);
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::logSignalDiagnostic() {
@@ -924,6 +930,7 @@ bool Loom_LTE::connect() {
     LoomWatchdogPause watchdogPause;
 
     if (isConnected()) {
+        sampleSignalQuality();
         return true;
     }
 
@@ -933,6 +940,7 @@ bool Loom_LTE::connect() {
         LOGF("LTE connect attempt %u / %u", attempt, maxAttempts);
 
         if (tryConnectDataSession(attempt, maxAttempts)) {
+            sampleSignalQuality();
             return true;
         }
 

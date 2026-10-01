@@ -1,3 +1,4 @@
+import { dateLabel, clockTicks } from './display-clock.js';
 // Read Loom's serial preamble and two-level CSV headings without losing quoted fields.
 export function parseSensorCsv(text) {
     const records = [];
@@ -59,7 +60,7 @@ export function parseSensorCsv(text) {
     return { columns, rows, intervals, warnings, hasChecksums: checksumIndex >= 0 };
 }
 
-export function mountSensorCsv(uPlot, selectView) {
+export function mountSensorCsv(uPlot, selectView, getZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone) {
     const $ = id => document.getElementById(id);
     let plot = null, loaded = null, request = 0, page = 0;
     const pageSize = 100;
@@ -70,14 +71,18 @@ export function mountSensorCsv(uPlot, selectView) {
         const points = rows.map((row, i) => ({ row, i })).filter(point => point.row.utcMs !== null);
         if (column && points.length && points.every((point, i) => i === 0 || point.row.utcMs > points[i - 1].row.utcMs)) {
             const start = points[0].row.utcMs;
+            const mode = $('csvClock').value, wall = mode !== 'elapsed', zone = mode === 'local' ? getZone() : 'UTC';
+            const label = mode === 'elapsed' ? 'Elapsed since first sample (seconds; includes sleep)' : 'Recorded sample time · ' + zone;
+            const format = x => wall ? dateLabel(x * 1e6, zone) : x.toFixed(3) + ' s · ' + dateLabel((start + x * 1000) * 1000);
+            $('csvClockInfo').textContent = label + '. One recorded timestamp represents the sensor measurement chain; local display converts UTC without changing the data.';
             plot = new uPlot({ width: Math.max(280, $('csvGraph').clientWidth), height: 230,
                 scales: { x: { time: false } },
-                axes: [{ label: 'Minutes since first sample' }, {}],
-                series: [{ label: 'Recorded sample UTC', value: (u, value) => value === null ? '—' :
-                    new Date(start + value * 60000).toISOString().slice(0, 19).replace('T', ' ') + ' UTC' },
+                axes: [{ label, splits: (u, axis, min, max) => clockTicks(min, max),
+                    values: (u, values) => values.map(x => wall ? dateLabel(x * 1e6, zone, true) : x.toLocaleString()) }, {}],
+                series: [{ label, value: (u, value) => value === null ? '—' : format(value) },
                     { label: column.label, stroke: '#176c58', width: 2, points: { show: true, size: 8 } }],
                 cursor: { drag: { x: true, y: false } }
-            }, [points.map(point => (point.row.utcMs - start) / 60000), points.map(({ row }) => {
+            }, [points.map(point => wall ? point.row.utcMs / 1000 : (point.row.utcMs - start) / 1000), points.map(({ row }) => {
                 const value = row.cells[column.index];
                 return value?.trim() && Number.isFinite(Number(value)) ? Number(value) : null;
             })], $('csvGraph'));
@@ -121,9 +126,12 @@ export function mountSensorCsv(uPlot, selectView) {
         }
     };
     $('csvField').onchange = render;
+    $('csvClock').onchange = () => { if (loaded) render(); };
+    $('csvResetZoom').onclick = () => { if (plot) plot.setScale('x', { min: plot.data[0][0], max: Math.max(plot.data[0][0] + .001, plot.data[0].at(-1)) }); };
     $('csvPrevious').onclick = () => { if (loaded && page) { page--; render(); } };
     $('csvNext').onclick = () => { if (loaded && (page + 1) * pageSize < loaded.rows.length) { page++; render(); } };
     new ResizeObserver(() => {
         if (plot && $('csvGraph').clientWidth > 0) plot.setSize({ width: Math.max(280, $('csvGraph').clientWidth), height: 230 });
     }).observe($('csvGraph'));
+    return { refresh: () => { if (loaded) render(); } };
 }
