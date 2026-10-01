@@ -44,6 +44,7 @@ class TestBroker : public MQTTComponent {
         port = 1883;
     }
     using MQTTComponent::connectToBroker;
+    using MQTTComponent::disconnectFromBroker;
     using MQTTComponent::deleteRetained;
     using MQTTComponent::getCurrentRetained;
     using MQTTComponent::publishDocument;
@@ -92,6 +93,10 @@ int main() {
     resetPlan();
     assert(broker.deleteRetained("config"));
     assert(mqttPlan.retain && mqttPlan.declaredLength == 0 && mqttPlan.endCalls == 1);
+    resetPlan();
+    broker.disconnectFromBroker();
+    assert(mqttPlan.stopCalls == 1 && !mqttPlan.connected);
+    checkGuard();
 
     // No frame may start for a bad topic/QoS, null payload or a boundary-sized payload.
     resetPlan();
@@ -102,6 +107,9 @@ int main() {
     assert(!broker.publishMessage("test", "x", false, -1));
     assert(!broker.publishMessage("test", "x", false, 3));
     assert(!broker.publishMessage("test", std::string(MAX_JSON_SIZE, 'x').c_str()));
+    assert(!broker.publishMessage("test/+", "x"));
+    assert(!broker.publishMessage("test/#", "x"));
+    assert(!broker.publishMessage("test\nmisleading", "x"));
     assert(mqttPlan.beginCalls == 0);
     checkGuard();
 
@@ -200,8 +208,29 @@ int main() {
     resetPlan();
     mqttPlan.incoming = "payload";
     mqttPlan.readyOnParse = 3;
+    mqttPlan.checkRetainedGuard = true;
     assert(broker.getCurrentRetained("config", retained, sizeof(retained)));
     assert(strcmp(retained, "payload") == 0 && nowMs == 20 && mqttPlan.unsubscribeCalls == 1);
+    checkGuard();
+    resetPlan();
+    mqttPlan.incoming = "payload";
+    mqttPlan.incomingTopic = "another-device/command";
+    assert(!broker.getCurrentRetained("config", retained, sizeof(retained)));
+    assert(retained[0] == '\0' && mqttPlan.readCalls == 0 && mqttPlan.stopCalls == 1);
+    checkGuard();
+    resetPlan();
+    mqttPlan.checkRetainedGuard = true;
+    mqttPlan.subscribeResult = false;
+    assert(!broker.getCurrentRetained("config", retained, sizeof(retained)));
+    assert(mqttPlan.stopCalls == 1 && mqttPlan.parseCalls == 0);
+    checkGuard();
+    resetPlan();
+    mqttPlan.incoming = "payload";
+    mqttPlan.unsubscribeResult = false;
+    mqttPlan.checkRetainedGuard = true;
+    assert(broker.getCurrentRetained("config", retained, sizeof(retained)));
+    assert(mqttPlan.stopCalls == 1 && mqttPlan.unsubscribeCalls == 1);
+    checkGuard();
     resetPlan();
     mqttPlan.incoming = "too-long";
     assert(!broker.getCurrentRetained("config", retained, sizeof(retained)));
@@ -227,4 +256,9 @@ int main() {
     assert(!broker.getCurrentRetained("config", retained, sizeof(retained)));
     assert(static_cast<uint32_t>(nowMs - start) == 2000 && retained[0] == '\0');
     checkGuard();
+    resetPlan();
+    WDT->CTRL.bit.ENABLE = 0;
+    mqttPlan.incoming = "payload";
+    assert(broker.getCurrentRetained("config", retained, sizeof(retained)));
+    assert(WDT->CTRL.bit.ENABLE == 0); // Never turn on a watchdog the caller left disabled.
 }

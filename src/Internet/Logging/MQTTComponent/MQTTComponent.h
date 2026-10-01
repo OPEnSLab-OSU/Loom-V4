@@ -23,7 +23,7 @@ LOOM_EXTERNAL_INCLUDE_END
 class MQTTComponent : public Module {
   protected:
     bool connectToBroker();                             // Connect to the configured broker
-    void disconnectFromBroker() { mqttClient.stop(); }; // Disconnect from the MQTT broker
+    void disconnectFromBroker();                        // Disconnect from the MQTT broker
     const char *getMQTTError();                         // Convert the MQTT error code into a string
 
     /**

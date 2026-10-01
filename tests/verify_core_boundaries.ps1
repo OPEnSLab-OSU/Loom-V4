@@ -29,6 +29,8 @@ foreach ($test in $tests) {
     $fakeIncludes = ''
     if ($test.BaseName -in @('test_ads1115', 'test_analog', 'test_reed_anemometer', 'test_sen66_startup', 'test_df_gas_retained')) {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'sensor_fakes') + '" /I"' + $jsonIncludes + '"'
+    } elseif ($test.BaseName -eq 'test_mongo_batch') {
+        $fakeIncludes = '/I"' + (Join-Path $sourceDir 'mongo_fakes') + '" /I"' + (Join-Path $sourceDir 'mqtt_fakes') + '" /I"' + $jsonIncludes + '"'
     } elseif ($test.BaseName -in @('test_mqtt_component', 'test_thingspeak', 'test_remote_manager')) {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'mqtt_fakes') + '" /I"' + $jsonIncludes + '"'
     } elseif ($test.BaseName -in @('test_lora_packet_header', 'test_buffer_pool', 'test_gnss_metadata', 'test_heartbeat_payload')) {

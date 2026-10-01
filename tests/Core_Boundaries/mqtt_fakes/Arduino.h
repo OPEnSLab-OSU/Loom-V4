@@ -3,6 +3,11 @@
 #include <stddef.h>
 #include <string.h>
 #include <algorithm>
+#include <string>
+#include <cmath>
+#define PSTR(text) text
+#define snprintf_P snprintf
+using std::isfinite;
 #define F(text) text
 using std::min;
 uint32_t millis();

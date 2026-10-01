@@ -79,7 +79,7 @@ class Loom_MongoDB : public MQTTComponent {
 
     bool buildTopic();
     bool buildTopic(const char *deviceName, int instance);
-    bool buildBatchTopic(Stream &source);
+    bool validateBatchRecord(Stream &source);
 
     bool batchUsesPacketIdentity = false;
     Manager *manInst; // Instance of the manager

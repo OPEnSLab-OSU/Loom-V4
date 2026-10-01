@@ -31,10 +31,10 @@ Seven still need larger design (3), external inputs (3), or compilation (1). Pre
 not release acceptance. Hardware and live-service checks remain wherever listed below;
 source candidates and mocks do not establish that a reported field problem is cured.
 
-Compilers are paused at the user's request. Earlier builds passed at earlier revisions;
-current firmware and changed C++ cases remain uncompiled. The host inventory has 27 programs:
-17 previously passed and ten new programs await compilation; changes since those passes also
-need retesting. No hardware uploads, release publication, or new CI dispatch occurred.
+The wider card-by-card compiler audit remains paused. At consolidation the host inventory
+had 27 programs: 17 previously passed and ten awaited compilation. Subsequent trace/Wisp and
+MQTT/Mongo requests authorized the scoped checks recorded below; those results do not certify
+every card or firmware profile. No hardware uploads, release publication, or CI dispatch occurred.
 
 Latest pre-cleanup checks passed for source preflight, warning scopes, four quiet/debug pairs,
 dependency/core integrity, changed-source formatting, 11 interpreted receipt-mock cases,
@@ -140,6 +140,40 @@ warning scopes, include discovery, and quiet/debug parity checks passed. The fin
 verified with explicitly fictional data. No firmware was uploaded; physical SD latency,
 power-cut behavior, allocation coverage and soak testing remain unverified. See
 [TRACE_DEBUGGING](TRACE_DEBUGGING.md) for scope and use.
+
+## Scoped MQTT/Mongo review, October 1, 2026
+
+Completed UTC: 2026-10-01, approximately 16:25.
+
+The overnight-test review refreshed issues #254, #259, #277, #288, #299, #301, #341 and #345
+and the #277/#299 implementation comments directly from GitHub. No issues were changed.
+
+| Request/report | Checked implementation and remaining acceptance |
+| --- | --- |
+| [#288](https://github.com/OPEnSLab-OSU/Loom-V4/issues/288), [#254](https://github.com/OPEnSLab-OSU/Loom-V4/issues/254): upload/reconnect failures | Production MQTT start/write/finish failures close the socket; retry prepares transport. Batch tests preserve the entire queue after a failed later ACK and replay exact original bytes. Long-running real LoRa/carrier/broker delivery and zero-byte carrier sessions remain hardware/service checks. |
+| [#299](https://github.com/OPEnSLab-OSU/Loom-V4/issues/299): multiple projects | Single/batch project topics and optional per-record hub identity passed host cases. Reject truncated names, path/wildcard routing components, embedded NULs and invalid ports/configuration. Upstream reports cached dynamic server routing working; this review did not access the deployed bridge or its Mongo routes. |
+| [#345](https://github.com/OPEnSLab-OSU/Loom-V4/issues/345): delayed batch arrivals | Original measurement JSON remains unchanged during streaming/retry. Logs distinguish broker ACK from database persistence. Offline receipt tests keep measurement/receipt/insertion clocks separate. Actual delay still requires correlated live broker and Mongo insertion evidence. |
+| [#341](https://github.com/OPEnSLab-OSU/Loom-V4/issues/341): broker logs | Existing offline receipt/viewer tests cover client/IP/device metadata, duplicates, insertion failure and bounded storage/backpressure. A live broker adapter, authenticated service and server disk-budget acceptance remain outstanding. The mock is not a deployed monitoring service. |
+| [#277](https://github.com/OPEnSLab-OSU/Loom-V4/issues/277): data/metadata/heartbeat type | Manager already emits data type; explicit metadata/heartbeat sends preserve JSON. Upstream reports the missing type was added in server bridge.py. Offline tests retain all three types; production database inclusion remains a service check. |
+| [#259](https://github.com/OPEnSLab-OSU/Loom-V4/issues/259): heartbeat | Production publishHeartbeat passed correct topic/QoS and rejected wrong identity or measurement-bearing contents without modifying the sample document. Failed metadata ACK propagates failure. Real database receipt remains untested. |
+| [#301](https://github.com/OPEnSLab-OSU/Loom-V4/issues/301): network UTC | Installed TinyGSM supplies modem wall time and a quarter-hour offset expressed as hours; LTE normalizes once before Hypnos/local display. Existing time-helper regressions passed. Actual R4/R5 replies still need hardware comparison. |
+
+Additional fixes: retained-command SDK operations and disconnects preserve the sketch watchdog
+configuration; a received topic must match the requested command. Failed subscription/unsubscription
+closes the connection for recovery. Batch JSON is checked before each publish, including trailing
+junk/cross-line parses and possible torn tails, without allocating a full packet buffer. Legacy
+custom batch records need no identity; the hub routing option requires a valid per-record identity.
+Bad records remain on SD and require diagnosis rather than silently disappearing.
+
+Validation: six focused native programs passed (production MQTT, Mongo batches, RemoteManager,
+ThingSpeak, heartbeat and time helpers); SD data-safety fault cases passed; 11 offline receipt tests
+and the viewer test passed. These models do not implement real MQTT packets, modem timing, Mongo
+commits or SD power-loss behavior. Broker ACK permits clearing the local queue but is not a Mongo
+commit acknowledgement. Partial-success retries are at-least-once and can duplicate earlier records;
+the production receiver must handle them. The offline mock demonstrates exact-byte deduplication.
+The active Arduino-folder Wisp debug sketch compiled with its own trace flag enabled at 244,628
+bytes (93% of 262,144), 824 bytes above the preceding verified 243,804-byte debug build.
+No firmware was uploaded or running-board settings changed during this review.
 
 Update this file in place after future checks. Keep card URLs, a timestamp, local status,
 remaining work, and an honest description of the evidence. Retain broader change history

@@ -1,6 +1,7 @@
 #include "MQTTComponent.h"
 #include "Logger.h"
 #include "Utilities/Loom_JsonUtils.h"
+#include "Utilities/Loom_MQTTUtils.h"
 
 namespace {
 constexpr uint32_t RETAINED_MESSAGE_TIMEOUT_MS = 2000;
@@ -8,12 +9,21 @@ constexpr uint32_t RETAINED_MESSAGE_TIMEOUT_MS = 2000;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void MQTTComponent::initialize() {
-    if (strlen(address) <= 0 || port == 0) {
+    if (address[0] == '\0' || port < 1 || port > 65535) {
         moduleInitialized = false;
         ERROR("Broker address not specified, module will be uninitialized.");
     } else {
         power_up();
     }
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void MQTTComponent::disconnectFromBroker() {
+    FUNCTION_START(this);
+    LoomWatchdogPause watchdogPause;
+    mqttClient.stop();
+    FUNCTION_END;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -24,7 +34,7 @@ bool MQTTComponent::connectToBroker() {
         ERROR("MQTT module not initialized!");
         return false;
     }
-    if (address[0] == '\0' || port == 0) {
+    if (address[0] == '\0' || port < 1 || port > 65535) {
         ERROR("Broker address or port not set!");
         return false;
     }
@@ -206,7 +216,7 @@ bool MQTTComponent::publishStream(const char *topic, Stream &source, size_t leng
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool MQTTComponent::beginPublish(const char *topic, size_t length, bool retain, int qos) {
     FUNCTION_START(this);
-    if (topic == nullptr || topic[0] == '\0' || strlen(topic) >= MAX_TOPIC_LENGTH ||
+    if (!loomMQTT::validTopic(topic, MAX_TOPIC_LENGTH) ||
         length >= MAX_JSON_SIZE || qos < 0 || qos > 2) {
         ERROR(F("Invalid MQTT topic, payload length, or QoS."));
         return false;
@@ -260,19 +270,32 @@ bool MQTTComponent::finishPublish() {
 bool MQTTComponent::getCurrentRetained(const char *topic, char *message, size_t messageCapacity) {
     FUNCTION_START(this);
 
-    if (topic == nullptr || topic[0] == '\0' || strlen(topic) >= MAX_TOPIC_LENGTH ||
+    if (!loomMQTT::validTopic(topic, MAX_TOPIC_LENGTH) ||
         message == nullptr || messageCapacity < 2) {
         ERROR(F("Cannot read a retained MQTT message with an invalid topic or output buffer."));
         return false;
     }
 
     LOG(topic);
-    if (mqttClient.connected()) {
+    bool connected = false;
+    {
+        LoomWatchdogPause watchdogPause;
+        connected = mqttClient.connected();
+    }
+    if (connected) {
         /* Clear the incoming buffer */
         memset(message, '\0', messageCapacity);
 
         // Subscribe to the given topic we want to read from
-        if (!mqttClient.subscribe(topic, 2)) {
+        bool subscribed = false;
+        {
+            LoomWatchdogPause watchdogPause;
+            subscribed = mqttClient.subscribe(topic, 2) == 1;
+            if (!subscribed) {
+                mqttClient.stop();
+            }
+        }
+        if (!subscribed) {
             ERRORF("Failed to subscribe to topic: %s.", topic);
             return false;
         }
@@ -283,20 +306,35 @@ bool MQTTComponent::getCurrentRetained(const char *topic, char *message, size_t 
         int messageSize = 0;
         const uint32_t started = millis();
         while (static_cast<uint32_t>(millis() - started) < RETAINED_MESSAGE_TIMEOUT_MS) {
-            messageSize = mqttClient.parseMessage();
+            {
+                LoomWatchdogPause watchdogPause;
+                messageSize = mqttClient.parseMessage();
+                connected = mqttClient.connected();
+            }
             if (messageSize > 0) {
+                break;
+            }
+            if (!connected) {
                 break;
             }
             delay(10);
         }
 
         bool received = false;
-        if (messageSize > 0 && static_cast<size_t>(messageSize) < messageCapacity) {
+        if (messageSize > 0 && mqttClient.messageTopic() != topic) {
+            ERROR(F("Received a different MQTT topic; refusing to apply it as a retained command."));
+            LoomWatchdogPause watchdogPause;
+            mqttClient.stop();
+        } else if (messageSize > 0 && static_cast<size_t>(messageSize) < messageCapacity) {
             // parseMessage() reports payload bytes. The previous implementation accidentally
             // copied messageTopic(), so RemoteManager tried to parse its topic as JSON.
             // The SDK returns a signed count. Validate it before using it as a buffer index.
-            const int bytesRead = mqttClient.read(reinterpret_cast<uint8_t *>(message),
-                                                  static_cast<size_t>(messageSize));
+            int bytesRead = 0;
+            {
+                LoomWatchdogPause watchdogPause;
+                bytesRead = mqttClient.read(reinterpret_cast<uint8_t *>(message),
+                                            static_cast<size_t>(messageSize));
+            }
             const bool countValid = bytesRead >= 0 && bytesRead <= messageSize;
             if (countValid) {
                 message[static_cast<size_t>(bytesRead)] = '\0';
@@ -306,6 +344,7 @@ bool MQTTComponent::getCurrentRetained(const char *topic, char *message, size_t 
             received = countValid && bytesRead == messageSize;
             if (!received) {
                 ERROR(F("Retained MQTT payload ended before the advertised length."));
+                LoomWatchdogPause watchdogPause;
                 mqttClient.stop(); // Discard the incomplete frame, not the broker's retained value.
             }
         } else if (messageSize > 0 && static_cast<size_t>(messageSize) >= messageCapacity) {
@@ -314,12 +353,23 @@ bool MQTTComponent::getCurrentRetained(const char *topic, char *message, size_t 
 
             // Do not drain an arbitrarily large/continuous payload during command handling.
             // Closing this socket leaves the broker's retained value available for diagnosis.
+            LoomWatchdogPause watchdogPause;
             mqttClient.stop();
         } else {
             WARNING(F("No retained MQTT payload received before the timeout."));
         }
 
-        if (mqttClient.connected() && !mqttClient.unsubscribe(topic)) {
+        bool unsubscribed = true;
+        {
+            LoomWatchdogPause watchdogPause;
+            if (mqttClient.connected()) {
+                unsubscribed = mqttClient.unsubscribe(topic) == 1;
+                if (!unsubscribed) {
+                    mqttClient.stop();
+                }
+            }
+        }
+        if (!unsubscribed) {
             WARNINGF("Failed to unsubscribe from topic: %s.", topic);
         }
 

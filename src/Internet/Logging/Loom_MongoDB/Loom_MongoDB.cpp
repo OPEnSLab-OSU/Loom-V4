@@ -1,9 +1,17 @@
 #include "Loom_MongoDB.h"
 #include "Utilities/Loom_HeartbeatPayload.h"
-#include "../../../Hardware/Loom_BatchSD/Loom_BatchSD.h"
-#include "../../../Sensors/Loom_Analog/Loom_Analog.h"
+#include "Hardware/Loom_BatchSD/Loom_BatchSD.h"
+#include "Sensors/Loom_Analog/Loom_Analog.h"
 #include "Logger.h"
 #include "Utilities/Loom_SDUtils.h"
+#include "Utilities/Loom_MQTTUtils.h"
+
+namespace {
+bool configStringIsComplete(JsonVariantConst value) {
+    const JsonString text = value.as<JsonString>();
+    return text.isNull() || memchr(text.c_str(), '\0', text.size()) == nullptr;
+}
+} // namespace
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_MongoDB::Loom_MongoDB(Manager &man, NetworkComponent &internet_client,
@@ -14,6 +22,13 @@ Loom_MongoDB::Loom_MongoDB(Manager &man, NetworkComponent &internet_client,
     // A hub may proxy many node names, but its MQTT connection belongs to this physical Feather.
     // The default millis()-based Arduino client ID can repeat across devices/reboots.
     setClientID(man.get_serial_num());
+    if (broker_address == nullptr || broker_address[0] == '\0' ||
+        strlen(broker_address) >= sizeof(address) || broker_port < 1 || broker_port > 65535 ||
+        !loomMQTT::validTopic(database_name, sizeof(this->database_name), true) ||
+        (projectServer != nullptr && projectServer[0] != '\0' &&
+         !loomMQTT::validTopic(projectServer, sizeof(this->projectServer), true))) {
+        moduleInitialized = false;
+    }
     /* MQTT Connection parameters */
     strncpy(this->address, broker_address ? broker_address : "", sizeof(this->address) - 1);
     port = broker_port;
@@ -47,8 +62,10 @@ bool Loom_MongoDB::buildTopic() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_MongoDB::buildTopic(const char *deviceName, int instance) {
-    if (deviceName == nullptr || deviceName[0] == '\0' ||
-        strlen(deviceName) >= Manager::DEVICE_NAME_SIZE) {
+    if (!loomMQTT::validTopic(deviceName, Manager::DEVICE_NAME_SIZE, true) ||
+        !loomMQTT::validTopic(database_name, sizeof(database_name), true) ||
+        (projectServer[0] != '\0' &&
+         !loomMQTT::validTopic(projectServer, sizeof(projectServer), true))) {
         ERROR(F("Invalid device identity; refusing to build an MQTT topic."));
         return false;
     }
@@ -63,19 +80,29 @@ bool Loom_MongoDB::buildTopic(const char *deviceName, int instance) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_MongoDB::buildBatchTopic(Stream &source) {
+bool Loom_MongoDB::validateBatchRecord(Stream &source) {
     // A queued hub file can contain many nodes. Read only id.name/id.instance into small fixed
     // documents; never build a second full sensor packet or use the last received node's name.
     StaticJsonDocument<JSON_OBJECT_SIZE(1) + JSON_OBJECT_SIZE(2)> filter;
-    filter["id"]["name"] = true;
-    filter["id"]["instance"] = true;
+    filter.to<JsonObject>();
+    if (batchUsesPacketIdentity) {
+        filter["id"]["name"] = true;
+        filter["id"]["instance"] = true;
+    }
     StaticJsonDocument<256> identity;
     const DeserializationError error =
         deserializeJson(identity, source, DeserializationOption::Filter(filter));
+    if (error || identity.overflowed()) {
+        ERROR(F("Batch JSON is malformed; retaining the file instead of discarding its records."));
+        return false;
+    }
+    if (!batchUsesPacketIdentity) {
+        return true; // Validate syntax without requiring identity in legacy custom batches.
+    }
     const JsonString name = identity["id"]["name"].as<JsonString>();
-    if (error || identity.overflowed() || name.isNull() ||
+    if (name.isNull() ||
         memchr(name.c_str(), '\0', name.size()) != nullptr ||
-        !identity["id"]["instance"].is<int>()) {
+        !identity["id"]["instance"].is<int>() || identity["id"]["instance"].as<int>() < 0) {
         ERROR(F("Batch identity is malformed; retaining the file instead of misrouting it."));
         return false;
     }
@@ -218,13 +245,15 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
         if (result == loomSD::RecordResult::End) {
             break;
         }
-        if (result != loomSD::RecordResult::Ready || !terminated) {
+        if (result != loomSD::RecordResult::Ready || !terminated ||
+            lineLength > UINT32_MAX - lineStart) {
             ERROR(result == loomSD::RecordResult::ReadError
                       ? F("SD read failed during batch scan; retaining the batch.")
                       : F("Batch packet is oversized or unterminated; retaining the batch."));
             allDataSuccess = false;
             break;
         }
+        const uint32_t lineEnd = lineStart + static_cast<uint32_t>(lineLength);
 
         ++packetNumber;
         LOGF("Publishing Packet %i of %i", packetNumber, batchSD.getCurrentBatch());
@@ -233,8 +262,10 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
             allDataSuccess = false;
             break;
         }
-        if ((batchUsesPacketIdentity && !buildBatchTopic(fileOutput)) ||
+        if (!validateBatchRecord(fileOutput) ||
+            !loomSD::finishJsonRecord(fileOutput, lineEnd) ||
             !fileOutput.seekSet(lineStart)) {
+            ERROR(F("Batch record could not be validated within its SD line; retaining the file."));
             allDataSuccess = false;
             break;
         }
@@ -252,7 +283,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD &batchSD) {
              packetNumber);
         // Move past the successfully sent body. A failed publish exits above and preserves the
         // entire file; the next attempt starts from its first record, not a partial remainder.
-        if (!fileOutput.seekSet(lineStart + lineLength)) {
+        if (!fileOutput.seekSet(lineEnd)) {
             ERROR(F("SD seek failed after batch publish; retaining the batch."));
             allDataSuccess = false;
             break;
@@ -331,7 +362,12 @@ void Loom_MongoDB::loadConfigFromJSON(char *json) {
     if (broker == nullptr || broker[0] == '\0' || database == nullptr || database[0] == '\0' ||
         !optionalStringsValid || !doc["port"].is<int>() || brokerPort < 1 || brokerPort > 65535 ||
         strlen(broker) >= sizeof(address) || strlen(database) >= sizeof(database_name) ||
-        strlen(project) >= sizeof(projectServer)) {
+        strlen(project) >= sizeof(projectServer) ||
+        !loomMQTT::validTopic(database, sizeof(database_name), true) ||
+        (project[0] != '\0' && !loomMQTT::validTopic(project, sizeof(projectServer), true)) ||
+        !configStringIsComplete(doc["broker"]) || !configStringIsComplete(doc["database"]) ||
+        !configStringIsComplete(doc["project"]) || !configStringIsComplete(doc["username"]) ||
+        !configStringIsComplete(doc["password"])) {
         ERROR(F("Invalid MQTT configuration: check broker/database strings, lengths, and port."));
         moduleInitialized = false;
         free(json);
