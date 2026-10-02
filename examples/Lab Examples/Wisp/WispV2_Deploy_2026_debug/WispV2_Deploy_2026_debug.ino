@@ -44,6 +44,11 @@
 #ifndef LOOM_TRACE_HEAP
 #define LOOM_TRACE_HEAP 1
 #endif
+// Bound allocation bursts without writing SD from allocator hooks. Range: 1..23.
+// Set LOOM_TRACE_HEAP to 0 for calls, objects and heap/free-RAM totals only.
+#ifndef LOOM_TRACE_HEAP_WINDOW_EVENTS
+#define LOOM_TRACE_HEAP_WINDOW_EVENTS 16
+#endif
 #include <Diagnostics/Loom_TraceSketch.h>
 LOOM_TRACE_RECORDER(executionTrace);
 // END LOOM_TRACE_DIAGNOSTICS
@@ -285,7 +290,7 @@ void setup() {
         Serial.println(executionTrace.getRecordPath());
         Serial.println(F("[TRACE] Active time excludes standby; baseline allocation times are unknown"));
         Serial.println(executionTrace.isHeapCaptureEnabled() ?
-            F("[TRACE] Allocation capture ON: new allocations, frees, reallocations and failures") :
+            F("[TRACE] Allocation capture ON: bounded windows; pauses labelled; RAM totals continue") :
             F("[TRACE] Allocation capture OFF: calls, objects and RAM checkpoints only"));
     } else {
         Serial.println(F("[TRACE] Could not start optional SD capture"));

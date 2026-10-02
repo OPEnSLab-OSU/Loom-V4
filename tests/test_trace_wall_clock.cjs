@@ -26,6 +26,8 @@ const path = require('node:path');
     assert.equal(reconstructWallClock(lost),null);
     const heapLost = structuredClone(report); heapLost.history[3].kind='lost'; heapLost.history[3].lossFlags=1;
     assert.ok(reconstructWallClock(heapLost),'Allocation-only gaps do not remove RTC anchors');
+    const heapPaused = structuredClone(report); heapPaused.history[3].kind='L'; heapPaused.history[3].lossFlags=1;
+    assert.ok(reconstructWallClock(heapPaused),'Intentionally capped allocation windows retain RTC anchors');
     const clockLost=structuredClone(heapLost); clockLost.history[3].lossFlags=8;
     assert.equal(reconstructWallClock(clockLost),null);
     const missing=structuredClone(report); missing.calls.push({name:'Loom_Hypnos::post_sleep',startIndex:12});

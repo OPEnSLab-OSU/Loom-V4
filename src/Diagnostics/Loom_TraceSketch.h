@@ -9,6 +9,10 @@
 #define LOOM_TRACE 0
 #endif
 #endif
+
+#ifndef LOOM_TRACE_HEAP_WINDOW_EVENTS
+#define LOOM_TRACE_HEAP_WINDOW_EVENTS 16
+#endif
 #ifndef LOOM_TRACE_HEAP
 #ifdef LOOM_WISP_TRACE_HEAP
 #define LOOM_TRACE_HEAP LOOM_WISP_TRACE_HEAP
@@ -28,7 +32,10 @@
 #include <Arduino.h>
 
 inline bool loomTraceBegin(Loom_Trace &recorder, SDManager &sd) {
-    if (!recorder.begin(sd, LOOM_TRACE_HEAP != 0)) return false;
+    static_assert(LOOM_TRACE_HEAP_WINDOW_EVENTS >= 1 &&
+                  LOOM_TRACE_HEAP_WINDOW_EVENTS < Loom_Trace::EVENT_CAPACITY,
+                  "LOOM_TRACE_HEAP_WINDOW_EVENTS must be 1..23; LOOM_TRACE_HEAP=0 disables allocation capture");
+    if (!recorder.begin(sd, LOOM_TRACE_HEAP != 0, LOOM_TRACE_HEAP_WINDOW_EVENTS)) return false;
     Logger::getInstance()->enableTrace(recorder);
     return true;
 }

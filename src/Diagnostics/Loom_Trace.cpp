@@ -119,12 +119,14 @@ uint64_t Loom_Trace::timestamp() {
     return (clockEpochMs + ms) * 1000u + (fraction < 1000u ? fraction : 999u);
 }
 
-bool Loom_Trace::begin(SDManager &manager, bool hooks) {
+bool Loom_Trace::begin(SDManager &manager, bool hooks, uint8_t heapWindowEvents) {
     if (recording || (active != nullptr && active != this) || !manager.canWriteDebugLogs()) {
         return false;
     }
     sd = &manager;
     heapHooks = hooks && loomTraceHeapHooksLinked != nullptr && loomTraceHeapHooksLinked();
+    heapWindowLimit = heapWindowEvents == 0 ? 1 : heapWindowEvents >= EVENT_CAPACITY ?
+        EVENT_CAPACITY - 1 : heapWindowEvents;
     // SDManager chooses one immutable boot/session number, considering old trace files too.
     // A later CSV schema rotation does not rename the running diagnostics or trace.
     const int session = sd->getDebugFileNumber();
@@ -158,6 +160,7 @@ bool Loom_Trace::begin(SDManager &manager, bool hooks) {
     memory("capture baseline");
     marker(heapHooks ? "Heap hooks enabled: allocations after capture are recorded"
                      : "Heap hooks OFF: enable LOOM_TRACE_HEAP with the Loom Trace Heap library installed");
+    if (heapHooks) value("Individual heap capture window limit", heapWindowLimit, "events per saved window");
     return true;
 }
 
@@ -182,7 +185,11 @@ bool Loom_Trace::boundary(char kind) {
     if (!acceptContext()) {
         return false;
     }
-    if (count == EVENT_CAPACITY) {
+    // A function entry must not occupy the pause-marker slot immediately before
+    // a large allocation burst. Reserve that slot at every non-heap boundary too.
+    const size_t boundaryCapacity = heapHooks && heapPauseIndex == EVENT_CAPACITY ?
+        EVENT_CAPACITY - 1 : EVENT_CAPACITY;
+    if (count >= boundaryCapacity || (heapPauseIndex < EVENT_CAPACITY && storageAvailable)) {
         if (!storageAvailable) {
             // A power-off boundary cannot drain. Mark missing function/label events too;
             // they must not silently leave the desktop stack looking complete.
@@ -335,6 +342,33 @@ void Loom_Trace::heapEvent(char kind, void *pointer, size_t size, void *previous
     if (trace == nullptr || !trace->heapHooks || !trace->acceptContext()) {
         return;
     }
+    if (trace->heapPauseIndex < EVENT_CAPACITY) {
+        // Fixed work and no SD/timestamp queries for the rest of a noisy burst.
+        uint32_t &skipped = trace->events[trace->heapPauseIndex].size;
+        if (skipped != UINT32_MAX) ++skipped;
+        return;
+    }
+    if (!trace->storageAvailable || trace->heapWindowCount >= trace->heapWindowLimit ||
+        trace->count >= EVENT_CAPACITY - 1) {
+        // Reserve the final slot for an honest coverage marker. Never let allocation
+        // traffic fill the queue and silently lose thousands of subsequent events.
+        if (trace->count == EVENT_CAPACITY) {
+            // Non-heap events can fill the queue while SD is off. Existing loss reporting
+            // remains the conservative fallback until storage is restored.
+            trace->noteDrop(kind, trace->timestamp());
+            return;
+        }
+        Event pause;
+        pause.kind = 'L';
+        pause.timestampUs = trace->timestamp();
+        pause.name = trace->storageAvailable ? "Individual heap capture capped until next safe boundary" :
+            "Individual heap capture paused while SD unavailable";
+        pause.line = trace->storageAvailable ? 0 : 1;
+        pause.size = 1;
+        trace->heapPauseIndex = trace->count;
+        trace->push(pause);
+        return;
+    }
     Event event;
     event.kind = kind;
     event.timestampUs = trace->timestamp();
@@ -343,6 +377,7 @@ void Loom_Trace::heapEvent(char kind, void *pointer, size_t size, void *previous
     event.size = static_cast<uint32_t>(size);
     event.line = static_cast<uint32_t>(caller);
     trace->push(event); // Never perform filesystem work from an allocator wrapper.
+    ++trace->heapWindowCount;
 }
 
 bool Loom_Trace::writeEvents(Print &destination, void *context) {
@@ -437,6 +472,7 @@ bool Loom_Trace::writeChromeEvents(Print &destination, void *context) {
         case 'R': name = "Heap block reallocated"; track = 2; break;
         case 'N': name = "Heap allocation failed"; track = 2; break;
         case 'Z': name = "Zero-size realloc: outcome unknown"; track = 2; break;
+        case 'L': name = "Individual heap capture capped; calls and RAM totals retained"; break;
         case 'C': phase = 'C'; name = "Allocator totals (includes baseline)"; track = 2; break;
         case 'D': name = "Object retired before deletion"; break;
         case 'V': track = 5; break;
@@ -486,6 +522,11 @@ bool Loom_Trace::writeChromeEvents(Print &destination, void *context) {
                 signedNumber(output, diagnosticValue(event));
                 output.print(F(",\"Unit\":"));
                 text(output, event.file);
+            } else if (event.kind == 'L') {
+                output.print(F(",\"Skipped heap events (capture limit)\":"));
+                output.print(event.size);
+                output.print(F(",\"Capture pause cause\":"));
+                output.print(event.line);
             } else if (event.kind == 'T') {
                 output.print(F(",\"Container bytes (not added to heap)\":"));
                 output.print(event.size);
@@ -547,6 +588,8 @@ bool Loom_Trace::flush() {
         count = 0;
         dropped = 0;
         droppedTypes = 0;
+        heapPauseIndex = EVENT_CAPACITY;
+        heapWindowCount = 0;
         // This record is saved by the next drain. A separate viewer track makes recording
         // overhead visible without pretending it was useful application work.
         Event overhead;

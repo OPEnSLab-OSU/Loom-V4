@@ -9,12 +9,14 @@ class SDManager;
 /**
  * Optional main-loop trace recorder. Instantiate only in a trace-enabled debug sketch.
  * Events borrow static strings; recording uses no heap or SD. Function boundaries drain the
- * fixed buffer when necessary. Heap hooks never drain it and can therefore lose burst events.
+ * fixed buffer when necessary. Heap hooks never drain it. Allocation bursts are capped and
+ * explicitly paused until a safe boundary, rather than overflowing the event buffer.
  * Every loss is persisted explicitly. Interrupts and the recorder's own SD work are excluded.
  */
 class Loom_Trace {
   public:
     static constexpr size_t EVENT_CAPACITY = 24;
+    static constexpr uint8_t DEFAULT_HEAP_WINDOW_EVENTS = 16;
 
     struct Event {
         uint64_t timestampUs = 0;
@@ -38,7 +40,8 @@ class Loom_Trace {
 
     /** Start after SD initialization. Paths must be unique per boot; never append a new boot
      * to an old trace. heapHooks tells the reader whether the optional linker hooks are built. */
-    bool begin(SDManager &sd, bool heapHooks = false);
+    bool begin(SDManager &sd, bool heapHooks = false,
+               uint8_t heapWindowEvents = DEFAULT_HEAP_WINDOW_EVENTS);
     bool flush();
     bool isRecording() const { return recording && !busy; }
     bool isHeapCaptureEnabled() const { return recording && heapHooks; }
@@ -79,6 +82,9 @@ class Loom_Trace {
     char perfettoPath[48] = {};
     uint32_t dropped = 0;
     uint8_t droppedTypes = 0; // heap=1, calls=2, objects=4, clock values=8, other=16
+    uint8_t heapWindowLimit = DEFAULT_HEAP_WINDOW_EVENTS;
+    uint8_t heapWindowCount = 0;
+    size_t heapPauseIndex = EVENT_CAPACITY; // One L record counts intentionally omitted events.
     uint64_t lastDroppedUs = 0;
     uint32_t previousMs = 0;
     uint64_t clockEpochMs = 0;

@@ -356,8 +356,21 @@ It does not allocate a JSON document, a `String`, an on-device live-block table,
 buffer. The desktop reconstructs live blocks and snapshots from allocation lifetimes.
 
 Function boundaries drain a full buffer through two checked SD writes (NDJSON and closed Chrome JSON). Allocator hooks only append
-small records in RAM and never write SD. A burst of more than the remaining event capacity
-without a traced boundary can overflow. An explicit `lost` record identifies the affected
+small records in RAM and never write SD. Individual allocation capture defaults to **16 events
+per saved window**. Before the window limit or queue capacity is exhausted, one reserved `L`
+record marks an intentional heap-capture pause and counts subsequent omitted events with fixed
+work and no SD writes. The next safe boundary drains that window and resumes capture.
+Heap capture is also paused while SD/SPI is unavailable. Calls, object observations and
+allocator/RAM totals continue through these allocation-only pauses; a pause invalidates block
+lifetimes across the gap and must never be interpreted as a free or evidence of a leak.
+
+Define `LOOM_TRACE_HEAP_WINDOW_EVENTS` (1..23, default 16) before `Loom_TraceSketch.h` to adjust
+the cap in Arduino IDE or the launcher. Define `LOOM_TRACE_HEAP 0` to disable individual
+allocation tracking while retaining call traces and heap/free-RAM measurements. A native
+`begin(sd, true, limit)` call accepts the same cap. A safe boundary after a capped burst may
+save a partially full buffer; it does not write for every allocation or every empty poll.
+
+Non-heap events can still overflow while SD is unavailable. An explicit `lost` record identifies the affected
 event types: `loss_flags` bits 1 = heap, 2 = calls, 4 = objects, 8 = clock/values,
 16 = other events. Chrome JSON carries the same mask as `Loss flags`. A heap-only gap
 invalidates allocation lifetimes while retaining call boundaries and observed objects.

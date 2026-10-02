@@ -2,7 +2,7 @@
 (function (root) {
     'use strict';
     const zero = '0x0';
-    const kinds = new Set(['B', 'E', 'A', 'F', 'R', 'N', 'Z', 'T', 'I', 'C', 'O', 'U', 'D', 'V', 'lost']);
+    const kinds = new Set(['B', 'E', 'A', 'F', 'R', 'N', 'Z', 'T', 'I', 'C', 'O', 'U', 'D', 'V', 'L', 'lost']);
     function address(value) {
         if (typeof value !== 'string' || !/^0x[0-9a-f]+$/i.test(value)) {
             throw new Error('Invalid memory address');
@@ -72,6 +72,10 @@
             row.old = address(row.old);
             integer(row.size, 'size');
             integer(row.line, 'line / caller address');
+            if (row.kind === 'L') {
+                integer(row.size, 'intentionally skipped heap events', 1);
+                if (row.line > 1) throw new Error('Invalid heap capture pause cause');
+            }
             integer(row.gap, 'stack-to-heap gap', -2147483648);
             if (row.kind === 'V') integer(row.gap * 4294967296 + row.size, 'diagnostic value', -Number.MAX_SAFE_INTEGER);
             if (typeof row.name !== 'string' || typeof row.file !== 'string') {
@@ -113,7 +117,7 @@
             if (!kind) continue;
             const row = { kind, ts: event.ts, addr: args.Address || zero,
                 old: args['Previous address'] || zero, size: 0, line: 0, gap: 0,
-                name: ['B', 'I', 'C', 'U', 'T', 'V'].includes(kind) ? event.name || '' : '', file: '' };
+                name: ['B', 'I', 'C', 'U', 'T', 'V', 'L'].includes(kind) ? event.name || '' : '', file: '' };
             if (kind === 'B' || kind === 'E') {
                 row.file = args['Source file'] || ''; row.line = args['Source line'] || 0;
                 row.size = args['Heap bytes in use at call boundary'] || 0;
@@ -128,6 +132,9 @@
                 const value = integer(args.Value, 'diagnostic value', -Number.MAX_SAFE_INTEGER);
                 row.gap = Math.floor(value / 4294967296); row.size = value - row.gap * 4294967296;
                 row.file = args.Unit || '';
+            } else if (kind === 'L') {
+                row.size = args['Skipped heap events (capture limit)'];
+                row.line = args['Capture pause cause'] ?? 0;
             } else if (kind === 'C') {
                 row.size = args['Heap bytes in use']; row.line = args['Reusable free bytes'];
                 row.addr = hex(args['Free chunks']); row.old = hex(args['Top free chunk bytes']);
@@ -165,6 +172,9 @@
         const activeObjects = new Map();
         const history = [];
         const losses = [];
+        const captureLimits = [];
+        const windowLimit = records.find(row => row.kind === 'V' && row.name === 'Individual heap capture window limit');
+        if (windowLimit) session.heap_window_events = windowLimit.gap * 4294967296 + windowLimit.size;
         let bytes = 0, peak = 0, failures = 0, segment = 0, uncertain = false;
         let overheadUs = 0;
         const firstTs = records.length ? records[0].ts : 0;
@@ -276,7 +286,7 @@
             const row = records[index], time = ts(row);
             if (row.kind === 'I' && row.name === powerDown) storageAvailable = false;
             if (row.kind === 'I' && row.name === powerUp) storageAvailable = true;
-            const lossFlags = row.kind === 'lost' ? row.loss_flags ?? (nativeV1Boundaries && storageAvailable ? 1 : 31) : null;
+            const lossFlags = row.kind === 'L' ? 1 : row.kind === 'lost' ? row.loss_flags ?? (nativeV1Boundaries && storageAvailable ? 1 : 31) : null;
             const frame = stack.at(-1), label = labels.get(row.addr) || row.addr;
             let eventName = (row.name || '').replace(/Stress /g, 'Sleep '), category = 'Checkpoints', callId = frame?.id || null;
             if (row.kind === 'E') { eventName = 'Return: ' + (frame?.displayName || 'uncaptured function'); category = 'Calls'; }
@@ -288,6 +298,10 @@
             if (row.kind === 'D') { eventName = 'Retire object: ' + label; category = 'Objects'; }
             if (row.kind === 'O') { eventName = 'Save trace to SD · ' + (row.size / 1000).toFixed(3) + ' ms'; category = 'Recorder'; }
             if (row.kind === 'lost') { eventName = row.count + (lossFlags === 1 ? ' heap events lost · call boundaries retained' : ' events lost · history interrupted'); category = 'Capture quality'; }
+            if (row.kind === 'L') {
+                eventName = (row.line === 1 ? 'Heap capture paused: SD unavailable' : 'Heap capture capped: window full') +
+                    ' · ' + row.size + ' events intentionally skipped'; category = 'Capture quality';
+            }
             switch (row.kind) {
             case 'B': {
                 const name = shortName(row.name);
@@ -419,15 +433,20 @@
                 overheadUs += row.size;
                 event('X', 'Save trace buffer to SD', time, {}, 4, { dur: row.size });
                 break;
-            case 'lost':
+            case 'L':
+            case 'lost': {
+                const limited = row.kind === 'L';
                 uncertain = true;
-                if (row.loss_flags === undefined && lossFlags === 1) ++inferredLosses;
-                losses.push({ timeUs: time, index, count: row.count, flags: lossFlags,
-                    classification: row.loss_flags !== undefined ? 'Recorded event types' : lossFlags === 1 ? 'Native v1 safe-boundary inference' : 'Unknown event types' });
-                warnings.push(`${row.count} events lost at ${(time / 1000).toFixed(3)} ms; live-block identity is incomplete after this point.`);
+                if (limited) captureLimits.push({ timeUs: time, index, count: row.size, reason: row.line === 1 ? 'SD unavailable' : 'Window full' });
+                else {
+                    if (row.loss_flags === undefined && lossFlags === 1) ++inferredLosses;
+                    losses.push({ timeUs: time, index, count: row.count, flags: lossFlags,
+                        classification: row.loss_flags !== undefined ? 'Recorded event types' : lossFlags === 1 ? 'Native v1 safe-boundary inference' : 'Unknown event types' });
+                    warnings.push(`${row.count} events lost at ${(time / 1000).toFixed(3)} ms; live-block identity is incomplete after this point.`);
+                }
                 if (lossFlags & 2) while (stack.length) finishCall(stack.pop(), time, index, 'Events lost; boundary unknown');
                 if (lossFlags & 1) for (const block of [...live.values()]) endBlock(block, time, index,
-                    'Events lost: last known live, later lifetime unknown');
+                    limited ? 'Capture paused: last known live, later lifetime unknown' : 'Events lost: last known live, later lifetime unknown');
                 if (lossFlags & 4) {
                     for (const pointer of [...activeObjects.keys()]) retireObject(pointer, time, index,
                         'Events lost: object state unknown until next observation');
@@ -439,11 +458,13 @@
                     for (const object of activeObjects.values()) labels.set(object.address, object.name);
                 }
                 ++segment;
-                instant('Trace events lost', time, { 'Dropped events': row.count,
+                instant(limited ? eventName : 'Trace events lost', time, { ...(limited ?
+                    { 'Intentionally skipped heap events': row.size, 'Capture policy': 'Bounded allocation windows' } : { 'Dropped events': row.count }),
                     'Loss flags': lossFlags, 'Call boundaries': lossFlags & 2 ? 'May be missing' : 'Retained',
-                    'Loss classification': row.loss_flags !== undefined ? 'Recorded by firmware' : lossFlags === 1 ? 'Inferred from native v1 safe-boundary contract while SD available' : 'Unknown; conservative fallback',
+                    'Loss classification': limited ? 'Intentional allocation capture pause; not queue overflow' : row.loss_flags !== undefined ? 'Recorded by firmware' : lossFlags === 1 ? 'Inferred from native v1 safe-boundary contract while SD available' : 'Unknown; conservative fallback',
                     'Allocation ledger': 'Reset; later events begin a new observed segment' });
                 break;
+            }
             }
             if (row.kind === 'B' || row.kind === 'E') {
                 const checkpoint = { name: row.kind === 'B' ? 'Call entry: ' + shortName(row.name) : 'Function returned',
@@ -469,6 +490,7 @@
             'Trace ended before return was captured');
         if (!session.heap_hooks) warnings.push('Heap hooks were not linked: individual allocations are unavailable. Allocator checkpoints still show totals.');
         if (inferredLosses) warnings.push(`${inferredLosses} untyped native v1 losses while SD was available were classified as heap-only using that recorder's safe-boundary contract. Call boundaries are retained; allocation lifetimes still have gaps. New firmware records explicit event-type loss flags.`);
+        if (captureLimits.length) warnings.push(`Individual allocation capture paused in ${captureLimits.length} bounded windows (${captureLimits.reduce((sum, gap) => sum + gap.count, 0)} heap events intentionally not recorded). Calls, object observations and RAM totals remain available. Allocation lifetimes across these pauses are unknown.`);
         warnings.push('Capture excludes initialization allocations, interrupts, custom allocators, and the recorder’s SD work. Requested sizes exclude allocator metadata.');
         for (const [tid, name] of [[1, 'Nested function calls'], [2, 'Heap and memory'],
             [3, 'Checkpoints and capture quality'], [4, 'Trace recording overhead'], [5, 'Sleep and RTC checks']]) {
@@ -478,7 +500,7 @@
             args: { name: 'Loom debug recording (active time)' } });
         events.sort((a, b) => (a.ts || 0) - (b.ts || 0));
         const report = { session, warnings: [...new Set(warnings)], calls, allocations,
-            objects, checkpoints, history, losses, durationUs: lastTs - firstTs, peakTrackedBytes: peak,
+            objects, checkpoints, history, losses, captureLimits, durationUs: lastTs - firstTs, peakTrackedBytes: peak,
             allocationFailures: failures, overheadUs };
         return { report, perfetto: { traceEvents: events, displayTimeUnit: 'ms',
             metadata: { source: 'Loom trace v1', clock: 'Active time; excludes standby',

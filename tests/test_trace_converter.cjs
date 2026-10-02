@@ -293,4 +293,40 @@ test('Native v1 heap-loss inference is limited to recognizable SD-available inte
     assert.match(result.report.warnings.join('\n'), /safe-boundary contract/);
 });
 
+test('Bounded heap capture resets uncertain lifetimes while preserving calls, objects and totals', () => {
+    const result = trace.convert(source([
+        row('V', 0, { name:'Individual heap capture window limit', size:16, gap:0 }),
+        row('U', 1, { addr:'0x10', name:'LTE modem' }),
+        row('B', 2, { name:'void connect()', size:6004, old:'0xc4' }),
+        row('A', 3, { addr:'0x20', size:65 }),
+        row('L', 4, { size:9984 }),
+        row('A', 5, { addr:'0x30', size:128 }), row('E', 6, { size:6004, old:'0xc4' })
+    ]));
+    assert.equal(result.report.session.heap_window_events, 16);
+    assert.equal(result.report.losses.length, 0);
+    assert.equal(result.report.captureLimits[0].count, 9984);
+    assert.equal(result.report.calls[0].status, 'returned');
+    assert.equal(trace.snapshot(result.report, 4).activeObjects.length, 1);
+    assert.match(result.report.allocations[0].endReason, /Capture paused/);
+    assert.equal(trace.snapshot(result.report, 5).liveBytes, 128);
+    assert.equal(result.report.checkpoints.at(-1).usedBytes, 6004);
+    assert.match(result.report.history[4].eventName, /intentionally skipped/);
+    assert.match(result.perfetto.traceEvents.find(e=>e.args['Intentionally skipped heap events']).args['Loss classification'], /not queue overflow/);
+    for (const values of [{size:0}, {size:-1}, {size:1,line:2}])
+        assert.throws(()=>trace.convert(source([row('L',1,values)])));
+});
+
+test('Native Chrome capture-limit markers retain skipped counts and SD-off cause', () => {
+    const chrome = JSON.stringify({traceEvents:[
+        {ph:'I',ts:1,name:'Heap hooks enabled: allocations after capture are recorded',args:{'Record kind':'I'}},
+        {ph:'I',ts:2,name:'Individual heap capture paused while SD unavailable',args:{'Record kind':'L',
+            'Skipped heap events (capture limit)':5000,'Capture pause cause':1}}
+    ]});
+    const result=trace.convert(chrome);
+    assert.equal(result.report.losses.length,0);
+    assert.equal(result.report.captureLimits[0].reason,'SD unavailable');
+    assert.equal(result.report.captureLimits[0].count,5000);
+    assert.match(result.report.history[1].eventName,/SD unavailable/);
+});
+
 console.log(`All ${tests} trace converter tests passed.`);

@@ -55,13 +55,15 @@ int main() {
         for (size_t i = 0; i < Loom_Trace::EVENT_CAPACITY + 2; ++i) {
             __wrap_malloc(8);
         }
+        for (size_t i = 0; i < Loom_Trace::EVENT_CAPACITY; ++i) trace.marker("while SD is off");
         assert(!trace.enter("wake.cpp", "void beforeSDRestore()", 3));
         assert(!trace.flush());
         assert(trace.isRecording() && sd.batches == before);
         trace.setStorageAvailable(true);
         assert(trace.flush());
         assert(sd.saved.find("\"kind\":\"lost\"") != std::string::npos);
-        assert(sd.saved.find("\"loss_flags\":3") != std::string::npos); // Heap and call boundary loss while SD is off.
+        assert(sd.saved.find("\"loss_flags\":18") != std::string::npos); // Calls/markers can be lost; heap traffic is intentionally paused.
+        assert(sd.saved.find("\"kind\":\"L\"") != std::string::npos);
         assert(sd.perfetto.find("LOST TRACE EVENTS") != std::string::npos);
         std::cout << "PASS SD power-off never drains; wake resumes with explicit loss\n";
     }
@@ -123,18 +125,58 @@ int main() {
         assert(trace.begin(sd, true));
         assert(trace.flush());
         const unsigned int before = sd.batches;
-        for (size_t i = 0; i < Loom_Trace::EVENT_CAPACITY + 3; ++i) {
+        for (size_t i = 0; i < 10000; ++i) {
             __wrap_malloc(i);
         }
         assert(sd.batches == before); // An allocator burst must never write to SD.
-        trace.marker("after burst"); // A safe boundary drains the buffer and lost count.
+        trace.marker("after burst"); // A safe boundary resumes the bounded allocation window.
         assert(sd.batches == before + 1);
-        assert(sd.saved.find("\"kind\":\"lost\"") != std::string::npos);
-        assert(sd.saved.find("\"count\":4") != std::string::npos); // Includes prior overhead record.
-        assert(sd.saved.find("\"loss_flags\":1") != std::string::npos);
-        assert(sd.perfetto.find("\"Loss flags\":1") != std::string::npos);
+        assert(sd.saved.find("\"kind\":\"lost\"") == std::string::npos);
+        assert(occurrences(sd.saved, "\"kind\":\"A\"") == 16);
+        assert(occurrences(sd.saved, "\"kind\":\"L\"") == 1);
+        assert(sd.saved.find("\"size\":9984") != std::string::npos);
+        assert(sd.perfetto.find("\"Skipped heap events (capture limit)\":9984") != std::string::npos);
+        __wrap_free(allocationPointer);
+        __wrap_malloc(99);
         assert(trace.flush());
-        std::cout << "PASS bounded allocation burst, no SD in hooks, explicit losses\n";
+        assert(occurrences(sd.saved, "\"kind\":\"A\"") == 17);
+        assert(occurrences(sd.saved, "\"kind\":\"F\"") == 1);
+        if (const char *tempFolder = std::getenv("TEMP")) {
+            const std::string prefix = std::string(tempFolder) + "/loom-bounded-native-trace-test";
+            std::ofstream(prefix + ".ndjson", std::ios::binary) << sd.saved;
+            std::ofstream(prefix + ".perfetto.json", std::ios::binary) << sd.perfetto;
+        }
+        std::cout << "PASS 10,000-event burst capped at 16, zero queue drops/SD in hooks, capture resumes\n";
+    }
+    {
+        SDManager sd;
+        Loom_Trace trace;
+        assert(trace.begin(sd, true, 4));
+        assert(trace.flush());
+        for (unsigned int i = 0; i < 100; ++i) __wrap_malloc(1);
+        assert(trace.flush());
+        assert(occurrences(sd.saved, "\"kind\":\"A\"") == 4);
+        assert(sd.saved.find("\"size\":96") != std::string::npos);
+        assert(sd.saved.find("\"kind\":\"lost\"") == std::string::npos);
+        std::cout << "PASS sketch-selected allocation window limit\n";
+    }
+    {
+        // Regression: a call entry used to fill the final slot before a modem burst.
+        SDManager sd;
+        Loom_Trace trace;
+        assert(trace.begin(sd, true, 23));
+        assert(trace.flush());
+        for (unsigned int i = 0; i < 22; ++i) trace.marker("queued call diagnostics");
+        assert(trace.enter("modem.cpp", "void modemBurst()", 1));
+        const unsigned int before = sd.batches;
+        for (unsigned int i = 0; i < 10000; ++i) __wrap_malloc(1);
+        assert(sd.batches == before);
+        trace.leave();
+        assert(trace.flush());
+        assert(sd.saved.find("\"kind\":\"lost\"") == std::string::npos);
+        assert(occurrences(sd.saved, "\"kind\":\"L\"") == 1);
+        assert(occurrences(sd.saved, "\"kind\":\"E\"") == 1);
+        std::cout << "PASS call entries reserve the heap-pause slot before a full-queue burst\n";
     }
     {
         SDManager sd;

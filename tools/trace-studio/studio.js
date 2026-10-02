@@ -91,11 +91,13 @@ function analyze(content, name, fictional = false, rawBlob = null, preparedId = 
         $('memoryClock').value = wallClock ? 'utc' : 'active';
         perfettoClockInfo();
         $('allocationCapture').textContent = report.session.heap_hooks ?
-            'Individual allocation capture was enabled. Only allocations observed after recording began have lifetimes; earlier object allocation times remain unknown.' :
+            (report.session.heap_window_events ? 'Individual allocation capture is limited to ' + report.session.heap_window_events +
+                ' events per saved window. Busy bursts pause until the next safe save; calls and RAM totals continue. ' : 'Individual allocation capture was enabled. ') +
+            'Only observed allocations have lifetimes; allocation lifetimes across pauses and earlier object allocation times remain unknown.' :
             'Individual allocation capture was OFF for this recording. The object list identifies observed containers; it does not prove when they were allocated. Heap totals are measured, but block addresses, malloc/free events and allocation lifetimes were not recorded. Use the heap build mode for the next recording; this file cannot recover those events.';
         $('status').textContent = (fictional ? 'FICTIONAL EXAMPLE · ' : '') + name + ' · ' +
             report.calls.length + ' calls · ' + report.allocations.length + ' captured allocations · ' +
-            (report.session.heap_hooks ? 'Heap capture enabled' : 'Call-only capture');
+            (report.session.heap_hooks ? report.session.heap_window_events ? 'Bounded heap capture' : 'Heap capture enabled' : 'Call-only capture');
         $('loaded').classList.remove('hidden'); $('welcome').classList.add('hidden'); buttons();
         $('position').max = Math.max(0, report.history.length - 1); $('position').value = 0;
         $('overhead').textContent = (report.overheadUs / 1e6).toLocaleString(undefined, { maximumFractionDigits: 3 }) + ' s';
@@ -258,7 +260,7 @@ function showPosition() {
 function kindName(kind) {
     return ({ B: 'Function entered', E: 'Function returned', A: 'Allocation created', F: 'Allocation freed',
         R: 'Allocation resized', N: 'Allocation failed', U: 'Object observed', D: 'Object retired',
-        C: 'Memory checkpoint', O: 'SD trace saved', lost: 'Events lost' })[kind] || '';
+        C: 'Memory checkpoint', O: 'SD trace saved', L: 'Heap capture intentionally paused', lost: 'Events lost' })[kind] || '';
 }
 function stackText(frames, fallback) {
     return frames?.length ? frames.map(frame => frame.signature + ' · ' + frame.objectLabel + '\n  ' + frame.file + ':' + frame.line).join('\n  → ') :

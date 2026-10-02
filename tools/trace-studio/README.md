@@ -59,6 +59,11 @@ make short calls and labels easier to inspect. Sensor samples offer recorded UTC
 or elapsed seconds since the first sample (including sleep); their hover labels show timestamps.
 The IANA local zone setting handles daylight saving time. Wall reconstruction does not imply
 that memory was sampled during standby. Allocation-capture status is stated above the timeline.
+New recordings bound individual allocation capture to `LOOM_TRACE_HEAP_WINDOW_EVENTS`
+(default 16) events per saved window. Busy bursts and SD-off periods produce one explicit
+**Heap capture capped/paused** marker with an intentionally skipped count; these are separate
+from genuine queue losses. The allocation ledger resets at a pause because cross-gap lifetimes
+are unknown. Call stacks, object observations, RAM totals and wall-time anchors remain available.
 
 **View in Perfetto** opens the embedded timeline. **Open full Perfetto** uses a new browser
 tab. Both use the stable buffer postMessage interface with checked source/origin and a readiness
