@@ -10,7 +10,7 @@ export function createEventTimeline({ report, select, selectCall, getClock }) {
     function tooltip(row) {
         return row.eventName + '\nEvent ' + (row.index + 1) + ' · ' + stamp(row) + '\nAwake: ' + time(row.timeUs) +
             (row.context ? '\nDuring: ' + row.context : '') + (row.address && row.address !== '0x0' ? '\nAddress: ' + row.address : '') +
-            (row.incomplete ? '\nCapture history is incomplete here' : '');
+            (row.incomplete ? '\nCapture coverage has gaps; see Capture quality' : '');
     }
     function choose(row) {
         selectCall(row.callId ? report.calls.find(call => call.id === row.callId) : null);

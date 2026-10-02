@@ -161,7 +161,8 @@ function renderCalls() {
         button.textContent = '· '.repeat(Math.min(call.depth, 8)) + (call.displayName || call.name);
         const details = document.createElement('small');
         details.textContent = call.objectLabel + ' · ' + ms(call.startUs) + ' · ' +
-            ms(call.endUs - call.startUs) + (call.status === 'returned' ? '' : ' · incomplete');
+            ms(call.endUs - call.startUs) + (call.status === 'returned' ? '' :
+                call.status === 'Trace ended before return was captured' ? ' · open at end of recording' : ' · incomplete call');
         button.append(details); button.classList.toggle('selected', call.id === selectedCall?.id);
         button.title = call.signature + '\n' + call.file + ':' + call.line;
         button.onclick = () => { selectedCall = call; $('entry').disabled = false; $('exit').disabled = false;
@@ -198,7 +199,7 @@ function showPosition() {
     $('livebytes').textContent = report.session.heap_hooks ? bytes(snapshot.liveBytes) : 'Not captured';
     $('livecount').textContent = report.session.heap_hooks ? snapshot.live.length + ' blocks with observed allocation times' : 'Allocation events were disabled; object observations are separate';
     $('objectcount').textContent = snapshot.activeObjects.length;
-    $('quality').textContent = snapshot.incomplete ? 'Incomplete history after missing or ambiguous events. Objects and blocks shown here belong to the currently observed segment.' :
+    $('quality').textContent = snapshot.incomplete ? 'Capture coverage has gaps. Missing allocation lifetimes cannot be reconstructed. Call boundaries and object observations are retained when the gap affected only heap events; see Capture quality below.' :
         'Showing the recorded event boundary. Baseline object identities may be known; baseline allocation times and internal buffers are not fully captured.';
     $('activeStack').replaceChildren(...snapshot.callStack.map(call => {
         const item = document.createElement('li'); item.textContent = call.displayName || call.name;

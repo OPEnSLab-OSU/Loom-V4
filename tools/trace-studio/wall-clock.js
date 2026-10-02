@@ -2,6 +2,7 @@
 // measured wake/restoration boundary, never to the later diagnostic write time.
 export function reconstructWallClock(report) {
     const history = report.history;
+    const clockLoss = row => row.kind === 'lost' && ((row.lossFlags ?? 31) & (2 | 8 | 16));
     const cycles = [];
     let previousDiagnosticIndex = -1;
     for (const before of history.filter(row => row.kind === 'V' && row.name === 'RTC UTC captured before scheduling (reported after wake)')) {
@@ -19,7 +20,7 @@ export function reconstructWallClock(report) {
             value('Sleep standby evidence confirmed') !== 1 || !Number.isSafeInteger(before.value) ||
             !Number.isSafeInteger(after) || after < before.value || !Number.isFinite(preparation) ||
             !Number.isFinite(restoration) || preparation < 0 || restoration < 0 ||
-            history.slice(sleep.startIndex, before.index + 1).some(row => row.kind === 'lost')) continue;
+            history.slice(sleep.startIndex, before.index + 1).some(clockLoss)) continue;
         const beforeOffsetUs = before.value * 1e6 - (wake.startUs - preparation * 1000);
         const afterOffsetUs = after * 1e6 - (wake.startUs + restoration * 1000);
         if (afterOffsetUs - beforeOffsetUs < 0) continue;
@@ -34,7 +35,7 @@ export function reconstructWallClock(report) {
     const knownWakes = new Set(cycles.map(cycle => cycle.index));
     const unknownWakes = report.calls.filter(call => call.name === 'Loom_Hypnos::post_sleep' && !knownWakes.has(call.startIndex));
     // A missing sleep report/lost wake must not masquerade as continuous awake time.
-    if (unknownWakes.length || history.some(row => row.kind === 'lost')) return null;
+    if (unknownWakes.length || history.some(clockLoss)) return null;
     let segment = 0;
     const rows = history.map(row => {
         while (segment + 1 < segments.length && segments[segment + 1].index <= row.index) segment++;

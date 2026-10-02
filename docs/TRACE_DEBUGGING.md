@@ -357,8 +357,18 @@ buffer. The desktop reconstructs live blocks and snapshots from allocation lifet
 
 Function boundaries drain a full buffer through two checked SD writes (NDJSON and closed Chrome JSON). Allocator hooks only append
 small records in RAM and never write SD. A burst of more than the remaining event capacity
-without a traced boundary can overflow. An explicit `lost` record ends the previous observed
-segment. Later snapshots show only the new observed segment and remain labelled incomplete.
+without a traced boundary can overflow. An explicit `lost` record identifies the affected
+event types: `loss_flags` bits 1 = heap, 2 = calls, 4 = objects, 8 = clock/values,
+16 = other events. Chrome JSON carries the same mask as `Loss flags`. A heap-only gap
+invalidates allocation lifetimes while retaining call boundaries and observed objects.
+Call/clock gaps prevent reliable wall-time reconstruction. Calls still open at the final
+saved event are labelled `open at end`, rather than implying a missing return within the recording.
+
+For older native v1 recordings without a mask, the converter recognizes the recorder's
+canonical heap-hook and SD-power markers. While SD is available, that recorder drains
+at call boundaries, so those gaps are classified as heap-only and labelled as inferred.
+Gaps while SD is unavailable, or in unrecognized exports, remain conservatively uncertain.
+No missing allocation events are recovered by this classification.
 Increase `EVENT_CAPACITY` only after reviewing the extra SRAM cost; it is not an unlimited queue.
 
 The writer uses SDManager's checked append, sync, close, and rollback policy. A failed append

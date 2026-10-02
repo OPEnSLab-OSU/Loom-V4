@@ -48,7 +48,11 @@ The memory chart defaults to estimated UTC wall time when complete RTC/sleep dia
 Captured pre/post RTC seconds are anchored to measured wake/restoration timing, rather than the
 later diagnostic-write time. Standby gaps are blank, and event positions also show estimated UTC.
 Choose **Awake execution time** for precise profiling in seconds. Missing wake diagnostics,
-lost events or backwards reconstructed time leave the chart in awake time. Calls/events and memory
+missing call/clock events or backwards reconstructed time leave the chart in awake time.
+Heap-only gaps preserve UTC/local clocks and nested calls while marking allocation coverage incomplete.
+New firmware records the lost event types; recognized native v1 files infer heap-only loss
+only while SD was available, and explicitly report that inference. Calls open at the last
+saved event are labelled **open at end**. Calls/events and memory
 share a UTC/local/awake selector. Drag across the calls/events SVG to zoom its current 100-event
 page; double-click or Reset restores the page. Zoom to selected event and horizontal scrolling
 make short calls and labels easier to inspect. Sensor samples offer recorded UTC, local time,

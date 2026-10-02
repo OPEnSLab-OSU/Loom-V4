@@ -65,6 +65,7 @@
             previous = row.ts;
             if (row.kind === 'lost') {
                 integer(row.count, 'dropped-event count', 1);
+                if (row.loss_flags !== undefined && (integer(row.loss_flags, 'loss flags', 1) > 31)) throw new Error('Invalid loss flags');
                 continue;
             }
             row.addr = address(row.addr);
@@ -105,7 +106,8 @@
             const args = event.args || {};
             let kind = args['Record kind'];
             if (args['Dropped events'] !== undefined) {
-                rows.push({ kind: 'lost', ts: event.ts, count: args['Dropped events'] }); continue;
+                rows.push({ kind: 'lost', ts: event.ts, count: args['Dropped events'],
+                    ...(args['Loss flags'] !== undefined ? {loss_flags: args['Loss flags']} : {}) }); continue;
             }
             if (!kind && args['Heap bytes in use'] !== undefined) kind = 'C';
             if (!kind) continue;
@@ -144,6 +146,14 @@
     function convert(content) {
         if (/"traceEvents"\s*:/.test(content.slice(0, 1024))) content = fromChrome(content);
         const { session, records, warnings } = parse(content);
+        // Recognize the native v1 recorder's safe-boundary contract. Its non-heap methods
+        // drain a full buffer whenever SD is available; only heap hooks can drop there.
+        // While SD is off, or for unidentified old exporters, untyped losses stay unknown.
+        const powerDown = 'SD powering down: pending records saved before SPI is disabled';
+        const powerUp = 'SD restored after wake: trace writes available';
+        const hasMarker = name => records.some(row => row.kind === 'I' && row.name === name);
+        const nativeV1Boundaries = hasMarker('Heap hooks enabled: allocations after capture are recorded') && hasMarker(powerDown) && hasMarker(powerUp);
+        let storageAvailable = true, inferredLosses = 0;
         const events = [];
         const calls = [];
         const stack = [];
@@ -207,7 +217,8 @@
             args.Function = call.name; args['Call ID'] = call.id;
             args['Call entry event index'] = call.startIndex;
             args['Call exit event index'] = call.endIndex;
-            event('X', (status === 'returned' ? '' : '[incomplete] ') + call.displayName,
+            const prefix = status === 'returned' ? '' : status === 'Trace ended before return was captured' ? '[open at end] ' : '[incomplete] ';
+            event('X', prefix + call.displayName,
                 call.startUs, args, 1, { dur: Math.max(0, time - call.startUs) });
         }
         function retireObject(pointer, time, index, reason) {
@@ -263,6 +274,9 @@
         for (let index = 0; index < records.length; ++index) {
             currentRecordIndex = index;
             const row = records[index], time = ts(row);
+            if (row.kind === 'I' && row.name === powerDown) storageAvailable = false;
+            if (row.kind === 'I' && row.name === powerUp) storageAvailable = true;
+            const lossFlags = row.kind === 'lost' ? row.loss_flags ?? (nativeV1Boundaries && storageAvailable ? 1 : 31) : null;
             const frame = stack.at(-1), label = labels.get(row.addr) || row.addr;
             let eventName = (row.name || '').replace(/Stress /g, 'Sleep '), category = 'Checkpoints', callId = frame?.id || null;
             if (row.kind === 'E') { eventName = 'Return: ' + (frame?.displayName || 'uncaptured function'); category = 'Calls'; }
@@ -273,7 +287,7 @@
             }
             if (row.kind === 'D') { eventName = 'Retire object: ' + label; category = 'Objects'; }
             if (row.kind === 'O') { eventName = 'Save trace to SD · ' + (row.size / 1000).toFixed(3) + ' ms'; category = 'Recorder'; }
-            if (row.kind === 'lost') { eventName = row.count + ' events lost · history interrupted'; category = 'Capture quality'; }
+            if (row.kind === 'lost') { eventName = row.count + (lossFlags === 1 ? ' heap events lost · call boundaries retained' : ' events lost · history interrupted'); category = 'Capture quality'; }
             switch (row.kind) {
             case 'B': {
                 const name = shortName(row.name);
@@ -407,16 +421,27 @@
                 break;
             case 'lost':
                 uncertain = true;
-                losses.push({ timeUs: time, index, count: row.count });
+                if (row.loss_flags === undefined && lossFlags === 1) ++inferredLosses;
+                losses.push({ timeUs: time, index, count: row.count, flags: lossFlags,
+                    classification: row.loss_flags !== undefined ? 'Recorded event types' : lossFlags === 1 ? 'Native v1 safe-boundary inference' : 'Unknown event types' });
                 warnings.push(`${row.count} events lost at ${(time / 1000).toFixed(3)} ms; live-block identity is incomplete after this point.`);
-                while (stack.length) finishCall(stack.pop(), time, index, 'Events lost; boundary unknown');
-                for (const block of [...live.values()]) endBlock(block, time, index,
+                if (lossFlags & 2) while (stack.length) finishCall(stack.pop(), time, index, 'Events lost; boundary unknown');
+                if (lossFlags & 1) for (const block of [...live.values()]) endBlock(block, time, index,
                     'Events lost: last known live, later lifetime unknown');
-                for (const pointer of [...activeObjects.keys()]) retireObject(pointer, time, index,
-                    'Events lost: object state unknown until next observation');
-                labels.clear();
+                if (lossFlags & 4) {
+                    for (const pointer of [...activeObjects.keys()]) retireObject(pointer, time, index,
+                        'Events lost: object state unknown until next observation');
+                    labels.clear();
+                } else if (lossFlags & 1) {
+                    // A missed free can invalidate a transient allocation label. Named
+                    // object observations/deletions were retained and keep their own labels.
+                    labels.clear();
+                    for (const object of activeObjects.values()) labels.set(object.address, object.name);
+                }
                 ++segment;
                 instant('Trace events lost', time, { 'Dropped events': row.count,
+                    'Loss flags': lossFlags, 'Call boundaries': lossFlags & 2 ? 'May be missing' : 'Retained',
+                    'Loss classification': row.loss_flags !== undefined ? 'Recorded by firmware' : lossFlags === 1 ? 'Inferred from native v1 safe-boundary contract while SD available' : 'Unknown; conservative fallback',
                     'Allocation ledger': 'Reset; later events begin a new observed segment' });
                 break;
             }
@@ -437,11 +462,13 @@
             history.push({ timeUs: time, index, kind: row.kind, name: row.name, eventName, category, callId,
                 context: frame?.displayName || '', address: row.addr || '',
                 value: row.kind === 'V' ? row.gap * 4294967296 + row.size : null,
-                unit: row.kind === 'V' ? row.file : '', bytes, blocks: live.size, incomplete: uncertain });
+                unit: row.kind === 'V' ? row.file : '', bytes, blocks: live.size, incomplete: uncertain,
+                ...(lossFlags !== null ? {lossFlags} : {}) });
         }
         while (stack.length) finishCall(stack.pop(), lastTs - firstTs, records.length,
             'Trace ended before return was captured');
         if (!session.heap_hooks) warnings.push('Heap hooks were not linked: individual allocations are unavailable. Allocator checkpoints still show totals.');
+        if (inferredLosses) warnings.push(`${inferredLosses} untyped native v1 losses while SD was available were classified as heap-only using that recorder's safe-boundary contract. Call boundaries are retained; allocation lifetimes still have gaps. New firmware records explicit event-type loss flags.`);
         warnings.push('Capture excludes initialization allocations, interrupts, custom allocators, and the recorder’s SD work. Requested sizes exclude allocator metadata.');
         for (const [tid, name] of [[1, 'Nested function calls'], [2, 'Heap and memory'],
             [3, 'Checkpoints and capture quality'], [4, 'Trace recording overhead'], [5, 'Sleep and RTC checks']]) {

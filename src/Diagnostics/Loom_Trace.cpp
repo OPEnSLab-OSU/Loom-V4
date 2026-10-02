@@ -165,14 +165,20 @@ void Loom_Trace::push(const Event &event) {
     if (count < EVENT_CAPACITY) {
         events[count++] = event;
     } else {
-        if (dropped != UINT32_MAX) {
-            ++dropped;
-        }
-        lastDroppedUs = event.timestampUs;
+        noteDrop(event.kind, event.timestampUs);
     }
 }
 
-bool Loom_Trace::boundary() {
+void Loom_Trace::noteDrop(char kind, uint64_t time) {
+    if (dropped != UINT32_MAX) { ++dropped; }
+    const uint8_t type = kind == 'B' || kind == 'E' ? 2 :
+        kind == 'A' || kind == 'F' || kind == 'R' || kind == 'N' || kind == 'Z' ? 1 :
+        kind == 'U' || kind == 'D' || kind == 'T' ? 4 : kind == 'V' ? 8 : 16;
+    droppedTypes |= type;
+    lastDroppedUs = time;
+}
+
+bool Loom_Trace::boundary(char kind) {
     if (!acceptContext()) {
         return false;
     }
@@ -180,8 +186,7 @@ bool Loom_Trace::boundary() {
         if (!storageAvailable) {
             // A power-off boundary cannot drain. Mark missing function/label events too;
             // they must not silently leave the desktop stack looking complete.
-            if (dropped != UINT32_MAX) { ++dropped; }
-            lastDroppedUs = timestamp();
+            noteDrop(kind, timestamp());
             return false;
         }
         if (!flush()) { return false; }
@@ -202,7 +207,7 @@ void Loom_Trace::setStorageAvailable(bool available) {
 }
 
 bool Loom_Trace::enter(const char *file, const char *function, uint32_t line, const void *object) {
-    if (!boundary()) {
+    if (!boundary('B')) {
         return false;
     }
     Event event;
@@ -221,7 +226,7 @@ bool Loom_Trace::enter(const char *file, const char *function, uint32_t line, co
 }
 
 void Loom_Trace::leave() {
-    if (!boundary()) {
+    if (!boundary('E')) {
         return;
     }
     Event event;
@@ -235,7 +240,7 @@ void Loom_Trace::leave() {
 }
 
 void Loom_Trace::label(const char *name, const void *pointer, uint32_t size) {
-    if (!boundary()) {
+    if (!boundary('T')) {
         return;
     }
     Event event;
@@ -260,7 +265,7 @@ void Loom_Trace::marker(const char *name) {
 
 void Loom_Trace::object(const char *name, const void *pointer, uint32_t size,
                         const void *owner, int port, int i2cAddress, bool ready) {
-    if (pointer == nullptr || !boundary()) {
+    if (pointer == nullptr || !boundary('U')) {
         return;
     }
     Event event;
@@ -278,7 +283,7 @@ void Loom_Trace::object(const char *name, const void *pointer, uint32_t size,
 }
 
 void Loom_Trace::retireObject(const void *pointer) {
-    if (pointer == nullptr || !boundary()) {
+    if (pointer == nullptr || !boundary('D')) {
         return;
     }
     Event event;
@@ -289,7 +294,7 @@ void Loom_Trace::retireObject(const void *pointer) {
 }
 
 void Loom_Trace::memory(const char *name) {
-    if (!boundary()) {
+    if (!boundary('C')) {
         return;
     }
     const struct mallinfo info = mallinfo();
@@ -306,7 +311,7 @@ void Loom_Trace::memory(const char *name) {
 }
 
 void Loom_Trace::value(const char *name, int64_t amount, const char *unit, const void *object) {
-    if (!boundary()) {
+    if (!boundary('V')) {
         return;
     }
     Event event;
@@ -382,6 +387,8 @@ bool Loom_Trace::writeEvents(Print &destination, void *context) {
         }
         output.print(F(",\"count\":"));
         output.print(trace.dropped);
+        output.print(F(",\"loss_flags\":"));
+        output.print(trace.droppedTypes);
         output.println('}');
     }
     return output.succeeded();
@@ -513,9 +520,12 @@ bool Loom_Trace::writeChromeEvents(Print &destination, void *context) {
         }
     }
     if (trace.dropped != 0) {
-        begin('I', "LOST TRACE EVENTS: call and allocation history incomplete", trace.lastDroppedUs, 3);
+        begin('I', trace.droppedTypes == 1 ? "LOST TRACE EVENTS: heap gap; call boundaries retained" :
+            "LOST TRACE EVENTS: recorded history has gaps", trace.lastDroppedUs, 3);
         output.print(F(",\"args\":{\"Dropped events\":"));
         output.print(trace.dropped);
+        output.print(F(",\"Loss flags\":"));
+        output.print(trace.droppedTypes);
         output.print(F("}}"));
     }
     return output.succeeded();
@@ -536,6 +546,7 @@ bool Loom_Trace::flush() {
     if (saved) {
         count = 0;
         dropped = 0;
+        droppedTypes = 0;
         // This record is saved by the next drain. A separate viewer track makes recording
         // overhead visible without pretending it was useful application work.
         Event overhead;

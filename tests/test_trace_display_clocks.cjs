@@ -14,15 +14,15 @@ const { pathToFileURL } = require('node:url');
     assert.equal(zoneOffset(october, 'America/Los_Angeles'), 'UTC-07:00');
     assert.throws(() => dateLabel(october, 'invalid-zone'));
     const traceFile = process.argv[2];
-    if (!traceFile) throw new Error('Pass the overnight NDJSON to verify native Perfetto conversion.');
+    if (!traceFile) throw new Error('Pass a recorded NDJSON and expected sleep count to verify native Perfetto conversion.');
     const converted = converter.convert(fs.readFileSync(traceFile, 'utf8')), report = converted.report, wall = reconstructWallClock(report);
-    assert.ok(wall && wall.sleepCount === 18);
+    assert.ok(wall && wall.sleepCount === Number(process.argv[3] || 18));
     const utc = traceDisplayClock(report, wall, 'utc', 'America/Los_Angeles');
     const local = traceDisplayClock(report, wall, 'local', 'America/Los_Angeles');
     assert.equal(utc.at(2600), local.at(2600)); // Display timezone cannot alter event coordinates.
     assert.equal(traceDisplayClock(report, null, 'local', 'UTC').mode, 'active');
     assert.ok(clockTicks(0, .001).length > 1);
-    const row = report.history[2600], call = report.calls.find(c => c.startIndex <= row.index && row.index <= c.endIndex);
+    const call = report.calls.find(c => c.status === 'returned' && c.startIndex > 0), row = report.history[call.startIndex];
     const range = wallSelectionRange(report, wall, row, call);
     assert.equal(range.startUs, wall.rows[call.startIndex].utcUs - wall.startUtcUs);
     const buffer = perfettoWallTrace(converted, wall, 'America/Los_Angeles');

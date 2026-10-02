@@ -61,6 +61,7 @@ int main() {
         trace.setStorageAvailable(true);
         assert(trace.flush());
         assert(sd.saved.find("\"kind\":\"lost\"") != std::string::npos);
+        assert(sd.saved.find("\"loss_flags\":3") != std::string::npos); // Heap and call boundary loss while SD is off.
         assert(sd.perfetto.find("LOST TRACE EVENTS") != std::string::npos);
         std::cout << "PASS SD power-off never drains; wake resumes with explicit loss\n";
     }
@@ -130,6 +131,8 @@ int main() {
         assert(sd.batches == before + 1);
         assert(sd.saved.find("\"kind\":\"lost\"") != std::string::npos);
         assert(sd.saved.find("\"count\":4") != std::string::npos); // Includes prior overhead record.
+        assert(sd.saved.find("\"loss_flags\":1") != std::string::npos);
+        assert(sd.perfetto.find("\"Loss flags\":1") != std::string::npos);
         assert(trace.flush());
         std::cout << "PASS bounded allocation burst, no SD in hooks, explicit losses\n";
     }

@@ -78,6 +78,7 @@ class Loom_Trace {
     char path[48] = {};
     char perfettoPath[48] = {};
     uint32_t dropped = 0;
+    uint8_t droppedTypes = 0; // heap=1, calls=2, objects=4, clock values=8, other=16
     uint64_t lastDroppedUs = 0;
     uint32_t previousMs = 0;
     uint64_t clockEpochMs = 0;
@@ -91,7 +92,8 @@ class Loom_Trace {
     uint64_t timestamp();
     bool acceptContext() const;
     void push(const Event &event);
-    bool boundary();
+    bool boundary(char kind = 'I');
+    void noteDrop(char kind, uint64_t timestampUs);
     static bool writeEvents(Print &output, void *context);
     static bool writeChromeEvents(Print &output, void *context);
 };

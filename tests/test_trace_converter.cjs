@@ -74,7 +74,7 @@ test('Lost events invalidate identity and call boundaries explicitly', () => {
 test('Missing final return is incomplete, not a successful function return', () => {
     const result = trace.convert(source([row('B', 1, { name: 'void loop()' }), row('I', 9)]));
     assert.match(result.report.calls[0].status, /before return/);
-    assert.match(result.perfetto.traceEvents.find(e => e.ph === 'X').name, /incomplete/);
+    assert.match(result.perfetto.traceEvents.find(e => e.ph === 'X').name, /open at end/);
 });
 test('Incomplete final JSON is recoverable, malformed interior JSON is rejected', () => {
     const result = trace.convert(source([row('I', 1)]) + '{"kind":"A"');
@@ -249,6 +249,48 @@ test('Downloaded enriched Perfetto JSON preserves complete Loom inspection on re
     const corrupt = structuredClone(original.perfetto);
     corrupt.metadata.loomTrace.records[0].ts = -1;
     assert.throws(() => trace.convert(JSON.stringify(corrupt)), /timestamp/);
+});
+
+test('Typed heap loss preserves calls and object observations but invalidates block lifetimes', () => {
+    const result = trace.convert(source([
+        row('U', 1, {addr: '0x10', name: 'Sensor', file: 'ready', gap: -1}),
+        row('B', 2, {name: 'void measure()', addr: '0x10'}),
+        row('A', 3, {addr: '0x20', size: 8}), row('T', 4, {addr: '0x20', name: 'Temporary buffer'}),
+        row('lost', 5, {count: 9, loss_flags: 1}), row('A', 6, {addr: '0x20', size: 16}), row('E', 7)
+    ]));
+    assert.equal(result.report.calls[0].status, 'returned');
+    assert.equal(trace.snapshot(result.report, 4).activeObjects.length, 1);
+    assert.equal(trace.snapshot(result.report, 4).live.length, 0);
+    assert.match(result.report.allocations[0].endReason, /unknown/);
+    assert.equal(result.report.allocations[1].label, 'Unlabelled heap block');
+    assert.equal(result.report.history[4].lossFlags, 1);
+    assert.equal(result.report.losses[0].classification, 'Recorded event types');
+    assert.equal(result.perfetto.traceEvents.find(x => x.ph === 'X').name, 'measure · Sensor');
+});
+
+test('Mixed and unknown losses still interrupt calls; malformed flags are rejected', () => {
+    for (const flags of [3, 31]) {
+        const result = trace.convert(source([row('B', 1), row('lost', 2, {count: 1, loss_flags: flags}), row('E', 3)]));
+        assert.match(result.report.calls[0].status, /unknown/);
+    }
+    for (const flags of [0, 32, '1']) assert.throws(() => trace.convert(source([row('lost', 1, {count: 1, loss_flags: flags})])), /loss flags/);
+    const chrome = JSON.stringify({traceEvents: [{ph:'I',ts:1,name:'LOST TRACE EVENTS',args:{'Dropped events':2,'Loss flags':1}},
+        {ph:'I',ts:2,name:'marker',args:{'Record kind':'I'}}]});
+    assert.equal(trace.convert(chrome).report.losses[0].flags, 1);
+});
+
+test('Native v1 heap-loss inference is limited to recognizable SD-available intervals', () => {
+    const result = trace.convert(source([
+        row('I', 1, {name:'Heap hooks enabled: allocations after capture are recorded'}),
+        row('B', 2, {name:'void first()'}), row('lost', 3, {count:3}), row('E', 4),
+        row('I', 5, {name:'SD powering down: pending records saved before SPI is disabled'}),
+        row('B', 6, {name:'void sleeping()'}), row('lost', 7, {count:3}), row('E', 8),
+        row('I', 9, {name:'SD restored after wake: trace writes available'})
+    ]));
+    assert.equal(result.report.calls[0].status, 'returned');
+    assert.match(result.report.calls[1].status, /unknown/);
+    assert.deepEqual(result.report.losses.map(x => x.flags), [1,31]);
+    assert.match(result.report.warnings.join('\n'), /safe-boundary contract/);
 });
 
 console.log(`All ${tests} trace converter tests passed.`);
