@@ -1,9 +1,14 @@
+// Full debug sketch: phase-by-phase memory checks and optional trace/heap capture.
+// Start with the matching _debug_minimal sketch for a simple flag-only baseline.
+// See DEBUG-GUIDE.md for what each layer adds and how to compare builds.
+
 #include <Loom_Manager.h>
 #include <Hardware/Loom_BatchSD/Loom_BatchSD.h>
 
 // BEGIN LOOM_BETA_DIAGNOSTICS
-// Soak-test diagnostics. Use the sibling sketch without _debug for deployment.
-// Set this switch to 0 to compare builds without memory/mux/SD trace instrumentation.
+// Default for the extra memory/mux/SD diagnostics below; does NOT disable trace.
+// Use the sibling sketch without _debug for deployment. Individual flags override
+// this default so one source of diagnostic overhead can be added at a time.
 #ifndef LOOM_DEBUG_DIAGNOSTICS
 #ifdef LOOM_WISP_BETA_DIAGNOSTICS
 #define LOOM_DEBUG_DIAGNOSTICS LOOM_WISP_BETA_DIAGNOSTICS
@@ -11,11 +16,25 @@
 #define LOOM_DEBUG_DIAGNOSTICS 1
 #endif
 #endif
+// Serial allocator/stack estimates, deltas, JSON use/overflow and batch count.
+// This measures existing allocator state; it does not probe by allocating blocks.
+#ifndef LOOM_DEBUG_MEMORY
+#define LOOM_DEBUG_MEMORY LOOM_DEBUG_DIAGNOSTICS
+#endif
+// Verbose SD write decisions/results; independent of the structured trace files.
+#ifndef LOOM_DEBUG_SD_WRITES
+#define LOOM_DEBUG_SD_WRITES LOOM_DEBUG_DIAGNOSTICS
+#endif
+// Verbose sensor discovery/scan logs; does not select drivers or change wiring.
+#ifndef LOOM_DEBUG_MUX_SCAN
+#define LOOM_DEBUG_MUX_SCAN LOOM_DEBUG_DIAGNOSTICS
+#endif
+// Pretty-print sensor JSON; independent of memory checkpoints and trace flags.
 #ifndef LOOM_DEBUG_PRINT_SAMPLES
 #define LOOM_DEBUG_PRINT_SAMPLES 1
 #endif
 
-#if LOOM_DEBUG_DIAGNOSTICS
+#if LOOM_DEBUG_MEMORY
 #include <Diagnostics/Loom_MemoryDiagnostics.h>
 #endif
 // END LOOM_BETA_DIAGNOSTICS
@@ -35,7 +54,9 @@
 #include <Utilities/Loom_TimeUtils.h>
 
 // BEGIN LOOM_TRACE_DIAGNOSTICS
-// Reusable Loom sketch controls, independent of ordinary debug logging.
+// Structured SD trace: LOOM_TRACE=0 removes recorder; 1 enables calls/RAM.
+// LOOM_TRACE_HEAP=1 additionally records bounded allocator windows (requires trace).
+// Neither flag enables the serial Loom_MemoryDiagnostics reports above.
 // IDE Verify/Upload honors these flags when the Loom_TraceHeap companion is installed.
 // The board package supplies it beside Loom; the portable launcher is also available.
 #ifndef LOOM_TRACE
@@ -70,30 +91,28 @@ Loom_MongoDB mqtt(manager, lte);
 Loom_BatchSD batchSD(hypnos, 72);
 
 // BEGIN LOOM_BETA_DIAGNOSTICS
-#if LOOM_DEBUG_DIAGNOSTICS
+// WISP_DIAGNOSTIC_* prints detailed serial memory reports at named phases.
+// LOOM_TRACE_CHECKPOINT beside it records a RAM snapshot in the trace instead.
+// They are independent: disabling MEMORY does not remove trace checkpoints.
+#if LOOM_DEBUG_MEMORY
 Loom_MemoryDiagnostics memoryDiagnostics;
 #define WISP_DIAGNOSTIC_BEGIN_CYCLE() memoryDiagnostics.beginCycle()
-#define WISP_DIAGNOSTIC_CHECKPOINT(phaseLabel)                                                     \
+#define WISP_DIAGNOSTIC_CHECKPOINT(phaseLabel) \
     memoryDiagnostics.checkpoint(F(phaseLabel), manager.getDocument(), batchSD.getCurrentBatch())
-#define WISP_DIAGNOSTIC_ENABLE_MUX_SCAN()                                                          \
-    do {                                                                                           \
-        mux.setDebug(true);                                                                        \
-        mux.setScanDebug(true);                                                                    \
-    } while (false)
+#else
+#define WISP_DIAGNOSTIC_BEGIN_CYCLE() do {} while (false)
+#define WISP_DIAGNOSTIC_CHECKPOINT(phaseLabel) do {} while (false)
+#endif
+#if LOOM_DEBUG_MUX_SCAN
+#define WISP_DIAGNOSTIC_ENABLE_MUX_SCAN() \
+    do { mux.setDebug(true); mux.setScanDebug(true); } while (false)
+#else
+#define WISP_DIAGNOSTIC_ENABLE_MUX_SCAN() do {} while (false)
+#endif
+#if LOOM_DEBUG_SD_WRITES
 #define WISP_DIAGNOSTIC_ENABLE_SD_TRACE() hypnos.getSDManager()->setWriteDebug(true)
 #else
-#define WISP_DIAGNOSTIC_BEGIN_CYCLE()                                                              \
-    do {                                                                                           \
-    } while (false)
-#define WISP_DIAGNOSTIC_CHECKPOINT(phaseLabel)                                                     \
-    do {                                                                                           \
-    } while (false)
-#define WISP_DIAGNOSTIC_ENABLE_MUX_SCAN()                                                          \
-    do {                                                                                           \
-    } while (false)
-#define WISP_DIAGNOSTIC_ENABLE_SD_TRACE()                                                          \
-    do {                                                                                           \
-    } while (false)
+#define WISP_DIAGNOSTIC_ENABLE_SD_TRACE() do {} while (false)
 #endif
 // END LOOM_BETA_DIAGNOSTICS
 
@@ -104,6 +123,9 @@ Loom_Analog analog(manager, A0);
 // Keep this example's original sensor support separate from the live bench wiring.
 Loom_Multiplexer mux(manager, {0x74, 0x15, 0x6B, 0x44});
 
+// FULL DEBUG ONLY: staged sleep/RTC bench workload, separate from capture flags.
+// Disabling diagnostics/trace does not remove this workload. The minimal sibling
+// keeps ordinary five-minute sleep instead; compare matching workloads for timing.
 // Restart this bench schedule after a reset. Advance only after a checked RTC wake.
 // Five wakes at each short interval, then two hours indefinitely; counters never wrap.
 constexpr int32_t SLEEP_SLEEP_SECONDS[] = {180, 600, 1800, 7200};
@@ -176,6 +198,7 @@ bool writeSleepSettings(uint8_t stage) {
     return true;
 }
 
+// Advance the bench stage only after verified wakes and verified SD settings.
 bool prepareSleepSettings() {
     const uint8_t requestedStage = sleepStageWakes == SLEEP_WAKES_PER_STAGE && sleepStage < 3 ?
         static_cast<uint8_t>(sleepStage + 1) : sleepStage;
@@ -230,6 +253,7 @@ void setup() {
     WISP_DIAGNOSTIC_ENABLE_SD_TRACE();              // LOOM_BETA_DIAGNOSTIC
     WISP_DIAGNOSTIC_ENABLE_MUX_SCAN();              // LOOM_BETA_DIAGNOSTIC
     WISP_DIAGNOSTIC_CHECKPOINT("After global object construction"); // LOOM_BETA_DIAGNOSTIC
+    // Before TRACE_BEGIN, trace checkpoints are no-ops; serial memory checks still run.
     LOOM_TRACE_CHECKPOINT("After global object construction"); // LOOM_TRACE_DIAGNOSTIC
 
     // Set the LTE board to only powerup when a batch is ready to be sent
@@ -269,6 +293,8 @@ void setup() {
     (void)prepareSleepSettings();
 // BEGIN LOOM_TRACE_DIAGNOSTICS
 #if LOOM_TRACE
+    // Object labels below are optional inspector metadata, not needed to start trace.
+    // sizeof(object) is its fixed footprint, not all memory owned by that object.
     // Start after SD initialization. Existing objects are observed here; their allocation
     // times remain unknown. New mux sensors and their deletion are tracked thereafter.
     if (LOOM_TRACE_BEGIN(executionTrace, *hypnos.getSDManager())) {
@@ -301,6 +327,7 @@ void setup() {
     WISP_DIAGNOSTIC_CHECKPOINT("After initializing modules"); // LOOM_BETA_DIAGNOSTIC
     LOOM_TRACE_CHECKPOINT("After initializing modules"); // LOOM_TRACE_DIAGNOSTIC
 
+    // Save guard precedes the function scope so its exit is captured before saving.
     LOOM_TRACE_SAVE_ON_RETURN();
     FUNCTION_START; // LOOM_TRACE_DIAGNOSTIC
 
@@ -322,6 +349,7 @@ void setup() {
 // The startup wait does not consume one of the five sampled cycles in a sleep stage.
 bool waitForScheduledWake(bool countStageWake);
 
+// Compare persisted packet UTC times; adds serial/trace values, not sensor fields.
 void reportSavedSampleCadence() {
     if (hypnos.getSDManager()->getLastLogResult().csv != SDWriteStatus::Saved) {
         return; // Compare only actual persisted records, not a failed write attempt.
@@ -472,6 +500,8 @@ void loop() {
     (void)waitForScheduledWake(true);
 }
 
+// Full bench helper: arm a fixed RTC deadline, sleep, and validate wake evidence.
+// The ISR only records wake evidence and calls Hypnos; all reporting happens here.
 bool waitForScheduledWake(bool countStageWake) {
     LOOM_TRACE_SAVE_ON_RETURN();
     FUNCTION_START;

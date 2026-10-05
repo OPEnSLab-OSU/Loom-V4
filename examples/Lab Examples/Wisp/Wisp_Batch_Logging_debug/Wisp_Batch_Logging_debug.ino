@@ -1,11 +1,16 @@
+// Full debug sketch: phase-by-phase memory checks and optional trace/heap capture.
+// Start with the matching _debug_minimal sketch for a simple flag-only baseline.
+// See DEBUG-GUIDE.md for what each layer adds and how to compare builds.
+
 // Wisp direct-sensor batch logging example.
 #include <Loom_Manager.h>
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Hardware/Loom_BatchSD/Loom_BatchSD.h>
 
 // BEGIN LOOM_BETA_DIAGNOSTICS
-// Soak-test diagnostics. Use the sibling sketch without _debug for deployment.
-// Set this switch to 0 to compare builds without memory/mux/SD trace instrumentation.
+// Default for the extra memory/mux/SD diagnostics below; does NOT disable trace.
+// Use the sibling sketch without _debug for deployment. Individual flags override
+// this default so one source of diagnostic overhead can be added at a time.
 #ifndef LOOM_DEBUG_DIAGNOSTICS
 #ifdef LOOM_WISP_BETA_DIAGNOSTICS
 #define LOOM_DEBUG_DIAGNOSTICS LOOM_WISP_BETA_DIAGNOSTICS
@@ -13,11 +18,21 @@
 #define LOOM_DEBUG_DIAGNOSTICS 1
 #endif
 #endif
+// Serial allocator/stack estimates, deltas, JSON use/overflow and batch count.
+// This measures existing allocator state; it does not probe by allocating blocks.
+#ifndef LOOM_DEBUG_MEMORY
+#define LOOM_DEBUG_MEMORY LOOM_DEBUG_DIAGNOSTICS
+#endif
+// Verbose SD write decisions/results; independent of the structured trace files.
+#ifndef LOOM_DEBUG_SD_WRITES
+#define LOOM_DEBUG_SD_WRITES LOOM_DEBUG_DIAGNOSTICS
+#endif
+// Pretty-print sensor JSON; independent of memory checkpoints and trace flags.
 #ifndef LOOM_DEBUG_PRINT_SAMPLES
 #define LOOM_DEBUG_PRINT_SAMPLES 1
 #endif
 
-#if LOOM_DEBUG_DIAGNOSTICS
+#if LOOM_DEBUG_MEMORY
 #include <Diagnostics/Loom_MemoryDiagnostics.h>
 #endif
 // END LOOM_BETA_DIAGNOSTICS
@@ -34,8 +49,10 @@
 #include <Logger.h>
 
 // BEGIN LOOM_TRACE_DIAGNOSTICS
-// Reusable Loom sketch controls, independent of ordinary debug logging.
-// Heap allocation capture additionally needs the heap build's linker hooks.
+// Structured SD trace: LOOM_TRACE=0 removes recorder; 1 enables calls/RAM.
+// LOOM_TRACE_HEAP=1 additionally records bounded allocator windows (requires trace).
+// Neither flag enables the serial Loom_MemoryDiagnostics reports above.
+// IDE heap capture needs Loom_TraceHeap installed; the CLI launcher supplies hooks.
 #ifndef LOOM_TRACE
 #define LOOM_TRACE 0
 #endif
@@ -73,22 +90,22 @@ Loom_MongoDB mqtt(manager, lte);
 Loom_BatchSD batchSD(hypnos, 72);
 
 // BEGIN LOOM_BETA_DIAGNOSTICS
-#if LOOM_DEBUG_DIAGNOSTICS
+// WISP_DIAGNOSTIC_* prints detailed serial memory reports at named phases.
+// LOOM_TRACE_CHECKPOINT beside it records a RAM snapshot in the trace instead.
+// They are independent: disabling MEMORY does not remove trace checkpoints.
+#if LOOM_DEBUG_MEMORY
 Loom_MemoryDiagnostics memoryDiagnostics;
 #define WISP_DIAGNOSTIC_BEGIN_CYCLE() memoryDiagnostics.beginCycle()
-#define WISP_DIAGNOSTIC_CHECKPOINT(phaseLabel)                                                     \
+#define WISP_DIAGNOSTIC_CHECKPOINT(phaseLabel) \
     memoryDiagnostics.checkpoint(F(phaseLabel), manager.getDocument(), batchSD.getCurrentBatch())
+#else
+#define WISP_DIAGNOSTIC_BEGIN_CYCLE() do {} while (false)
+#define WISP_DIAGNOSTIC_CHECKPOINT(phaseLabel) do {} while (false)
+#endif
+#if LOOM_DEBUG_SD_WRITES
 #define WISP_DIAGNOSTIC_ENABLE_SD_TRACE() hypnos.getSDManager()->setWriteDebug(true)
 #else
-#define WISP_DIAGNOSTIC_BEGIN_CYCLE()                                                              \
-    do {                                                                                           \
-    } while (false)
-#define WISP_DIAGNOSTIC_CHECKPOINT(phaseLabel)                                                     \
-    do {                                                                                           \
-    } while (false)
-#define WISP_DIAGNOSTIC_ENABLE_SD_TRACE()                                                          \
-    do {                                                                                           \
-    } while (false)
+#define WISP_DIAGNOSTIC_ENABLE_SD_TRACE() do {} while (false)
 #endif
 // END LOOM_BETA_DIAGNOSTICS
 
@@ -103,6 +120,7 @@ void setup() {
     manager.beginSerial();
     WISP_DIAGNOSTIC_ENABLE_SD_TRACE();              // LOOM_BETA_DIAGNOSTIC
     WISP_DIAGNOSTIC_CHECKPOINT("After global object construction"); // LOOM_BETA_DIAGNOSTIC
+    // Before TRACE_BEGIN, trace checkpoints are no-ops; serial memory checks still run.
     LOOM_TRACE_CHECKPOINT("After global object construction"); // LOOM_TRACE_DIAGNOSTIC
 
     // Set the LTE board to only powerup when a batch is ready to be sent
@@ -136,6 +154,8 @@ void setup() {
     manager.initialize();
 // BEGIN LOOM_TRACE_DIAGNOSTICS
 #if LOOM_TRACE
+    // Object labels below are optional inspector metadata, not needed to start trace.
+    // sizeof(object) is its fixed footprint, not all memory owned by that object.
     // Start after SD initialization. Existing objects are observed here; their allocation
     // times remain unknown. New mux sensors and their deletion are tracked thereafter.
     if (LOOM_TRACE_BEGIN(executionTrace, *hypnos.getSDManager())) {
@@ -163,6 +183,7 @@ void setup() {
     WISP_DIAGNOSTIC_CHECKPOINT("After initializing modules"); // LOOM_BETA_DIAGNOSTIC
     LOOM_TRACE_CHECKPOINT("After initializing modules"); // LOOM_TRACE_DIAGNOSTIC
 
+    // Save guard precedes the function scope so its exit is captured before saving.
     LOOM_TRACE_SAVE_ON_RETURN();
     FUNCTION_START; // LOOM_TRACE_DIAGNOSTIC
 
