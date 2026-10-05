@@ -15,8 +15,11 @@ LOOM_TRACE_ATTACH(manager, hypnos);
 
 The optional adapter owns the recorder, starts after module/SD initialization, and saves
 after the outermost recorded Loom call returns. No manual recorder/start/save block is
-needed. Trace capture works with `Logger::getInstance()->setDebugOutput(false)`; DEBUG
-text and function summaries remain independent. See [the trace guide](../../docs/TRACE_DEBUGGING.md)
+needed. Trace files show call timing and memory history; DEBUG text explains progress and
+reported failures in Serial Monitor. Use both for complementary evidence, or keep text quiet
+for a timing baseline. The Wisp sketches group `LOOM_DEBUG_TEXT` and `LOOM_DEBUG_SD_LOG`
+beside the trace flags; setup applies them to Logger. The launcher follows the sketch without
+another set of output settings in JSON. See [the trace guide](../../docs/TRACE_DEBUGGING.md)
 for lifecycle behavior and the manual API.
 
 `LOOM_TRACE=0` removes the trace recorder and allocation hooks. `LOOM_TRACE=1, LOOM_TRACE_HEAP=0` captures calls, objects and memory checkpoints. Both set to `1` also capture allocator activity. The launcher asks the actual board preprocessor to evaluate the sketch (including aliases, conditions and included configuration headers), then applies matching flags to library compilation and matching heap hooks to linking. There is no second trace mode to maintain in JSON. Allocations before the recorder starts are still baseline objects, without observed allocation times.

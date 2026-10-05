@@ -1,9 +1,16 @@
 // Minimal trace/heap baseline: ordinary deployment loop plus capture plumbing.
 // Compare against Wisp_Mux_BatchLogging_debug for phase checkpoints and bench helpers.
-// Change only the two flags below between baseline builds; leave wiring/cadence fixed.
+// Compare trace 0/0, 1/0, then 1/1; keep the text controls and wiring/cadence fixed.
 // Capture starts AFTER module initialization, so boot allocations are not observed.
 // Trace time is active time; standby is excluded. SD capture adds time and RAM overhead.
 // See DEBUG-GUIDE.md in the parent Wisp/debug folder for build instructions.
+
+// START HERE: choose the evidence you want, then rebuild.
+// TRACE FILES = when calls ran + how RAM changed; inspect after the run.
+// DEBUG TEXT = what the device is doing + why a step failed; read while running.
+// Both can be ON together. Trace does not require DEBUG text or its SD text copy.
+// Trace: /debug/trace_N.perfetto.json + trace_N.ndjson. Text: output_N.log if enabled.
+// WARNING/ERROR remain visible with DEBUG text OFF. See DEBUG-GUIDE.md for recipes.
 
 // BEGIN MINIMAL_TRACE_CONTROLS
 // 0/0 = no recorder; 1/0 = calls and RAM totals; 1/1 = plus allocator events.
@@ -13,6 +20,16 @@
 #endif
 #ifndef LOOM_TRACE_HEAP
 #define LOOM_TRACE_HEAP 1
+#endif
+// TEXT: progress and failure explanations in Serial Monitor.
+// 0 hides routine DEBUG messages/JSON; WARNING and ERROR still print.
+#ifndef LOOM_DEBUG_TEXT
+#define LOOM_DEBUG_TEXT 0
+#endif
+// Copy Logger messages to /debug/output_N.log (including warnings/errors).
+// Direct Serial memory/mux/SD reports are not copied by this switch.
+#ifndef LOOM_DEBUG_SD_LOG
+#define LOOM_DEBUG_SD_LOG 0
 #endif
 // END MINIMAL_TRACE_CONTROLS
 
@@ -66,11 +83,14 @@ Loom_BatchSD batchSD(hypnos, 72);
 void isrTrigger() { hypnos.wakeup(); }
 
 void setup() {
-    // Trace capture is independent of DEBUG text; keep the deployment output quiet.
-    Logger::getInstance()->setDebugOutput(false);
+    // Apply the TEXT controls above; TRACE attachment below selects the file evidence.
+    Logger::getInstance()->setDebugOutput(LOOM_DEBUG_TEXT != 0);
+#if LOOM_DEBUG_SD_LOG
+    ENABLE_SD_LOGGING;
+#endif
     hypnos.setWakeWatchdogTimeout(ACTIVE_WATCHDOG_MS);
 
-    // Wait 20 seconds for the serial console to open
+    // Start Serial without waiting for a monitor.
     manager.beginSerial(false);
 
     // Opt in before initialize(): Loom owns the recorder and handles start/save.

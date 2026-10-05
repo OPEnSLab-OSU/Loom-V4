@@ -141,12 +141,19 @@ both before including the header. No Wisp-specific helper structure or macros ne
 #ifndef LOOM_TRACE_HEAP
 #define LOOM_TRACE_HEAP 1
 #endif
+// Optional sketch controls for the complementary text evidence:
+#define LOOM_DEBUG_TEXT 0       // 1: routine progress/failure context in Serial Monitor
+#define LOOM_DEBUG_SD_LOG 0     // 1: save Logger messages in /debug/output_N.log
 #include <Logger.h>
 #include <Diagnostics/Loom_TraceSketch.h>
 
 // After your existing Manager/Hypnos object declarations:
 void setup() {
-    Logger::getInstance()->setDebugOutput(false); // Trace does not require DEBUG text.
+    Logger::getInstance()->setDebugOutput(LOOM_DEBUG_TEXT != 0);
+#if LOOM_DEBUG_SD_LOG
+    ENABLE_SD_LOGGING;
+#endif
+    manager.beginSerial(false);
     LOOM_TRACE_ATTACH(manager, hypnos);
     // Keep your existing power/setup work before initializing modules.
     manager.initialize();
@@ -156,6 +163,13 @@ void loop() {
     // Your existing measurement, logging and sleep logic goes here.
 }
 ```
+
+The trace and text controls select complementary evidence: the structured files show call
+timing and memory history, while Logger text explains progress and reported failures.
+Turning both on provides both views. `LOOM_DEBUG_TEXT` and `LOOM_DEBUG_SD_LOG` are sketch
+controls applied by setup, not library-wide compiler switches. Direct Serial diagnostics
+use their own settings and are not automatically copied to the Logger file. Warnings and
+errors still print with routine DEBUG text off. See the Wisp `DEBUG-GUIDE.md` for flag recipes.
 
 `LOOM_TRACE_ATTACH` configures one library-owned fixed recorder without SD writes when
 called before initialization. Manager starts it at the end of initialization and saves an
@@ -440,11 +454,13 @@ allocated internal storage.
 
 ## Verification
 
-Additional debug-sketch size controls are independent of tracing:
-`LOOM_DEBUG_DIAGNOSTICS=0` removes the extra memory checkpoint helper and skips enabling verbose
-mux scans/SD write commentary. `LOOM_DEBUG_PRINT_SAMPLES=0` omits full sensor JSON printing.
+Additional debug-sketch output controls complement tracing:
+`LOOM_DEBUG_TEXT=0` suppresses routine Logger messages/JSON; `LOOM_DEBUG_SD_LOG=0` omits their
+SD text copy. `LOOM_DEBUG_DIAGNOSTICS=0` defaults the extra memory checkpoint helper and verbose
+mux scans/SD write commentary to off. `LOOM_DEBUG_PRINT_SAMPLES=0` omits full sensor JSON printing.
 They do not remove sensor measurement, packaging, normal CSV saving, or batch storage.
-`build_loom_trace.ps1 -Diagnostics off` applies both switches plus
+`build_loom_trace.ps1 -Diagnostics off` disables all these text/report switches, including
+individual memory/mux/SD overrides, plus
 `LOOM_COMPILE_MUX_DEBUG=0` and `LOOM_COMPILE_SD_WRITE_DEBUG=0` to a fresh build. These latter
 library switches remove the verbose implementation/message strings, rather than just leaving
 them disabled at runtime. Mux diagnostic arguments are removed too. SD failure warnings and

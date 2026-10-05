@@ -41,7 +41,7 @@ $heap = if ($Mode -eq 'heap') { 1 } else { 0 }
 $cppFlags = "-DLOOM_TRACE=$enabled -DLOOM_TRACE_HEAP=$heap -DLOOM_TRACE_LINKER_HEAP_HOOKS=$heap"
 if ($Mode -eq 'sketch') { $cppFlags = '' }
 if ($Diagnostics -eq 'off') {
-    $cppFlags += ' -DLOOM_DEBUG_DIAGNOSTICS=0 -DLOOM_DEBUG_PRINT_SAMPLES=0 -DLOOM_COMPILE_MUX_DEBUG=0 -DLOOM_COMPILE_SD_WRITE_DEBUG=0'
+    $cppFlags += ' -DLOOM_DEBUG_TEXT=0 -DLOOM_DEBUG_SD_LOG=0 -DLOOM_DEBUG_DIAGNOSTICS=0 -DLOOM_DEBUG_MEMORY=0 -DLOOM_DEBUG_MUX_SCAN=0 -DLOOM_DEBUG_SD_WRITES=0 -DLOOM_DEBUG_PRINT_SAMPLES=0 -DLOOM_COMPILE_MUX_DEBUG=0 -DLOOM_COMPILE_SD_WRITE_DEBUG=0'
 }
 if ($MuxDrivers -eq 'all') { $cppFlags += ' -DLOOM_MUX_FORCE_ALL_DRIVERS=1' }
 if ($MuxDrivers -eq 'selected') {
