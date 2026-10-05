@@ -319,6 +319,9 @@ void Manager::initialize() {
     LOG(F("** Setup Complete ** "));
     FUNCTION_END;
     notifyHealth(HealthEvent::Initialized);
+    // Optional trace startup runs after module/SD initialization. It neither
+    // replaces the health observer nor links a recorder into ordinary sketches.
+    Logger::getInstance()->beginConfiguredTrace(*this);
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

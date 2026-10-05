@@ -28,6 +28,7 @@
 #include <Loom_TraceHeapLink.h>
 #endif
 #include "Loom_Trace.h"
+#include "Loom_TraceAuto.h"
 #include <Logger.h>
 #include <Arduino.h>
 
@@ -59,6 +60,8 @@ class LoomTraceSaveOnReturn {
 };
 
 #define LOOM_TRACE_RECORDER(name) Loom_Trace name
+#define LOOM_TRACE_ATTACH(manager, hypnos) \
+    loomTraceAttach(manager, (hypnos).getSDManager(), LOOM_TRACE_HEAP != 0, LOOM_TRACE_HEAP_WINDOW_EVENTS)
 #define LOOM_TRACE_BEGIN(recorder, sd) loomTraceBegin(recorder, sd)
 #define LOOM_TRACE_SKETCH_JOIN_IMPL(a, b) a##b
 #define LOOM_TRACE_SKETCH_JOIN(a, b) LOOM_TRACE_SKETCH_JOIN_IMPL(a, b)
@@ -66,6 +69,8 @@ class LoomTraceSaveOnReturn {
     LoomTraceSaveOnReturn LOOM_TRACE_SKETCH_JOIN(_loomTraceSave_, __LINE__)
 #define LOOM_TRACE_CHECKPOINT(name) \
     do { if (auto *trace = Loom_Trace::current()) trace->memory(name); } while (false)
+#define LOOM_TRACE_MARKER(name) \
+    do { if (auto *trace = Loom_Trace::current()) trace->marker(name); } while (false)
 #define LOOM_TRACE_VALUE(name, amount, unit) \
     do { if (auto *trace = Loom_Trace::current()) trace->value(name, amount, unit); } while (false)
 #define LOOM_TRACE_FLUSH() \
@@ -76,9 +81,11 @@ class LoomTraceSaveOnReturn {
     } while (false)
 #else
 #define LOOM_TRACE_RECORDER(name)
+#define LOOM_TRACE_ATTACH(manager, hypnos) do {} while (false)
 #define LOOM_TRACE_BEGIN(recorder, sd) false
 #define LOOM_TRACE_SAVE_ON_RETURN() do {} while (false)
 #define LOOM_TRACE_CHECKPOINT(name) do {} while (false)
+#define LOOM_TRACE_MARKER(name) do {} while (false)
 #define LOOM_TRACE_VALUE(name, amount, unit) do {} while (false)
 #define LOOM_TRACE_FLUSH() do {} while (false)
 #endif

@@ -8,7 +8,16 @@ Keep the controls in your sketch, before `Loom_TraceSketch.h`:
 #define LOOM_TRACE 1
 #define LOOM_TRACE_HEAP 1
 #include <Diagnostics/Loom_TraceSketch.h>
+
+// In setup(), before manager.initialize():
+LOOM_TRACE_ATTACH(manager, hypnos);
 ```
+
+The optional adapter owns the recorder, starts after module/SD initialization, and saves
+after the outermost recorded Loom call returns. No manual recorder/start/save block is
+needed. Trace capture works with `Logger::getInstance()->setDebugOutput(false)`; DEBUG
+text and function summaries remain independent. See [the trace guide](../../docs/TRACE_DEBUGGING.md)
+for lifecycle behavior and the manual API.
 
 `LOOM_TRACE=0` removes the trace recorder and allocation hooks. `LOOM_TRACE=1, LOOM_TRACE_HEAP=0` captures calls, objects and memory checkpoints. Both set to `1` also capture allocator activity. The launcher asks the actual board preprocessor to evaluate the sketch (including aliases, conditions and included configuration headers), then applies matching flags to library compilation and matching heap hooks to linking. There is no second trace mode to maintain in JSON. Allocations before the recorder starts are still baseline objects, without observed allocation times.
 

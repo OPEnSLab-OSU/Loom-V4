@@ -31,6 +31,20 @@ foreach ($sketch in $sketches) {
             throw "Missing production safeguard '$required': $($sketch.FullName)"
         }
     }
+    if ($sketch.BaseName.EndsWith('_debug_minimal')) {
+        if ($text -match 'WISP_DIAGNOSTIC_|Loom_MemoryDiagnostics|executionTrace|ENABLE_SD_LOGGING|manager\.display_data\(|LOOM_TRACE_RECORDER|LOOM_TRACE_BEGIN|LOOM_TRACE_SAVE_ON_RETURN|LOOM_TRACE_FLUSH|LOOM_TRACE_CHECKPOINT') {
+            throw "Manual/full diagnostics escaped into the automatic minimal sketch: $($sketch.FullName)"
+        }
+        if (-not $text.Contains('Logger::getInstance()->setDebugOutput(false)') -or
+            ([regex]::Matches($text, 'LOOM_TRACE_ATTACH\(manager, hypnos\)').Count -ne 1) -or
+            $text -notmatch '(?m)^\s*#include\s*[<"]Diagnostics/Loom_TraceSketch\.h[>"]' -or
+            $text -notmatch '(?m)^\s*#define\s+LOOM_TRACE\s+[01]\s*$' -or
+            $text -notmatch '(?m)^\s*#define\s+LOOM_TRACE_HEAP\s+[01]\s*$') {
+            throw "Minimal sketch lost its flags, quiet text output, or one-call attachment: $($sketch.FullName)"
+        }
+        Write-Host "PASS automatic minimal boundary: $($sketch.Name)"
+        continue
+    }
     if (-not $sketch.BaseName.EndsWith('_debug')) {
         if ($text -match 'LOOM_BETA_DIAGNOSTIC|WISP_DIAGNOSTIC_|Loom_MemoryDiagnostics|LOOM_WISP_TRACE|WISP_TRACE_|executionTrace|ENABLE_SD_LOGGING|manager\.display_data\(') {
             throw "Debug instrumentation escaped into the quiet sketch: $($sketch.FullName)"
@@ -59,7 +73,8 @@ foreach ($sketch in $sketches) {
             $inside = $false
             $ends++
         } elseif (-not $inside) {
-            if ($line -match 'memoryDiagnostics|LOOM_WISP_BETA_DIAGNOSTICS') {
+            $code = ($line -split '//', 2)[0]
+            if ($code -match 'memoryDiagnostics|LOOM_WISP_BETA_DIAGNOSTICS') {
                 throw "Diagnostic implementation outside its block: $($sketch.FullName)"
             }
             if ($line.Contains('WISP_DIAGNOSTIC_')) {
@@ -75,10 +90,14 @@ foreach ($sketch in $sketches) {
     if ($inside -or $begins -ne 2 -or $ends -ne 2 -or $calls -eq 0) {
         throw "Incomplete diagnostic blocks/calls: $($sketch.FullName)"
     }
-    if (-not $text.Contains('#if LOOM_DEBUG_DIAGNOSTICS') -or
+    if (-not $text.Contains('#if LOOM_DEBUG_MEMORY') -or
         ([regex]::Matches($text, '(?m)^\s*ENABLE_SD_LOGGING;\s*$').Count -ne 1) -or
         $text.Contains('DISABLE_RTC_LOG_TIMESTAMPS')) {
         throw "Debug build lost its gate or timestamped SD logging: $($sketch.FullName)"
+    }
+    if (([regex]::Matches($text, 'LOOM_TRACE_ATTACH\(manager, hypnos\)').Count -ne 1) -or
+        $text -match 'LOOM_TRACE_RECORDER|LOOM_TRACE_BEGIN|LOOM_TRACE_SAVE_ON_RETURN|LOOM_TRACE_FLUSH|executionTrace') {
+        throw "Full debug sketch lost automatic attachment or retained manual capture plumbing: $($sketch.FullName)"
     }
     Write-Host "PASS debug boundary: $($sketch.Name) ($calls checkpoints/traces)"
 }

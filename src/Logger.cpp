@@ -25,20 +25,6 @@ void Logger::retireTraceObject(const void *address) {
     }
 }
 
-void FunctionInstrumentor::beginTrace(Logger *logger, const char *file, const char *func, int line,
-                                      const void *object) {
-    if (logger->debugOutputEnabled && logger->traceCallbacks != nullptr &&
-        logger->traceCallbacks->enter(logger->trace, file, func, static_cast<uint32_t>(line), object)) {
-        trace = logger->trace;
-    }
-}
-
-void FunctionInstrumentor::endTrace() {
-    if (trace != nullptr) {
-        Logger::getInstance()->traceCallbacks->leave(trace);
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Logger::log(char *message, bool silent) {
     char filePath[32];

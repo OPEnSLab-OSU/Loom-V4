@@ -71,7 +71,6 @@
 #define LOOM_TRACE_HEAP_WINDOW_EVENTS 16
 #endif
 #include <Diagnostics/Loom_TraceSketch.h>
-LOOM_TRACE_RECORDER(executionTrace);
 // END LOOM_TRACE_DIAGNOSTICS
 
 constexpr int ACTIVE_WATCHDOG_MS = 16000;
@@ -213,7 +212,7 @@ bool prepareSleepSettings() {
             LOGF("[SLEEP] Stage complete; SD now selects %ld seconds",
                  static_cast<long>(SLEEP_SLEEP_SECONDS[sleepStage]));
 #if LOOM_TRACE
-            executionTrace.marker(SLEEP_SLEEP_LABELS[sleepStage]);
+            LOOM_TRACE_MARKER(SLEEP_SLEEP_LABELS[sleepStage]);
 #endif
         }
     }
@@ -240,6 +239,8 @@ void setup() {
 
     // Start the serial interface
     manager.beginSerial();
+    // The shared adapter owns capture and starts after module/SD initialization.
+    LOOM_TRACE_ATTACH(manager, hypnos);
 #if !LOOM_TRACE
     Serial.println(F("[TRACE] SD trace capture OFF; set LOOM_TRACE to 1 in this sketch to enable"));
 #endif
@@ -253,7 +254,7 @@ void setup() {
     WISP_DIAGNOSTIC_ENABLE_SD_TRACE();              // LOOM_BETA_DIAGNOSTIC
     WISP_DIAGNOSTIC_ENABLE_MUX_SCAN();              // LOOM_BETA_DIAGNOSTIC
     WISP_DIAGNOSTIC_CHECKPOINT("After global object construction"); // LOOM_BETA_DIAGNOSTIC
-    // Before TRACE_BEGIN, trace checkpoints are no-ops; serial memory checks still run.
+    // Before automatic startup, trace checkpoints are no-ops; serial memory checks still run.
     LOOM_TRACE_CHECKPOINT("After global object construction"); // LOOM_TRACE_DIAGNOSTIC
 
     // Set the LTE board to only powerup when a batch is ready to be sent
@@ -295,31 +296,20 @@ void setup() {
 #if LOOM_TRACE
     // Object labels below are optional inspector metadata, not needed to start trace.
     // sizeof(object) is its fixed footprint, not all memory owned by that object.
-    // Start after SD initialization. Existing objects are observed here; their allocation
-    // times remain unknown. New mux sensors and their deletion are tracked thereafter.
-    if (LOOM_TRACE_BEGIN(executionTrace, *hypnos.getSDManager())) {
-        executionTrace.object("Device manager", &manager, sizeof(manager));
-        executionTrace.object("Hypnos board and power", &hypnos, sizeof(hypnos), nullptr, -1, hypnos.module_address, hypnos.moduleInitialized);
-        executionTrace.object("LTE modem", &lte, sizeof(lte), nullptr, -1, lte.module_address, lte.moduleInitialized);
-        executionTrace.object("MQTT publisher", &mqtt, sizeof(mqtt), nullptr, -1, mqtt.module_address, mqtt.moduleInitialized);
-        executionTrace.object("SD batch controller", &batchSD, sizeof(batchSD));
-        executionTrace.object("Mux sensor controller", &mux, sizeof(mux), nullptr, -1, mux.module_address, mux.moduleInitialized);
-        executionTrace.object("A0 analog and battery input", &analog, sizeof(analog), nullptr, -1, analog.module_address, analog.moduleInitialized);
-        executionTrace.object("SD file manager", hypnos.getSDManager(), sizeof(SDManager), nullptr, -1, -1, hypnos.getSDManager()->hasSDInitialized());
-        executionTrace.object("Sensor JSON document", &manager.getDocument(), sizeof(manager.getDocument()));
+    // Observe objects after automatic startup; earlier allocation times remain unknown.
+    if (auto *trace = Loom_Trace::current()) {
+        trace->object("Device manager", &manager, sizeof(manager));
+        trace->object("Hypnos board and power", &hypnos, sizeof(hypnos), nullptr, -1, hypnos.module_address, hypnos.moduleInitialized);
+        trace->object("LTE modem", &lte, sizeof(lte), nullptr, -1, lte.module_address, lte.moduleInitialized);
+        trace->object("MQTT publisher", &mqtt, sizeof(mqtt), nullptr, -1, mqtt.module_address, mqtt.moduleInitialized);
+        trace->object("SD batch controller", &batchSD, sizeof(batchSD));
+        trace->object("Mux sensor controller", &mux, sizeof(mux), nullptr, -1, mux.module_address, mux.moduleInitialized);
+        trace->object("A0 analog and battery input", &analog, sizeof(analog), nullptr, -1, analog.module_address, analog.moduleInitialized);
+        trace->object("SD file manager", hypnos.getSDManager(), sizeof(SDManager), nullptr, -1, -1, hypnos.getSDManager()->hasSDInitialized());
+        trace->object("Sensor JSON document", &manager.getDocument(), sizeof(manager.getDocument()));
         mux.traceObjects();
-        executionTrace.marker("Source example mux discovery: supported addresses 0x74, 0x15, 0x6B, 0x44; no fixed gas port mapping");
-        executionTrace.marker("Source example mux discovery: all ports available; sensor types from hardware; analog A0");
-        Serial.print(F("[TRACE] Open this SD file directly in Perfetto: "));
-        Serial.println(executionTrace.getPerfettoPath());
-        Serial.print(F("[TRACE] Load this SD file in the detailed heap/object inspector: "));
-        Serial.println(executionTrace.getRecordPath());
-        Serial.println(F("[TRACE] Active time excludes standby; baseline allocation times are unknown"));
-        Serial.println(executionTrace.isHeapCaptureEnabled() ?
-            F("[TRACE] Allocation capture ON: bounded windows; pauses labelled; RAM totals continue") :
-            F("[TRACE] Allocation capture OFF: calls, objects and RAM checkpoints only"));
-    } else {
-        Serial.println(F("[TRACE] Could not start optional SD capture"));
+        LOOM_TRACE_MARKER("Source example mux discovery: supported addresses 0x74, 0x15, 0x6B, 0x44; no fixed gas port mapping");
+        LOOM_TRACE_MARKER("Source example mux discovery: all ports available; sensor types from hardware; analog A0");
     }
 #endif
 // END LOOM_TRACE_DIAGNOSTICS
@@ -327,8 +317,7 @@ void setup() {
     WISP_DIAGNOSTIC_CHECKPOINT("After initializing modules"); // LOOM_BETA_DIAGNOSTIC
     LOOM_TRACE_CHECKPOINT("After initializing modules"); // LOOM_TRACE_DIAGNOSTIC
 
-    // Save guard precedes the function scope so its exit is captured before saving.
-    LOOM_TRACE_SAVE_ON_RETURN();
+    // Optional sketch scope: its outermost recorded return is saved automatically.
     FUNCTION_START; // LOOM_TRACE_DIAGNOSTIC
 
     // Register the ISR and attach to the interrupt
@@ -342,7 +331,6 @@ void setup() {
 
     WISP_DIAGNOSTIC_CHECKPOINT("Setup complete"); // LOOM_BETA_DIAGNOSTIC
     LOOM_TRACE_CHECKPOINT("Setup complete"); // LOOM_TRACE_DIAGNOSTIC
-    LOOM_TRACE_FLUSH(); // LOOM_TRACE_DIAGNOSTIC
 }
 
 // Share the exact alarm/standby/restoration checks between startup and ordinary cycles.
@@ -381,8 +369,6 @@ void reportSavedSampleCadence() {
 }
 
 void loop() {
-
-    LOOM_TRACE_SAVE_ON_RETURN();
     FUNCTION_START; // LOOM_TRACE_DIAGNOSTIC
 
     enableActiveWatchdog();
@@ -460,9 +446,9 @@ void loop() {
 #if LOOM_TRACE
     const SDLogResult savedSample = hypnos.getSDManager()->getLastLogResult();
     const char *storageStates[] = {"not attempted", "saved", "failed (rolled back)", "rejected", "uncertain"};
-    executionTrace.value("Normal sensor CSV write status", static_cast<uint8_t>(savedSample.csv),
+    LOOM_TRACE_VALUE("Normal sensor CSV write status", static_cast<uint8_t>(savedSample.csv),
                          storageStates[static_cast<uint8_t>(savedSample.csv)]);
-    executionTrace.value("MQTT batch SD write status", static_cast<uint8_t>(savedSample.batch),
+    LOOM_TRACE_VALUE("MQTT batch SD write status", static_cast<uint8_t>(savedSample.batch),
                          storageStates[static_cast<uint8_t>(savedSample.batch)]);
 #endif
     Watchdog.reset();
@@ -503,7 +489,6 @@ void loop() {
 // Full bench helper: arm a fixed RTC deadline, sleep, and validate wake evidence.
 // The ISR only records wake evidence and calls Hypnos; all reporting happens here.
 bool waitForScheduledWake(bool countStageWake) {
-    LOOM_TRACE_SAVE_ON_RETURN();
     FUNCTION_START;
     // Keep wake deadlines on a fixed grid: restoration, sampling and uploads consume
     // part of the interval rather than extending every cycle. Missed slots are skipped.
@@ -514,7 +499,6 @@ bool waitForScheduledWake(bool countStageWake) {
         LOGF("[SLEEP] SD interval missing/invalid/unexpected: %ld s; RTC sleep skipped",
              static_cast<long>(sleepSleepSeconds));
         LOOM_TRACE_CHECKPOINT("Sleep SD interval rejected; RTC sleep skipped");
-        LOOM_TRACE_FLUSH();
         return false;
     }
     Serial.print(F("[SLEEP] RTC wake cadence: "));
@@ -523,10 +507,10 @@ bool waitForScheduledWake(bool countStageWake) {
     Serial.print(sleepStageWakes);
     Serial.println(sleepStage == 3 ? F(" | two-hour soak stays here forever") : F(" of 5"));
 #if LOOM_TRACE
-    executionTrace.marker(SLEEP_SLEEP_LABELS[sleepStage]);
-    executionTrace.value("RTC configured wake cadence", sleepSleepSeconds, "seconds between deadlines");
-    executionTrace.value("Sleep sleep stage", sleepStage + 1, "stage (1..4)");
-    executionTrace.value("Sleep checked wakes in current stage", sleepStageWakes, "wakes");
+    LOOM_TRACE_MARKER(SLEEP_SLEEP_LABELS[sleepStage]);
+    LOOM_TRACE_VALUE("RTC configured wake cadence", sleepSleepSeconds, "seconds between deadlines");
+    LOOM_TRACE_VALUE("Sleep sleep stage", sleepStage + 1, "stage (1..4)");
+    LOOM_TRACE_VALUE("Sleep checked wakes in current stage", sleepStageWakes, "wakes");
 #endif
     WISP_DIAGNOSTIC_CHECKPOINT("Before scheduling RTC wake"); // LOOM_BETA_DIAGNOSTIC
     LOOM_TRACE_CHECKPOINT("Before scheduling RTC wake"); // LOOM_TRACE_DIAGNOSTIC
@@ -537,7 +521,6 @@ bool waitForScheduledWake(bool countStageWake) {
     LOGF("[SLEEP] RTC wake cadence %ld s; stage %u; checked wakes %u",
          static_cast<long>(sleepSleepSeconds), static_cast<unsigned>(sleepStage + 1),
          static_cast<unsigned>(sleepStageWakes));
-    LOOM_TRACE_FLUSH();
     Watchdog.reset();
     const uint32_t sleepArmStartMs = millis();
     DateTime sleepRtcBefore;
@@ -557,7 +540,6 @@ bool waitForScheduledWake(bool countStageWake) {
         LOOM_TRACE_VALUE("RTC alarm armed successfully", sleepAlarmArmed, "boolean (1=yes)");
         LOOM_TRACE_VALUE("RTC alarm arming duration", sleepArmMs, "milliseconds");
         LOOM_TRACE_CHECKPOINT("Sleep RTC arm failed or exceeded two-second bound; stage unchanged");
-        LOOM_TRACE_FLUSH();
         return false;
     }
     // The RTC uses UTC seconds and checked Alarm 1 date/hour/minute/second readback.
@@ -652,6 +634,5 @@ bool waitForScheduledWake(bool countStageWake) {
 #if LOOM_TRACE // LOOM_TRACE_DIAGNOSTIC
     mux.traceObjects(); // LOOM_TRACE_DIAGNOSTIC
 #endif // LOOM_TRACE_DIAGNOSTIC
-    LOOM_TRACE_FLUSH(); // LOOM_TRACE_DIAGNOSTIC
     return sleepStandbyObserved && sleepWakeOnTime;
 }

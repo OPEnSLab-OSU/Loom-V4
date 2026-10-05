@@ -115,16 +115,17 @@ without recompiling. An ordinary Arduino IDE upload honors the standalone sketch
 flags through the optional companion. The active deployment debug sketch prints an explicit
 `[TRACE] SD trace capture OFF` message when recording is compiled out.
 
-At runtime the debug sketch
-starts capture after `manager.initialize()`, when SD is available. It selects a new
+At runtime the shared adapter starts capture at the end of `manager.initialize()`,
+when module/SD initialization has finished. It selects a new
 `/debug/trace_N.ndjson` and `/debug/trace_N.perfetto.json` pair for each boot, with the same
 session number as `output_N.log`, function summaries, the initial sensor CSV, and its batch.
 SDManager scans both root data files and debug/trace names when selecting a new session, so
 legacy captures and orphaned companion files are preserved. Old independently numbered
 captures are not renamed. A genuine later CSV schema rotation does not rename the trace or
 output log. Trace startup rejects a filename collision instead of silently renumbering.
-The sketch prints both exact paths, and capture metadata includes `session_number`.
-Setup and cycle returns are saved by a scoped guard. Hypnos also drains the recorder immediately before disabling SD/SPI and resumes writes only after SD initialization succeeds on wake. While SD is unavailable, events remain bounded in RAM; overflow is explicitly recorded, including omitted function boundaries. The clock
+The adapter prints both exact paths, and capture metadata includes `session_number`.
+The outermost recorded function return is saved automatically, including early returns.
+Nested recorded calls do not each cause a save. Hypnos also drains the recorder immediately before disabling SD/SPI and resumes writes only after SD initialization succeeds on wake. While SD is unavailable, events remain bounded in RAM; overflow is explicitly recorded, including omitted function boundaries. The clock
 measures **active MCU time**; SAMD standby is not added to call durations.
 
 ## Use the same controls in any Loom sketch
@@ -142,27 +143,42 @@ both before including the header. No Wisp-specific helper structure or macros ne
 #endif
 #include <Logger.h>
 #include <Diagnostics/Loom_TraceSketch.h>
-LOOM_TRACE_RECORDER(executionTrace);
 
-// After your existing manager.initialize(), when SD is ready:
-// bool started = LOOM_TRACE_BEGIN(executionTrace, *hypnos.getSDManager());
+// After your existing Manager/Hypnos object declarations:
+void setup() {
+    Logger::getInstance()->setDebugOutput(false); // Trace does not require DEBUG text.
+    LOOM_TRACE_ATTACH(manager, hypnos);
+    // Keep your existing power/setup work before initializing modules.
+    manager.initialize();
+}
 
 void loop() {
-    LOOM_TRACE_SAVE_ON_RETURN(); // Save after FUNCTION_START's exit record.
-    FUNCTION_START;
-    LOOM_TRACE_CHECKPOINT("Before measuring sensors");
     // Your existing measurement, logging and sleep logic goes here.
-    LOOM_TRACE_CHECKPOINT("After saving the sample");
 }
 ```
 
-`LOOM_TRACE_BEGIN` starts capture and attaches the recorder to Logger. Existing
-`FUNCTION_START;` / `FUNCTION_START(this);` calls then supply nested function entry/return
-and memory measurements throughout Loom. The named checkpoint/value/flush helpers use the
-active recorder; before capture begins they do nothing. With `LOOM_TRACE=0` they compile
-out, including the recorder instance, while ordinary function summaries remain available.
-Use the save guard only at deliberate boundaries such as setup/loop, before FUNCTION_START.
-Hypnos already flushes before disabling SD and resumes after SD is ready on wake.
+`LOOM_TRACE_ATTACH` configures one library-owned fixed recorder without SD writes when
+called before initialization. Manager starts it at the end of initialization and saves an
+automatic memory baseline. Calling attach after initialization starts immediately. The
+Manager and SDManager must have sketch/static lifetime. Identical duplicate attachment is
+harmless; conflicting managers/settings and an already active manual recorder are rejected.
+A failed start or append stops this boot's capture attempt without hidden retries, while
+normal operation continues. The existing health observer is not replaced.
+
+Existing `FUNCTION_START;` / `FUNCTION_START(this);` calls supply nested function entry/return
+and memory measurements throughout Loom. The adapter saves after the outermost recorded
+return. Minimal sketches need no explicit recorder, begin block, function scopes, or save
+guards. Full debug sketches keep their extra checkpoints, labels, values, and custom function
+scopes using the same adapter. The named checkpoint/marker/value helpers safely do nothing
+before capture starts or after it stops. `setDebugOutput(false)` suppresses DEBUG text and
+summaries without suppressing trace calls. With `LOOM_TRACE=0`, attachment arguments are
+not evaluated and the automatic recorder and heap hooks are not linked.
+
+The manual `LOOM_TRACE_RECORDER` / `LOOM_TRACE_BEGIN` API is still available for custom
+recorder ownership. Manual capture retains explicit save boundaries: put
+`LOOM_TRACE_SAVE_ON_RETURN()` before `FUNCTION_START` at deliberate setup/loop boundaries.
+Use either manual capture or the automatic adapter for a session. Hypnos already flushes
+before disabling SD and resumes after SD is ready on wake in both cases.
 
 Set `LOOM_TRACE_HEAP=0` for calls, observed objects and allocator totals alone. With it set
 to one, ordinary IDE uploads capture allocation/free/reallocation events when the heap companion
@@ -416,8 +432,9 @@ For additional instance methods use `FUNCTION_START(this);`. A static function o
 function uses `FUNCTION_START;` (or `FUNCTION_START();`). For a descriptive nested scope use
 `FUNCTION_START(object, "Scope label");`. The same macro feeds ordinary debug summaries and
 optional tracing, whose enable switches remain independent. The old object/trace macro names
-remain compatibility aliases; new code uses `FUNCTION_START`. To supply known meanings, call `executionTrace.label("Packet
-buffer", pointer, requestedSize)` with a static string. Label the exact allocation pointer to
+remain compatibility aliases; new code uses `FUNCTION_START`. To supply known meanings inside
+an `#if LOOM_TRACE` block, use `if (auto *trace = Loom_Trace::current())
+trace->label("Packet buffer", pointer, requestedSize)` with a static string. Label the exact allocation pointer to
 name a block. Labelling a container gives object context and does not identify its separately
 allocated internal storage.
 

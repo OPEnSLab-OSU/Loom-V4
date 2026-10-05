@@ -65,7 +65,6 @@
 #define LOOM_TRACE_HEAP 0
 #endif
 #include <Diagnostics/Loom_TraceSketch.h>
-LOOM_TRACE_RECORDER(executionTrace);
 // END LOOM_TRACE_DIAGNOSTICS
 
 constexpr int ACTIVE_WATCHDOG_MS = 16000;
@@ -130,10 +129,12 @@ void setup() {
 
     // Wait 20 seconds for the serial console to open
     manager.beginSerial();
+    // The shared adapter owns capture and starts after module/SD initialization.
+    LOOM_TRACE_ATTACH(manager, hypnos);
     WISP_DIAGNOSTIC_ENABLE_SD_TRACE();              // LOOM_BETA_DIAGNOSTIC
     WISP_DIAGNOSTIC_ENABLE_MUX_SCAN();              // LOOM_BETA_DIAGNOSTIC
     WISP_DIAGNOSTIC_CHECKPOINT("After global object construction"); // LOOM_BETA_DIAGNOSTIC
-    // Before TRACE_BEGIN, trace checkpoints are no-ops; serial memory checks still run.
+    // Before automatic startup, trace checkpoints are no-ops; serial memory checks still run.
     LOOM_TRACE_CHECKPOINT("After global object construction"); // LOOM_TRACE_DIAGNOSTIC
 
     // Set the LTE board to only powerup when a batch is ready to be sent
@@ -169,27 +170,19 @@ void setup() {
 #if LOOM_TRACE
     // Object labels below are optional inspector metadata, not needed to start trace.
     // sizeof(object) is its fixed footprint, not all memory owned by that object.
-    // Start after SD initialization. Existing objects are observed here; their allocation
-    // times remain unknown. New mux sensors and their deletion are tracked thereafter.
-    if (LOOM_TRACE_BEGIN(executionTrace, *hypnos.getSDManager())) {
-        executionTrace.object("Device manager", &manager, sizeof(manager));
-        executionTrace.object("Hypnos board and power", &hypnos, sizeof(hypnos), nullptr, -1, hypnos.module_address, hypnos.moduleInitialized);
-        executionTrace.object("LTE modem", &lte, sizeof(lte), nullptr, -1, lte.module_address, lte.moduleInitialized);
-        executionTrace.object("MQTT publisher", &mqtt, sizeof(mqtt), nullptr, -1, mqtt.module_address, mqtt.moduleInitialized);
-        executionTrace.object("SD batch controller", &batchSD, sizeof(batchSD));
-        executionTrace.object("Mux sensor controller", &mux, sizeof(mux), nullptr, -1, mux.module_address, mux.moduleInitialized);
-        executionTrace.object("Direct SEN55 sensor", &SEN55, sizeof(SEN55), nullptr, -1, SEN55.module_address, SEN55.moduleInitialized);
-        executionTrace.object("Direct SHT31 sensor", &sht, sizeof(sht), nullptr, -1, sht.module_address, sht.moduleInitialized);
-        executionTrace.object("SD file manager", hypnos.getSDManager(), sizeof(SDManager), nullptr, -1, -1, hypnos.getSDManager()->hasSDInitialized());
-        executionTrace.object("Sensor JSON document", &manager.getDocument(), sizeof(manager.getDocument()));
+    // Observe objects after automatic startup; earlier allocation times remain unknown.
+    if (auto *trace = Loom_Trace::current()) {
+        trace->object("Device manager", &manager, sizeof(manager));
+        trace->object("Hypnos board and power", &hypnos, sizeof(hypnos), nullptr, -1, hypnos.module_address, hypnos.moduleInitialized);
+        trace->object("LTE modem", &lte, sizeof(lte), nullptr, -1, lte.module_address, lte.moduleInitialized);
+        trace->object("MQTT publisher", &mqtt, sizeof(mqtt), nullptr, -1, mqtt.module_address, mqtt.moduleInitialized);
+        trace->object("SD batch controller", &batchSD, sizeof(batchSD));
+        trace->object("Mux sensor controller", &mux, sizeof(mux), nullptr, -1, mux.module_address, mux.moduleInitialized);
+        trace->object("Direct SEN55 sensor", &SEN55, sizeof(SEN55), nullptr, -1, SEN55.module_address, SEN55.moduleInitialized);
+        trace->object("Direct SHT31 sensor", &sht, sizeof(sht), nullptr, -1, sht.module_address, sht.moduleInitialized);
+        trace->object("SD file manager", hypnos.getSDManager(), sizeof(SDManager), nullptr, -1, -1, hypnos.getSDManager()->hasSDInitialized());
+        trace->object("Sensor JSON document", &manager.getDocument(), sizeof(manager.getDocument()));
         mux.traceObjects();
-        Serial.print(F("[TRACE] Open this SD file directly in Perfetto: "));
-        Serial.println(executionTrace.getPerfettoPath());
-        Serial.print(F("[TRACE] Load this SD file in the detailed heap/object inspector: "));
-        Serial.println(executionTrace.getRecordPath());
-        Serial.println(F("[TRACE] Active time excludes standby; baseline allocation times are unknown"));
-    } else {
-        Serial.println(F("[TRACE] Could not start optional SD capture"));
     }
 #endif
 // END LOOM_TRACE_DIAGNOSTICS
@@ -197,8 +190,7 @@ void setup() {
     WISP_DIAGNOSTIC_CHECKPOINT("After initializing modules"); // LOOM_BETA_DIAGNOSTIC
     LOOM_TRACE_CHECKPOINT("After initializing modules"); // LOOM_TRACE_DIAGNOSTIC
 
-    // Save guard precedes the function scope so its exit is captured before saving.
-    LOOM_TRACE_SAVE_ON_RETURN();
+    // Optional sketch scope: its outermost recorded return is saved automatically.
     FUNCTION_START; // LOOM_TRACE_DIAGNOSTIC
 
     // Register the ISR and attach to the interrupt
@@ -215,7 +207,6 @@ void setup() {
 }
 
 void loop() {
-    LOOM_TRACE_SAVE_ON_RETURN();
     FUNCTION_START; // LOOM_TRACE_DIAGNOSTIC
 
     enableActiveWatchdog();
@@ -308,9 +299,7 @@ void loop() {
     LOOM_TRACE_CHECKPOINT("Before standby"); // LOOM_TRACE_DIAGNOSTIC
     // The SAMD21 watchdog continues in standby, so disable it for the five-minute RTC sleep.
     Watchdog.disable();
-    LOOM_TRACE_FLUSH(); // LOOM_TRACE_DIAGNOSTIC
     hypnos.sleep(false);
-    LOOM_TRACE_FLUSH(); // LOOM_TRACE_DIAGNOSTIC
     WISP_DIAGNOSTIC_CHECKPOINT("After waking and restoring modules"); // LOOM_BETA_DIAGNOSTIC
     LOOM_TRACE_CHECKPOINT("After waking and restoring modules"); // LOOM_TRACE_DIAGNOSTIC
 #if LOOM_TRACE // LOOM_TRACE_DIAGNOSTIC

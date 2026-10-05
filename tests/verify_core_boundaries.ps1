@@ -41,12 +41,20 @@ foreach ($test in $tests) {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'fakes') + '"'
     } elseif ($test.BaseName -eq 'test_as5311') {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'as5311_fakes') + '"'
+    } elseif ($test.BaseName -eq 'test_trace_auto') {
+        $fakeIncludes = '/I"' + (Join-Path $sourceDir 'trace_auto_fakes') + '" /I"' + (Join-Path $sourceDir 'manager_fakes') + '" /I"' + $jsonIncludes + '"'
     } elseif ($test.BaseName -eq 'test_trace') {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'trace_fakes') + '"'
     }
     # Assertions remain enabled. Each program exercises production helpers or readers.
     # Keep logs/products for diagnosis; never delete a caller-supplied directory.
-    $command = "call `"$vcVars`" >nul && cl /nologo /EHsc /std:c++14 /Zc:__cplusplus /D_CRT_SECURE_NO_WARNINGS /W4 /UNDEBUG $fakeIncludes /I`"$loomIncludes`" `"$($test.FullName)`" /Fe:`"$testExe`" /Fo:`"$testObj`" && `"$testExe`""
+    $runCommands = "`"$testExe`""
+    if ($test.BaseName -eq 'test_trace_auto') {
+        foreach ($scenario in @('immediate', 'failed', 'append-failed', 'manual')) {
+            $runCommands += " && `"$testExe`" $scenario"
+        }
+    }
+    $command = "call `"$vcVars`" >nul && cl /nologo /EHsc /std:c++14 /Zc:__cplusplus /D_CRT_SECURE_NO_WARNINGS /W4 /UNDEBUG $fakeIncludes /I`"$loomIncludes`" `"$($test.FullName)`" /Fe:`"$testExe`" /Fo:`"$testObj`" && $runCommands"
     & $env:ComSpec /d /s /c $command 2>&1 | Tee-Object -FilePath $log
     if ($LASTEXITCODE -ne 0) {
         $failed += $test.BaseName

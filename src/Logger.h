@@ -14,6 +14,7 @@ LOOM_EXTERNAL_INCLUDE_END
 class SDManager;
 class Loom_Hypnos;
 class Loom_Trace;
+class Manager;
 
 // Installed only by an opted-in recorder. These function pointers keep Logger's layout
 // identical in sketch/library translation units and let ordinary builds omit the recorder.
@@ -109,6 +110,11 @@ class Logger {
     unsigned int stackDepth = 0;
     Loom_Trace *trace = nullptr; // Borrowed; no event buffer exists unless the sketch opts in.
     const LoomTraceCallbacks *traceCallbacks = nullptr;
+    unsigned int traceDepth = 0; // Counts recorded scopes, independent of text-summary depth.
+    bool traceAutoSave = false;
+    using TraceStartup = void (*)(Manager &, void *);
+    TraceStartup traceStartup = nullptr;
+    void *traceStartupContext = nullptr; // Borrowed from the optional adapter.
 
     // Whether or not to use the SD card or log function summaries
     bool debugOutputEnabled = true;
@@ -232,9 +238,18 @@ class Logger {
 
     bool shouldLogSummaries();
 
-    /** Attach only a started recorder with static/sketch lifetime. Extra toggle, independent
-     * of the legacy summaries. Setting debug output false also suppresses new trace scopes. */
+    /** Attach only a started recorder with static/sketch lifetime. Trace capture is
+     * independent of DEBUG text and legacy summaries. Manual capture keeps explicit saves. */
     void enableTrace(Loom_Trace &recorder);
+    void setTraceAutoSave(bool enabled) { traceAutoSave = enabled; }
+    /** Optional main-loop startup hook; ordinary builds never reference the adapter. */
+    void setTraceStartup(TraceStartup startup, void *context) {
+        traceStartup = startup;
+        traceStartupContext = context;
+    }
+    void beginConfiguredTrace(Manager &manager) {
+        if (traceStartup != nullptr) traceStartup(manager, traceStartupContext);
+    }
     bool flushTrace();
     bool hasTrace() const { return traceCallbacks != nullptr; }
     void setTraceStorageAvailable(bool available);

@@ -80,6 +80,7 @@ class Manager {
      * Calls the initialization function on all added modules
      */
     void initialize();
+    bool isInitialized() const { return hasInitialized; }
 
     // Optional diagnostics belong to the sketch, so ordinary Manager needs no flash/SD driver.
     // BeforeInitialize lets it print the last saved checkpoint BEFORE module states change.

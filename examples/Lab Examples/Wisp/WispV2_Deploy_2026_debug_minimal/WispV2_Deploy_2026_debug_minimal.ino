@@ -27,11 +27,8 @@
 #include <Logger.h>
 #include <Sensors/Loom_Analog/Loom_Analog.h>
 
-// BEGIN MINIMAL_TRACE_RECORDER
 // The optional Loom_TraceHeap companion supplies IDE heap linker hooks on SAMD.
 #include <Diagnostics/Loom_TraceSketch.h>
-LOOM_TRACE_RECORDER(executionTrace); // No recorder is declared when LOOM_TRACE=0.
-// END MINIMAL_TRACE_RECORDER
 
 constexpr int ACTIVE_WATCHDOG_MS = 16000;
 
@@ -58,13 +55,16 @@ void isrTrigger() { hypnos.wakeup(); }
 
 void setup() {
 
-    // Loom uses this shared switch for function tracing and DEBUG serial messages.
-    // Trace enabled therefore also permits DEBUG messages; SD text logging stays off.
-    Logger::getInstance()->setDebugOutput(LOOM_TRACE != 0);
+    // Trace capture is independent of DEBUG text; keep the deployment output quiet.
+    Logger::getInstance()->setDebugOutput(false);
     hypnos.setWakeWatchdogTimeout(ACTIVE_WATCHDOG_MS);
 
     // Start the serial interface
     manager.beginSerial(false);
+
+    // Opt in before initialize(): Loom owns the recorder and handles start/save.
+    // With LOOM_TRACE=0 this call does nothing and links no automatic recorder.
+    LOOM_TRACE_ATTACH(manager, hypnos);
 
     // Set the LTE board to only powerup when a batch is ready to be sent
     lte.setBatchSD(batchSD);
@@ -91,26 +91,6 @@ void setup() {
     // Watchdog)
     manager.initialize();
 
-    // BEGIN MINIMAL_TRACE_START
-    // SD is now ready. Existing Loom FUNCTION_START calls supply the call timeline.
-    // begin() records one automatic RAM baseline; no manual phase checkpoints here.
-#if LOOM_TRACE
-    if (!LOOM_TRACE_BEGIN(executionTrace, *hypnos.getSDManager())) {
-        Serial.println(F("[TRACE] Could not start SD capture; deployment loop continues"));
-    } else {
-        Serial.print(F("[TRACE] Timeline: "));
-        Serial.println(executionTrace.getPerfettoPath());
-        Serial.print(F("[TRACE] Heap records: "));
-        Serial.println(executionTrace.getRecordPath());
-        Serial.println(executionTrace.isHeapCaptureEnabled() ?
-            F("[TRACE] Bounded allocator capture ON") : F("[TRACE] Allocator capture OFF"));
-    }
-    // Declare the save guard first: FUNCTION_START exits before the guard flushes.
-    LOOM_TRACE_SAVE_ON_RETURN();
-    FUNCTION_START;
-#endif
-    // END MINIMAL_TRACE_START
-
     // Register the ISR and attach to the interrupt
     hypnos.registerInterrupt(isrTrigger);
 
@@ -118,13 +98,6 @@ void setup() {
 }
 
 void loop() {
-
-    // BEGIN MINIMAL_TRACE_CYCLE
-#if LOOM_TRACE
-    LOOM_TRACE_SAVE_ON_RETURN(); // Saves loop exit after wake/restoration.
-    FUNCTION_START;             // Covers this loop, including library calls.
-#endif
-    // END MINIMAL_TRACE_CYCLE
 
     enableActiveWatchdog();
 
@@ -186,9 +159,6 @@ void loop() {
     // Set the hypnos to sleep
     // The SAMD21 watchdog continues in standby, so disable it for the five-minute RTC sleep.
     Watchdog.disable();
-    // BEGIN MINIMAL_TRACE_BEFORE_SLEEP
-    // Save while SD is available, before Hypnos takes it offline for standby.
-    LOOM_TRACE_FLUSH();
-    // END MINIMAL_TRACE_BEFORE_SLEEP
+    // Hypnos saves pending trace records before taking SD offline.
     hypnos.sleep(false);
 }

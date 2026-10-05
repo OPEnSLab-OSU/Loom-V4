@@ -364,3 +364,13 @@ Wisp mirror checks strip the separate trace blocks/tags while still comparing op
 code; the deployment copy retains its own analog and mux configuration.
 
 Focused native programs `test_trace` and `test_trace_json_append` check both production serializers, copied object names, SD power-off buffering, bounded loss, stopped capture, JSON trailer restoration, short writes, sync/close faults and preservation of damaged tails. The final SD pair includes a directly loadable Chrome `.perfetto.json` plus recoverable `.ndjson`.
+
+`test_function_start` and `test_function_start_off` exercise the production scope-capture
+implementation with fake output sinks: quiet text does not suppress trace, nested calls
+save only at the outermost recorded return, early returns balance capture, and unrecorded
+enclosing scopes do not delay a save. `test_trace_auto` checks deferred/immediate startup,
+identical/conflicting attachment, rejected manual-recorder overlap, and no retries after
+startup/append failure. Its runner uses separate processes for each boot scenario.
+`test_trace_attach_off` verifies that trace-off attachment evaluates neither argument and
+needs no recorder symbols. Wisp boundary checks accept both automatic full and minimal
+sketches while checking that their production safeguards remain present.

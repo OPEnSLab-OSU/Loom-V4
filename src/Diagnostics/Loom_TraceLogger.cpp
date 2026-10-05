@@ -9,7 +9,12 @@ void Logger::enableTrace(Loom_Trace &recorder) {
             return r->enter(file, name, line, object);
         },
         [](Loom_Trace *r) { r->leave(); },
-        [](Loom_Trace *r) { return r->flush(); },
+        [](Loom_Trace *r) {
+            if (!r->isRecording() || !r->isStorageAvailable()) return false;
+            if (r->flush()) return true;
+            Serial.println(F("[TRACE] capture stopped: SD trace append failed"));
+            return false;
+        },
         [](Loom_Trace *r, bool available) { r->setStorageAvailable(available); },
         [](Loom_Trace *r, const char *name, const void *address, uint32_t bytes,
            const void *owner, int port, int i2cAddress, bool ready) {
@@ -19,4 +24,5 @@ void Logger::enableTrace(Loom_Trace &recorder) {
     };
     trace = &recorder;
     traceCallbacks = &callbacks;
+    traceAutoSave = false; // Existing manual sketches retain explicit save boundaries.
 }
