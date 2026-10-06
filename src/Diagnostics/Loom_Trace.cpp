@@ -130,9 +130,9 @@ bool Loom_Trace::begin(SDManager &manager, bool hooks, uint8_t heapWindowEvents)
     // SDManager chooses one immutable boot/session number, considering old trace files too.
     // A later CSV schema rotation does not rename the running diagnostics or trace.
     const int session = sd->getDebugFileNumber();
-    snprintf(path, sizeof(path), "/debug/trace_%i.ndjson", session);
-    snprintf(perfettoPath, sizeof(perfettoPath), "/debug/trace_%i.perfetto.json", session);
-    if (session < 0 || sd->fileExists(path) || sd->fileExists(perfettoPath)) {
+    if (!sd->getDebugFilePath(path, sizeof(path), loomDebugFiles::Kind::TraceRecords) ||
+        !sd->getDebugFilePath(perfettoPath, sizeof(perfettoPath), loomDebugFiles::Kind::TraceTimeline) ||
+        sd->fileExists(path) || sd->fileExists(perfettoPath)) {
         return false;
     }
     busy = true;

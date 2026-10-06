@@ -8,10 +8,10 @@ Use the two together when investigating a problem: the trace shows **when a call
 
 | Control | Question it helps answer | Where to look |
 | --- | --- | --- |
-| `LOOM_TRACE=1` | Which calls took time? Where did RAM change? | `/debug/trace_N.perfetto.json` timeline and `trace_N.ndjson` inspector |
+| `LOOM_TRACE=1` | Which calls took time? Where did RAM change? | `/debug/<name>_trace_N.perfetto.json` timeline and `<name>_trace_N.ndjson` inspector |
 | `LOOM_TRACE_HEAP=1` with trace | Which observed allocations/frees happened within that phase? | The same trace files; bounded windows, not a complete allocation history |
 | `LOOM_DEBUG_TEXT=1` | What is the device doing? Which step failed? | Routine Logger DEBUG messages in Serial Monitor; warnings/errors remain with this set to `0` |
-| `LOOM_DEBUG_SD_LOG=1` | Can I retain those Logger messages after unplugging? | `/debug/output_N.log`; saves enabled DEBUG messages plus warnings/errors |
+| `LOOM_DEBUG_SD_LOG=1` | Can I retain those Logger messages after unplugging? | `/debug/<name>_debug_N.log`; saves enabled DEBUG messages plus warnings/errors |
 | Full sketch's memory/mux/SD report flags | What allocator, discovery, or write detail explains this phase? | Extra direct Serial reports; these do not require `LOOM_DEBUG_TEXT` and are not copied by the SD text switch |
 
 Turning trace off affects the structured files. Turning DEBUG text off affects routine Logger messages, displayed JSON and any opted-in function summaries. The detailed Serial reports have their own switches. Neither switch silences every direct `Serial.print` in Loom or a sensor driver. Trace startup still reports its actual capture paths. All diagnostic writes add overhead; normal sensor CSV and MQTT batches use their existing paths regardless of these controls.
@@ -70,6 +70,8 @@ For a fair baseline comparison, leave the two text controls at their default `0`
 
 ## Full: add investigation layers
 
+Diagnostic filenames now follow the Manager's device name: `Manager("Deploy_Test_", 8)` writes `/debug/Deploy_Test_debug_N.log` and `Deploy_Test_trace_N.*`, with optional `Deploy_Test_funcSummaries_N.log`. Uncomment `LOOM_DEBUG_LOG_NAME` at the top of a debug/minimal sketch to choose a custom prefix. The sketch calls `hypnos.getSDManager()->setDebugLogName(...)` before SD initialization; this copied, sanitized prefix stays fixed for the session and does not rename CSV/batch files. See [the short flag reference](DEBUG-FLAGS.md) for name limits.
+
 The existing `*_debug` sketches keep the detailed phase checkpoints and helper functions. Their flags are documented beside their definitions:
 
 | Flag | Adds |
@@ -77,7 +79,7 @@ The existing `*_debug` sketches keep the detailed phase checkpoints and helper f
 | `LOOM_TRACE` | Structured SD timeline and explicitly named RAM snapshots |
 | `LOOM_TRACE_HEAP` | Bounded allocator event windows; requires trace |
 | `LOOM_DEBUG_TEXT` | Routine Logger DEBUG messages and displayed sensor JSON in Serial Monitor |
-| `LOOM_DEBUG_SD_LOG` | Copy Logger messages to `output_N.log`; includes warnings/errors even with DEBUG text off |
+| `LOOM_DEBUG_SD_LOG` | Copy Logger messages to `<name>_debug_N.log`; includes warnings/errors even with DEBUG text off |
 | `LOOM_DEBUG_DIAGNOSTICS` | Default for the three extra diagnostics below; does not control trace |
 | `LOOM_DEBUG_MEMORY` | Serial checkpoint reports: allocator use/free blocks, stack gap, fragmentation and contiguous-growth estimates, JSON use/overflow, batch count, reset cause |
 | `LOOM_DEBUG_MUX_SCAN` | Verbose discovery/scan output in mux sketches |
@@ -109,7 +111,7 @@ The separately saved debug copy inside the ordinary `WispV2_Deploy_2026` folder 
 
 ## Build and inspect
 
-Ordinary Arduino IDE Verify/Upload honors the sketch flags on Loom SAMD with the optional `Loom_TraceHeap` companion installed beside Loom. Capture files are `/debug/trace_N.perfetto.json` (timeline) and `/debug/trace_N.ndjson` (detailed inspector). They are separate from the full sketch's `/debug/output_N.log`.
+Ordinary Arduino IDE Verify/Upload honors the sketch flags on Loom SAMD with the optional `Loom_TraceHeap` companion installed beside Loom. Capture files are `/debug/<name>_trace_N.perfetto.json` (timeline) and `/debug/<name>_trace_N.ndjson` (detailed inspector). They are separate from the full sketch's `/debug/<name>_debug_N.log`.
 
 For repeatable compile-only builds, use Loom's `tools/build_loom_trace.ps1` with the sketch folder:
 

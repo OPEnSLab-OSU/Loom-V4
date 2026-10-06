@@ -8,9 +8,9 @@ void Logger::enableSummaries() { summaryWriter = &FunctionInstrumentor::writeSum
 void FunctionInstrumentor::writeSummary(Logger *logger, bool starting, const char *file,
                                         const char *func, int lineNum) {
     const int freemem = LoomMemory::freeMemoryBytes();
-    char logfileName[48];
-    snprintf_P(logfileName, sizeof(logfileName), PSTR("/debug/funcSummaries_%i.log"),
-               logger->sdInst->getDebugFileNumber());
+    char logfileName[SDManager::DEBUG_FILENAME_SIZE];
+    if (!logger->sdInst->getDebugFilePath(logfileName, sizeof(logfileName),
+                                         loomDebugFiles::Kind::Summaries)) return;
 
     char output[OUTPUT_SIZE] = {};
     if (starting) {

@@ -6,15 +6,17 @@
 // TRACE FILES = when calls ran + how RAM changed; inspect after the run.
 // DEBUG TEXT = what the device is doing + why a step failed; read while running.
 // Both can be ON together. Trace does not require DEBUG text or its SD text copy.
-// Trace: /debug/trace_N.perfetto.json + trace_N.ndjson. Text: output_N.log if enabled.
+// Files follow the Manager name: /debug/<name>_trace_N.* and <name>_debug_N.log.
 // WARNING/ERROR remain visible with DEBUG text OFF. See DEBUG-GUIDE.md for recipes.
+// Optional prefix for all debug files; omit to follow the Manager's device name.
+// #define LOOM_DEBUG_LOG_NAME "WispBench"
 
 // TEXT: progress and failure explanations in Serial Monitor.
 // 0 hides routine DEBUG messages/JSON; WARNING and ERROR still print.
 #ifndef LOOM_DEBUG_TEXT
 #define LOOM_DEBUG_TEXT 1
 #endif
-// Copy Logger messages to /debug/output_N.log (including warnings/errors).
+// Copy Logger messages to /debug/<name>_debug_N.log (including warnings/errors).
 // Direct Serial memory/mux/SD reports are not copied by this switch.
 #ifndef LOOM_DEBUG_SD_LOG
 #define LOOM_DEBUG_SD_LOG 1
@@ -225,6 +227,11 @@ void isrTrigger() {
 }
 
 void setup() {
+#ifdef LOOM_DEBUG_LOG_NAME
+    if (!hypnos.getSDManager()->setDebugLogName(LOOM_DEBUG_LOG_NAME)) {
+        WARNING(F("Invalid debug log prefix; keep it within 63 characters and set it before SD initialization."));
+    }
+#endif
 
     // TEXT gives live progress/failure context; optional SD copy preserves Logger messages.
     Logger::getInstance()->setDebugOutput(LOOM_DEBUG_TEXT != 0);

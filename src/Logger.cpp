@@ -27,8 +27,6 @@ void Logger::retireTraceObject(const void *address) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Logger::log(char *message, bool silent) {
-    char filePath[32];
-
     // If we want to actually print to serial
     if (!silent) {
         Serial.println(message);
@@ -36,9 +34,9 @@ void Logger::log(char *message, bool silent) {
 
     // Log as long as we have given it a SD card instance
     if (sdInst != nullptr && enableSDLogging && sdInst->canWriteDebugLogs()) {
-        snprintf_P(filePath, sizeof(filePath), PSTR("/debug/output_%i.log"),
-                   sdInst->getDebugFileNumber());
-        if (!sdInst->writeLineToFile(filePath, message)) {
+        char filePath[SDManager::DEBUG_FILENAME_SIZE];
+        if (!sdInst->getDebugFilePath(filePath, sizeof(filePath), loomDebugFiles::Kind::Text) ||
+            !sdInst->writeLineToFile(filePath, message)) {
             Serial.println(F("Could not save message to the SD debug log!"));
         }
     }
@@ -93,10 +91,9 @@ void Logger::logDocument(const DynamicJsonDocument &document) {
     serializeJsonPretty(document, Serial);
     Serial.println();
     if (sdInst != nullptr && enableSDLogging && sdInst->canWriteDebugLogs()) {
-        char filePath[32];
-        snprintf_P(filePath, sizeof(filePath), PSTR("/debug/output_%i.log"),
-                   sdInst->getDebugFileNumber());
-        if (!sdInst->writeJsonToFile(filePath, document)) {
+        char filePath[SDManager::DEBUG_FILENAME_SIZE];
+        if (!sdInst->getDebugFilePath(filePath, sizeof(filePath), loomDebugFiles::Kind::Text) ||
+            !sdInst->writeJsonToFile(filePath, document)) {
             Serial.println(F("Could not save JSON to the SD debug log!"));
         }
     }

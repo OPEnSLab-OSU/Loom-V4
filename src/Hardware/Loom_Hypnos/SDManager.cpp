@@ -691,7 +691,7 @@ bool SDManager::begin() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::updateCurrentFileName() {
-    char f_name[LOG_FILENAME_SIZE];
+    char f_name[DEBUG_FILENAME_SIZE];
     const char *base = overrideFileName[0] ? overrideFileName : device_name;
     batchSessionNumber = 0;
 
@@ -723,7 +723,7 @@ bool SDManager::updateCurrentFileName() {
         while (scanningFile.openNext(&root)) {
             const bool named = scanningFile.getName(f_name, sizeof(f_name));
             scanningFile.close();
-            if (!named || !loomSD::advanceDebugNumber(f_name, batchSessionNumber)) {
+            if (!named || !loomSD::advanceDebugNumber(f_name, batchSessionNumber, getDebugLogName())) {
                 root.close();
                 printModuleName("Cannot safely select a shared debug/trace session number!");
                 return false;

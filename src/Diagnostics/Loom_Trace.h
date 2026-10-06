@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include "Utilities/Loom_DebugFiles.h"
 
 class Print;
 class SDManager;
@@ -78,8 +79,8 @@ class Loom_Trace {
     Event events[EVENT_CAPACITY];
     size_t count = 0;
     SDManager *sd = nullptr;
-    char path[48] = {};
-    char perfettoPath[48] = {};
+    char path[loomDebugFiles::PATH_SIZE] = {};
+    char perfettoPath[loomDebugFiles::PATH_SIZE] = {};
     uint32_t dropped = 0;
     uint8_t droppedTypes = 0; // heap=1, calls=2, objects=4, clock values=8, other=16
     uint8_t heapWindowLimit = DEFAULT_HEAP_WINDOW_EVENTS;

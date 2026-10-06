@@ -4,6 +4,7 @@
 #include <cstring>
 #include <set>
 #include <string>
+#include "Utilities/Loom_DebugFiles.h"
 
 #if defined(_MSC_VER)
 #define __attribute__(...)
@@ -55,7 +56,11 @@ class SDManager {
     unsigned int batches = 0;
     bool ready = true;
     int sessionNumber = 0;
+    std::string debugName = "Wisp";
     int getDebugFileNumber() const { return sessionNumber; }
+    bool getDebugFilePath(char *destination, size_t capacity, loomDebugFiles::Kind kind) const {
+        return loomDebugFiles::buildPath(destination, capacity, debugName.c_str(), kind, sessionNumber);
+    }
     bool canWriteDebugLogs() const { return ready; }
     bool fileExists(const char *path) { return existing.count(path) != 0; }
     bool writeLineToFile(const char *path, const char *line) {

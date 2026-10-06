@@ -211,6 +211,23 @@ class SDManager : public Module {
     // Diagnostic logs stay in this boot/session even if a genuine schema change rotates CSV.
     int getDebugFileNumber() const { return batchSessionNumber; }
 
+    static constexpr size_t DEBUG_FILENAME_SIZE = loomDebugFiles::PATH_SIZE;
+    /** Optional prefix for all diagnostic files; defaults to the Manager's device name.
+     * Call before SD initialization. nullptr/empty restores the default. Names are copied
+     * (max 63 characters), sanitized, and fixed for the session; CSV/batch names are separate. */
+    bool setDebugLogName(const char *name) {
+        char requested[loomDebugFiles::NAME_SIZE];
+        if (!loomDebugFiles::copyName(requested, sizeof(requested), name)) return false;
+        if (logFileSelected && strcmp(debugLogName, requested) != 0) return false;
+        memcpy(debugLogName, requested, strlen(requested) + 1);
+        return true;
+    }
+    const char *getDebugLogName() const { return debugLogName[0] ? debugLogName : device_name; }
+    bool getDebugFilePath(char *destination, size_t capacity, loomDebugFiles::Kind kind) const {
+        return loomDebugFiles::buildPath(destination, capacity, getDebugLogName(), kind,
+                                        getDebugFileNumber());
+    }
+
   private:
     static constexpr size_t LOG_BASENAME_SIZE = Manager::DEVICE_NAME_SIZE;
     static constexpr size_t LOG_FILENAME_SIZE = LOG_BASENAME_SIZE + 20;
@@ -225,6 +242,8 @@ class SDManager : public Module {
 
     int chip_select;                     // Chip select pin for the SD card
     char device_name[LOG_BASENAME_SIZE]; // Starting point of the SD file name
+    static_assert(LOG_BASENAME_SIZE == loomDebugFiles::NAME_SIZE, "Diagnostic name capacity must match Manager");
+    char debugLogName[loomDebugFiles::NAME_SIZE] = {}; // Empty uses the Manager/CSV default name.
 
     // A 63-character base + 10-digit counter + "-Batch.txt" + null needs at most 84 bytes.
     char batchFileName[LOG_FILENAME_SIZE];

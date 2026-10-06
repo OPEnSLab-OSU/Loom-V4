@@ -11,6 +11,17 @@ can obey a sketch-only flag without different class layouts.
 
 ## Choose the extra debug mode
 
+Diagnostic files default to the Manager's device name: `Manager("Deploy_Test_", 8)` produces
+`/debug/Deploy_Test_debug_N.log`, `Deploy_Test_trace_N.ndjson`, and `Deploy_Test_trace_N.perfetto.json`.
+Optional function summaries use `Deploy_Test_funcSummaries_N.log`. Uncomment the sketch's
+`LOOM_DEBUG_LOG_NAME` string to customize all diagnostic prefixes, or call
+`hypnos.getSDManager()->setDebugLogName("WispBench")` before SD initialization.
+The name is copied (63 characters maximum), sanitized to letters/digits/underscore/hyphen,
+and trailing underscores are trimmed. An empty override uses the Manager name.
+Changing it after the SD session is selected is rejected; normal wakes keep the same files.
+CSV/batch filenames are independent. Session scanning accepts both named and legacy diagnostic
+files, so an upgrade or a deleted CSV does not reuse an existing diagnostic session.
+
 In the active standalone debug sketch, change this flag and use ordinary Arduino IDE
 Verify/Upload; no global compiler flags are needed for calls, objects and memory checkpoints:
 
@@ -117,8 +128,8 @@ flags through the optional companion. The active deployment debug sketch prints 
 
 At runtime the shared adapter starts capture at the end of `manager.initialize()`,
 when module/SD initialization has finished. It selects a new
-`/debug/trace_N.ndjson` and `/debug/trace_N.perfetto.json` pair for each boot, with the same
-session number as `output_N.log`, function summaries, the initial sensor CSV, and its batch.
+`/debug/<name>_trace_N.ndjson` and `/debug/<name>_trace_N.perfetto.json` pair for each boot, with the same
+session number as `<name>_debug_N.log`, function summaries, the initial sensor CSV, and its batch.
 SDManager scans both root data files and debug/trace names when selecting a new session, so
 legacy captures and orphaned companion files are preserved. Old independently numbered
 captures are not renamed. A genuine later CSV schema rotation does not rename the trace or
@@ -143,7 +154,7 @@ both before including the header. No Wisp-specific helper structure or macros ne
 #endif
 // Optional sketch controls for the complementary text evidence:
 #define LOOM_DEBUG_TEXT 0       // 1: routine progress/failure context in Serial Monitor
-#define LOOM_DEBUG_SD_LOG 0     // 1: save Logger messages in /debug/output_N.log
+#define LOOM_DEBUG_SD_LOG 0     // 1: save Logger messages in /debug/<name>_debug_N.log
 #include <Logger.h>
 #include <Diagnostics/Loom_TraceSketch.h>
 
@@ -232,7 +243,7 @@ Existing files acquire a current modified date on their next write. Old creation
 archived files are not retroactively guessed. A clock fault preserves an existing date; new
 files without established RTC time retain SdFat's default date.
 
-Copy `/debug/trace_N.perfetto.json` from the SD card and choose **Open trace file** at
+Copy `/debug/<name>_trace_N.perfetto.json` from the SD card and choose **Open trace file** at
 [Perfetto](https://ui.perfetto.dev/). This is standard Chrome Trace Event JSON; no conversion is
 required. It contains nested `B/E` function slices, allocation/free/realloc/failure instants,
 heap measurements at every call entry and return, named memory checkpoints, observed objects,
@@ -355,7 +366,7 @@ not timing of allocator execution itself.
 Normal wakes append to the current sensor CSV, upload batch, and debug logs. LTE's `RSSI`
 column stays present while the modem is off: JSON null (serialized as `null` in the CSV) means
 there is no live reading, and packaging does not send an AT command in that state. Diagnostic
-`output_N.log` and `funcSummaries_N.log` use the fixed boot/session number instead of following
+`<name>_debug_N.log` and `<name>_funcSummaries_N.log` use the fixed boot/session number instead of following
 a CSV schema rotation. A reboot still starts a new session; genuine schema changes or failed
 CSV integrity checks still preserve the old file and select another rather than append
 misaligned or uncertain data.

@@ -128,6 +128,55 @@ void testNames() {
     assert(shared == 13);
 }
 
+void testDebugNames() {
+    using loomDebugFiles::Kind;
+    char path[loomDebugFiles::PATH_SIZE];
+    assert(loomDebugFiles::buildPath(path, sizeof(path), "Deploy_Test_", Kind::Text, 3));
+    assert(strcmp(path, "/debug/Deploy_Test_debug_3.log") == 0);
+    assert(loomDebugFiles::buildPath(path, sizeof(path), "WispBench", Kind::Summaries, 3));
+    assert(strcmp(path, "/debug/WispBench_funcSummaries_3.log") == 0);
+    assert(loomDebugFiles::buildPath(path, sizeof(path), "WispBench", Kind::TraceRecords, 3));
+    assert(strcmp(path, "/debug/WispBench_trace_3.ndjson") == 0);
+    assert(loomDebugFiles::buildPath(path, sizeof(path), "WispBench", Kind::TraceTimeline, 3));
+    assert(strcmp(path, "/debug/WispBench_trace_3.perfetto.json") == 0);
+    assert(loomDebugFiles::buildPath(path, sizeof(path), "../Bench / A_", Kind::Text, 3));
+    assert(strcmp(path, "/debug/___Bench___A_debug_3.log") == 0);
+    assert(loomDebugFiles::buildPath(path, sizeof(path), "", Kind::Text, 3));
+    assert(strcmp(path, "/debug/device_debug_3.log") == 0);
+
+    char maximum[loomDebugFiles::NAME_SIZE];
+    memset(maximum, 'a', sizeof(maximum) - 1);
+    maximum[sizeof(maximum) - 1] = '\0';
+    assert(loomDebugFiles::buildPath(path, sizeof(path), maximum, Kind::Summaries, INT_MAX));
+    assert(loomDebugFiles::buildPath(path, sizeof(path), maximum, Kind::TraceTimeline, INT_MAX));
+    assert(strlen(path) < sizeof(path));
+    char tooLong[loomDebugFiles::NAME_SIZE + 1];
+    memset(tooLong, 'a', sizeof(tooLong) - 1);
+    tooLong[sizeof(tooLong) - 1] = '\0';
+    assert(!loomDebugFiles::buildPath(path, sizeof(path), tooLong, Kind::Text, 3));
+    assert(path[0] == '\0');
+    char shortPath[8];
+    assert(!loomDebugFiles::buildPath(shortPath, sizeof(shortPath), "Wisp", Kind::Text, 3));
+    assert(shortPath[0] == '\0');
+    assert(!loomDebugFiles::buildPath(path, sizeof(path), "Wisp", Kind::Text, -1));
+    assert(path[0] == '\0');
+
+    int next = 0;
+    assert(loomSD::advanceDebugNumber("output_12.log", next, "Deploy_Test_"));
+    assert(loomSD::advanceDebugNumber("Deploy_Test_debug_20.log", next, "Deploy_Test_"));
+    assert(loomSD::advanceDebugNumber("DEPLOY_TEST_FUNCSUMMARIES_22.LOG", next, "Deploy_Test_"));
+    assert(loomSD::advanceDebugNumber("Deploy_Test_trace_30.ndjson", next, "Deploy_Test_"));
+    assert(loomSD::advanceDebugNumber("Deploy_Test_trace_33.perfetto.json", next, "Deploy_Test_"));
+    assert(next == 34); // Orphan diagnostics must reserve a new shared session.
+    assert(loomSD::advanceDebugNumber("Other_trace_99.ndjson", next, "Deploy_Test_"));
+    assert(loomSD::advanceDebugNumber("Deploy_Test_debug_.log", next, "Deploy_Test_"));
+    assert(loomSD::advanceDebugNumber("Deploy_Test_trace_99.ndjson.backup", next, "Deploy_Test_"));
+    assert(next == 34);
+    assert(!loomSD::advanceDebugNumber("Deploy_Test_debug_2147483647.log", next, "Deploy_Test_"));
+    assert(!loomSD::advanceDebugNumber("Deploy_Test_trace_99999999999999.ndjson", next, "Deploy_Test_"));
+    puts("PASS Manager/custom diagnostic names, safe bounds, legacy migration and orphan sessions");
+}
+
 void testClose() {
     for (int wroteAll = 0; wroteAll < 2; ++wroteAll) {
         for (int closed = 0; closed < 2; ++closed) {
@@ -413,6 +462,7 @@ void testRecoveryDirectory() {
 int main() {
     testRecords();
     testNames();
+    testDebugNames();
     testClose();
     testJson();
     testBatchCommit();

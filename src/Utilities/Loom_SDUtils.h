@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include "Loom_DebugFiles.h"
 
 enum class SDWriteStatus : uint8_t { NotAttempted, Saved, Failed, Rejected, Uncertain };
 struct SDLogResult {
@@ -224,6 +225,20 @@ inline bool advanceDebugNumber(const char *name, int &next) {
            advanceNumberedFile(name, "funcSummaries_", ".log", next) &&
            advanceNumberedFile(name, "trace_", ".ndjson", next) &&
            advanceNumberedFile(name, "trace_", ".perfetto.json", next);
+}
+
+// Retain legacy names during an upgrade, and also reserve numbers from the current
+// Manager/custom prefix when only diagnostics survive deletion of the data files.
+inline bool advanceDebugNumber(const char *name, int &next, const char *prefix) {
+    if (!advanceDebugNumber(name, next)) return false;
+    char base[loomDebugFiles::NAME_SIZE + 16];
+    const loomDebugFiles::Kind kinds[] = {loomDebugFiles::Kind::Text, loomDebugFiles::Kind::Summaries,
+                                          loomDebugFiles::Kind::TraceRecords, loomDebugFiles::Kind::TraceTimeline};
+    for (auto kind : kinds) {
+        if (!loomDebugFiles::buildBase(base, sizeof(base), prefix, kind) ||
+            !advanceNumberedFile(name, base, loomDebugFiles::suffix(kind), next)) return false;
+    }
+    return true;
 }
 
 inline bool isHistoricalBatch(const char *name, const char *base, int sessionNumber) {

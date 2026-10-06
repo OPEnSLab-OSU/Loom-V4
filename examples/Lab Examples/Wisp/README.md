@@ -1,5 +1,7 @@
 # Wisp sketches
 
+See the [short debug flag reference](DEBUG-FLAGS.md) for Serial text, SD logs, memory reports, and heap tracing.
+
 Each example has a quiet sketch and a separate Arduino sketch ending in `_debug`.
 Open the `.ino` that matches the enclosing folder name; do not combine the two variants
 in one Arduino sketch folder.
@@ -11,7 +13,7 @@ in one Arduino sketch folder.
 | `WispV2_Deploy_2026/WispV2_Deploy_2026.ino` | `WispV2_Deploy_2026_debug/WispV2_Deploy_2026_debug.ino` |
 
 The quiet variants omit memory checkpoints, mux scans, SD write traces, JSON display,
-and `/debug/output_N.log` logging. They suppress the logger's `DEBUG` messages and skip
+and `/debug/<name>_debug_N.log` logging. They suppress the logger's `DEBUG` messages and skip
 the serial-console wait at boot. Warnings, errors, and existing direct hardware status
 messages remain available. CSV records and MQTT batch records are still saved normally.
 
