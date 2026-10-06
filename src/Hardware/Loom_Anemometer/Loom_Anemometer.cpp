@@ -33,7 +33,7 @@ Loom_Anemometer::Loom_Anemometer(Manager& man) : Module("Loom_Anemometer"), manI
 
 void Loom_Anemometer::initialize(){
     LOG(F("Initializing Loom Anemometer"));
-    anemometer.setADCResolutionBits(10);
+    anemometer.setADCResolutionBits(12);
 
     anemometer.begin();
 
