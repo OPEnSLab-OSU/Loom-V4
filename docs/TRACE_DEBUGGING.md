@@ -194,6 +194,16 @@ recorder ownership. Manual capture retains explicit save boundaries: put
 Use either manual capture or the automatic adapter for a session. Hypnos already flushes
 before disabling SD and resumes after SD is ready on wake in both cases.
 
+For full debug sketches needing both detailed Serial memory reports and trace snapshots,
+include `Diagnostics/Loom_DebugSketch.h` instead of the trace-only header, after defining
+`LOOM_DEBUG_MEMORY` and the trace flags. Declare a `Loom_MemoryDiagnostics` reporter inside
+`#if LOOM_DEBUG_MEMORY`. Use `LOOM_DEBUG_BEGIN_CYCLE(reporter)` and
+`LOOM_DEBUG_CHECKPOINT(reporter, "Phase label", document, batchCount)` to route one phase to
+the enabled outputs. Labels must be static string literals. With memory reports disabled,
+the reporter/document/batch arguments are not evaluated, and no reporter object is needed.
+These are shared Loom helpers with explicit context; no Wisp-specific wrapper code is needed.
+Use the mux/SD diagnostic methods directly inside their own flag guards.
+
 Set `LOOM_TRACE_HEAP=0` for calls, observed objects and allocator totals alone. With it set
 to one, ordinary IDE uploads capture allocation/free/reallocation events when the heap companion
 is installed. The portable launcher also follows these flags; alternatively select heap mode

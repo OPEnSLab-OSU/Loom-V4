@@ -41,6 +41,8 @@ foreach ($test in $tests) {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'fakes') + '"'
     } elseif ($test.BaseName -eq 'test_as5311') {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'as5311_fakes') + '"'
+    } elseif ($test.BaseName -eq 'test_debug_sketch') {
+        $fakeIncludes = '/I"' + (Join-Path $sourceDir 'debug_sketch_fakes') + '"'
     } elseif ($test.BaseName -eq 'test_trace_auto') {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'trace_auto_fakes') + '" /I"' + (Join-Path $sourceDir 'manager_fakes') + '" /I"' + $jsonIncludes + '"'
     } elseif ($test.BaseName -eq 'test_trace') {
@@ -55,6 +57,11 @@ foreach ($test in $tests) {
         }
     }
     $command = "call `"$vcVars`" >nul && cl /nologo /EHsc /std:c++14 /Zc:__cplusplus /D_CRT_SECURE_NO_WARNINGS /W4 /UNDEBUG $fakeIncludes /I`"$loomIncludes`" `"$($test.FullName)`" /Fe:`"$testExe`" /Fo:`"$testObj`" && $runCommands"
+    if ($test.BaseName -eq 'test_debug_sketch') {
+        foreach ($flags in @('/DLOOM_TRACE=1 /DLOOM_DEBUG_MEMORY=0', '/DLOOM_TRACE=0 /DLOOM_DEBUG_MEMORY=1', '/DLOOM_TRACE=1 /DLOOM_DEBUG_MEMORY=1')) {
+            $command += " && cl /nologo /EHsc /std:c++14 /W4 /UNDEBUG $flags $fakeIncludes /I`"$loomIncludes`" `"$($test.FullName)`" /Fe:`"$testExe`" /Fo:`"$testObj`" && `"$testExe`""
+        }
+    }
     & $env:ComSpec /d /s /c $command 2>&1 | Tee-Object -FilePath $log
     if ($LASTEXITCODE -ne 0) {
         $failed += $test.BaseName

@@ -16,7 +16,7 @@ Use the two together when investigating a problem: the trace shows **when a call
 
 Turning trace off affects the structured files. Turning DEBUG text off affects routine Logger messages, displayed JSON and any opted-in function summaries. The detailed Serial reports have their own switches. Neither switch silences every direct `Serial.print` in Loom or a sensor driver. Trace startup still reports its actual capture paths. All diagnostic writes add overhead; normal sensor CSV and MQTT batches use their existing paths regardless of these controls.
 
-All output controls now live together at the top of each sketch. Defaults are preserved: minimal sketches keep both text controls at `0`; full sketches keep them at `1`. V2 full starts with trace/heap enabled, while the two batch full examples leave trace/heap off until requested.
+All output controls live together at the top of each sketch. Minimal sketches keep both text controls at `0`; full sketches keep them at `1`. All saved full debug examples now start with `LOOM_TRACE=1` and `LOOM_TRACE_HEAP=1`, including the direct-sensor and mux batch examples. Set those flags to `0` for a trace-off comparison.
 
 ## Ready-to-use combinations
 
@@ -84,7 +84,16 @@ The existing `*_debug` sketches keep the detailed phase checkpoints and helper f
 | `LOOM_DEBUG_SD_WRITES` | Verbose SD write decisions/results |
 | `LOOM_DEBUG_PRINT_SAMPLES` | Pretty-printed sensor JSON; needs `LOOM_DEBUG_TEXT=1` and is independent of the diagnostic default |
 
-The memory/mux/SD flags default to `LOOM_DEBUG_DIAGNOSTICS`, preserving the existing full-debug behavior. Set that default to `0`, then explicitly enable only the layer you need. Set sample printing to `0` separately. One `WISP_DIAGNOSTIC_CHECKPOINT("After measuring sensors")` now sends the same phase label to both outputs: a detailed Serial report when `MEMORY=1`, and a trace RAM snapshot when `TRACE=1`. Either or both can be enabled without duplicating calls. Before trace startup, only the enabled Serial memory report runs. Bench-specific trace-only markers and values remain explicit.
+The memory/mux/SD flags default to `LOOM_DEBUG_DIAGNOSTICS`, preserving the existing full-debug behavior. Set that default to `0`, then explicitly enable only the layer you need. Set sample printing to `0` separately. Full sketches include the shared `Diagnostics/Loom_DebugSketch.h`; there are no local Wisp diagnostic wrapper functions or macros.
+
+```cpp
+LOOM_DEBUG_CHECKPOINT(memoryDiagnostics, "After measuring sensors",
+                      manager.getDocument(), batchSD.getCurrentBatch());
+```
+
+This one Loom call sends the phase label to both enabled outputs: a detailed Serial report when `MEMORY=1`, and a trace RAM snapshot when `TRACE=1`. Context is explicit, so the helper works with other managers, documents, and batch controllers too. With memory reports off, the reporter/document/batch arguments are not evaluated and the reporter object can be omitted. `LOOM_DEBUG_BEGIN_CYCLE(memoryDiagnostics)` applies the same memory flag. Keep phase labels as static string literals. Before trace startup, only the enabled Serial memory report runs. Bench-specific trace-only markers and values remain explicit.
+
+Mux and SD setup use the native calls `mux.setDebug(true)`, `mux.setScanDebug(true)`, and `hypnos.getSDManager()->setWriteDebug(true)` inside their flag guards. The shared header replaces the repeated checkpoint flag logic; it does not own the hardware or change sensor settings.
 
 Full sketches default to routine DEBUG text and an SD Logger copy. Use the two explicit text switches to control those alongside the extra report flags. V2 full debug limits compiled mux drivers with `LOOM_MUX_COMPILED_ADDRESSES`, whereas its deployment/minimal siblings use the normal full driver bundle; use `-MuxDrivers all` for both when comparing build sizes, or apply the same compiled address list to both.
 
@@ -95,6 +104,8 @@ Full sketches use the same `LOOM_TRACE_ATTACH` adapter as the minimal versions. 
 The manual `LOOM_TRACE_RECORDER` / `LOOM_TRACE_BEGIN` API remains available for other sketches needing custom recorder ownership. Manual capture does not enable automatic saves. Use either manual capture or `LOOM_TRACE_ATTACH` for a session, rather than combining them.
 
 **V2 full-debug workload:** the V2 full sketch additionally writes and verifies `loom_sleep_settings.json`, advances through 3/10/30-minute stages (five verified wakes each), then sleeps at a two-hour cadence indefinitely. `prepareSleepSettings`, `reportSavedSampleCadence`, and `waitForScheduledWake` implement the bench schedule, saved timestamp checks, and RTC wake validation. These helpers remain active even with all trace/diagnostic flags off. This differs from the minimal version's ordinary five-minute sleep: use matching workloads for strict timing comparisons. Trace flags select capture, not the bench schedule.
+
+The separately saved debug copy inside the ordinary `WispV2_Deploy_2026` folder keeps its original five-minute soak workload. It now uses the same grouped controls, automatic attachment, full heap trace, object labels, and shared checkpoints. Its A0 input, address list (`0x74, 0x6B, 0x44, 0x45, 0x36, 0x49, 0x29`) and port filter (`0, 1, 2, 5, 6, 7`) remain intact. The library V2 staged example keeps its own address list (`0x74, 0x15, 0x6B, 0x44`) and hardware-discovered ports. Sharing diagnostic setup does not copy sensor wiring or sleep workloads between these variants.
 
 ## Build and inspect
 

@@ -1,17 +1,17 @@
-param([string] $DeploymentFolder)
+param([string[]] $DeploymentFolder)
 
 $ErrorActionPreference = 'Stop'
 $loomRoot = Split-Path -Parent $PSScriptRoot
 $wispRoot = Join-Path $loomRoot 'examples\Lab Examples\Wisp'
-foreach ($header in @('src\Logger.h', 'src\Diagnostics\Loom_MemoryDiagnostics.h')) {
+foreach ($header in @('src\Logger.h', 'src\Diagnostics\Loom_MemoryDiagnostics.h', 'src\Diagnostics\Loom_DebugSketch.h')) {
     if (-not (Test-Path -LiteralPath (Join-Path $loomRoot $header) -PathType Leaf)) {
         throw "Missing canonical debug header: $header"
     }
 }
 $sketches = @(Get-ChildItem -LiteralPath $wispRoot -Filter '*.ino' -Recurse |
     Where-Object { $_.FullName -notmatch '[\\/]\.loom-build[\\/]' })
-if ($DeploymentFolder) {
-    $sketches += Get-ChildItem -LiteralPath $DeploymentFolder -Filter '*.ino' -Recurse |
+foreach ($savedFolder in $DeploymentFolder) {
+    $sketches += Get-ChildItem -LiteralPath $savedFolder -Filter '*.ino' -Recurse |
         Where-Object { $_.FullName -notmatch '[\\/]\.loom-build[\\/]' }
 }
 if ($sketches.Count -lt 6) { throw 'Expected all three clean/debug Wisp pairs.' }
@@ -38,7 +38,7 @@ foreach ($sketch in $sketches) {
         throw "Arduino must discover Loom before its nested diagnostic headers: $($sketch.FullName)"
     }
     if ($sketch.BaseName.EndsWith('_debug_minimal')) {
-        if ($text -match 'WISP_DIAGNOSTIC_|Loom_MemoryDiagnostics|executionTrace|manager\.display_data\(|LOOM_TRACE_RECORDER|LOOM_TRACE_BEGIN|LOOM_TRACE_SAVE_ON_RETURN|LOOM_TRACE_FLUSH|LOOM_TRACE_CHECKPOINT') {
+        if ($text -match 'WISP_DIAGNOSTIC_|Loom_MemoryDiagnostics|Loom_DebugSketch|LOOM_DEBUG_CHECKPOINT|executionTrace|manager\.display_data\(|LOOM_TRACE_RECORDER|LOOM_TRACE_BEGIN|LOOM_TRACE_SAVE_ON_RETURN|LOOM_TRACE_FLUSH|LOOM_TRACE_CHECKPOINT') {
             throw "Manual/full diagnostics escaped into the automatic minimal sketch: $($sketch.FullName)"
         }
         if (-not $text.Contains('Logger::getInstance()->setDebugOutput(LOOM_DEBUG_TEXT != 0)') -or
@@ -55,7 +55,7 @@ foreach ($sketch in $sketches) {
         continue
     }
     if (-not $sketch.BaseName.EndsWith('_debug')) {
-        if ($text -match 'LOOM_BETA_DIAGNOSTIC|WISP_DIAGNOSTIC_|Loom_MemoryDiagnostics|LOOM_WISP_TRACE|WISP_TRACE_|executionTrace|ENABLE_SD_LOGGING|manager\.display_data\(') {
+        if ($text -match 'LOOM_BETA_DIAGNOSTIC|WISP_DIAGNOSTIC_|Loom_MemoryDiagnostics|Loom_DebugSketch|LOOM_DEBUG_CHECKPOINT|LOOM_WISP_TRACE|WISP_TRACE_|executionTrace|ENABLE_SD_LOGGING|manager\.display_data\(') {
             throw "Debug instrumentation escaped into the quiet sketch: $($sketch.FullName)"
         }
         if (-not $text.Contains('Logger::getInstance()->setDebugOutput(false)')) {
@@ -65,8 +65,9 @@ foreach ($sketch in $sketches) {
         continue
     }
 
-    if ($text -notmatch '(?m)^\s*#include\s*[<"]Diagnostics/Loom_MemoryDiagnostics\.h[>"]') {
-        throw "Debug sketch must explicitly include the canonical diagnostic header: $($sketch.FullName)"
+    if ($text -notmatch '(?m)^\s*#include\s*[<"]Diagnostics/Loom_DebugSketch\.h[>"]' -or
+        $text -match 'WISP_DIAGNOSTIC_|WISP_SERIAL_MEMORY') {
+        throw "Debug sketch must use shared Loom helpers without local Wisp wrappers: $($sketch.FullName)"
     }
     $inside = $false
     $begins = 0
@@ -83,10 +84,10 @@ foreach ($sketch in $sketches) {
             $ends++
         } elseif (-not $inside) {
             $code = ($line -split '//', 2)[0]
-            if ($code -cmatch 'memoryDiagnostics|LOOM_WISP_BETA_DIAGNOSTICS') {
+            if ($code -cmatch 'memoryDiagnostics\.(checkpoint|beginCycle)|Loom_MemoryDiagnostics memoryDiagnostics|LOOM_WISP_BETA_DIAGNOSTICS') {
                 throw "Diagnostic implementation outside its block: $($sketch.FullName)"
             }
-            if ($line.Contains('WISP_DIAGNOSTIC_')) {
+            if ($code -match 'LOOM_DEBUG_(CHECKPOINT|BEGIN_CYCLE)\(|mux\.set(Debug|ScanDebug)\(true\)|hypnos\.getSDManager\(\)->setWriteDebug\(true\)') {
                 if (-not $line.Contains('// LOOM_BETA_DIAGNOSTIC')) {
                     throw "Untagged diagnostic call: $($sketch.FullName)"
                 }
@@ -106,7 +107,7 @@ foreach ($sketch in $sketches) {
     }
     if (-not $text.Contains('Logger::getInstance()->setDebugOutput(LOOM_DEBUG_TEXT != 0)') -or
         $text -notmatch '#if LOOM_DEBUG_SD_LOG\s+ENABLE_SD_LOGGING;\s+#endif' -or
-        $text -notmatch '#define WISP_DIAGNOSTIC_CHECKPOINT\(phaseLabel\)[\s\S]*?WISP_SERIAL_MEMORY_CHECKPOINT\(phaseLabel\);[\s\S]*?LOOM_TRACE_CHECKPOINT\(phaseLabel\);') {
+        $text -notmatch 'LOOM_DEBUG_CHECKPOINT\(memoryDiagnostics, "[^"\r\n]+", manager\.getDocument\(\), batchSD\.getCurrentBatch\(\)\)') {
         throw "Debug sketch lost its explicit text controls or shared checkpoint: $($sketch.FullName)"
     }
     if (([regex]::Matches($text, 'LOOM_TRACE_ATTACH\(manager, hypnos\)').Count -ne 1) -or

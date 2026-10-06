@@ -184,6 +184,16 @@ manifest needed to restore its instrumentation.
 Checks that quiet Wisp sketches contain no added telemetry or SD debug logging, `_debug`
 sketches retain compile-gated, tagged diagnostics, and both retain production watchdog/retry
 coverage. Both Wisp checks accept `-DeploymentFolder` to check the active deployment pair too.
+The diagnostic boundary check also accepts an array of saved sketch roots, so the older
+five-minute debug copy and the separate staged V2 debug folder can be checked together:
+
+```powershell
+.\verify_wisp_diagnostic_boundaries.ps1 -DeploymentFolder @(
+    "$env:USERPROFILE/Documents/Arduino/WispV2_Deploy_2026",
+    "$env:USERPROFILE/Documents/Arduino/WispV2_Deploy_2026_debug"
+)
+```
+
 The marker policy is defined in
 [Loom style guide](../docs/STYLE_GUIDE.md).
 
@@ -374,3 +384,9 @@ startup/append failure. Its runner uses separate processes for each boot scenari
 `test_trace_attach_off` verifies that trace-off attachment evaluates neither argument and
 needs no recorder symbols. Wisp boundary checks accept both automatic full and minimal
 sketches while checking that their production safeguards remain present.
+
+`test_debug_sketch` compiles the production shared checkpoint header in all four
+trace/memory flag combinations. It checks consistent labels, single document/batch evaluation
+for Serial reports, and no argument evaluation or reporter requirement when those reports
+are disabled. Wisp sources must use the shared Loom header and native mux/SD methods;
+local Wisp diagnostic wrappers are rejected.
