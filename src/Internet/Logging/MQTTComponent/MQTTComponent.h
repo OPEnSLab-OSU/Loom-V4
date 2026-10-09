@@ -30,7 +30,7 @@ class MQTTComponent : public Module{
          *
          * @return The status of the publish attempt
         */
-        bool publishMessage(const char* topic, const char* message, bool retain = false, int qos = 2);
+        bool publishMessage(const char* topic, const char* message, bool retain = false, int qos = 1);
 
         /**
          * Subscribe to a given topic to get the retained message and then immediately unsubscribe
