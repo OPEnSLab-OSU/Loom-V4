@@ -10,7 +10,8 @@
 
 #include <SDI12.h>
 
-#define RESPONSE_SIZE 50
+#define RESPONSE_SIZE 81
+#define IDENTIFICATION_RESPONSE_SIZE 36
 
 
 /**
@@ -39,12 +40,12 @@ class Loom_SDI12 : public Module{
         /* The following methods are intended for manual usage, outside of the Loom framework*/
 
         const char* getSensorInfo(char addr);                   // Get the info of the connected sensor
-        std::vector<char> getInUseAddresses();                  // Get a list of the in use addresses
+        void getInUseAddresses();                  // Get a list of the in use addresses
 
-        void sendCommand(char response[RESPONSE_SIZE], char addr, const char* command);     // Sends the given command to the given sensor on the bus and returns the result
-        void requestSensorInfo(char response[RESPONSE_SIZE], char addr);                    // Request Information about the connected SDI12 sensor
+        void sendCommand(char* response, char addr, const char* command);     // Sends the given command to the given sensor on the bus and returns the result
+        void requestSensorInfo(char* response, char addr);                    // Request Information about the connected SDI12 sensor
         void getData(char addr);                                // Get the data from the connected sensor
-        std::vector<char> scanAddressSpace();                   // Scans over the SDI-12 address space and returns a list of in-use addresses
+        void scanAddressSpace();                   // Scans over the SDI-12 address space and returns a list of in-use addresses
 
         float getTemperature() { return sensorData[0]; };       // Temperature of the soil
         float getDielectricPerm() { return sensorData[1]; };    // Dielectric Permittivity of the soil
@@ -55,15 +56,25 @@ class Loom_SDI12 : public Module{
 
         SDI12 sdiInterface;                                     // SDI-12 Library Interface
 
-        int sensorTracker = 0;                                  // If we have multiple SDI-12 sensors on one bus we need to distinguish them in the json so increment a counter per
-
-        float sensorData[3];                                    // Array of floats to store sensor data
-        std::vector<char> inUseAddresses;                       // List of address that have SDI_12 sensors connected
-        std::vector<char*> sensorNames;                         // List of strings of sensor names
-
-        std::map<char, const char*> addressToType;              // Maps an SDI12 device address to a device type
-
         void readResponse(char response[RESPONSE_SIZE]);                   // Reads and returns the sensor's response to the command
         bool checkActive(char addr);                            // Checks if the current address is actually being used
+
+        struct SensorInfo{
+            char address;
+            // <addr>I! will have a field with 7 char maximum sensor name
+            char sensor_name[7];
+            // <addr>M! will send up to 9 measurements in compliance with SDI-12 v1.4 standard
+            float measurements[9];
+            // varies by sensor. Response after sending <addr>M! will be 
+            // <addr><wait time><measurement count>, which looks something like 00013 - address 0, 1 second, 3 measurements
+            int wait_time;
+        };
+
+        size_t num_sensors = 0;
+        // arbitrary limit on how many SDI-12 devices we can have connected at one time
+        SensorInfo registered_sensors[10];
+
+
+
         
 };

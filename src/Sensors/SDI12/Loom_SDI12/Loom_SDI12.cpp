@@ -24,18 +24,13 @@ void Loom_SDI12::initialize(){
     delay(100);
 
     // Create a list of addresses that have a sensor connected to them
-    inUseAddresses = scanAddressSpace();
+    scanAddressSpace();
 
     // Request the sensor data from all connected devices to pull the sensor name
-    for(int i = 0; i < inUseAddresses.size(); i++){
-        char* response = (char*) malloc(sizeof(char) * RESPONSE_SIZE);
-        memset(response, '\0', RESPONSE_SIZE);
-        requestSensorInfo(response, inUseAddresses[i]);
-        addressToType.insert(std::pair<char, const char*>(inUseAddresses[i], response));
-
-        // Allocate string of size 100 for each SDI device to store a name
-        sensorNames.push_back((char*) malloc(sizeof(char) * 100));
-        memset(sensorNames[i], '\0', 100);
+    for(int i = 0; i < num_sensors; i++){
+        char response[IDENTIFICATION_RESPONSE_SIZE];
+        requestSensorInfo(registered_sensors[i]);
+        
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -98,46 +93,46 @@ void Loom_SDI12::power_down(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-std::vector<char> Loom_SDI12::scanAddressSpace(){
-    std::vector<char> activeSensors;
+void Loom_SDI12::scanAddressSpace(){
     char output[OUTPUT_SIZE];
 
     // Print the module name followed by the message saying please wait
-    LOG(F("Scanning SDI-12 Address Space this make take a little while..."));
+    LOG(F("Scanning SDI-12 Address Space this may take a little while..."));
 
     // Scan over the characters that can be used as addresses for refrencing the sensors
 	for (char i = '0'; i <= '9'; i++){
 		if(checkActive(i)){
-			activeSensors.push_back(i);
+			registered_sensors[num_sensors].address = i;
+            num_sensors++;
 		}
 	}
 
 	for(char i = 'a'; i <= 'z'; i++){
 		if(checkActive(i)){
-			activeSensors.push_back(i);
+			registered_sensors[num_sensors].address = i;
+            num_sensors++;
 		}
 	}
 
 	for (char i = 'A'; i <= 'Z'; i++){
 		if(checkActive(i)){
-			activeSensors.push_back(i);
+			registered_sensors[num_sensors].address = i;
+            num_sensors++;
 		}
 	}
 
     // Check if we actually found any connected devices
-    if(activeSensors.size() > 0){
+    if(num_sensors > 0){
         // Print the module name followed by the message saying please wait
         LOG(F("== We found the following active Addresses =="));
-        for(int i = 0; i < activeSensors.size(); i++){
-            snprintf(output, OUTPUT_SIZE, "    Address: %c", activeSensors[i]);
+        for(int i = 0; i < num_sensors; i++){
+            snprintf(output, OUTPUT_SIZE, "    Address: %c", registered_sensors[i].address);
             LOG(output); 
         }
     }
     else{
         LOG(F("== No SDI-12 Devices Were Discovered == "));
     }
-
-    return activeSensors;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -175,7 +170,7 @@ void Loom_SDI12::sendCommand(char response[RESPONSE_SIZE], char addr, const char
     memset(output, '\0', 25);
     snprintf(output, 25, "%c%s", addr, command);
     sdiInterface.sendCommand(output);
-    delay(30);
+    delay(20);
     readResponse(response);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -200,7 +195,7 @@ void Loom_SDI12::readResponse(char response[RESPONSE_SIZE]){
         }
 
         index++;
-        delay(20); // SDI-12 is slow so we need to wait after each character
+        delay(10); // SDI-12 is 1200 baud, expect a new character after roughly 8 milliseconds, we round up to 10
     }
 
     // Replace the carriage return with a null-byte
@@ -212,7 +207,7 @@ void Loom_SDI12::readResponse(char response[RESPONSE_SIZE]){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_SDI12::requestSensorInfo(char response[RESPONSE_SIZE], char addr){
+void Loom_SDI12::requestSensorInfo(char* response, char addr){
     sendCommand(response, addr, "I!");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
