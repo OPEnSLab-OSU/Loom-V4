@@ -81,8 +81,6 @@ void SDManager::writeHeaders(){
         }
     }
 
-    strncat(header2, "checksum,", 512);
-
     // Write the headers to the file
     myFile.println(header1);
     myFile.println(header2);
@@ -105,8 +103,9 @@ bool SDManager::log(DateTime currentTime){
                 lastClosed = currentTime.day();
             }
             
-            // Prefix stays in output so it's included in the checksum
             snprintf_P(output, MAX_JSON_SIZE, PSTR("%s,%i,"), manInst->get_device_name(), manInst->get_instance_num());
+            myFile.print(output);
+            memset(output, '\0', MAX_JSON_SIZE);
 
             JsonObject document = manInst->getDocument().as<JsonObject>();
 
@@ -145,39 +144,19 @@ bool SDManager::log(DateTime currentTime){
                 }
             }
 
-            // Checksum over the whole row including prefix, appended as ",N"
-            uint16_t checksum = 0;
-            for(size_t i = 0; i < strlen(output); i++){
-                checksum += (uint8_t)output[i];
-            }
-            char checksumString[8];
-            snprintf(checksumString, sizeof(checksumString), ",%u", checksum);
-            safeAppend(output, sizeof(output), checksumString);
-
             myFile.println(output);
+
+            // Flush without closing; only close/reopen once per day
             myFile.sync();
 
             if(currentTime.day() != lastClosed){
-                if(verifyChecksum(myFile)){
-                    myFile.close();
-                    myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
-                }
-                else{
-                    myFile.close();
-                    if(root.open("/", O_RDONLY)){
-                        updateCurrentFileName();
-                        myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
-                    }
-                    else{
-                        ERROR(F("Failed to open root for file rotation"));
-                    }
-                }
+                myFile.close();
+                myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
                 lastClosed = currentTime.day();
             }
 
             snprintf_P(output, MAX_JSON_SIZE, PSTR("Successfully logged data to %s"), fileName);
             LOG(output);
-            
         }
         else{
             printModuleName("Failed to open log file!");
@@ -185,7 +164,6 @@ bool SDManager::log(DateTime currentTime){
 
         if(batch_size > 0)
             logBatch();
-        
     }
     else{
         printModuleName("Failed to log! SD card not Initialized!");
