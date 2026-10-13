@@ -89,6 +89,8 @@ void SDManager::writeHeaders(){
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool SDManager::log(DateTime currentTime){
     char output[MAX_JSON_SIZE + 1];
     
@@ -97,24 +99,17 @@ bool SDManager::log(DateTime currentTime){
         // File should already be open from begin()
         if(myFile){
             
-            // If this file has never been written to before we need to create and write the proper headers to the file
             if(myFile.size() <= 3){
-                // Set the date created timestamp of the File
                 myFile.timestamp(T_CREATE, currentTime.year(), currentTime.month(), currentTime.day(), currentTime.hour(), currentTime.minute(), currentTime.second());
-                
                 writeHeaders();
                 lastClosed = currentTime.day();
             }
             
+            // Prefix stays in output so it's included in the checksum
             snprintf_P(output, MAX_JSON_SIZE, PSTR("%s,%i,"), manInst->get_device_name(), manInst->get_instance_num());
-            
-            // Write the Instance data that isn't included in the JSON packet
-            myFile.print(output);
-            memset(output, '\0', MAX_JSON_SIZE); // Clear array
 
             JsonObject document = manInst->getDocument().as<JsonObject>();
 
-            // If there is a key that contains timestamp data when need to include that separately 
             if(document.containsKey("timestamp")){
                 char utcArr[21];
                 char localArr[21];
@@ -123,15 +118,12 @@ bool SDManager::log(DateTime currentTime){
                 strncpy(utcArr, document["timestamp"]["time_utc"].as<const char*>(), 21);
                 strncpy(localArr, document["timestamp"]["time_local"].as<const char*>(), 21);
 
-                // Format date with spaces when logging to SD
                 char *indexPointer = strchr(utcArr, 'Z');
                 if(indexPointer != nullptr){
                     utcArr[10] = ' ';
                     utcArr[indexPointer-utcArr] = '\0';
                 }
 
-                
-                // Format date with spaces when logging to SD
                 indexPointer = strchr(localArr, 'Z');
                 if(indexPointer != nullptr){
                     localArr[10] = ' ';
@@ -143,35 +135,46 @@ bool SDManager::log(DateTime currentTime){
                 safeAppend(output, sizeof(output), localArr);
                 safeAppend(output, sizeof(output), ",");
             }
-            
 
-            // Get the contents containing the reset of the sensor data
             JsonArray contentsArray = document["contents"].as<JsonArray>();
 
-            // Loop over each 
             for(JsonVariant v : contentsArray) {
-
-                // Get all JSON keys  
                 for(JsonPair keyValue : v.as<JsonObject>()["data"].as<JsonObject>()){
                     safeAppend(output, sizeof(output), keyValue.value().as<String>().c_str());
                     safeAppend(output, sizeof(output), ",");
                 }
             }
 
-            // Write the matching data into the CSV file
-            myFile.println(output);
+            // Checksum over the whole row including prefix, appended as ",N"
+            uint16_t checksum = 0;
+            for(size_t i = 0; i < strlen(output); i++){
+                checksum += (uint8_t)output[i];
+            }
+            char checksumString[8];
+            snprintf(checksumString, sizeof(checksumString), ",%u", checksum);
+            safeAppend(output, sizeof(output), checksumString);
 
-            // Flush without closing, only actually close/reopen at EOD.
+            myFile.println(output);
             myFile.sync();
 
-            // End of day check instead of closing on every log() call 
             if(currentTime.day() != lastClosed){
-                myFile.close();
-                myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
+                if(verifyChecksum(myFile)){
+                    myFile.close();
+                    myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
+                }
+                else{
+                    myFile.close();
+                    if(root.open("/", O_RDONLY)){
+                        updateCurrentFileName();
+                        myFile = sd.open(fileName, O_RDWR | O_CREAT | O_APPEND);
+                    }
+                    else{
+                        ERROR(F("Failed to open root for file rotation"));
+                    }
+                }
                 lastClosed = currentTime.day();
             }
 
-            // Inform the user that we have successfully written to the file
             snprintf_P(output, MAX_JSON_SIZE, PSTR("Successfully logged data to %s"), fileName);
             LOG(output);
             
@@ -180,7 +183,6 @@ bool SDManager::log(DateTime currentTime){
             printModuleName("Failed to open log file!");
         }
 
-        // If we want to log batch data do so
         if(batch_size > 0)
             logBatch();
         
@@ -188,71 +190,6 @@ bool SDManager::log(DateTime currentTime){
     else{
         printModuleName("Failed to log! SD card not Initialized!");
     }
-     
-    
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-bool SDManager::verifyChecksum(File &myFile) {
-    myFile.seekSet(0);
-    char lineBuf[MAX_JSON_SIZE];
-    int lineIndex = 0;
-    int lineCount = 0;
-
-    while (myFile.available()) {
-        // Go through every char in file
-        char c = myFile.read();
-
-        // Never let WD timer reset while reading/verifying file
-        WD_TIMER_RESET;
-
-        // When we hit a new line, we start evaluating
-        if (c == '\n') {
-            lineBuf[lineIndex] = '\0';
-
-            // Find last comma = checksum, don't evaluate on the checksum number since it is point
-            // of reference
-            char *checksumComma = strrchr(lineBuf, ',');
-
-            lineCount++;
-
-            // Skip headers in csv
-            if (lineCount > 4) {
-                if (checksumComma != nullptr) {
-                    // Get the value to compare to
-                    uint16_t actualChecksum = atoi(checksumComma + 1);
-
-                    *checksumComma = '\0';
-
-                    // Go through the lineBuf (one line in csv) and manually add checksum
-                    uint16_t lineChecksum = 0;
-                    for (int i = 0; i < strlen(lineBuf); i++) {
-                        lineChecksum += (uint8_t)lineBuf[i];
-                    }
-
-                    // Compare actual checksum to computed checksum, if fails then file is corrupted
-                    if (actualChecksum != lineChecksum) {
-                        char buf[64];
-                        snprintf(buf, 64, "Error: Checksum Failed at Line %i", lineCount);
-                        ERROR(buf);
-                        return false;
-                    }
-                }
-            }
-            // Reset for next line
-            lineIndex = 0;
-            memset(lineBuf, '\0', MAX_JSON_SIZE);
-        }
-        // When not at endline, just keep adding to lineBuf that will represent array of csv
-        // characters
-        else {
-            lineBuf[lineIndex++] = c;
-        }
-    }
-    // If verification passes, file is not corrupted
-    printModuleName("Checksum Passed");
-    return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
