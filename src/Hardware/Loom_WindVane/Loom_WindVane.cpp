@@ -1,20 +1,13 @@
 #include "Loom_WindVane.h"
- 
-/* 
-Anonymous namespace: everything in here has internal linkage, meaning it's visible only
-in this .cpp file. That keeps these constants from clashing with identically named
-things elsewhere in the project, and it hides implementation details from other files.
-*/
-namespace {
- 
 
+namespace {
 //Nominal 12-bit ADC readings for North clockwise, based on the 10k pull-down.
 const uint16_t DIRECTION_ADC_VALUES[] = {
     955, 2475, 2255, 3766, 3730, 3836, 3362, 3595,
     2950, 3121, 1580, 1700, 320, 790, 550, 1290
 };
 const uint16_t MAX_ADC_DEVIATION = 25;
- 
+
 // 360 / 16 positions. A float so the multiplication below gives fractional degrees.
 const float DEGREES_PER_DIRECTION = 22.5f;
 }
