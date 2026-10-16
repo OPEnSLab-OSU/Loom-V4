@@ -1,52 +1,62 @@
 #pragma once
-
+ 
+#include <stdint.h>
+ 
 #include "Loom_Manager.h"
-#include "SparkFun_Weather_Meter_Kit_Arduino_Library.h"
-#include "../../Sensors/Loom_Analog/Loom_Analog.h"
-
-#define MPH_CONVERSION 0.621371
-#define INCHES_CONVERSION 25.4
-
-class Loom_Anemometer: public Module {
-    public:
-        // constructor 
-        Loom_Anemometer(Manager& manInst, int windPin, int speedPin, int rainfallPin);
-        // default constructor, leaves module uninitialized
-        Loom_Anemometer(Manager& manInst);
-
-        void initialize() override;
-        void measure() override;
-        void package() override;
-        void power_up() override {};
-        void power_down() override {};
-
-    private:
-
-        float kph_to_mph(float kmh);
-        float mm_to_inches(float mm);
-
-        Manager* manInst;
-        // assigned data pins for each sensor on the weather meter kit
-        int wind_pin;
-        int speed_pin;
-        int rainfall_pin;
-        // weaether meter kit values
-        float windspeed_mph = 0;
-        float windspeed_kph = 0;
-        // wind direction in degrees
-        float wind_direction = 0;
-        // rainfall in mm and inches
-        float rainfall_mm = 0;
-        float rainfall_inches = 0;
-        // if we want to use the tipping bucket on the weather meter kit. False
-        // implies we are going to use the Loom_TippingBucket
-        bool measure_rainfall = false;
-        // SFE weather kit object. Need to pass alues, so all zeros. 
-        // doesnt matter what pins until we call begin()
-        SFEWeatherMeterKit anemometer = SFEWeatherMeterKit(0,0,0);
-        // parameters to pass to external Weather Kit library. Allows for 
-        // custom configuration
-        SFEWeatherMeterKitCalibrationParams calibration_params;
-
+#include "Module.h"
+ 
+/**
+ * Reports wind speed from a cup anemometer (one pulse per revolution).
+ *
+ * Pulses are counted by interrupt for the whole time between power_up() and measure(), and the
+ * speed is calculated from that count and the real elapsed time. measure() does not block
+ * unless the counting window is shorter than the minimum (see MIN_SAMPLE_WINDOW_MILLIS).
+ *
+ * Sleep behaviour: the pin interrupt is attached only while the module is "counting".
+ * power_down() detaches it, so a spinning anemometer cannot wake the board. power_up()
+ * re-attaches it and starts a fresh window. Pulses that occur during sleep are NOT counted.
+ *
+ * Only one Loom_Anemometer can be active on a board at a time.
+ */
+class Loom_Anemometer : public Module {
+public:
+    Loom_Anemometer(Manager& man, uint8_t speedPin);
+ 
+    void initialize() override;
+    void measure() override;
+    void package() override;
+    void power_up() override;
+    void power_down() override;
+ 
+    float getWindSpeedHz() const { return windSpeedHz; }
+    float getWindSpeedMph() const;
+    float getWindSpeedKmh() const;
+    uint32_t getPulseCount() const { return lastPulseCount; }    // Pulses in the last sample
+    uint32_t getSampleMillis() const { return lastSampleMillis; }  // Length of the last sample
+ 
+private:
+    static void countPulse();  // ISR: must be static to be usable with attachInterrupt()
+ 
+    void startSampling();  // Zero the count, restart the clock, attach the interrupt
+    void stopSampling();   // Detach the interrupt
+ 
+    // State shared with the ISR. Static because the ISR has no "this", which is also why
+    // only one instance can exist. volatile because the ISR modifies it asynchronously.
+    static volatile uint32_t pulseCount;
+    static volatile uint32_t lastPulseMicros;  // For debounce
+    static Loom_Anemometer* activeInstance;    // Only used to enforce one instance
+ 
+    Manager* manInst;
+    uint8_t speedPin;
+    int interruptNumber = -1;  // Set in initialize()
+    bool counting = false;     // True while the interrupt is attached
+    uint32_t sampleStartMillis = 0;
+ 
+    // Results of the last measure()
+    uint32_t lastPulseCount = 0;
+    uint32_t lastSampleMillis = 0;
+    float windSpeedHz = 0.0f;  // Everything else is derived from this
 };
+ 
+
 
