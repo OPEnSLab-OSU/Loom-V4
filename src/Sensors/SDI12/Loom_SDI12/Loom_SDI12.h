@@ -12,6 +12,8 @@
 
 #define RESPONSE_SIZE 81
 #define IDENTIFICATION_RESPONSE_SIZE 36
+#define MAX_NAME_SIZE 7
+#define PACKAGE_NAME 10
 
 
 /**
@@ -29,6 +31,32 @@ class Loom_SDI12 : public Module{
         void power_down() override;
         void power_up() override;
 
+    private:
+    Manager* manInst;                                       // Instance of the Manager
+
+    SDI12 sdiInterface;                                     // SDI-12 Library Interface
+
+    void readResponse(char response[RESPONSE_SIZE]);                   // Reads and returns the sensor's response to the command
+    bool checkActive(char addr);                            // Checks if the current address is actually being used
+
+    struct SensorInfo{
+        char address;
+        // <addr>I! will have a field with 7 char maximum sensor name
+        char sensor_name[MAX_NAME_SIZE];
+        // <addr>M! will send up to 9 measurements in compliance with SDI-12 v1.4 standard
+        float measurements[9];
+        };
+
+    size_t num_sensors = 0;
+    // arbitrary limit on how many SDI-12 devices we can have connected at one time
+    SensorInfo registered_sensors[10];
+
+    // varies by sensor. Response after sending <addr>M! will be 
+    // <addr><wait time><measurement count>, which looks something like 00013 - address 0, 1 second, 3 measurements
+    int wait_time;
+
+    void parse_wait_time(char* response);
+
     public: 
         
         Loom_SDI12(Manager& man, const int pinAddr = 11);       // Loomified Constructor
@@ -44,35 +72,16 @@ class Loom_SDI12 : public Module{
 
         void sendCommand(char* response, char addr, const char* command);     // Sends the given command to the given sensor on the bus and returns the result
         void requestSensorInfo(char* response, char addr);                    // Request Information about the connected SDI12 sensor
-        void getData(char addr);                                // Get the data from the connected sensor
+        void getData(SensorInfo* sensor);                                // Get the data from the connected sensor
         void scanAddressSpace();                   // Scans over the SDI-12 address space and returns a list of in-use addresses
+        void readResponse(char* response, const char* command);
 
-        float getTemperature() { return sensorData[0]; };       // Temperature of the soil
-        float getDielectricPerm() { return sensorData[1]; };    // Dielectric Permittivity of the soil
-        float getConductivity() { return sensorData[2]; };      // Conductivity of the soil
 
-    private:
-        Manager* manInst;                                       // Instance of the Manager
 
-        SDI12 sdiInterface;                                     // SDI-12 Library Interface
+        // float getTemperature() { return sensorData[0]; };       // Temperature of the soil
+        // float getDielectricPerm() { return sensorData[1]; };    // Dielectric Permittivity of the soil
+        // float getConductivity() { return sensorData[2]; };      // Conductivity of the soil
 
-        void readResponse(char response[RESPONSE_SIZE]);                   // Reads and returns the sensor's response to the command
-        bool checkActive(char addr);                            // Checks if the current address is actually being used
-
-        struct SensorInfo{
-            char address;
-            // <addr>I! will have a field with 7 char maximum sensor name
-            char sensor_name[7];
-            // <addr>M! will send up to 9 measurements in compliance with SDI-12 v1.4 standard
-            float measurements[9];
-            // varies by sensor. Response after sending <addr>M! will be 
-            // <addr><wait time><measurement count>, which looks something like 00013 - address 0, 1 second, 3 measurements
-            int wait_time;
-        };
-
-        size_t num_sensors = 0;
-        // arbitrary limit on how many SDI-12 devices we can have connected at one time
-        SensorInfo registered_sensors[10];
 
 
 
