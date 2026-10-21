@@ -1,3 +1,4 @@
+#include <ArduinoLowPower.h>
 #include "Loom_SEN66.h"
 #include "Logger.h"
 
@@ -6,6 +7,16 @@ Loom_SEN66::Loom_SEN66(Manager &man, bool measurePM, bool useMux, bool readNumVa
     : I2CDevice("SEN66"), manInst(&man), measurePM(measurePM), readNumVals(readNumVals) {
     if (!useMux)
         manInst->registerModule(this);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void waitForFanSpinUp() {
+    FUNCTION_START;
+    LOG("SEN66: Spinning up fan for 30 seconds");
+    LowPower.sleep(30 * 1000);
+    LOG("SEN66: Fan spin up complete");
+    FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -34,6 +45,14 @@ void Loom_SEN66::initialize() {
 
     LOG("Resetting SEN66, waiting 1.2s...");
     delay(1200);
+
+    error = sen66.stopMeasurement();
+    if (error != 0) {
+        ERRORF("Stop measurement failed with error code %u", error);
+        return;
+    }
+
+    waitForFanSpinUp();
 
     // Start Continuous Measurement
     error = sen66.startContinuousMeasurement();
@@ -182,6 +201,33 @@ void Loom_SEN66::package() {
     json["NoxIndex"] = (isnan(noxIndex) ? -1 : noxIndex);
     json["CO2"] = co2;
 
+    FUNCTION_END;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_SEN66::power_down() {
+    FUNCTION_START;
+    int16_t error = sen66.stopMeasurement();
+    if (error != 0) {
+        ERROR("SEN66: Error stopping continuous measurement");
+        FUNCTION_END;
+        return;
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_SEN66::power_up() {
+    FUNCTION_START;
+    int16_t error = sen66.startContinuousMeasurement();
+    if (error != 0) {
+        ERROR("SEN66: Error starting continuous measurement");
+        FUNCTION_END;
+        return;
+    }
+
+    waitForFanSpinUp();
     FUNCTION_END;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
