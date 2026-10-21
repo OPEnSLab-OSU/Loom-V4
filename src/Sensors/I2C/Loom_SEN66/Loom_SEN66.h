@@ -101,6 +101,8 @@ class Loom_SEN66 : public I2CDevice {
     bool measurePM;   // Are we logging particulate matter
     bool readNumVals; // Do we want to read the number concentration?
 
+    void waitForFanSpinUp(void);
+
     /* Sensor readings */
     float massConcentrationPm1p0;
     float massConcentrationPm2p5;
