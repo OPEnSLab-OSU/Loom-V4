@@ -52,17 +52,14 @@ void Loom_SEN66::initialize() {
         return;
     }
 
-    waitForFanSpinUp();
-
     // Start Continuous Measurement
     error = sen66.startContinuousMeasurement();
     if (error) {
         snprintf(output, OUTPUT_SIZE, "Error starting measurement: %u", error);
         ERROR(output);
-    } else {
-        LOG("SEN66 Started. Waiting 5s for fan spin-up...");
-        delay(5000); // Initial spin-up delay
     }
+    waitForFanSpinUp();
+
 
     FUNCTION_END;
 }
