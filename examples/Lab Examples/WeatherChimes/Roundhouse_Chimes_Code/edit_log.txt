@@ -1,0 +1,9 @@
+Hi! This is the edit log for the Roundhouse Chimes code. 
+10/12/2026:
+Wrote this file to support all of the features of a Roundhouse Chimes device. 
+Support for WiFi and Teros's still needed. 
+Support for mux has been added but also support for non-mux application since not all devices will be on V2 boards.
+
+10/24/2026:
+Added support for WiFi.
+Currently on single upload for testing, later will likely switch to batch.
