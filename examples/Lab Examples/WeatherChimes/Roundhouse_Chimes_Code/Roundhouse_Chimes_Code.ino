@@ -1,14 +1,18 @@
 /*
 In lab use case example for the WeatherChimes Roundhouse edition project.
 This project uses SDI12, Analog, and I2C communication for its sensors.
-Code created 10/12/2026 by Lucas Johnson
 */
+
+//File containing WIFI and MQTT creds
+//This file must be present in the folder with this .ino file
+//You should see this file at the top of the arduino application as another tab
+#include "arduino_secrets.h"
 
 //Loom required libraries
 #include <Loom_Manager.h>
 #include <Logger.h>
 
-//Hardware required sensors
+//Libraries required sensors
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Sensors/Loom_Analog/Loom_Analog.h>
 #include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h>
@@ -20,6 +24,7 @@ Code created 10/12/2026 by Lucas Johnson
 
 //Communication libraries
 #include <Internet/Connectivity/Loom_Wifi/Loom_Wifi.h>
+#include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h>
 
 //Pin for the tipping bucket ISR. 
 #define Tip_Pin A5
@@ -58,8 +63,8 @@ Loom_WindVane windvane(manager, A0);
 
 
 //Create wifi class for upload communication
-//Loom_WIFI wifi(manager, CommunicationMode::CLIENT, "Kuti", "kuti101!");
-//This needs to be finished throughout the code. 
+Loom_WIFI wifi(manager, CommunicationMode::CLIENT, SECRET_SSID, SECRET_PASS);
+Loom_MongoDB mqtt(manager, wifi, SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS, PROJECT);
 
 //Setting up Wake_ISR
 void Wake_ISR() { 
@@ -85,7 +90,7 @@ void setup() {
   //Both power rails should be on when awake
   hypnos.setWakeConfiguration(POWERRAIL_CONFIG::PR_3V_ON_5V_ON);
 
-  //Only the 5V rail should be on during sleep
+  //Both power rails should be on when asleep
   hypnos.setSleepConfiguration(POWERRAIL_CONFIG::PR_3V_ON_5V_ON);
 
   //Enable the hypnos board
@@ -137,8 +142,11 @@ void loop() {
     //Log the data to the SD card
     hypnos.logToSD();
 
-    //Pet the dog a lot
+    //Disarm the dog
     Watchdog.disable();
+
+    //Publish via WiFi
+    mqtt.publish();
 
     //Reattach the sleep interrupt
     hypnos.reattachRTCInterrupt();
@@ -174,3 +182,4 @@ void loop() {
   //Set the hypnos to sleep
   hypnos.sleep(false);
 }
+
