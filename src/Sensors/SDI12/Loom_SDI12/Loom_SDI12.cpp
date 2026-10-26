@@ -113,34 +113,34 @@ void Loom_SDI12::package(){
     if(in_use_sensors[0].in_use){
         JsonObject json = manInst->get_data_object(in_use_sensors[0].name);
         json["Temperature_C"] = in_use_sensors[0].measurements[0];
-        json["Volumetric_Water_Count"] = in_use_sensors[0].measurements[1];
-        json["Conductivity"] = in_use_sensors[0].measurements[2];
+        json["Calibrated_ADC_Counts_VWC"] = in_use_sensors[0].measurements[1];
+        json["Electrical_Conductivity_dS_m"] = in_use_sensors[0].measurements[2];
     }
 
     // Teros 11
     if(in_use_sensors[3].in_use){
         JsonObject json = manInst->get_data_object(in_use_sensors[3].name);
-        json["Temperature_C"] = in_use_sensors[0].measurements[0];
-        json["Volumetric_Water_Count"] = in_use_sensors[0].measurements[1];
+        json["Temperature_C"] = in_use_sensors[3].measurements[0];
+        json["Calibrated_ADC_Counts_VWC"] = in_use_sensors[3].measurements[1];
     }
 
     // Teros 54
     if(in_use_sensors[1].in_use){
         JsonObject json = manInst->get_data_object(in_use_sensors[1].name);
-        json["Volumetric_Water_Count_15cm"] = in_use_sensors[1].measurements[0];
-        json["Temperature_15cm"] = in_use_sensors[1].measurements[1];
-        json["Volumetric_Water_Count_30cm"] = in_use_sensors[1].measurements[2];
-        json["Temperature_30cm"] = in_use_sensors[1].measurements[3];
-        json["Volumetric_Water_Count_45cm"] = in_use_sensors[1].measurements[4];
-        json["Temperature_45cm"] = in_use_sensors[1].measurements[5];
-        json["Volumetric_Water_Count_60cm"] = in_use_sensors[1].measurements[6];
-        json["Temperature_60cm"] = in_use_sensors[1].measurements[7];
+        json["Calibrated_ADC_Counts_VWC_15cm"] = in_use_sensors[1].measurements[0];
+        json["Temperature_C_15cm"] = in_use_sensors[1].measurements[1];
+        json["Calibrated_ADC_Counts_VWC_30cm"] = in_use_sensors[1].measurements[2];
+        json["Temperature_C_30cm"] = in_use_sensors[1].measurements[3];
+        json["Calibrated_ADC_Counts_VWC_45cm"] = in_use_sensors[1].measurements[4];
+        json["Temperature_C_45cm"] = in_use_sensors[1].measurements[5];
+        json["Calibrated_ADC_Counts_VWC_60cm"] = in_use_sensors[1].measurements[6];
+        json["Temperature_C_60cm"] = in_use_sensors[1].measurements[7];
     }
 
     // Teros 21
     if(in_use_sensors[2].in_use){
         JsonObject json = manInst->get_data_object(in_use_sensors[2].name);
-        json["Water_Potential"] = in_use_sensors[2].measurements[0];
+        json["Water_Potential_kPa"] = in_use_sensors[2].measurements[0];
         json["Temperature_C"] = in_use_sensors[2].measurements[1];
     }
     
@@ -238,6 +238,7 @@ void Loom_SDI12::sendCommand(char response[RESPONSE_SIZE], char addr, const char
     char output[25];
     memset(output, '\0', 25);
     snprintf(output, 25, "%c%s", addr, command);
+    sdiInterface.clearBuffer();
     sdiInterface.sendCommand(output);
     delay(30);
     readResponse(response);
@@ -295,9 +296,11 @@ void Loom_SDI12::getData(char addr){
     snprintf(output, OUTPUT_SIZE, "Requesting data from %s, this will take 5 seconds...", in_use_sensors[addr - '0'].name);
     LOG(output);
     sendCommand(response, addr, "M!");
+    LOG(response);
     delay(5000);
     if(!using_ter54){
         sendCommand(response, addr, "D0!");
+        LOG(response);
     }
     else{
         sendCommand(response, addr, "D1!");
@@ -309,6 +312,7 @@ void Loom_SDI12::getData(char addr){
 
         // Request a measurement from the sensor at the given address
         sendCommand(response, addr, "M!");
+        LOG(response);
         delay(5000);
         if(!using_ter54){
             sendCommand(response, addr, "D0!");
@@ -323,6 +327,7 @@ void Loom_SDI12::getData(char addr){
 
             // Request a measurement from the sensor at the given address
             sendCommand(response, addr, "M!");
+            LOG(response);
             delay(5000);
             if(!using_ter54){
                 sendCommand(response, addr, "D0!");
