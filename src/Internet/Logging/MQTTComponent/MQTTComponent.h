@@ -58,13 +58,6 @@ class MQTTComponent : public Module{
         void setKeepAlive(int time) { keep_alive = time; };
 
         /**
-         * Set the client ID for the specific MQTT connection
-         *
-         * @param id The new ID to set
-        */
-        void setClientID(const char* id) { mqttClient.setId(id); };
-
-        /**
          * Wrapper for specifying that we want to use a clean session or not (defaults to true)
          *
          * @param cleanSession Wether or not the session should be clean
@@ -84,6 +77,13 @@ class MQTTComponent : public Module{
         char password[100];                         // Password to log into the broker
 
     public:
+
+        /**
+         * Set the client ID for the specific MQTT connection
+         *
+         * @param id The new ID to set
+        */
+        void setClientID(const char* id) { mqttClient.setId(id); };
 
         /**
          * Constructor for base MQTTComponent

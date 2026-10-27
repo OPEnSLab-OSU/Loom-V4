@@ -1,5 +1,3 @@
-#include "arduino_secrets.h"
-
 #include <Loom_Manager.h> //4.7
 
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
@@ -15,12 +13,15 @@ Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 Loom_Analog batteryVoltage(manager);
 Loom_LoRa lora(manager);
 Loom_LTE lte(manager, "hologram", "", "", A5);
-Loom_MongoDB mqtt(manager, lte, SECRET_BROKER, SECRET_PORT, DATABASE, BROKER_USER, BROKER_PASS);
-Loom_BatchSD batchSD(hypnos, 16); //set batch size uploading
+Loom_MongoDB mqtt(manager, lte);
+Loom_BatchSD batchSD(hypnos, 15); //set batch size uploading; must match the node's TRANSMIT_INTERVAL
 
 int packetNumber = 0;
 void setup()
 {
+    // Write debug logs to the SD card (/debug/output_N.log)
+    ENABLE_SD_LOGGING;
+
     // Start the serial interface
     manager.beginSerial();
 
@@ -36,6 +37,9 @@ void setup()
     // load MQTT credentials from the SD card, if they exist
     mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
 
+    // Set the client ID to something identifiable in the Mosquitto logs
+    mqtt.setClientID("HazelnutDendrometerHub0_Test");
+
     // Initialize the modules
     manager.initialize();
 }
@@ -46,6 +50,8 @@ void loop()
     do{
       if (lora.receiveBatch(5000, &packetNumber))
       {
+          // receiveBatch proxied the sender's identity, so the instance is the node number
+          manager.addData("Node", "Number", manager.get_instance_num());
           manager.display_data();
           hypnos.logToSD();
           mqtt.publish(batchSD);
