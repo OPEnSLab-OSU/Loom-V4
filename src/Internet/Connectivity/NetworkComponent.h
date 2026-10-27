@@ -20,4 +20,6 @@ class NetworkComponent : public Module{
         virtual bool isConnected() = 0;
 
         virtual Client* getClient() = 0;
+
+        virtual void logDiagnostics() {}
 };

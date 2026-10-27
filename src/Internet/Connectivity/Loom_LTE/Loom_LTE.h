@@ -73,6 +73,8 @@ class Loom_LTE : public NetworkComponent{
         // Get the current time from the network
         bool getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) override;
 
+        void logDiagnostics() override;
+
         /**
          * Load the config to connect to the LTE network from a JSON string
          * @param json Json file read, this is freed before returning

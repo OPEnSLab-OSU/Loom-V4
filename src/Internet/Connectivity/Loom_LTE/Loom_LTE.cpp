@@ -438,3 +438,59 @@ bool Loom_LTE::getNetworkTime(int* year, int* month, int* day, int* hour, int* m
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_LTE::logDiagnostics(){
+    char output[OUTPUT_SIZE];
+
+    int signalQuality = modem.getSignalQuality();
+    snprintf(output, OUTPUT_SIZE, "Signal Quality: %d", signalQuality);
+    LOG(output);
+    output[0] = '\0';
+
+    auto registration = modem.getRegistrationStatus();
+    const char* regMessage;
+
+    switch (registration){
+        case REG_NO_RESULT:
+            regMessage = "No Registration Result";
+            break;
+        
+        case REG_UNREGISTERED:
+            regMessage = "Not Registered; not searching"
+            break;
+        
+        case REG_SEARCHING:
+            regMessage = "Not Registered; searching";
+            break;
+        
+        case REG_DENIED:
+            regMessage = "Registration Denied";
+            break;
+        
+        case REG_OK_HOME:
+            regMessage = "Registered on Home Network";
+            break;
+        
+        case REG_OK_ROAMING:
+            regMessage = "Registered while roaming";
+            break;
+        
+        case REG_UNKNOWN:
+            regMessage = "Registration state unknown";
+            break;
+        default:
+            regMessage = "Invalid response from TinyGSM";
+    }
+
+    snprintf(output, OUTPUT_SIZE, "Registration Status: %s", regMessage);
+    LOG(output);
+    output[0] = '\0';
+    bool networkConnected = modem.isNetworkConnected();
+    snprintf(output, OUTPUT_SIZE, "Network Connected: %s", networkConnected ? "True" : "False");
+    LOG(output);
+
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
