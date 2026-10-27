@@ -442,6 +442,11 @@ bool Loom_LTE::getNetworkTime(int* year, int* month, int* day, int* hour, int* m
 void Loom_LTE::logDiagnostics(){
     char output[OUTPUT_SIZE];
 
+    if(!moduleInitialized){
+        LOG("LTE not initialized");
+        return;
+    }
+
     int signalQuality = modem.getSignalQuality();
     snprintf(output, OUTPUT_SIZE, "Signal Quality: %d", signalQuality);
     LOG(output);

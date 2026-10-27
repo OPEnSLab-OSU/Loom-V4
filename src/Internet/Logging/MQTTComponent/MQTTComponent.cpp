@@ -92,6 +92,7 @@ bool MQTTComponent::publishMessage(const char* topic, const char* message, bool 
             // Check to see if we are actually closing messages properly
             if(mqttClient.endMessage() != 1){
                 ERROR(F("Failed to close message!"));
+                internetClient.logDiagnostics();
                 FUNCTION_END;
                 return false;
             }
@@ -103,6 +104,7 @@ bool MQTTComponent::publishMessage(const char* topic, const char* message, bool 
         }
         else{
             ERROR("MQTT Client not connected to broker ");
+            internetClient.logDiagnostics();
         }
     }
     else{
