@@ -461,7 +461,7 @@ void Loom_LTE::logDiagnostics(){
             break;
         
         case REG_UNREGISTERED:
-            regMessage = "Not Registered; not searching"
+            regMessage = "Not Registered; not searching";
             break;
         
         case REG_SEARCHING:
