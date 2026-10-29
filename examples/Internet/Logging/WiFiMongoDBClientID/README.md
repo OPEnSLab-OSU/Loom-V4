@@ -1,10 +1,26 @@
 # WiFiMongoDBClientID
 
-Publishes sensor data to MongoDB over MQTT using a Wi-Fi connection, with a custom MQTT client ID.
+Publishes sensor data to MongoDB over MQTT using a Wi-Fi connection, with a fixed MQTT client ID.
 
-`Loom_MongoDB` sets the client ID to the device name and instance number automatically (`Manager manager("Device", 1)` gives `Device1`), so the device is identifiable in the broker log. Call `mqtt.setClientID("...")` before the first publish only to use a different ID.
+By default the MQTT client ID is random (`Arduino-xxxxxxxx`), so you can't tell which device is connecting in the broker log. Calling `mqtt.setClientID("Device1_Lab")` before the first publish gives it a fixed name.
 
 The ID must be unique per device: the broker disconnects an existing client when another connects with the same ID.
+
+## Example Mosquitto Log
+
+Default ID:
+
+```
+1793223625: New client connected from 203.0.113.10:33176 as Arduino-1bd668f1 (p4, c1, k60, u'username').
+1793223974: Client Arduino-1bd668f1 [203.0.113.10:33176] disconnected: exceeded timeout.
+```
+
+With `setClientID("Device1_Lab")`:
+
+```
+1793224093: New client connected from 203.0.113.11:36259 as Device1_Lab (p4, c1, k60, u'username').
+1793224185: Client Device1_Lab [203.0.113.11:36259] disconnected: exceeded timeout.
+```
 
 ## Required Credentials
 
