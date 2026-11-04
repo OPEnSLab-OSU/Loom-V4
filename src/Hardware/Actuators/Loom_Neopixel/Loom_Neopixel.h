@@ -54,9 +54,20 @@ class Loom_Neopixel : public Actuator {
      * @param red The red value (0-255)
      * @param green The green value (0-255)
      * @param blue The blue value (0-255)
+     * @param showNow Send immediately (default), or stage until show(port).
      */
     void set_color(const uint8_t port, const uint8_t chain_num, const uint8_t red,
-                   const uint8_t green, const uint8_t blue);
+                   const uint8_t green, const uint8_t blue, const bool showNow = true);
+
+    // Configure before initialize(). Disabled ports stay untouched. At most 256
+    // pixels are addressable by the existing uint8_t chain_num API.
+    bool configure_port(uint8_t port, int16_t pin, uint16_t count = 1,
+                        uint8_t brightness = 255);
+
+    // Staged set_color(..., false) plus show() lets callers align a frame with
+    // another peripheral. These two timing methods do not emit serial logs.
+    void show(uint8_t port);
+    bool can_show(uint8_t port);
 
     /**
      * Enable or disable a given Neopixel pin

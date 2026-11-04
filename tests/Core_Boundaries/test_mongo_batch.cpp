@@ -54,6 +54,7 @@ int main() {
     Manager manager;
     Loom_BatchSD batch;
     Loom_MongoDB mongo(manager, network, "broker.example", 1883, "readings", "", "", "project");
+    assert(std::string(mongo.getPublishTopic()) == "project/readings/node7");
     reset();
     assert(mongo.publish(batch));
     assert(mqttPlan.startedTopics == std::vector<std::string>({"project/readings/node7", "project/readings/node7"}));

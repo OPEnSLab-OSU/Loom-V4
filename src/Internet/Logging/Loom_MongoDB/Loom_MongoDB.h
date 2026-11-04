@@ -21,6 +21,10 @@ class Loom_MongoDB : public MQTTComponent {
     void package() override {};
 
   public:
+    /** Borrow the exact normal publish topic, or nullptr for an invalid identity/config.
+     * The string remains owned by this module and is rebuilt after an identity change. */
+    const char *getPublishTopic() { return buildTopic() ? topic : nullptr; }
+
     /**
      * Construct a new MQTT interface
      * @param man Reference to the manager

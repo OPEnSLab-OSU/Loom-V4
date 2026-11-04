@@ -78,6 +78,15 @@ void observeHealth(Manager &manager, Manager::HealthEvent event, void *context) 
 }
 
 int main() {
+    {
+        Manager packet("label-lifetime",1);
+        char temporaryName[]="MS5803-02BA";
+        packet.get_data_object(temporaryName)["Pressure_mbar"]=1000;
+        std::memset(temporaryName,'X',sizeof(temporaryName)-1);
+        assert(std::strcmp(packet.getDocument()["contents"][0]["module"].as<const char *>(),"MS5803-02BA")==0);
+        assert(packet.get_data_object("MS5803-02BA")["Pressure_mbar"].as<int>()==1000);
+        assert(packet.getDocument()["contents"].size()==1);
+    }
     TestModule modem("LTE", true), sensor("sensor");
     Manager manager("lifecycle", 1);
     HealthEvents health;

@@ -601,6 +601,28 @@ void Loom_LTE::initialize() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LTE::initializeFromAwake() {
+    LoomWatchdogPause watchdogPause;
+    // Silence here cannot establish OFF: this path intentionally never pulses power/reset.
+    powerMayBeOn = true;
+    moduleInitialized = false;
+    uartBaud = isSaraR5() ? LOOM_LTE_R5_UART_BAUD : 9600UL;
+    SerialAT.begin(uartBaud);
+    if (!bootModemWithRetries(false)) return false;
+    moduleInitialized = true;
+    firstInitialization = false;
+    return connect();
+}
+
+bool Loom_LTE::shutdownForSleep() {
+    // Console/AT passthrough use can turn hardware on before initialize().
+    // Treat that state as uncertain and use the same checked shutdown as Loom.
+    SerialAT.begin(uartBaud);
+    powerMayBeOn=true;
+    power_down();
+    return canRemovePower();
+}
+
 void Loom_LTE::power_up() {
     // Power-up only proves that the modem can answer AT and be initialized.
     // Cellular registration and APN/PDP activation happen in connect().
@@ -827,6 +849,7 @@ void Loom_LTE::logRegistrationDiagnostic() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::logNetworkDiagnostics() {
+    logRawAT("AT+CEER", 3000L); // Capture the cause before other diagnostic queries.
     logRawAT("AT+CPIN?", 3000L);
     logRawAT("AT+CSQ", 3000L);
     logRawAT("AT+CEREG?", 3000L);
@@ -835,7 +858,13 @@ void Loom_LTE::logNetworkDiagnostics() {
     logRawAT("AT+CGATT?", 3000L);
     logRawAT("AT+CGACT?", 3000L);
     logRawAT("AT+CGPADDR=1", 3000L);
-    logRawAT("AT+CEER", 3000L);
+    if (isSaraR5()) {
+        logRawAT("AT+UPSD=0,1", 3000L);
+        logRawAT("AT+UPSD=0,0", 3000L);
+        logRawAT("AT+UPSD=0,100", 3000L);
+        logRawAT("AT+UPSND=0,8", 3000L);
+        logRawAT("AT+UPSND=0,0", 3000L);
+    }
     logSimDiagnostic();
     logRegistrationDiagnostic();
     logSignalDiagnostic();
@@ -869,8 +898,10 @@ bool Loom_LTE::tryConnectDataSession(uint8_t attempt, uint8_t maxAttempts) {
 
     LOG(F("Connected to network!"));
     LOGF("Attempting to connect to LTE Network: %s", apnName);
-    modem->gprsDisconnect();
-    delay(500);
+    if (!isSaraR5()) {
+        modem->gprsDisconnect();
+        delay(500);
+    } // R5 keeps cellular registration; its adapter configures the internal profile.
     if (modem->gprsConnect(apnName, apnUsername, apnPassword)) {
         LOG(F("Successfully Connected!"));
         delay(6000);

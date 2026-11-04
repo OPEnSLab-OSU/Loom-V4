@@ -1,0 +1,13 @@
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {realpath} from 'node:fs/promises';
+import {discover} from './adapters/loom.mjs';
+import {prepareCheckout} from './prepared-source.mjs';
+import {resolveLoom} from './find-loom.mjs';
+const here=path.dirname(fileURLToPath(import.meta.url)),args=process.argv.slice(2);
+const option=name=>{const i=args.indexOf(name);return i<0?undefined:args[i+1]};
+const workspace=path.resolve(option('--workspace')||path.join(here,'.local'));
+const root=await resolveLoom({explicit:option('--loom-root'),workspace});
+const catalog=await discover(root),prepared=await prepareCheckout(root,catalog,workspace,{force:args.includes('--force')});
+console.log((prepared.cacheHit?'Reused':'Prepared')+' '+prepared.recipes.length+' recipe reconstructions and '+prepared.apis.length+' API references in '+prepared.elapsedMs+' ms.');
+console.log('Checkout: '+root);console.log('Cache: '+prepared.filename);

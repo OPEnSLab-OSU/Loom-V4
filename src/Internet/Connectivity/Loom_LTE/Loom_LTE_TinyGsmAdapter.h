@@ -40,7 +40,7 @@ class Loom_LTE_TinyGsmAdapter : public Loom_LTE_Modem {
     }
     Client *getClient() override { return &client; }
 
-  private:
+  protected:
     ModemType modem;
     ClientType client;
 };

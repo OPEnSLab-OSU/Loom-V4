@@ -1,0 +1,66 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,mkdir,writeFile,readFile,rm} from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import {startStudio} from '../server.mjs';
+import {revisionOf} from '../core.mjs';
+
+test('Build compiles selected assembled project tabs without port discovery, including saved code under an edited draft',async t=>{
+  const temp=await mkdtemp(path.join(os.tmpdir(),'studio-project-build-')),root=path.join(temp,'repo'),workspace=path.join(temp,'local');
+  await mkdir(path.join(root,'src'),{recursive:true});await mkdir(path.join(root,'examples','Probe'),{recursive:true});
+  await writeFile(path.join(root,'src','Manager.h'),'class Manager {public:Manager(const char*,int);};');
+  const source='Manager manager("Device",1);\nvoid setup(){manager.initialize();}\nvoid loop(){manager.measure();}\n';
+  await writeFile(path.join(root,'examples','Probe','Probe.ino'),source);
+  const calls=[],opened=[],board='test:samd:feather_m0';
+  const app=await startStudio({root,workspace,port:0,openBuildFolder:async directory=>opened.push(directory),arduinoExecute:async args=>{
+    calls.push(args);
+    if(args[0]==='board'&&args[1]==='list')return JSON.stringify({detected_ports:[]});
+    if(args[0]==='board'&&args[1]==='listall')return JSON.stringify({boards:[{name:'Loomified Feather M0',fqbn:board}]});
+    if(args[0]==='core')return JSON.stringify({platforms:[]});
+    if(args[0]==='compile')await writeFile(path.join(args[args.indexOf('--output-dir')+1],'firmware.bin'),'simulated binary');
+    return '';
+  }});
+  t.after(async()=>{await new Promise(resolve=>{app.server.close(resolve);app.server.closeAllConnections();});await rm(temp,{recursive:true,force:true});});
+  const get=async route=>(await fetch(app.url+route)).json();
+  const post=async(route,body={},status=200)=>{const response=await fetch(app.url+route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const result=await response.json();assert.equal(response.status,status,JSON.stringify(result));return result;};
+  const cli=path.join(temp,'arduino-cli.exe');await writeFile(cli,'fixture executable');await post('/api/device/configure',{cliPath:cli});
+  await get('/api/device/status?mode=build');assert.ok(!calls.some(args=>args[0]==='board'&&args[1]==='list'),'opening Build does not inspect connected hardware');
+  await post('/api/example',{path:'examples/Probe/Probe.ino'});let state=await get('/api/state');const a=state.projects.activeId;
+  const bundle=await get('/api/project-export');bundle.design.name='Project B';bundle.assembly.designRevision=revisionOf(bundle.design);bundle.assembly.files[0].content+='// B code\n';
+  await post('/api/projects/import',bundle);state=await get('/api/state');const b=state.projects.activeId;
+  await post('/api/design/new');state=await get('/api/state');const blank=state.projects.activeId;
+  let choices=await get('/api/device/projects'),selected=choices.projects.find(project=>project.id===a);
+  assert.equal(choices.activeId,blank);assert.deepEqual(choices.projects.filter(project=>project.hasCode).map(project=>project.id),[a,b]);
+  await post('/api/device/build',{projectId:blank,board},400);
+  await post('/api/device/build',{projectId:a,board},400);
+  const request={projectId:a,board,filesFingerprint:selected.filesFingerprint};
+  await writeFile(path.join(root,'src','Manager.h'),'class Manager {public:Manager(const char*,int);};\n// updated checkout\n');await post('/api/refresh');
+  await post('/api/device/build',request,202);
+  let result;for(let i=0;i<100;i++){result=await get('/api/device/job?'+new URLSearchParams({projectId:a,board}));if(result.job.status!=='running')break;await new Promise(resolve=>setTimeout(resolve,5));}
+  assert.equal(result.job.status,'succeeded');assert.ok(result.build.key);assert.equal((await get('/api/state')).projects.activeId,blank,'Build never switches the viewed project');
+  assert.equal(result.jobMatchesSelected,true);assert.equal(result.build.files[0].name,'firmware.bin');assert.equal(result.build.totalBytes,16);assert.ok(Number.isFinite(Date.parse(result.build.builtAt)));
+  assert.ok(!calls.some(args=>args[0]==='board'&&args[1]==='list'),'compilation does not query COM ports');
+  const compile=calls.find(args=>args[0]==='compile');assert.equal(await readFile(path.join(compile.at(-1),'FeatureApplication.ino'),'utf8'),source);assert.ok(!compile.includes('--port'));
+  assert.equal((await get('/api/device/job?'+new URLSearchParams({projectId:b,board}))).build,null,'another project’s different code has no matching binary');
+  await post('/api/device/open-binaries',{...request,buildKey:'wrong'},400);
+  await post('/api/device/open-binaries',{...request,buildKey:result.build.key,directory:'C:/not-an-app-folder'});
+  assert.equal(opened.length,1);assert.equal(opened[0],path.join(workspace,'firmware-builds',result.build.key,'binaries'));
+  await post('/api/device/flash',{...request,buildKey:result.build.key,port:'COM9'},400);assert.ok(!calls.some(args=>args[0]==='upload'),'Flash still requires a connected port');
+  await rm(path.join(opened[0],'firmware.bin'));
+  const missing=await get('/api/device/job?'+new URLSearchParams({projectId:a,board}));assert.equal(missing.build,null);assert.equal(missing.jobMatchesSelected,false,'a stale success message cannot identify missing binaries as ready');
+  await post('/api/device/open-binaries',{...request,buildKey:result.build.key},400);
+  await post('/api/projects/open',{id:a});state=await get('/api/state');
+  await post('/api/design',{projectId:a,design:{...state.design,description:'Edit feature requests without replacing the saved assembled code'}});
+  assert.equal((await get('/api/state')).assembly,null);
+  choices=await get('/api/device/projects');assert.equal(choices.projects.find(project=>project.id===a).filesFingerprint,request.filesFingerprint);
+  await post('/api/device/build',request,202);
+  for(let i=0;i<100;i++){result=await get('/api/device/job?'+new URLSearchParams({projectId:a,board}));if(result.job.status!=='running')break;await new Promise(resolve=>setTimeout(resolve,5));}
+  assert.equal(result.job.status,'succeeded','saved assembled code can be built while requests are being edited');
+  state=await get('/api/state');const changed=structuredClone(state.lastBuild.assembly);changed.designRevision=revisionOf(state.design);changed.sourceFingerprint=state.sourceFingerprint;changed.files[0].content+='// New assembled code\n';
+  await writeFile(path.join(workspace,'assembly.json'),JSON.stringify(changed));await get('/api/state');
+  await post('/api/device/build',request,400);await post('/api/device/open-binaries',{...request,buildKey:result.build.key},400);
+  await post('/api/projects/open',{id:blank});await post('/api/projects/close',{id:a});
+  await post('/api/device/build',request,400);
+  assert.ok(!(await get('/api/device/projects')).projects.some(project=>project.id===a),'closed project tabs are not selectable');
+});

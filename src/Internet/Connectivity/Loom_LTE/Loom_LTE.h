@@ -203,6 +203,13 @@ class Loom_LTE : public NetworkComponent {
      */
     void initialize() override;
 
+    /** Adopt an already AT-responsive modem without pulsing PWR_ON or RESET_N.
+     * The caller owns board power sequencing. Also opens/reuses the cellular data session. */
+    bool initializeFromAwake();
+    /** Shut down an externally awakened modem without booting or connecting it.
+     * Uses the normal checked CPWROFF path; call before scheduling a short sleep. */
+    bool shutdownForSleep();
+
     /**
      * Apply board power sequencing and bring the modem to an AT-ready state.
      * Carrier registration and APN/PDP activation are handled by connect().

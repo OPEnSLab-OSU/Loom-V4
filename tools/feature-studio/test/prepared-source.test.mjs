@@ -1,0 +1,42 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,mkdir,writeFile,rm,readFile} from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import {discover} from '../adapters/loom.mjs';
+import {prepareCheckout,preparedContext} from '../prepared-source.mjs';
+import {completionInstructions,makePrompt} from '../core.mjs';
+import {cliPrompt} from '../codex.mjs';
+
+test('prepared recipes reuse identical inputs and rebuild after code, companion guidance, or cache damage',async t=>{
+  const temp=await mkdtemp(path.join(os.tmpdir(),'studio-prepared-')),root=path.join(temp,'repo'),workspace=path.join(temp,'local');
+  t.after(()=>rm(temp,{recursive:true,force:true}));
+  await mkdir(path.join(root,'src'),{recursive:true});await mkdir(path.join(root,'examples','Probe'),{recursive:true});
+  await writeFile(path.join(root,'src','Probe.h'),'class Manager {public:Manager(const char *name,int id);void initialize();};\nclass Loom_Probe {public:Loom_Probe(Manager &man,const char *password);void measure();};');
+  const ino=path.join(root,'examples','Probe','Probe.ino'),guide=path.join(root,'examples','Probe','README.md');
+  await writeFile(ino,'// private-comment-example\n#define WIFI_SSID "private-network-example"\nManager manager("Device",1);\nLoom_Probe probe(manager,"private-pass-example");\nvoid setup(){manager.initialize();}\nvoid loop(){probe.measure();}\n');
+  await writeFile(guide,'Use this probe.');
+  let catalog=await discover(root),first=await prepareCheckout(root,catalog,workspace);
+  assert.equal(first.cacheHit,false);assert.equal(first.recipes.length,1);
+  assert.ok(first.recipes[0].indexed.assembly.routines.some(r=>r.kind==='setup'));
+  const warm=await prepareCheckout(root,catalog,workspace);assert.equal(warm.cacheHit,true);assert.equal(warm.revision,first.revision);
+  const design={description:'Read the probe',blocks:[{id:'p',catalogId:'class:Loom_Probe',label:'Probe',notes:'',settings:{}}]};
+  const packet=preparedContext(design,catalog,warm),serialized=JSON.stringify(packet);
+  assert.ok(packet.recipes[0].companions.includes('examples/Probe/README.md'));
+  assert.ok(packet.apis.some(a=>a.className==='Loom_Probe'));
+  assert.equal(packet.recipes[0].review.controlStatements,0);
+  assert.ok(packet.recipes[0].blueprint.nodes.every(node=>Number.isInteger(node.sourceLine)&&node.sourceLine>0));
+  assert.deepEqual(packet.additionalRecipePaths,[]);
+  for(const secret of ['private-comment-example','private-network-example','private-pass-example'])assert.ok(!serialized.includes(secret),secret+' stays out of the model packet');
+  assert.match(packet.recipes[0].sketch,/REPLACE_PASSWORD/);assert.match(packet.styleGuide,/smallest/i);
+  const desktop=makePrompt(design,catalog,workspace),cli=cliPrompt({preparedContext:packet},completionInstructions,'read-only');
+  for(const prompt of [desktop,cli]){assert.match(prompt,/smallest working pattern/);assert.match(prompt,/preparedContext/);assert.match(prompt,/ASSEMBLY_GUIDE/);}
+  await writeFile(guide,'Use this probe with changed wiring.');catalog=await discover(root);
+  const changedGuide=await prepareCheckout(root,catalog,workspace);assert.equal(changedGuide.cacheHit,false);assert.notEqual(changedGuide.revision,first.revision);
+  assert.equal(changedGuide.sourceFingerprint,first.sourceFingerprint,'support guidance invalidates preparation without needlessly staling the sketch');
+  await writeFile(ino,(await readFile(ino,'utf8')).replace('probe.measure();','probe.measure();probe.measure();'));catalog=await discover(root);
+  const changedCode=await prepareCheckout(root,catalog,workspace);assert.notEqual(changedCode.sourceFingerprint,first.sourceFingerprint);
+  assert.equal(changedCode.cacheHit,false);
+  await writeFile(changedCode.filename,'null');const recovered=await prepareCheckout(root,catalog,workspace);
+  assert.equal(recovered.cacheHit,false);assert.equal(recovered.recipes.length,1);
+});

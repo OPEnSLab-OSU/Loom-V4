@@ -1,0 +1,9 @@
+{
+  "name": "loom-feature-studio",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Standalone local feature-to-Arduino application studio",
+  "engines": { "node": ">=18" },
+  "scripts": { "start": "node launch.mjs", "prepare": "node prepare.mjs", "test": "node --test test/*.test.mjs" }
+}

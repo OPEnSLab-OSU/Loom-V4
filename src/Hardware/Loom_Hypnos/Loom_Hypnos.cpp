@@ -62,6 +62,26 @@ void clearPendingExternalInterrupt(int interruptPin) {
 #endif
 }
 
+void attachHypnosInterrupt(int pin,InterruptCallbackFunction callback,
+                           HypnosInterruptType type,int trigger) {
+#if defined(ARDUINO_ARCH_SAMD)
+    const uint32_t priorMask=__get_PRIMASK();
+    __disable_irq();
+#endif
+    if (type==SLEEP) LowPower.attachInterruptWakeup(pin,callback,trigger);
+    else attachInterrupt(digitalPinToInterrupt(pin),callback,trigger);
+#if defined(ARDUINO_ARCH_SAMD)
+    // Reconnecting a LOW-sensitive EIC input can leave a stale level during
+    // pin-mux/clock synchronization. Do not dispatch it to the sketch callback.
+    // Preserve a genuinely asserted RTC alarm instead of clearing its wake.
+    if (pin==12 && trigger==LOW) {
+        delayMicroseconds(200);
+        if (digitalRead(pin)==HIGH) clearPendingExternalInterrupt(pin);
+    }
+    __set_PRIMASK(priorMask);
+#endif
+}
+
 uint8_t compileMonth(const char *month) {
     static const char *months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
@@ -455,10 +475,10 @@ bool Loom_Hypnos::registerInterrupt(InterruptCallbackFunction isrFunc, int inter
         // device from sleep
         if (interruptType == SLEEP) {
             sleepInterruptPin = interruptPin;
-            LowPower.attachInterruptWakeup(interruptPin, isrFunc, triggerState);
+            attachHypnosInterrupt(interruptPin,isrFunc,interruptType,triggerState);
             LOG(F("Interrupt successfully attached!"));
         } else {
-            attachInterrupt(digitalPinToInterrupt(interruptPin), isrFunc, triggerState);
+            attachHypnosInterrupt(interruptPin,isrFunc,interruptType,triggerState);
             LOG(F("Interrupt successfully attached!"));
         }
         // Assignment intentionally replaces an older registration for this pin.
@@ -526,14 +546,7 @@ bool Loom_Hypnos::reattachRTCInterrupt(int interruptPin) {
     }
 
     clearPendingExternalInterrupt(interruptPin);
-    if (interruptType != SLEEP) {
-
-        attachInterrupt(digitalPinToInterrupt(interruptPin), registered->callback,
-                        registered->triggerState);
-    } else {
-        LowPower.attachInterruptWakeup(interruptPin, registered->callback,
-                                       registered->triggerState);
-    }
+    attachHypnosInterrupt(interruptPin,registered->callback,interruptType,registered->triggerState);
     LOG(F("Interrupt successfully reattached!"));
     FUNCTION_END;
     return true;
@@ -550,6 +563,7 @@ void Loom_Hypnos::wakeup() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Hypnos::setCompileTime(const char *buildDate, const char *buildTime) {
+    explicitBuildZone = false;
     strncpy(sketchCompileDate, buildDate ? buildDate : "", sizeof(sketchCompileDate) - 1);
     strncpy(sketchCompileTime, buildTime ? buildTime : "", sizeof(sketchCompileTime) - 1);
     sketchCompileDate[sizeof(sketchCompileDate) - 1] = '\0';
@@ -558,6 +572,24 @@ void Loom_Hypnos::setCompileTime(const char *buildDate, const char *buildTime) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void Loom_Hypnos::setCompileTime(const char *buildDate, const char *buildTime, TIME_ZONE buildZone) {
+    setCompileTime(buildDate, buildTime);
+    sketchBuildZone = buildZone;
+    explicitBuildZone = true;
+}
+
+bool Loom_Hypnos::setTimezone(const char *name) {
+    TIME_ZONE selected;
+    if (!timezoneFromName(name, selected)) return false;
+    timezone = selected;
+    return true;
+}
+
+bool Loom_Hypnos::setRTCFromCompileTime() {
+    if (!sketchCompileDate[0] || !sketchCompileTime[0] || !RTC_DS.begin()) return false;
+    return writeRtcUtc(compileUtcTime(explicitBuildZone ? sketchBuildZone : timezone, sketchCompileDate, sketchCompileTime));
+}
+
 void Loom_Hypnos::initializeRTC() {
     FUNCTION_START(this);
     if (fileTimestampHypnos == this) {
@@ -576,6 +608,7 @@ void Loom_Hypnos::initializeRTC() {
     // This may end up causing a problem in practice - what if RTC loses power in field? Shouldn't
     // happen with coin cell batt backup
     const bool hasSketchCompileTime = sketchCompileDate[0] != '\0' && sketchCompileTime[0] != '\0';
+    const TIME_ZONE buildZone = explicitBuildZone ? sketchBuildZone : timezone;
     const bool rtcLostPower = RTC_DS.lostPower();
     if (!RTC_DS.lastOperationSucceeded()) {
         ERRORF("Could not read DS3231 status register (I2C error %u).",
@@ -587,10 +620,10 @@ void Loom_Hypnos::initializeRTC() {
 
         if (hasSketchCompileTime) {
             const DateTime compileLocal = compileLocalTime(sketchCompileDate, sketchCompileTime);
-            const bool compileDaylight = isDaylightSavingsForLocalWallTime(compileLocal, timezone);
+            const bool compileDaylight = isDaylightSavingsForLocalWallTime(compileLocal, buildZone);
             const int16_t compileOffsetMinutes =
-                timezoneOffsetMinutes(timezone) + (compileDaylight ? 60 : 0);
-            const DateTime compileUTC = compileUtcTime(timezone, sketchCompileDate, sketchCompileTime);
+                timezoneOffsetMinutes(buildZone) + (compileDaylight ? 60 : 0);
+            const DateTime compileUTC = compileUtcTime(buildZone, sketchCompileDate, sketchCompileTime);
             char compileText[21];
             dateTime_toString(compileUTC, compileText);
             LOGF("RTC fallback: compile timestamp normalized to UTC %s using offset %i minutes.",
@@ -610,7 +643,7 @@ void Loom_Hypnos::initializeRTC() {
                       "perform a network time update."));
         }
     } else if (hasSketchCompileTime) {
-        const DateTime compileUTC = compileUtcTime(timezone, sketchCompileDate, sketchCompileTime);
+        const DateTime compileUTC = compileUtcTime(buildZone, sketchCompileDate, sketchCompileTime);
         const DateTime rtcTime = RTC_DS.now();
         if (!RTC_DS.lastOperationSucceeded()) {
             ERRORF("Could not read DS3231 time (I2C error %u).",
@@ -1259,7 +1292,12 @@ bool Loom_Hypnos::sleepImpl(bool waitForSerial, bool wakeModules) {
             // restore its exact configuration before wake I/O. A configured wake guard below
             // deliberately takes precedence over that restored timeout.
             LoomWatchdogPause watchdogPause;
-            LowPower.sleep();
+            do {
+                if (!rtcWakeSource || digitalRead(sleepInterruptPin)!=LOW) LowPower.sleep();
+            // USB/SysTick or another enabled interrupt can return WFI early.
+            // The DS3231 output stays LOW until post_sleep acknowledges it;
+            // do not restore rails or consume a future alarm on an unrelated wake.
+            } while (rtcWakeSource && digitalRead(sleepInterruptPin)!=LOW);
         }
         enableWakeWatchdog();
     }

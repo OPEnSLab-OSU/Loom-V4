@@ -26,10 +26,10 @@ Loom_Neopixel::Loom_Neopixel(const bool enableA0, const bool enableA1, const boo
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Neopixel::initialize() {
     FUNCTION_START;
-    // Set pin mode on enabled pins (pins A0-A5 = 14-19)
+    // Configure only enabled ports, using their selected data pins.
     for (int i = 0; i < 3; i++) {
         if (enabledPins[i]) {
-            pinMode(14 + i, OUTPUT);
+            pinMode(pixels[i].getPin(), OUTPUT);
         }
     }
 
@@ -65,8 +65,7 @@ void Loom_Neopixel::control(JsonArray json) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Neopixel::set_color(const uint8_t port, const uint8_t chain_num, const uint8_t red,
-                              const uint8_t green, const uint8_t blue) {
-    FUNCTION_START;
+                              const uint8_t green, const uint8_t blue, const bool showNow) {
     if (port >= 3) {
         ERRORF("Invalid Neopixel port %u; expected 0 through 2.", port);
         return;
@@ -80,13 +79,29 @@ void Loom_Neopixel::set_color(const uint8_t port, const uint8_t chain_num, const
         pixels[port].setPixelColor(chain_num, pixels[port].Color(red, green, blue));
 
         // Update colors displayed by Neopixel
-        pixels[port].show();
+        if (showNow) pixels[port].show();
     } else {
         WARNINGF("Neopixel not enabled on port %u", port);
     }
-    FUNCTION_END;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool Loom_Neopixel::configure_port(uint8_t port, int16_t pin, uint16_t count,
+                                   uint8_t brightness) {
+    if (port >= 3 || pin < 0 || count == 0 || count > 256) return false;
+    pixels[port].setPin(pin);
+    pixels[port].updateLength(count);
+    pixels[port].setBrightness(brightness);
+    return pixels[port].numPixels() == count;
+}
+
+void Loom_Neopixel::show(uint8_t port) {
+    if (port < 3 && enabledPins[port]) pixels[port].show();
+}
+
+bool Loom_Neopixel::can_show(uint8_t port) {
+    return port < 3 && enabledPins[port] && pixels[port].canShow();
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Neopixel::enable_pin(const uint8_t port, const bool state) {
@@ -97,7 +112,7 @@ void Loom_Neopixel::enable_pin(const uint8_t port, const bool state) {
     }
     enabledPins[port] = state;
     if (state) {
-        pinMode(14 + port, OUTPUT);
+        pinMode(pixels[port].getPin(), OUTPUT);
         pixels[port].begin();
         pixels[port].show();
     }

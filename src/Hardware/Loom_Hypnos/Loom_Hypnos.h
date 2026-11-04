@@ -291,6 +291,12 @@ class Loom_Hypnos : public Module {
 
     /** Supply sketch-level __DATE__/__TIME__ before enable(). */
     void setCompileTime(const char *buildDate, const char *buildTime);
+    void setCompileTime(const char *buildDate, const char *buildTime, TIME_ZONE buildZone);
+
+    /** Explicitly reset UTC to the supplied sketch compile time; caller supplies Wire. */
+    bool setRTCFromCompileTime();
+    /** Select the same named timezones accepted by getConfigFromSD(), without SD ownership. */
+    bool setTimezone(const char *name);
 
     /**
      * Load the configuration for the hypnos from the SD card (Timezeone and sleep interval)
@@ -418,6 +424,8 @@ class Loom_Hypnos : public Module {
     bool custom_time = false; // Set the RTC to a user specified time
     char sketchCompileDate[12] = {};
     char sketchCompileTime[9] = {};
+    TIME_ZONE sketchBuildZone = TIME_ZONE::GMT;
+    bool explicitBuildZone = false;
 
     /* Voltage check bitmaps 0-7 LSB-first */
     static constexpr uint8_t VF_CHECKED = (1u << 0);    // 00000001 | 0x01

@@ -165,7 +165,10 @@ JsonObject Manager::get_data_object(const char *moduleName) {
     }
 
     JsonObject moduleEntry = contents.createNestedObject();
-    moduleEntry["module"] = safeModuleName;
+    // ArduinoJson borrows const char* but copies mutable char*. Packet labels
+    // must survive temporary/mux sensor objects and later module renaming.
+    // The cast selects copying; ArduinoJson never modifies the source text.
+    moduleEntry["module"] = const_cast<char *>(safeModuleName);
     return moduleEntry.createNestedObject("data");
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////

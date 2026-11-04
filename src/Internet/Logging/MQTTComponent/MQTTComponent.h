@@ -110,6 +110,12 @@ class MQTTComponent : public Module {
     int port;          // Port the broker is listening on
 
   public:
+    /** Borrow the configured MQTT client for explicit diagnostics such as subscribing
+     * before publishing a test packet. Clear diagnostic callbacks when finished;
+     * do not access this stream concurrently with publish/retained-message operations. */
+    MqttClient &getMQTTClient() { return mqttClient; }
+    bool connectForDiagnostics() { return connectToBroker(); }
+
     /**
      * Constructor for base MQTTComponent
      *

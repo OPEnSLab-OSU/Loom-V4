@@ -12,3 +12,6 @@ clang-format-results.txt
 
 # Sketch launcher binaries, staged sources and capture build logs
 .loom-build/
+
+# Local Feature Studio designs, Codex handoffs and generated applications
+tools/feature-studio/.local/

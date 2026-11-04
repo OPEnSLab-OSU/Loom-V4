@@ -100,6 +100,13 @@ If you are updating from an old version of Loom, you may need to do a "clean ins
 ## Best Practices
 Will Fill in Please.
 
+## Feature Studio
+
+[Feature Studio](tools/feature-studio/README.md) is a local visual application
+builder for Loom on the Feather M0. Choose feature ingredients, configure their
+behavior, or start from a repository example. Codex CLI reviews the selected
+checkout and returns an Arduino sketch with an explained workflow graph.
+
 ## Issues
 If you are experiencing issues, please click the "Issues" tab on this repo and choose the template that best fits your needs. Please supply as much information as possible. This helps us to better understand a fix issues quickly
 
