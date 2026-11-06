@@ -162,7 +162,8 @@ class Logger {
     void enableSD() { enableSDLogging = true; };
 
     bool shouldLogSummaries() {
-        return enableFunctionSummaries && sdInst != nullptr && enableSDLogging;
+        // Without an initialized card every write waits 5 s in writeLineToFile, for each function start and end
+        return enableFunctionSummaries && sdInst != nullptr && enableSDLogging && sdInst->hasSDInitialized();
     }
 
     /**
