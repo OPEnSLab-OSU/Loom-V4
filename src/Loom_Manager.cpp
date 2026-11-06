@@ -100,11 +100,6 @@ void Manager::package(){
     doc["id"]["name"] = get_device_name();
     doc["id"]["instance"] = get_instance_num();
 
-    // Get the contents of the JSON document
-    contentsArray = doc["contents"];
-    if(contentsArray.isNull())
-        contentsArray = doc.createNestedArray("contents");
-
     // Add the packet number to the JSON document
     JsonObject json = get_data_object("Packet");
     json["Number"] = packetNumber;
@@ -129,6 +124,10 @@ void Manager::package(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 JsonObject Manager::get_data_object(const char* moduleName){
+    contentsArray = doc["contents"];
+    if(contentsArray.isNull())
+        contentsArray = doc.createNestedArray("contents");
+
     // Check if the key already exists in the array
     for(JsonVariant value : contentsArray){
 
