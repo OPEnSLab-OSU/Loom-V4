@@ -165,4 +165,6 @@ class Loom_LTE : public NetworkComponent{
 
         LTEState currState = LTEState::OFF;
 
+        uint_8 connect_retries = 0;
+
 };

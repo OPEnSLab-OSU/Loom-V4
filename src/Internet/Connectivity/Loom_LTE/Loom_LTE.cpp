@@ -68,8 +68,6 @@ void Loom_LTE::initialize(){
     // Start up the module
     power_up();
 
-    moduleInitialized = currState == LTEState::CONNECTED;
-
     // Get the modem info
     char const* modemInfo = modem.getModemName().c_str();
 
@@ -94,77 +92,84 @@ void Loom_LTE::power_up(){
     char output[OUTPUT_SIZE];
     char ip[16];
 
-    if(currState == LTEState::ERROR){
-        reset();
-    }
- 
-    // If the batch_sd is initialized and the current batch is one less than the maximum so we turn on the device before the last batch
-    if(batch_sd != nullptr && !firstInit){
-        if(batch_sd->getCurrentBatch() != batch_sd->getBatchSize()-1){
-            currState = LTEState::SLEEPING;
-            FUNCTION_END;
-            return;
-        }else{
-            currState = LTEState::OFF;
-        }
-    }
+    if(connect_retries < 10){
 
-    // If not connected to a network we want to connect
-    if(currState == LTEState::OFF){
-        LOG(F("Powering up GPRS Modem. This should take about 10 seconds..."));
-        TIMER_DISABLE;
-        // Power on whatever the currently used LTE board is
-        powerBoardOn();
-
-        // Delay an additional one second to allow communication to open up
-        SerialAT.begin(9600);
-        delay(1000);
-        bool init = false;
-        for(int retries = 1; retries < 6; retries++){
-            snprintf(output, OUTPUT_SIZE, "Attempt %d of powering on modem", retries);
-            LOG(output);
-            if(modem.init()){
-                init = true;
-                break;
-            }
-            delay(500);
-        }
-        if(init){
-            LOG(F("Powering up complete!"));
-            currState = LTEState::DISCONNECTED;
-        }else{
-            ERROR(F("Modem did not power on. Attempting recovery."));
-            currState = LTEState::ERROR;
+        if(currState == LTEState::ERROR){
             reset();
         }
-        TIMER_ENABLE;
-    }
     
-    if(currState == LTEState::DISCONNECTED){
-        connect();
-        if(currState == LTEState::CONNECTING){
-            // Print APN
-            snprintf(output, OUTPUT_SIZE, "APN: %s", APN);
-            LOG(output);
-
-            // Signal Quality
-            snprintf(output, OUTPUT_SIZE, "Signal State: %i", modem.getSignalQuality());
-            LOG(output);
-
-            // Log IP address
-            ipToString(modem.localIP(), ip);
-            snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
-            LOG(output);
-
-            if(verifyConnection()){
-                currState = LTEState::CONNECTED;
-                LOG(F("Module successfully connected!"));
+        // If the batch_sd is initialized and the current batch is one less than the maximum so we turn on the device before the last batch
+        if(batch_sd != nullptr && !firstInit){
+            if(batch_sd->getCurrentBatch() != batch_sd->getBatchSize()-1){
+                currState = LTEState::SLEEPING;
+                FUNCTION_END;
+                return;
             }else{
-                ERROR(F("Module could not reach server"));
+                currState = LTEState::OFF;
+            }
+        }
+
+        // If not connected to a network we want to connect
+        if(currState == LTEState::OFF){
+            LOG(F("Powering up GPRS Modem. This should take about 10 seconds..."));
+            TIMER_DISABLE;
+            // Power on whatever the currently used LTE board is
+            powerBoardOn();
+
+            // Delay an additional one second to allow communication to open up
+            SerialAT.begin(9600);
+            delay(1000);
+            bool init = false;
+            for(int retries = 1; retries < 6; retries++){
+                snprintf(output, OUTPUT_SIZE, "Attempt %d of powering on modem", retries);
+                LOG(output);
+                if(modem.init()){
+                    init = true;
+                    break;
+                }
+                delay(500);
+            }
+            if(init){
+                LOG(F("Powering up complete!"));
                 currState = LTEState::DISCONNECTED;
+            }else{
+                ERROR(F("LTE Board did not power on. Check battery or board connections."));
+                moduleInitialized = false;
+                return;
+            }
+            TIMER_ENABLE;
+        }
+        
+        if(currState == LTEState::DISCONNECTED){
+            connect();
+            if(currState == LTEState::CONNECTING){
+                // Print APN
+                snprintf(output, OUTPUT_SIZE, "APN: %s", APN);
+                LOG(output);
+
+                // Signal Quality
+                snprintf(output, OUTPUT_SIZE, "Signal State: %i", modem.getSignalQuality());
+                LOG(output);
+
+                // Log IP address
+                ipToString(modem.localIP(), ip);
+                snprintf(output, OUTPUT_SIZE, "Device IP Address: %s", ip);
+                LOG(output);
+                
+                currState = LTEState::CONNECTED;
+                FUNCTION_END
+                // previously, we would attempt to reach an HTTP endpoint at this state. 
+                // However, when we connect to mqtt broker, it will tell us if we are connected or not. 
+                return;
             }
         }
     }
+    else{
+        LOG("LTE has reached 10 failed connection attempts. Disabling LTE to save power.");
+        moduleInitialized = false;
+    }
+    
+
 
     FUNCTION_END;
 
@@ -262,7 +267,7 @@ void Loom_LTE::reset(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::package(){
     FUNCTION_START;
-    if(moduleInitialized){
+    if(currState == LTEState::CONNECTED){
         JsonObject json = manInst->get_data_object(getModuleName());
         json["RSSI"] = modem.getSignalQuality();
     }
