@@ -33,6 +33,19 @@ class MQTTComponent : public Module{
         bool publishMessage(const char* topic, const char* message, bool retain = false, int qos = 1);
 
         /**
+         * Start an MQTT message of exactly `size` bytes and return where to write them; the bytes go straight to the
+         * broker, so the message size isn't limited by RAM. Finish with endStream(). Returns nullptr on failure.
+        */
+        Print* beginStream(const char* topic, unsigned long size, bool retain = false, int qos = 1);
+
+        /**
+         * Finish a message started with beginStream(); `written` is how many bytes were written to it
+         *
+         * @return The status of the publish attempt
+        */
+        bool endStream(unsigned long written);
+
+        /**
          * Subscribe to a given topic to get the retained message and then immediately unsubscribe
          *
          * @param topic The topic we want to retrieve the message from
@@ -120,4 +133,5 @@ class MQTTComponent : public Module{
 
         int keep_alive = 60000;                     // How long the broker should keep the connection open, defaults to a minute
         int maxRetries = 4;                         // How many times we want to retry the connection
+        unsigned long streamSize = 0;               // Length promised by beginStream()
 };

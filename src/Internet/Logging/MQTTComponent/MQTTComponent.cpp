@@ -34,6 +34,8 @@ bool MQTTComponent::connectToBroker() {
         // Try to connect multiple times as some may be dropped
         while(!mqttClient.connected())
         {
+            // One attempt (connect + 5 s retry delay) fits a 16 s watchdog; a single connect hanging longer resets the board
+            Watchdog.reset();
             // If our retry limit has been reached we dont want to try to send data cause it wont work
             if(retryAttempts >= maxRetries){
                 ERROR(F("MQTT Retry limit exceeded!"));
@@ -110,6 +112,53 @@ bool MQTTComponent::publishMessage(const char* topic, const char* message, bool 
     }
     FUNCTION_END;
     return false;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+Print* MQTTComponent::beginStream(const char* topic, unsigned long size, bool retain, int qos){
+    FUNCTION_START;
+    if(!moduleInitialized || !internetClient.moduleInitialized || !mqttClient.connected()){
+        ERROR(F("MQTT Client not connected to broker "));
+        FUNCTION_END;
+        return nullptr;
+    }
+
+    // Tell the broker we are still here
+    mqttClient.poll();
+
+    // Giving the size up front makes the client send each write straight through instead of buffering the message
+    if(mqttClient.beginMessage(topic, size, retain, qos) != 1){
+        ERROR(F("Failed to begin message!"));
+        FUNCTION_END;
+        return nullptr;
+    }
+    streamSize = size;
+    FUNCTION_END;
+    return &mqttClient;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool MQTTComponent::endStream(unsigned long written){
+    FUNCTION_START;
+    // The header promised streamSize bytes; anything else leaves the connection unusable
+    if(written != streamSize){
+        ERROR(F("Message stream had the wrong length, dropping the connection"));
+        mqttClient.stop();
+        FUNCTION_END;
+        return false;
+    }
+
+    if(mqttClient.endMessage() != 1){
+        ERROR(F("Failed to close message!"));
+        FUNCTION_END;
+        return false;
+    }
+
+    LOG(F("Data has been successfully sent!"));
+    FUNCTION_END;
+    return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

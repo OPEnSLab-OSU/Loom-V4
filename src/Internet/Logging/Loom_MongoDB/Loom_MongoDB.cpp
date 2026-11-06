@@ -1,4 +1,5 @@
 #include "Loom_MongoDB.h"
+#include "PackedBatch.h"
 #include "Logger.h"
 #include "../../../Sensors/Loom_Analog/Loom_Analog.h"
 
@@ -153,6 +154,8 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
 
                 // \r Marks the end of a line, at this point we want to publish that whole packet
                 if(c == '\r'){
+                    // A batch takes ~2 s per packet, so keep a sketch-enabled watchdog from firing mid-upload
+                    Watchdog.reset();
 
                     // Track the packet number we are currently publishing 
                     snprintf_P(output, OUTPUT_SIZE, PSTR("Publishing Packet %i of %i"), packetNumber+1, batchSD.getBatchSize());
@@ -161,10 +164,26 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
                     // Replace the \r with a null character
                     line[index] = '\0';
 
+                    // A hub batch can hold packets from several nodes, so take the topic from each packet's own id
+                    StaticJsonDocument<32> filter;
+                    filter["id"] = true;
+                    StaticJsonDocument<128> idDoc;
+                    deserializeJson(idDoc, (const char*)line, DeserializationOption::Filter(filter)); // const cast avoids zero-copy mutating line
+                    snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name,
+                               idDoc["id"]["name"] | manInst->get_device_name(),
+                               idDoc["id"]["instance"] | manInst->get_instance_num());
+
                     if(!publishMessage(topic, line)){
-                        snprintf(output, OUTPUT_SIZE, PSTR("Failed to publish packet #%i"), packetNumber+1);
-                        WARNING(output);
-                        allDataSuccess = false;
+                        // The connection can die while idle between uploads without the client noticing until it writes:
+                        // drop it, reconnect and resend this packet once
+                        WARNING(F("Publish failed, reconnecting to the broker and retrying"));
+                        disconnectFromBroker();
+                        if(!connectToBroker() || !publishMessage(topic, line)){
+                            snprintf(output, OUTPUT_SIZE, PSTR("Failed to publish packet #%i, stopping this upload"), packetNumber+1);
+                            WARNING(output);
+                            allDataSuccess = false;
+                            break; // the broker is unreachable; the rest would fail too
+                        }
                     }
 
                     delay(500);
@@ -206,6 +225,64 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
     FUNCTION_END;
     TIMER_ENABLE;
     return true;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_MongoDB::publishPacked(Loom_BatchSD& batchSD){
+    FUNCTION_START;
+    char output[OUTPUT_SIZE];
+
+    if(Loom_Analog::getBatteryVoltage() < 3.4){
+        WARNING(F("Module not initialized! Battery doesn't have enough power."));
+        FUNCTION_END;
+        return false;
+    }
+    if(!moduleInitialized){
+        WARNING(F("Module not initialized! If using credentials from SD make sure they are loaded first."));
+        FUNCTION_END;
+        return false;
+    }
+    if(!batchSD.shouldPublish()){
+        snprintf_P(output, OUTPUT_SIZE, PSTR("Batch not ready to publish: %i/%i"), batchSD.getCurrentBatch(), batchSD.getBatchSize());
+        LOG(output);
+        FUNCTION_END;
+        return false;
+    }
+
+    snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i/packed"), database_name, manInst->get_device_name(), manInst->get_instance_num());
+
+    if(!connectToBroker()){
+        FUNCTION_END;
+        return false;
+    }
+
+    for(int attempt = 0; attempt < 2; attempt++){
+        File batch = batchSD.getBatch();
+        PackedBatch::Counter counter;
+        unsigned long size = PackedBatch::encode(batch, counter);
+        Print* out = size > 0 ? beginStream(topic, size) : nullptr;
+        bool sent = out && endStream(PackedBatch::encode(batch, *out));
+        batch.close();
+        if(sent){
+            snprintf_P(output, OUTPUT_SIZE, PSTR("Published %i readings in one %lu byte message"), batchSD.getCurrentBatch(), size);
+            LOG(output);
+            FUNCTION_END;
+            return true;
+        }
+        // The connection can die while idle between uploads without the client noticing until it writes:
+        // drop it, reconnect and send the batch once more
+        if(attempt == 0){
+            WARNING(F("Batch publish failed, reconnecting to the broker and retrying"));
+            disconnectFromBroker();
+            if(!connectToBroker())
+                break;
+        }
+    }
+
+    WARNING(F("Batch publish failed"));
+    FUNCTION_END;
+    return false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

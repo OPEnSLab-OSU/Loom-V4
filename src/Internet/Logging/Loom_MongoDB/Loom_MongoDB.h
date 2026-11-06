@@ -68,6 +68,14 @@ class Loom_MongoDB : public MQTTComponent{
         bool publish(Loom_BatchSD& batchSD);
 
         /**
+         * DRAFT. Publish the whole batch as ONE bit-packed MQTT message on "<database>/<device><instance>/packed" instead
+         * of one JSON message per reading: about a twentieth of the data and far less time on LTE, with nothing lost
+         * (see PackedBatch.h). Needs a broker whose bridge decodes /packed topics (packed_bridge.py); it files each
+         * reading under its own id.
+         */
+        bool publishPacked(Loom_BatchSD& batchSD);
+
+        /**
          * Publish metadata to the database
          */ 
         bool publishMetadata(char* metadata);
