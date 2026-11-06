@@ -113,12 +113,18 @@ void Loom_LTE::power_up(){
     if(currState == LTEState::OFF){
         LOG(F("Powering up GPRS Modem. This should take about 10 seconds..."));
         TIMER_DISABLE;
-        // Power on whatever the currently used LTE board is
-        powerBoardOn();
-
-        // Delay an additional one second to allow communication to open up
         SerialAT.begin(9600);
-        delay(1000);
+
+        // A watchdog reset restarts the MCU but leaves the modem on, and the power pin toggles it, so pulsing it would turn the modem off
+        if(modem.testAT(2000)){
+            LOG(F("Modem already on, skipping power pulse"));
+        }else{
+            // Power on whatever the currently used LTE board is
+            powerBoardOn();
+
+            // Delay an additional one second to allow communication to open up
+            delay(1000);
+        }
         bool init = false;
         for(int retries = 1; retries < 6; retries++){
             snprintf(output, OUTPUT_SIZE, "Attempt %d of powering on modem", retries);
