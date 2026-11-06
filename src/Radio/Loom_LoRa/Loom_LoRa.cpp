@@ -104,7 +104,10 @@ void Loom_LoRa::initialize() {
     radioDriver.setSpreadingFactor(7); 
 
     // Coding rate should be 4/5
-    radioDriver.setCodingRate4(5);	
+    radioDriver.setCodingRate4(5);
+
+    // Listen before talk: wait up to 10s for the channel to be clear so nodes bursting at the same time don't collide
+    radioDriver.setCADTimeout(10000);
     radioDriver.sleep();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -151,24 +154,26 @@ void Loom_LoRa::setAddress(const uint8_t newAddress) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LoRa::receiveFromLoRa(uint8_t *buf, uint8_t buf_size, 
+bool Loom_LoRa::receiveFromLoRa(uint8_t *buf, uint8_t *buf_size,
                                        uint timeout, uint8_t *fromAddress) {
     bool status = true;
 
-    memset(buf, 0, buf_size);
+    memset(buf, 0, *buf_size);
 
     LOG(F("Waiting for message..."));
 
     if (timeout) {
-        status = radioManager->recvfromAckTimeout(buf, &buf_size, timeout, 
+        status = radioManager->recvfromAckTimeout(buf, buf_size, timeout,
                                                   fromAddress);
     } else {
-        status = radioManager->recvfromAck(buf, &buf_size, 
+        status = radioManager->recvfromAck(buf, buf_size,
                                            fromAddress);
     }
 
     if (!status) {
         WARNING(F("No message received"));
+    } else {
+        signalStrength = radioDriver.lastRssi();  // how well we heard the sender; getSignalStrength() returns it
     }
 
     radioDriver.sleep();
@@ -185,13 +190,24 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
     }
 
     uint8_t buf[MAX_MESSAGE_LENGTH] = {};
+    uint8_t len = sizeof(buf);
+    rawMessageLength = 0;
 
-    bool recvStatus = receiveFromLoRa(buf, sizeof(buf), timeout, fromAddress);
+    bool recvStatus = receiveFromLoRa(buf, &len, timeout, fromAddress);
     if (!recvStatus) {
         return FragReceiveStatus::Error;
     }
 
     LOGF("Received packet from %i", *fromAddress);
+
+    // Loom's MsgPack packets are always maps (first byte 0x80 or above); anything else is a raw message from sendRaw()
+    // that the sketch decodes itself, so hand it back untouched
+    if (len > 0 && buf[0] < 0x80) {
+        memcpy(rawMessage, buf, len);
+        rawMessageLength = len;
+        LOGF("Received %i byte raw message from %i", len, *fromAddress);
+        return FragReceiveStatus::Complete;
+    }
 
     const size_t SAFE_JSON_SIZE = 1500;
     StaticJsonDocument<SAFE_JSON_SIZE> tempDoc;
@@ -321,6 +337,8 @@ bool Loom_LoRa::handleLostFrag(JsonDocument &workingDoc,
 bool Loom_LoRa::receive(uint timeout, uint8_t* fromAddress, bool shouldProxy) {
     int retryCount = receiveRetryCount;
     while (retryCount > 0) {
+        // Each wait is at most `timeout`, so a sketch-enabled watchdog only fires if the radio loop actually hangs
+        Watchdog.reset();
         FragReceiveStatus status = receiveFrag(timeout, shouldProxy, fromAddress);
 
         switch (status) {
@@ -458,6 +476,32 @@ bool Loom_LoRa::send(const uint8_t destinationAddress,
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+bool Loom_LoRa::sendRaw(const uint8_t *data, uint8_t len,
+                        const uint8_t destinationAddress) {
+    if (!moduleInitialized) {
+        ERROR(F("Module not initialized!"));
+        return false;
+    }
+
+    if (len == 0 || len > MAX_MESSAGE_LENGTH || data[0] >= 0x80) {
+        ERRORF("Raw message must be 1-%i bytes and start with a byte below 0x80", MAX_MESSAGE_LENGTH);
+        return false;
+    }
+
+    bool status = radioManager->sendtoWait((uint8_t *)data, len, destinationAddress);
+    if (status) {
+        LOGF("Successfully transmitted %i byte raw message", len);
+        signalStrength = radioDriver.lastRssi();
+    } else {
+        ERROR(F("Failed to send raw message to specified address!"));
+    }
+
+    radioDriver.sleep();
+    return status;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LoRa::sendBatch(const uint8_t destinationAddress) {
     bool status = false;
 

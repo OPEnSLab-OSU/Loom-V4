@@ -194,9 +194,27 @@ public:
      */ 
     bool receiveBatch(uint timeout, int *numberOfPackets, uint8_t *fromAddress);
 
+    /**
+     * Send bytes as-is in one LoRa message, with the same acknowledgement and retries as send().
+     * For compact formats such as DendrometerPacket; the first byte must be below 0x80 so the
+     * receiver can tell it apart from Loom's MsgPack packets.
+     *
+     * @param data The bytes to send
+     * @param len Number of bytes, at most RH_RF95_MAX_MESSAGE_LEN (251)
+     * @param destinationAddress The address to send the data to
+     */
+    bool sendRaw(const uint8_t *data, uint8_t len, const uint8_t destinationAddress);
+
+    /**
+     * Length of the raw message (see sendRaw) the last receive() / receiveBatch() returned, or 0 if it was a
+     * normal Loom packet (which is loaded into the manager's document as usual). Read it with rawData().
+     */
+    uint8_t rawLength() const { return rawMessageLength; };
+    const uint8_t *rawData() const { return rawMessage; };
+
 private:
-    // receives some data from lora
-    bool receiveFromLoRa(uint8_t *buf, uint8_t buf_size, uint timeout, 
+    // receives some data from lora; buf_size is the buffer size in, the received length out
+    bool receiveFromLoRa(uint8_t *buf, uint8_t *buf_size, uint timeout,
                          uint8_t *fromAddress);
 
     // receives a single fragment from some device
@@ -223,7 +241,9 @@ private:
     RH_RF95 radioDriver;               // Underlying radio driver
     
     Loom_BatchSD *batchSD = nullptr;   // Pointer to the batchSD
-    
+    uint8_t rawMessage[MAX_MESSAGE_LENGTH];  // Last raw message received, see rawLength()
+    uint8_t rawMessageLength = 0;
+
     bool poweredUp = true;
 
     uint8_t deviceAddress;      // Device address
