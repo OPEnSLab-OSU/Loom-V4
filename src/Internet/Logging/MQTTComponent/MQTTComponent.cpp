@@ -16,7 +16,7 @@ void MQTTComponent::initialize(){
 bool MQTTComponent::connectToBroker() {
     FUNCTION_START;
     char output[OUTPUT_SIZE];
-    if(moduleInitialized && internetClient.moduleInitialized){
+    if(moduleInitialized && internetClient.isConnected()){
 
         // Check if we forgot to supply an address or a port number
         if(strlen(address) <= 0  || port == 0){
@@ -76,7 +76,7 @@ bool MQTTComponent::publishMessage(const char* topic, const char* message, bool 
     FUNCTION_START;
 
     // Make sure the module is initialized
-    if(moduleInitialized && internetClient.moduleInitialized){
+    if(moduleInitialized && internetClient.isConnected()){
         if(mqttClient.connected()){
             // Tell the broker we are still here
             mqttClient.poll();
@@ -84,6 +84,13 @@ bool MQTTComponent::publishMessage(const char* topic, const char* message, bool 
             // Start a message write the data and close the message, publish all messages with retain
             if(mqttClient.beginMessage(topic, retain, qos) != 1){
                 ERROR(F("Failed to begin message!"));
+                // if LTE is too poor, or were not connected, we dont want to retry connection
+                if(!internetClient.logDiagnostics()){
+                    shouldRetry = false;
+                }
+                mqttClient.stop();
+                FUNCTION_END;
+                return false;
             }
 
             // Print the message to the topic
@@ -92,9 +99,12 @@ bool MQTTComponent::publishMessage(const char* topic, const char* message, bool 
             // Check to see if we are actually closing messages properly
             if(mqttClient.endMessage() != 1){
                 ERROR(F("Failed to close message!"));
-                internetClient.logDiagnostics();
-                FUNCTION_END;
-                return false;
+                if(!internetClient.logDiagnostics()){
+                    shouldRetry = false;
+                }
+                    mqttClient.stop();
+                    FUNCTION_END;
+                    return false;
             }
             else{
                 LOG(F("Data has been successfully sent!"));
@@ -108,7 +118,7 @@ bool MQTTComponent::publishMessage(const char* topic, const char* message, bool 
         }
     }
     else{
-        ERROR("Module or NetworkComponent not initialized!");
+        ERROR("MQTT not initialized, or LTE is not connected");
     }
     FUNCTION_END;
     return false;

@@ -118,11 +118,12 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
 
-    if(Loom_Analog::getBatteryVoltage() < 3.4){
-        WARNING(F("Module not initialized! Battery doesn't have enough power."));
-        FUNCTION_END;
-        return false;    
-    }
+        // commenting out for debug testing. 
+    // if(Loom_Analog::getBatteryVoltage() < 3.4){
+    //     WARNING(F("Module not initialized! Battery doesn't have enough power."));
+    //     FUNCTION_END;
+    //     return false;    
+    // }
     
     char line[MAX_JSON_SIZE];
     int packetNumber = 0, index = 0;
@@ -164,7 +165,28 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
                     if(!publishMessage(topic, line)){
                         snprintf(output, OUTPUT_SIZE, PSTR("Failed to publish packet #%i"), packetNumber+1);
                         WARNING(output);
-                        allDataSuccess = false;
+                        if(shouldRetry){
+                            LOG("Reconnecting to MQTT broker");
+                            if(connectToBroker()){
+                                LOG("Reconnect successfull, attmepting to re-send message");
+                                if(!publishMessage(topic, line)){
+                                    LOG("Failed to publish again. Retrying next batch");
+                                }
+                                else{
+                                    LOG("Retry Successful!");
+                                }
+                            }
+                            else{
+                                LOG("Could not recconect to mqtt broker. Retrying next batch");
+                            }
+                        
+                        }
+                        else{
+                            LOG("LTE connection failed, or too poor to reattempt. Retrying next batch");
+                            shouldRetry = true;
+                            FUNCTION_END;
+                            return false;
+                        }
                     }
 
                     delay(500);

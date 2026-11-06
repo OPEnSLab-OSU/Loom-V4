@@ -21,5 +21,5 @@ class NetworkComponent : public Module{
 
         virtual Client* getClient() = 0;
 
-        virtual void logDiagnostics() {}
+        virtual bool logDiagnostics() {}
 };

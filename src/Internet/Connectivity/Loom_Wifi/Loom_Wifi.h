@@ -47,6 +47,8 @@ class Loom_WIFI : public NetworkComponent{
         // Disconnect from the network
         void power_down() override;
 
+        bool logDiagnostics() override;
+
     public:
 
         /**

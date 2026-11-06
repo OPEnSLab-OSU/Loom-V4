@@ -68,7 +68,8 @@ void Loom_LTE::initialize(){
     // Start up the module
     power_up();
 
-    moduleInitialized = currState == LTEState::CONNECTED;
+    // if we set moduleInitialized as false, it will not be able to reattempt initialization if it fails the first time. 
+    // moduleInitialized = currState == LTEState::CONNECTED;
 
     // Get the modem info
     char const* modemInfo = modem.getModemName().c_str();
@@ -160,9 +161,12 @@ void Loom_LTE::power_up(){
                 currState = LTEState::CONNECTED;
                 LOG(F("Module successfully connected!"));
             }else{
-                ERROR(F("Module could not reach server"));
+                ERROR(F("Module could not verify connection"));
                 currState = LTEState::DISCONNECTED;
             }
+        }
+        else{
+            currState = LTEState::DISCONNECTED;
         }
     }
 
@@ -439,14 +443,14 @@ bool Loom_LTE::getNetworkTime(int* year, int* month, int* day, int* hour, int* m
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LTE::logDiagnostics(){
+bool Loom_LTE::logDiagnostics(){
     char output[OUTPUT_SIZE];
 
     if(!moduleInitialized){
         LOG("LTE not initialized");
-        return;
+        return false;
     }
-
+    LOG("Testing LTE connectivity");
     int signalQuality = modem.getSignalQuality();
     snprintf(output, OUTPUT_SIZE, "Signal Quality: %d", signalQuality);
     LOG(output);
@@ -493,6 +497,9 @@ void Loom_LTE::logDiagnostics(){
     bool networkConnected = modem.isNetworkConnected();
     snprintf(output, OUTPUT_SIZE, "Network Connected: %s", networkConnected ? "True" : "False");
     LOG(output);
+    // RSSI of 99 is disconnected, less than 5 is a very weak connection. 
+    // if LTE not reigstered to either home or partner network, we will not have an LTE connection
+    return ((signalQuality != 99 && signalQuality > 5) && (registration == REG_OK_HOME || registration == REG_OK_ROAMING));
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
