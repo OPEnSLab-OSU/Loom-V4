@@ -97,9 +97,20 @@ class SDManager : public Module{
         void setBatchSize(int size) { batch_size = size; };
 
         /**
+         * Keep a full batch until clearBatch() is called instead of emptying it at the next log, so a batch whose
+         * upload failed keeps growing and is sent with the next one. For sketches that clear the batch after uploading.
+         */
+        void keepUnsentBatches() { keepUnsent = true; };
+
+        /**
          * Get the current batch we are ons
          */ 
         int getCurrentBatch() { return current_batch; };
+
+        /**
+         * Empty the batch file and restart the count, e.g. once it has been uploaded
+         */
+        void clearBatch();
 
         /**
          * Log to a different name other than one matching the device name
@@ -132,11 +143,15 @@ class SDManager : public Module{
         char overrideFileName[260];
 
         int batch_size = -1;                                    // How many packets to log per batch
+        bool keepUnsent = false;                                // See keepUnsentBatches()
         int current_batch = 0;                                  // Current count of the batch
         int file_count = 0;                                     // What file number are we logging to
 
         bool sdInitialized = false;                             // If the SD card actually initialized
         char* headers[2];                                       // Contains the main and sub headers that are added to the top of the CSV files
+
+        int countLines(const char* name);                       // Number of lines in a file, 0 if it doesn't exist
+        void restoreBatch();                                    // Resume the batch count after a reboot instead of starting at 0
 
 
         void logBatch();                                        // Log data in batch format

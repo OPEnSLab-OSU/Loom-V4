@@ -213,7 +213,8 @@ bool SDManager::begin(){
         }
         updateCurrentFileName();
 
-        
+        if(batch_size > 0)
+            restoreBatch();
     }
     
     // Once the SD card has initialized the first round through we don't want to update the file name
@@ -314,12 +315,69 @@ char* SDManager::readFile(const char* fileName){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+int SDManager::countLines(const char* name){
+    int lines = 0;
+    File f = sd.open(name, O_RDONLY);
+    if(f){
+        while(f.available())
+            if(f.read() == '\n')
+                lines++;
+        f.close();
+    }
+    return lines;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void SDManager::restoreBatch(){
+    // The batch file kept its name across the reboot (long log names do): carry on counting where it stopped.
+    // A full batch is cleared at the next log as usual, unless unsent batches are kept.
+    int lines = countLines(batchFileName);
+    current_batch = (keepUnsent || lines < batch_size) ? lines : batch_size;
+    if(current_batch > 0 || file_count == 0)
+        return;
+
+    // This boot started new files: move the last batch over so those packets still get sent. A full one is included:
+    // if the sketch clears batches once uploaded (see clearBatch), a full one was never sent; publish it before logging.
+    char prev[260];
+    snprintf_P(prev, 260, PSTR("%s%i-Batch.txt"), strlen(overrideFileName) > 0 ? overrideFileName : device_name, file_count - 1);
+    int pending = countLines(prev);
+    if(pending == 0 || (pending > batch_size && !keepUnsent))
+        return;
+
+    File from = sd.open(prev, O_RDONLY);
+    File to = sd.open(batchFileName, O_WRITE | O_CREAT | O_APPEND);
+    if(from && to){
+        uint8_t buf[64];
+        int n;
+        while((n = from.read(buf, sizeof(buf))) > 0)
+            to.write(buf, n);
+        current_batch = pending;
+        LOGF("Carried %i unsent packets over from %s", pending, prev);
+    }
+    from.close();
+    to.close();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+void SDManager::clearBatch(){
+    File f = sd.open(getBatchFilename(), O_WRITE | O_TRUNC);
+    // Only restart the count if the file really was emptied, otherwise the next upload would repeat these lines
+    if(f){
+        f.close();
+        current_batch = 0;
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void SDManager::logBatch(){
     char f_name[260];
     char jsonString[MAX_JSON_SIZE];
     snprintf_P(f_name, 260, PSTR("%s-Batch.txt"), fileNameNoExtension);
-    // We want to clear the file after the batch size has been exceeded
-    if(current_batch >= batch_size){
+    // We want to clear the file after the batch size has been exceeded (when kept, only clearBatch() empties it)
+    if(current_batch >= batch_size && !keepUnsent){
         current_batch = 0;
         myFile = sd.open(f_name, O_WRITE | O_TRUNC | O_APPEND);
     }
