@@ -5,6 +5,7 @@
 #include <Sensors/Analog/Loom_Teros10/Loom_Teros10.h>
 #include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h>
 #include <Radio/Loom_LoRa/Loom_LoRa.h>
+#include <Radio/Loom_LoRa/DendrometerPacket.h>
 
 
 #include "AS5311.h"
@@ -21,6 +22,8 @@ TimeSpan sleepInterval;
 static const uint8_t TRANSMIT_INTERVAL = 16; // to save power, only transmit every X measurements
 ////Use teros 10?
 //#define DENDROMETER_TEROS10
+////Send a 10-byte heartbeat on every wake that doesn't send a batch (to compare reliability and battery with batches only)
+#define DENDROMETER_HEARTBEAT
 //////////////////////////
 //////////////////////////
 
@@ -39,14 +42,16 @@ Loom_Analog analog(manager);
 Loom_Teros10 teros(manager, A0);
 #endif
 Loom_SHT31 sht(manager);
-Loom_Neopixel statusLight(manager, false, false, true, NEO_GRB); // using channel 2 (physical pin A2). use RGB for through-hole LED devices. GRB otherwise.
+Loom_Neopixel statusLight(manager, false, false, true, NEO_RGB); // using channel 2 (physical pin A2). use RGB for through-hole LED devices. GRB otherwise.
 
 // magnet sensor
 AS5311 magnetSensor(AS5311_CS, AS5311_CLK, AS5311_DO);
 
 // wireless
 #if defined DENDROMETER_LORA
-Loom_LoRa lora(manager, NODE_NUMBER);
+// 23 dBm, 10 retries, 500ms retry timeout so the batch message survives another node transmitting at the same time.
+// Address comes from the manager's instance number.
+Loom_LoRa lora(manager, 23, 10, 500);
 Loom_BatchSD batchSD(hypnos, TRANSMIT_INTERVAL);
 #else
 #warning Wireless communication disabled!
@@ -75,20 +80,22 @@ void flashColor(uint8_t r, uint8_t g, uint8_t b);
  */
 void setup()
 {
+    // Write debug logs to the SD card (/debug/output_N.log)
+    ENABLE_SD_LOGGING;
+    ENABLE_FUNC_SUMMARIES;
+
 
     pinMode(BUTTON_PIN, INPUT_PULLUP); // Enable pullup on button pin. this is necessary for the interrupt (and the button check on the next line)
     delay(10);
     bool userInput = !digitalRead(BUTTON_PIN); // wait for serial connection ONLY button is pressed (low reading)
     manager.beginSerial(userInput);            // wait for serial connection ONLY button is pressed
     
-    hypnos.setLogName("HazelnutDendrometer_1data"); //SD card CSV file name
+    char logName[40];
+    snprintf(logName, sizeof(logName), "%s%idata", DEVICE_NAME, NODE_NUMBER);
+    hypnos.setLogName(logName); //SD card CSV file name, e.g. HazelnutDendrometer_3data
     hypnos.enable();
     sleepInterval = hypnos.getConfigFromSD("HypnosConfig.json");
 
-
-#if defined DENDROMETER_LORA
-    lora.setBatchSD(batchSD);
-#endif
     manager.initialize();
     setRTC(userInput);
 
@@ -131,8 +138,6 @@ void measure()
 
     hypnos.logToSD();
     hypnos.display_data();
-    // delay(5000);
-    // manager.display_data();
 }
 
 /**
@@ -153,14 +158,42 @@ void measureVPD()
     manager.addData("SHT31", "VPD", VPD);
 }
 
-/**
- * transmit the batch data packet over LoRa
- */
 void transmit()
 {
 #if defined DENDROMETER_LORA
-    lora.sendBatch(0);
-    
+    if (!batchSD.shouldPublish())
+    {
+#ifdef DENDROMETER_HEARTBEAT
+        uint8_t heartbeat[DendrometerPacket::HEARTBEAT_SIZE];
+        if (DendrometerPacket::makeHeartbeat(manager.getDocument(), NODE_NUMBER, heartbeat))
+            lora.sendRaw(heartbeat, sizeof(heartbeat), 0);
+#endif
+        return;
+    }
+
+    DendrometerPacket::Writer packet;
+    StaticJsonDocument<1500> reading;
+    char line[1000];
+    File batch = batchSD.getBatch(); // a copy, so logging while sending can't close it
+    while (batch.available())
+    {
+        int len = batch.readBytesUntil('\n', line, sizeof(line) - 1);
+        line[len] = '\0';
+        if (len < 2 || deserializeJson(reading, line) != DeserializationError::Ok)
+            continue; // skip a blank or corrupt line rather than lose the whole batch
+
+        // Full, or packet numbers restarted after a reboot: send what we have and start a new message
+        if (!packet.add(reading, NODE_NUMBER))
+        {
+            lora.sendRaw(packet.data(), packet.length(), 0);
+            packet.clear();
+            packet.add(reading, NODE_NUMBER);
+        }
+    }
+    batch.close();
+
+    if (packet.length() > 0)
+        lora.sendRaw(packet.data(), packet.length(), 0);
 #endif
 }
 
