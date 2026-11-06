@@ -518,9 +518,11 @@ void Loom_Hypnos::sleep(bool waitForSerial){
         manInst->power_down();
 
         // After powering down the devices check if the alarmed time is less than the current time, this means that the alarm may have already triggered
-        uint32_t alarmedTime = RTC_DS.getAlarm(1).unixtime();
+        // Use the stored alarm time: getAlarm() rebuilds the date with the current month (the DS3231 doesn't store one),
+        // so an alarm on the 1st set late on the last day of a month reads back a month early and every node resamples nonstop
         uint32_t currentTime = RTC_DS.now().unixtime();
-        hasAlarmTriggered = alarmedTime <= currentTime;
+        bool alarmWasSet = alarmTime.unixtime() != DateTime().unixtime();
+        hasAlarmTriggered = alarmWasSet && alarmTime.unixtime() <= currentTime;
         
         // 50ms delay allows this last message to be sent before the bus disconnects
         LOG("Entering Standby Sleep...");
