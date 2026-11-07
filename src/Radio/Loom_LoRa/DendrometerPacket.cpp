@@ -146,30 +146,4 @@ void unpack(const uint8_t* msg, uint8_t index, JsonDocument& doc, const char* na
     doc["timestamp"]["time_local"] = text;
 }
 
-bool makeHeartbeat(JsonDocument& reading, uint8_t node, uint8_t out[HEARTBEAT_SIZE]) {
-    uint32_t time;
-    if (!parseTime(reading["timestamp"]["time_utc"], time))
-        return false;
-    uint16_t packet = field(reading, "Packet", "Number").as<uint16_t>();
-    int8_t rssi = rssiByte(reading);
-    out[0] = HEARTBEAT;
-    out[1] = node;
-    memcpy(out + 2, &packet, 2);
-    out[4] = batteryByte(reading);
-    memcpy(out + 5, &rssi, 1);
-    memcpy(out + 6, &time, 4);
-    return true;
-}
-
-bool readHeartbeat(const uint8_t* msg, uint8_t len, Heartbeat& hb) {
-    if (len != HEARTBEAT_SIZE || msg[0] != HEARTBEAT)
-        return false;
-    hb.node = msg[1];
-    memcpy(&hb.packet, msg + 2, 2);
-    hb.batteryMV = 3000 + msg[4] * 10;
-    memcpy(&hb.rssi, msg + 5, 1);
-    memcpy(&hb.time, msg + 6, 4);
-    return true;
-}
-
 }  // namespace DendrometerPacket

@@ -15,6 +15,10 @@
 
 #define MAX_MESSAGE_LENGTH RH_RF95_MAX_MESSAGE_LEN
 
+// Handshake before each send()/sendRaw(): off for now, since a compact batch is one ACKed message and the handshake only
+// adds two extra transmits. Uncomment on both the hub and the nodes to try it (see requestHandshake).
+// #define LOOM_LORA_HANDSHAKE
+
 #define RFM95_CS 8            // Chip select pin
 #define RFM95_RST 4         // Reset pin
 #define RFM95_INT 3         // Interrupt pin
@@ -26,7 +30,8 @@
 enum class FragReceiveStatus {
     Incomplete,  // no packet has been completed
     Complete,    // packet has been loaded into the global document
-    Error        // could not receive fragment
+    Error,       // could not receive fragment
+    HandshakeAccepted  // hub answered a node's handshake request and now waits for its payload
 };
 
 struct PartialPacket {
@@ -146,7 +151,7 @@ public:
     bool receive(uint timeout, uint8_t *fromAddress, bool shouldProxy = false);
 
     /**
-     * Send the current JSON data to the specified address.
+     * Send the current JSON data to the specified address (after a handshake if LOOM_LORA_HANDSHAKE is on).
      *
      * @param destinationAddress The address to send the data to.
      */ 
@@ -231,6 +236,19 @@ private:
     // transmits a json document to over lora
     bool transmitToLoRa(JsonObject json, uint8_t destinationAddress);
 
+#ifdef LOOM_LORA_HANDSHAKE
+    // Handshake: before a payload the node sends {"handshake":"Request"} and waits for "Accept"; the hub answers one
+    // node at a time (until its receive() returns or HANDSHAKE_TIMEOUT_MS passes) so payloads don't interleave
+    bool requestHandshake(uint8_t destinationAddress);  // node: request + wait for accept, with retries
+    bool sendHandshakeRequest(uint8_t destinationAddress);
+    bool sendHandshakeResponse(uint8_t destinationAddress);
+    bool handshakeReceive(uint8_t destinationAddress);  // node: wait for the hub's accept
+    bool handleHandshakeReceive(JsonDocument &tempDoc, uint8_t *fromAddress);  // hub: answer a request
+    void beginHandshake(uint8_t peerAddress);
+    void clearHandshake();
+    bool clearExpiredHandshake();  // true if a handshake had timed out and was cleared
+#endif
+
     // returns whether sending was successful
     bool sendFullPacket(JsonObject json, uint8_t destinationAddress);
     bool sendFragmentedPacket(JsonObject json, uint8_t destinationAddress);
@@ -245,6 +263,13 @@ private:
     uint8_t rawMessageLength = 0;
 
     bool poweredUp = true;
+
+#ifdef LOOM_LORA_HANDSHAKE
+    bool handshakeEstablished = false;
+    uint8_t handshakePeerAddress = 0;
+    uint32_t handshakeEstablishedAt = 0;
+    static constexpr uint32_t HANDSHAKE_TIMEOUT_MS = 15000;
+#endif
 
     uint8_t deviceAddress;      // Device address
     int16_t signalStrength;     // Strength of the signal received

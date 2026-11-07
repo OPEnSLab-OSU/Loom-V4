@@ -22,8 +22,6 @@ TimeSpan sleepInterval;
 static const uint8_t TRANSMIT_INTERVAL = 16; // to save power, only transmit every X measurements
 ////Use teros 10?
 //#define DENDROMETER_TEROS10
-////Send a 10-byte heartbeat on every wake that doesn't send a batch (to compare reliability and battery with batches only)
-#define DENDROMETER_HEARTBEAT
 //////////////////////////
 //////////////////////////
 
@@ -162,14 +160,7 @@ void transmit()
 {
 #if defined DENDROMETER_LORA
     if (!batchSD.shouldPublish())
-    {
-#ifdef DENDROMETER_HEARTBEAT
-        uint8_t heartbeat[DendrometerPacket::HEARTBEAT_SIZE];
-        if (DendrometerPacket::makeHeartbeat(manager.getDocument(), NODE_NUMBER, heartbeat))
-            lora.sendRaw(heartbeat, sizeof(heartbeat), 0);
-#endif
         return;
-    }
 
     DendrometerPacket::Writer packet;
     StaticJsonDocument<1500> reading;

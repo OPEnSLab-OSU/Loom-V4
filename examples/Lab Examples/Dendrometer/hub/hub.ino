@@ -68,14 +68,11 @@ void loop()
 {
     Watchdog.reset();
 
-    // Wait 5 seconds for a message: a whole batch from a node, or a heartbeat (see DendrometerPacket.h)
+    // Wait 5 seconds for a whole batch from a node (see DendrometerPacket.h)
     if (lora.receive(5000))
     {
-        DendrometerPacket::Heartbeat heartbeat;
         if (lora.rawLength() == 0)
             WARNING(F("Ignoring an old-format JSON packet, reflash that node with the current node.ino"));
-        else if (DendrometerPacket::readHeartbeat(lora.rawData(), lora.rawLength(), heartbeat))
-            logHeartbeat(heartbeat);
         else
             handlePackedBatch(lora.rawData(), lora.rawLength());
     }
@@ -100,16 +97,6 @@ void loop()
 DateTime toLocalTime(DateTime utc)
 {
     return hypnos.getLocalTime(utc);
-}
-
-/**
- * Record a node's heartbeat in the debug log only (no LTE upload, so it costs the hub nothing); a script can read the
- * "Heartbeat from" lines to see how often each node is heard and how its battery and signal change between batches
- */
-void logHeartbeat(const DendrometerPacket::Heartbeat &hb)
-{
-    LOGF("Heartbeat from %i: packet %u, %u mV, node heard hub at %i dBm, hub heard node at %i dBm, node time %lu",
-         hb.node, hb.packet, hb.batteryMV, hb.rssi, lora.getSignalStrength(), (unsigned long)hb.time);
 }
 
 /**
