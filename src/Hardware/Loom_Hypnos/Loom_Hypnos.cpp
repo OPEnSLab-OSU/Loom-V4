@@ -998,6 +998,26 @@ bool Loom_Hypnos::scheduleWake(const TimeSpan duration) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_Hypnos::scheduleWakeAt(const DateTime &utc) {
+    FUNCTION_START(this);
+    sampleIntervalSeconds = 0;
+    nextSampleUtc = 0;
+    alarmScheduled = false;
+
+    DateTime now;
+    if (utc.year() > 2099 || !utc.isValid() || !tryGetCurrentTime(now)) {
+        return false;
+    }
+    const uint32_t target = utc.unixtime();
+    const uint32_t current = now.unixtime();
+    if (target <= current || target - current > loomTime::MAX_RTC_WAKE_DELAY_SECONDS) {
+        return false;
+    }
+    const bool scheduled = armRTCAlarm(utc);
+    FUNCTION_END;
+    return scheduled;
+}
+
 bool Loom_Hypnos::setSampleInterval(const TimeSpan interval) {
     return setSampleInterval(interval, false);
 }

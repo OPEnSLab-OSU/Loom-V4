@@ -210,6 +210,9 @@ class Loom_Hypnos : public Module {
      */
     bool scheduleWake(const TimeSpan duration);
 
+    /** Schedule a checked one-shot alarm at an absolute UTC deadline. */
+    bool scheduleWakeAt(const DateTime &utc);
+
     /**
      * Keep sample starts on a fixed UTC interval, including time spent measuring/uploading.
      * Call at the TOP of loop(), before measuring, then call sleep() after logging. The first
