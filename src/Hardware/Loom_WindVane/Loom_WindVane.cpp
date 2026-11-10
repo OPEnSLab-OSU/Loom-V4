@@ -10,6 +10,14 @@ const uint16_t MAX_ADC_DEVIATION = 25;
 
 // 360 / 16 positions. A float so the multiplication below gives fractional degrees.
 const float DEGREES_PER_DIRECTION = 22.5f;
+
+// 16 cardinal direction labels corresponding to the 16 indices above
+const char* CARDINAL_DIRECTIONS[] = {
+    "N", "NNE", "NE", "ENE",
+    "E", "ESE", "SE", "SSE",
+    "S", "SSW", "SW", "WSW",
+    "W", "WNW", "NW", "NNW"
+};
 }
  
 Loom_WindVane::Loom_WindVane(Manager& man, uint8_t pin)
@@ -62,11 +70,16 @@ void Loom_WindVane::measure() {
     // reading from noise or a fault.
     directionValid = smallestDeviation <= MAX_ADC_DEVIATION;
  
-    // Index -> degrees (index 0 = North = 0, index 4 = East = 90, and so on).
+    // Index degrees (index 0 = North = 0, index 4 = East = 90, and so on).
     // -1 sentinel when invalid so a bad reading is never mistaken for a real heading.
     windDirectionDegrees = directionValid
         ? closestDirection * DEGREES_PER_DIRECTION
         : -1.0f;
+
+    // Map index to cardinal string. If data is invalid return "N/A"
+    windDirectionCardinal = directionValid
+        ? CARDINAL_DIRECTIONS[closestDirection]
+        : "N/A";
 }
  
 void Loom_WindVane::package() {
@@ -77,6 +90,7 @@ void Loom_WindVane::package() {
     JsonObject json = manInst->get_data_object(getModuleName());
  
     json["wind_direction_degrees"] = windDirectionDegrees;  // -1 if invalid
+    json["wind_direction_cardinal"] = windDirectionCardinal; // "N/A" if invalid
     json["wind_direction_adc"] = rawADC;                    // raw value, useful for calibration
-    json["wind_direction_valid"] = directionValid;          // lets consumers filter out bad readings
+    json["wind_direction_valid"] = directionValid;          // used to filter out bad readings
 }
