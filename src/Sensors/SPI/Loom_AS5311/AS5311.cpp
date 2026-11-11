@@ -42,42 +42,28 @@ void AS5311::deinitializePins() {
 uint32_t AS5311::bitbang(bool angleData) {
     initializePins();
 
-    if (angleData) {
-        digitalWrite(CLK_PIN, HIGH); // write clock high to select the angular position data
-    } else {
-        digitalWrite(CLK_PIN, LOW); // A low clock selects magnetic field strength data.
-    }
-
+    // The clock level at the falling edge of CS selects position or field strength.
+    digitalWrite(CLK_PIN, angleData ? HIGH : LOW);
     delayMicroseconds(DATA_TIMING_US);
-    // select the chip
     digitalWrite(CS_PIN, LOW);
     delayMicroseconds(DATA_TIMING_US);
 
-    // begin the data transfer
-    digitalWrite(CLK_PIN, LOW);
+    if (!angleData) {
+        // Strength starts with CLK low. Raise it so the first falling edge latches the word.
+        digitalWrite(CLK_PIN, HIGH);
+        delayMicroseconds(DATA_TIMING_US);
+    }
 
     uint32_t data = 0;
-    const uint8_t BITS = 18;
-    for (int i = 0; i < BITS; i++) {
+    for (uint8_t i = 0; i < 18; ++i) {
+        digitalWrite(CLK_PIN, LOW);
         delayMicroseconds(DATA_TIMING_US);
         digitalWrite(CLK_PIN, HIGH);
-
-        // don't set clock low on last bit
-        if (i < (BITS - 1)) {
-            delayMicroseconds(DATA_TIMING_US);
-            digitalWrite(CLK_PIN, LOW);
-        }
-
         delayMicroseconds(DATA_TIMING_US);
-
-        auto readval = digitalRead(DO_PIN);
-        if (readval == HIGH) {
-            data |= 1UL << ((BITS - 1) - i);
-        }
+        data = (data << 1) | (digitalRead(DO_PIN) == HIGH);
     }
 
     digitalWrite(CS_PIN, HIGH);
-    digitalWrite(CLK_PIN, HIGH);
     delayMicroseconds(DATA_TIMING_US);
     deinitializePins();
 
@@ -106,9 +92,7 @@ bool AS5311::isValidReading(uint32_t data) {
     return (parity & 1U) == 0;
 }
 
-magnetStatus AS5311::getMagnetStatus() {
-    uint32_t data = bitbang();
-
+magnetStatus AS5311::magnetStatusFromWord(uint32_t data) {
     // invalid data
     if (!isValidReading(data)) {
         return magnetStatus::error;
@@ -127,18 +111,21 @@ magnetStatus AS5311::getMagnetStatus() {
     return magnetStatus::green;
 }
 
+magnetStatus AS5311::getMagnetStatus() { return magnetStatusFromWord(getRawData()); }
+
 /**
  * Return the raw sensor binary data
  * @return raw sensor data
  */
 uint32_t AS5311::getRawData() { return bitbang(true); }
 
+uint32_t AS5311::getRawMagnitudeData() { return bitbang(false); }
+
 /**
  * Right shift the raw sensor data to isolate the absolute position component
  * @return 12-bit absolute postion value
  */
-uint16_t AS5311::getPosition() {
-    const uint32_t data = bitbang(true);
+uint16_t AS5311::positionFromWord(uint32_t data) {
     // A linearity alarm may contain invalid position data; report missing rather than inventing
     // tree motion. Alignment still reports its red/yellow/green diagnostic separately.
     return isValidReading(data) && (data & (1UL << LIN)) == 0
@@ -151,7 +138,7 @@ uint16_t AS5311::getPosition() {
  * @return 12-bit magnetic field strength value
  */
 uint16_t AS5311::getFieldStrength() {
-    const uint32_t data = bitbang(false);
+    const uint32_t data = getRawMagnitudeData();
     return isValidReading(data) ? static_cast<uint16_t>(data >> DATAOFFSET) : INVALID_READING;
 }
 
@@ -160,13 +147,16 @@ uint16_t AS5311::getFieldStrength() {
  * @return averaged 12-bit absolute position value
  */
 uint16_t AS5311::getFilteredPosition() {
-    const uint16_t first = getPosition();
+    return averagePositions(positionFromWord(getRawData()));
+}
+
+uint16_t AS5311::averagePositions(uint16_t first) {
     if (first == INVALID_READING) {
         return INVALID_READING;
     }
     int32_t sum = first;
     for (int i = 1; i < AVERAGE_MEASUREMENTS; ++i) {
-        const uint16_t position = getPosition();
+        const uint16_t position = positionFromWord(getRawData());
         if (position == INVALID_READING) {
             return INVALID_READING; // Never average a bad serial word into a plausible position.
         }
@@ -193,13 +183,21 @@ uint16_t AS5311::getFilteredPosition() {
  * Record the data from the magnet sensor, process it, and add it to the manager's packet.
  */
 void AS5311::measure(Manager &manager) {
-    int filteredPosition = (int)getFilteredPosition();
-    int rawPosition = (int)getPosition();
-
-    recordMagnetStatus(manager);
+    const uint32_t positionWord = getRawData();
+    const uint16_t rawPosition = positionFromWord(positionWord);
+    const uint16_t filteredPosition = averagePositions(rawPosition);
     const uint16_t fieldStrength = getFieldStrength();
+
+    const char *alignment = "Error";
+    switch (magnetStatusFromWord(positionWord)) {
+    case magnetStatus::red: alignment = "Red"; break;
+    case magnetStatus::yellow: alignment = "Yellow"; break;
+    case magnetStatus::green: alignment = "Green"; break;
+    case magnetStatus::error: break;
+    }
     // Keep the existing keys/order. -1 marks missing nonnegative readings; invalid displacement
     // is NaN (serialized as JSON null), because negative displacement can be a real measurement.
+    manager.addData("AS5311", "Alignment", alignment);
     manager.addData("AS5311", "mag", fieldStrength == INVALID_READING ? -1 : fieldStrength);
     manager.addData("AS5311", "pos_raw", rawPosition == INVALID_READING ? -1 : rawPosition);
     manager.addData("AS5311", "pos_avg",
@@ -244,24 +242,3 @@ float AS5311::measureDisplacement(int pos) {
     return ((magnetPosition - initialPosition) * UM_PER_TICK) + overflows * POLE_PAIR_LENGTH_UM;
 }
 
-/**
- * Record the alignment status of the magnet sensor
- */
-void AS5311::recordMagnetStatus(Manager &manager) {
-    magnetStatus status = getMagnetStatus();
-    switch (status) {
-    case magnetStatus::red:
-        manager.addData("AS5311", "Alignment", "Red");
-        break;
-    case magnetStatus::yellow:
-        manager.addData("AS5311", "Alignment", "Yellow");
-        break;
-    case magnetStatus::green:
-        manager.addData("AS5311", "Alignment", "Green");
-        break;
-    case magnetStatus::error: // fall through
-    default:
-        manager.addData("AS5311", "Alignment", "Error");
-        break;
-    }
-}

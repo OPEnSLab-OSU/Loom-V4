@@ -41,6 +41,8 @@ foreach ($test in $tests) {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'fakes') + '"'
     } elseif ($test.BaseName -eq 'test_as5311') {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'as5311_fakes') + '"'
+    } elseif ($test.BaseName -eq 'test_bench_sweep') {
+        $fakeIncludes = '/I"' + (Join-Path $sourceDir 'bench_sweep_fakes') + '"'
     } elseif ($test.BaseName -eq 'test_debug_sketch') {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'debug_sketch_fakes') + '"'
     } elseif ($test.BaseName -eq 'test_trace_auto') {

@@ -6,7 +6,7 @@
 #include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h>
 #include <Radio/Loom_LoRa/Loom_LoRa.h>
 
-#include "AS5311.h"
+#include <Sensors/SPI/Loom_AS5311/AS5311.h>
 
 //////////////////////////
 /* DEVICE CONFIGURATION */

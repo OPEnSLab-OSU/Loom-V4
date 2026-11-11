@@ -12,6 +12,7 @@ class AS5311 {
     uint16_t getFilteredPosition();
     uint16_t getFieldStrength();
     uint32_t getRawData();
+    uint32_t getRawMagnitudeData();
 
     // Position/field reads use this out-of-range value for an invalid serial conversion.
     // It is distinct from every real 12-bit reading (0 through 4095).
@@ -34,12 +35,12 @@ class AS5311 {
     int lastPosition = 0;
     int overflows = 0;
 
-    void recordMagnetStatus(Manager &);
-
     void initializePins();
     void deinitializePins();
-    uint16_t getPosition();
-    uint32_t bitbang(bool angleData = true);
+    static magnetStatus magnetStatusFromWord(uint32_t data);
+    static uint16_t positionFromWord(uint32_t data);
+    uint16_t averagePositions(uint16_t first);
+    uint32_t bitbang(bool angleData);
 };
 
 // bit definitions - See pages 12 and 13 of the AS5311 datasheet for more information
