@@ -91,15 +91,25 @@ uint8_t readingCount(const uint8_t* msg, uint8_t len) {
     return (count > 0 && count <= MAX_READINGS && len == HEADER_SIZE + count * READING_SIZE) ? count : 0;
 }
 
+uint32_t readingTime(const uint8_t* msg, uint8_t index) {
+    uint32_t firstTime;
+    uint16_t secondsSinceFirst;
+    memcpy(&firstTime, msg + 5, 4);
+    memcpy(&secondsSinceFirst, msg + HEADER_SIZE + index * READING_SIZE + 1, 2);
+    return firstTime + secondsSinceFirst;
+}
+
+uint32_t readingPacket(const uint8_t* msg, uint8_t index) {
+    uint16_t firstPacket;
+    memcpy(&firstPacket, msg + 3, 2);
+    return firstPacket + msg[HEADER_SIZE + index * READING_SIZE];
+}
+
 void unpack(const uint8_t* msg, uint8_t index, JsonDocument& doc, const char* name, DateTime (*toLocal)(DateTime)) {
     const uint8_t* p = msg + HEADER_SIZE + index * READING_SIZE;
-    uint16_t firstPacket, secondsSinceFirst, humidity;
-    uint32_t firstTime;
+    uint16_t humidity;
     int16_t temperature, steps;
     uint64_t magnet = 0;
-    memcpy(&firstPacket, msg + 3, 2);
-    memcpy(&firstTime, msg + 5, 4);
-    memcpy(&secondsSinceFirst, p + 1, 2);
     memcpy(&temperature, p + 3, 2);
     memcpy(&humidity, p + 5, 2);
     memcpy(&magnet, p + 8, 5);
@@ -119,7 +129,7 @@ void unpack(const uint8_t* msg, uint8_t index, JsonDocument& doc, const char* na
         m["module"] = moduleName;
         return m.createNestedObject("data");
     };
-    module("Packet")["Number"] = firstPacket + p[0];
+    module("Packet")["Number"] = readingPacket(msg, index);
     JsonObject analog = module("Analog");
     analog["Vbat"] = batteryMV / 1000;
     analog["Vbat_MV"] = batteryMV;
@@ -137,13 +147,29 @@ void unpack(const uint8_t* msg, uint8_t index, JsonDocument& doc, const char* na
     module("Button")["Pressed?"] = (bool)((magnet >> 38) & 1);
 
     // Same text format as Loom_Hypnos::dateTime_toString on the node; char arrays are copied into the document
-    DateTime utc(firstTime + secondsSinceFirst);
+    DateTime utc(readingTime(msg, index));
     DateTime local = toLocal ? toLocal(utc) : utc;
     char text[24];
     snprintf(text, sizeof(text), "%04u-%02u-%02uT%02u:%02u:%02uZ", utc.year(), utc.month(), utc.day(), utc.hour(), utc.minute(), utc.second());
     doc["timestamp"]["time_utc"] = text;
     snprintf(text, sizeof(text), "%04u-%02u-%02uT%02u:%02u:%02u", local.year(), local.month(), local.day(), local.hour(), local.minute(), local.second());
     doc["timestamp"]["time_local"] = text;
+}
+
+void makeSchedule(uint8_t out[SCHEDULE_SIZE], uint32_t hubTime, uint32_t nextSend, uint32_t cycle) {
+    out[0] = SCHEDULE;
+    memcpy(out + 1, &hubTime, 4);
+    memcpy(out + 5, &nextSend, 4);
+    memcpy(out + 9, &cycle, 4);
+}
+
+bool readSchedule(const uint8_t* msg, uint8_t len, uint32_t& hubTime, uint32_t& nextSend, uint32_t& cycle) {
+    if (len != SCHEDULE_SIZE || msg[0] != SCHEDULE)
+        return false;
+    memcpy(&hubTime, msg + 1, 4);
+    memcpy(&nextSend, msg + 5, 4);
+    memcpy(&cycle, msg + 9, 4);
+    return true;
 }
 
 }  // namespace DendrometerPacket
