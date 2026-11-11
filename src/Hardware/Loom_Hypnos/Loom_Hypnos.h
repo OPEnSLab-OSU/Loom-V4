@@ -215,6 +215,11 @@ class Loom_Hypnos : public Module{
         void set_custom_time();
 
         /**
+         * Set the RTC to a UTC time, e.g. one received from a hub
+        */
+        void setTime(const DateTime& utc) { RTC_DS.adjust(utc); RTC_initialized = true; };
+
+        /**
          * Load the configuration for the hypnos from the SD card (Timezeone and sleep interval)
          * @param fileName The file name on the root of the SD card to retrieve the information from
          * @return Return the time span for which the device is intended to sleep for
