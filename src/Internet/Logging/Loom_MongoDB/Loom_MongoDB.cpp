@@ -1,5 +1,4 @@
 #include "Loom_MongoDB.h"
-#include "PackedBatch.h"
 #include "Logger.h"
 #include "../../../Sensors/Loom_Analog/Loom_Analog.h"
 
@@ -229,7 +228,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_MongoDB::publishPacked(Loom_BatchSD& batchSD){
+bool Loom_MongoDB::publishRaw(const char* deviceName, const uint8_t* data, size_t len){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
 
@@ -243,14 +242,8 @@ bool Loom_MongoDB::publishPacked(Loom_BatchSD& batchSD){
         FUNCTION_END;
         return false;
     }
-    if(!batchSD.shouldPublish()){
-        snprintf_P(output, OUTPUT_SIZE, PSTR("Batch not ready to publish: %i/%i"), batchSD.getCurrentBatch(), batchSD.getBatchSize());
-        LOG(output);
-        FUNCTION_END;
-        return false;
-    }
 
-    snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i/packed"), database_name, manInst->get_device_name(), manInst->get_instance_num());
+    snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s/raw"), database_name, deviceName);
 
     if(!connectToBroker()){
         FUNCTION_END;
@@ -258,29 +251,24 @@ bool Loom_MongoDB::publishPacked(Loom_BatchSD& batchSD){
     }
 
     for(int attempt = 0; attempt < 2; attempt++){
-        File batch = batchSD.getBatch();
-        PackedBatch::Counter counter;
-        unsigned long size = PackedBatch::encode(batch, counter);
-        Print* out = size > 0 ? beginStream(topic, size) : nullptr;
-        bool sent = out && endStream(PackedBatch::encode(batch, *out));
-        batch.close();
-        if(sent){
-            snprintf_P(output, OUTPUT_SIZE, PSTR("Published %i readings in one %lu byte message"), batchSD.getCurrentBatch(), size);
+        Print* out = beginStream(topic, len);
+        if(out && endStream(out->write(data, len))){
+            snprintf_P(output, OUTPUT_SIZE, PSTR("Published a %i byte raw message to %s"), (int)len, topic);
             LOG(output);
             FUNCTION_END;
             return true;
         }
         // The connection can die while idle between uploads without the client noticing until it writes:
-        // drop it, reconnect and send the batch once more
+        // drop it, reconnect and send once more
         if(attempt == 0){
-            WARNING(F("Batch publish failed, reconnecting to the broker and retrying"));
+            WARNING(F("Raw publish failed, reconnecting to the broker and retrying"));
             disconnectFromBroker();
             if(!connectToBroker())
                 break;
         }
     }
 
-    WARNING(F("Batch publish failed"));
+    WARNING(F("Raw publish failed"));
     FUNCTION_END;
     return false;
 }
