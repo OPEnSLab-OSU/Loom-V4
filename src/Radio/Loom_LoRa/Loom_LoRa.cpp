@@ -370,6 +370,12 @@ bool Loom_LoRa::receive(uint timeout, uint8_t* fromAddress, bool shouldProxy) {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+bool Loom_LoRa::receiveRaw(uint timeout) {
+    uint8_t fromAddress;
+    Watchdog.reset();
+    return receiveFrag(timeout, false, &fromAddress) == FragReceiveStatus::Complete && rawMessageLength > 0;
+}
+
 bool Loom_LoRa::receive(uint timeout, bool shouldProxy) {
     uint8_t fromAddress;
     bool status = receive(timeout, &fromAddress, shouldProxy);

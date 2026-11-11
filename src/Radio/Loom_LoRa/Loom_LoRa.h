@@ -215,6 +215,12 @@ public:
      * normal Loom packet (which is loaded into the manager's document as usual). Read it with rawData().
      */
     uint8_t rawLength() const { return rawMessageLength; };
+
+    /**
+     * Wait once, up to `timeout` ms (must be > 0), for a raw message; unlike receive() there are no retries, so a
+     * short wait for a reply stays short. Returns whether a raw message arrived (read it with rawData()).
+     */
+    bool receiveRaw(uint timeout);
     const uint8_t *rawData() const { return rawMessage; };
 
 private:
