@@ -532,7 +532,7 @@ void Loom_Hypnos::sleep(bool waitForSerial){
         pre_sleep();                                            // Pre-sleep cleanup
         shouldPowerUp = true;
         LowPower.sleep();                                       // Go to sleep and hang
-        Watchdog.enable(WATCHDOG_TIMEOUT);
+        //Watchdog.enable(WATCHDOG_TIMEOUT);
     }
     // If it has we want to trigger a resample which requires powering the sensors back up
     else{
@@ -609,6 +609,9 @@ void Loom_Hypnos::post_sleep(bool waitForSerial){
             while(!Serial);
             TIMER_ENABLE;
         }        
+    }
+        else{
+        TIMER_DISABLE;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
