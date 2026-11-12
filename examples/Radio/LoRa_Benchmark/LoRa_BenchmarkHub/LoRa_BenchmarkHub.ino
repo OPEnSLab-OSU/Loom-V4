@@ -11,10 +11,10 @@
 #include <Radio/Loom_LoRa/Benchmark/Loom_LoRaBenchmark.h>
 
 // Role, preferred node ID (0 uses Manager), hub ID, preferred hub.
-// Optional arguments: enrollment enabled, Manager name, retry limit (0–3, default 3).
+// Optional arguments: enrollment enabled, Manager name, retry limit (0–10, default 10).
 constexpr bench::BootSettings Boot{bench::Role::Hub, 1, 1, 1};
 constexpr uint8_t SweepHoursOnBoot = 0; // Set to 8 for automatic overnight tests on power-up.
-static_assert(Boot.valid(), "Use node IDs 1-20 (0 uses Manager), hub IDs 1-16, and retries 0-3");
+static_assert(Boot.valid(), "Use node IDs 1-20 (0 uses Manager), hub IDs 1-16, and retries 0-10");
 
 // Register optional sensors with bench::node::manager.
 

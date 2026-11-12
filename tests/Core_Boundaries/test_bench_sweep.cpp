@@ -26,18 +26,21 @@ bool parseNumber(const char *text, uint32_t low, uint32_t high, uint32_t &value)
     value = static_cast<uint32_t>(strtoul(text, &end, 10));
     return *text && !*end && value >= low && value <= high;
 }
-struct Schedule { uint8_t nodes, chunk, fragments; uint16_t leadMs; };
+struct LinkSettings { uint8_t mode; };
+struct Schedule { uint8_t nodes, chunk, fragments; uint16_t leadMs; LinkSettings link; };
 uint32_t slotMs(const Schedule &) { return 496; }
 struct Radio { void setModeIdle() {} } radio;
 namespace node {
 struct Sensors { void setPower(bool) {} } dendrometer;
 }
 namespace hub {
-struct Settings { Schedule plan; uint16_t padBytes, gapMs; uint8_t format, source; bool upload; uint8_t retries; };
+constexpr Schedule DefaultPlan{2,245,1,120,{0}};
+struct Settings { Schedule plan; uint16_t padBytes, gapMs; uint8_t format, source; bool upload; uint8_t retries;
+    uint16_t sampleWindowMs; bool individual; uint32_t samplePeriodMs; };
 struct NodeStats { uint32_t good, empty, skippedDeadlines, firstMissing, firstPartial, recovered; };
 struct DataVolume { uint32_t populatedFields; } volume{};
 Manager manager;
-Settings config{{2,245,1,120},0,0,MsgPack,SyntheticSample,false,3}, active;
+Settings config{DefaultPlan,0,0,MsgPack,SyntheticSample,false,MaxRetries,1000,false,0}, active;
 NodeStats stats[MaxNodes];
 uint32_t uploadPeriods[MaxNodes] = {};
 uint32_t rounds = 0, beaconFailures = 0, retrySlots = 0, retryBeaconFailures = 0;

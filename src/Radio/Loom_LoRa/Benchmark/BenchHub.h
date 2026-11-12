@@ -5,11 +5,12 @@
 namespace bench {
 namespace hub {
 
-constexpr Schedule DefaultPlan{2, MaxChunk, 1, 120};
+constexpr Schedule DefaultPlan{2, MaxChunk, 1, 120, {Transport::Basic, MaxRetries, 0, DefaultAckTimeoutMs}};
 constexpr size_t BufferBytes = 8192;
 constexpr uint8_t FitHeadroom = 16, CalibrationAttempts = 3;
 constexpr uint32_t ReportMs = 10000;
 constexpr uint32_t LiveCheckMs = 15000;
+constexpr uint32_t IndividualKeepaliveMs = 30000;
 constexpr uint8_t LiveMissLimit = 3;
 
 Manager manager("LoRaHub", 0);
@@ -53,6 +54,9 @@ struct Settings {
     uint8_t format, source;
     bool upload;
     uint8_t retries;
+    uint16_t sampleWindowMs;
+    bool individual;
+    uint32_t samplePeriodMs;
 };
 
 void printSettings(const Settings &settings, Print &output = Serial);
@@ -60,7 +64,7 @@ void printStats(Print &output = Serial);
 void beginRun(const Settings &settings, uint32_t limit, bool allowPeriods = false);
 void serviceEnrollment();
 
-Settings config{DefaultPlan, 0, 0, MsgPack, SyntheticSample, false, MaxRetries};
+Settings config{DefaultPlan, 0, 0, MsgPack, SyntheticSample, false, MaxRetries, 1000, false, 0};
 Settings active = config;
 uint8_t payloads[BufferBytes];
 Received received[MaxNodes];
@@ -92,6 +96,9 @@ SlotMask pacedNodes = 0;
 uint32_t nextPacedControl = 0;
 uint32_t lastQuietGrant = 0;
 uint16_t outstandingQuietMs = 0;
+SlotMask individualPending = 0;
+uint32_t individualStarted = 0, individualDelayMs = 0, individualTxFailures = 0;
+PeriodicDeadline individualSamplingClock;
 #if BENCH_ENABLE_LTE
 bool modemStarted = false;
 #endif
@@ -121,21 +128,23 @@ void printPeriods() {
     }
 }
 
-void sendPacedControl(SlotMask nodes, uint16_t quietMs) {
-    uint8_t frame[PacedControlBytes] = {NetworkId, PacedControl, static_cast<uint8_t>(enrollment),
+void sendPacedControl(SlotMask nodes, uint16_t quietMs, bool individual = false) {
+    const uint8_t kind = individual ? IndividualControl : PacedControl;
+    uint8_t frame[PacedControlBytes] = {NetworkId, kind, static_cast<uint8_t>(enrollment),
                                       active.source};
     writeSlotMask(frame + 4, nodes);
     write16(frame + PacedQuietOffset, quietMs);
     sendFrame(radio, RH_BROADCAST_ADDRESS, frame, sizeof(frame));
     if (quietMs) {
         lastQuietGrant = millis();
-        outstandingQuietMs = quietMs;
+        outstandingQuietMs = quietMs + (individual ? GuardMs : 0);
     }
 }
 
-SlotMask takeDueNodes(uint32_t now, uint32_t &startDelayMs) {
+SlotMask takeDueNodes(uint32_t now, uint32_t &startDelayMs, SlotMask eligible = slotMask(MaxNodes)) {
     SlotMask due = 0;
     for (uint8_t i = 0; i < active.plan.nodes; ++i) {
+        if (!(eligible & (SlotMask(1) << i))) continue;
         PeriodicDeadline &clock = uploadDeadlines[i];
         const uint32_t deadlines = clock.take(now);
         if (deadlines) {
@@ -246,20 +255,25 @@ void serviceDiscovery() {
     }
 }
 
-void receiveRound(uint16_t round, uint32_t beaconEnd, SlotMask slots, uint16_t leadMs) {
+void receiveRound(uint16_t round, uint32_t beaconEnd, SlotMask slots, uint16_t leadMs,
+                  bool endOnComplete = false, uint32_t slotLength = 0) {
     const Schedule &plan = active.plan;
-    const uint32_t slotLength = slotMs(plan);
+    if (!slotLength) slotLength = slotMs(plan);
     const uint32_t roundEnd = leadMs + slotCount(slots) * slotLength;
     while (millis() - beaconEnd < roundEnd) {
         uint8_t frame[RH_RF95_MAX_MESSAGE_LEN];
         uint8_t length = sizeof(frame);
-        if (!radio.recv(frame, &length)) {
-            continue;
+        uint8_t node, destination;
+        if (plan.link.transport == Transport::RadioHead) {
+            if (!reliableRadio.recvfromAck(frame, &length, &node, &destination)) continue;
+        } else {
+            if (!radio.recv(frame, &length)) continue;
+            node = radio.headerFrom();
+            destination = radio.headerTo();
         }
         const uint32_t elapsed = millis() - beaconEnd;
-        const uint8_t node = radio.headerFrom();
         if (node < 1 || node > plan.nodes || (enrollment && !leases.keyAt(node)) ||
-            radio.headerTo() != hubAddress(runHubId) ||
+            destination != hubAddress(runHubId) ||
             length <= HeaderBytes || length > HeaderBytes + plan.chunk ||
             frame[0] != NetworkId || frame[1] != active.format ||
             read16(frame + 2) != round) {
@@ -281,13 +295,17 @@ void receiveRound(uint16_t round, uint32_t beaconEnd, SlotMask slots, uint16_t l
         }
         // Count airtime payload from every accepted frame, even a duplicate fragment.
         roundRxFrameBytes += length + RH_RF95_HEADER_LEN;
-        if (!packet.parts.add(index, fragments)) {
-            continue;
+        if (packet.parts.add(index, fragments)) {
+            memcpy(slotBuffer(node - 1) + size_t(index) * plan.chunk, frame + HeaderBytes, body);
+            packet.bytes += body;
+            packet.rssi = radio.lastRssi();
+            packet.snr = radio.lastSNR();
         }
-        memcpy(slotBuffer(node - 1) + size_t(index) * plan.chunk, frame + HeaderBytes, body);
-        packet.bytes += body;
-        packet.rssi = radio.lastRssi();
-        packet.snr = radio.lastSNR();
+        if (plan.link.transport == Transport::Ack) {
+            frame[1] = FragmentAck;
+            sendFrame(radio, node, frame, HeaderBytes);
+        }
+        if (endOnComplete && packet.parts.complete()) return;
     }
 }
 
@@ -342,10 +360,45 @@ void retryMissing(uint16_t round, SlotMask due) {
     }
 }
 
+void recoverMissingRecords(uint16_t round, SlotMask missing, bool paced) {
+    const Schedule &plan = active.plan;
+    const uint8_t kind = paced ? PacedRecoveryPoll : RecoveryPoll;
+    uint8_t frame[MaxRecoveryPollBytes] = {NetworkId, kind};
+    writeSampleRequest(frame, {plan, round, active.padBytes, active.format, active.source});
+    const uint8_t linkOffset = enrollment ? MaxIndividualPollBytes : IndividualPollBytes;
+    writeLinkSettings(frame + linkOffset, plan.link);
+    for (uint8_t attempt = 1; attempt <= RecordRecoveryPasses && missing; ++attempt) {
+        frame[PollAttemptOffset] = attempt;
+        for (uint8_t node = 1; node <= plan.nodes; ++node) {
+            const SlotMask target = SlotMask(1) << (node - 1);
+            if (!(missing & target)) continue;
+            const BoardKey key = leases.keyAt(node);
+            if (enrollment && !key) {
+                missing &= ~target;
+                continue;
+            }
+            const FragmentSet &parts = received[node - 1].parts;
+            frame[PollMaskOffset] = parts.missing();
+            if (enrollment) writeBoardKey(frame + IndividualPollBytes, key);
+            const uint32_t started = millis();
+            ++retryWindows;
+            ++retrySlots;
+            if (!sendFrame(radio, node, frame, linkOffset + LinkBytes)) ++retryBeaconFailures;
+            // A final ACK can be lost. Drain the full slot before issuing another poll.
+            receiveRound(round, millis(), target, plan.leadMs);
+            retryRadioMs += millis() - started;
+            if (parts.complete()) missing &= ~target;
+        }
+    }
+}
+
 bool decodeSample(uint8_t index) {
     auto &sample = manager.getDocument();
     const uint8_t *encoded = slotBuffer(index);
     const uint16_t bytes = received[index].bytes;
+    if (active.format == Compact) {
+        return unpackCompact(encoded, bytes, index + 1, active.source, manager);
+    }
     const DeserializationError error = active.format == Json
         ? deserializeJson(sample, encoded, bytes)
         : deserializeMsgPack(sample, encoded, bytes);
@@ -401,7 +454,7 @@ void countPopulatedData(JsonArrayConst contents, uint8_t source) {
     }
 }
 
-void processRound(SlotMask firstLoss, SlotMask due) {
+void processRound(SlotMask firstLoss, SlotMask due, uint32_t roundNumber) {
     volume.rxFrameBytes += roundRxFrameBytes;
 #if BENCH_ENABLE_LTE
     bool canPublish = active.upload;
@@ -424,7 +477,7 @@ void processRound(SlotMask firstLoss, SlotMask due) {
         }
 
         if (total.good == 0) {
-            total.firstGoodRound = rounds;
+            total.firstGoodRound = roundNumber;
             total.firstGoodExpected = total.expected;
         }
         ++total.good;
@@ -434,7 +487,7 @@ void processRound(SlotMask firstLoss, SlotMask due) {
         total.rssi = packet.rssi;
         total.snr = packet.snr;
         const char *type = manager.getDocument()["type"].as<const char *>();
-        if (pacedNodes && active.source == SensorSample && type && !strcmp(type, "empty")) {
+        if ((pacedNodes || active.individual) && active.source == SensorSample && type && !strcmp(type, "empty")) {
             ++total.empty;
             continue;
         }
@@ -459,17 +512,30 @@ void printSettings(const Settings &settings, Print &output) {
     output.print(F("nodes=")); output.print(plan.nodes);
     output.print(F(" chunk_B=")); output.print(plan.chunk);
     output.print(F(" fragments=")); output.print(plan.fragments);
-    output.print(F(" lead_ms=")); output.print(plan.leadMs);
+    output.print(F(" lead_ms=")); output.print(settings.individual ? RetryLeadMs : plan.leadMs);
     output.print(F(" slot_ms=")); output.print(slotMs(plan));
     output.print(F(" gap_ms=")); output.print(settings.gapMs);
     output.print(F(" pad_B=")); output.print(settings.padBytes);
-    output.print(F(" format=")); output.print(settings.format == Json ? F("json") : F("msgpack"));
+    output.print(F(" format="));
+    output.print(settings.format == Json ? F("json") : settings.format == Compact ? F("raw") : F("msgpack"));
+    output.print(F(" transport="));
+    output.print(plan.link.transport == Transport::RadioHead ? F("radiohead") :
+                 plan.link.transport == Transport::Ack ? F("ack") : F("basic"));
+    output.print(F(" cad_ms=")); output.print(plan.link.cadMs);
+    output.print(F(" ack_ms=")); output.print(plan.link.ackMs);
+    output.print(F(" tx_dBm=")); output.print(TxPowerDbm);
     output.print(F(" source="));
     output.print(settings.source == ProbeSample ? F("probe") :
                  settings.source == SyntheticSample ? F("synthetic") : F("sensors"));
     output.print(F(" lte=")); output.print(settings.upload ? F("on") : F("off"));
     output.print(F(" retries=")); output.print(settings.retries);
-    output.print(F(" bw_kHz=")); output.println(WideBandwidth ? 500 : 125);
+    output.print(F(" bw_kHz=")); output.print(WideBandwidth ? 500 : 125);
+    output.print(F(" polling=")); output.print(settings.individual ? F("individual") : F("slots"));
+    if (settings.individual) {
+        output.print(F(" samplewindow_ms=")); output.print(settings.sampleWindowMs);
+        output.print(F(" sampleperiod_ms=")); output.print(settings.samplePeriodMs);
+    }
+    output.println();
 }
 
 void printStats(Print &output) {
@@ -538,9 +604,12 @@ void printStats(Print &output) {
     output.print(F(" wall_samples/s=")); output.print(seconds > 0 ? samples / seconds : 0);
     output.print(F(" wall_payload_B/s=")); output.print(seconds > 0 ? bytes / seconds : 0);
     output.print(F(" delivery_pct=")); output.print(expected ? 100.0f * good / expected : 0);
-    if (pacedNodes) {
+    if (pacedNodes || active.individual) {
         output.print(F(" empty_replies=")); output.print(empty);
         output.print(F(" skipped_deadlines=")); output.print(skippedDeadlines);
+    }
+    if (active.individual) {
+        output.print(F(" poll_tx_failures=")); output.print(individualTxFailures);
     }
     if (expectedAfterJoin) {
         output.print(F(" delivery_since_join_pct=")); output.print(100.0f * good / expectedAfterJoin);
@@ -596,6 +665,8 @@ void printSample(uint8_t node) {
 
 void beginRun(const Settings &settings, uint32_t limit, bool allowPeriods) {
     active = settings;
+    active.plan.link.retries = active.retries;
+    reliableRadio.setThisAddress(hubAddress(hubId));
     runHubId = hubId;
     roundLimit = limit;
     memset(stats, 0, sizeof(stats));
@@ -604,10 +675,13 @@ void beginRun(const Settings &settings, uint32_t limit, bool allowPeriods) {
     rounds = radioMs = lteMs = beaconFailures = 0;
     maxRoundMs = maxPollFinishMs = 0;
     roundRxFrameBytes = retryWindows = retrySlots = retryRadioMs = retryBeaconFailures = 0;
+    individualPending = 0;
+    individualTxFailures = 0;
     liveCheckMs = 0;
     Serial.print(armedRounds ? F("ARM hub=") : F("BEGIN hub=")); Serial.println(runHubId);
     printSettings(active);
     runStarted = lastReport = millis();
+    individualSamplingClock.reset(runStarted, settings.samplePeriodMs);
     pacedNodes = 0;
     nextPacedControl = runStarted;
     for (uint8_t i = 0; i < active.plan.nodes; ++i) {
@@ -630,12 +704,24 @@ void finishRun() {
     runElapsed = millis() - runStarted;
     running = false;
     live = false;
-    if (pacedNodes && ready) {
+    if (active.individual && active.source == SensorSample && ready) {
+        sendPacedControl(0, 0, true);
+    } else if (pacedNodes && ready) {
         sendPacedControl(0, 0);
     }
     Serial.println(armedRounds ? F("ARM stopped") : F("END"));
     armedRounds = 0;
     printStats();
+}
+
+bool checkIndividualTiming(const Settings &settings) {
+    if (settings.individual && settings.source == SensorSample && settings.sampleWindowMs &&
+        settings.samplePeriodMs && settings.samplePeriodMs <=
+            uint32_t(settings.sampleWindowMs) + airtimeMs(PacedControlBytes) + 2 * GuardMs) {
+        Serial.println(F("ERR sampleperiod must leave time after the sample window"));
+        return false;
+    }
+    return true;
 }
 
 // A programmatic equivalent of selecting the source and using start/run on USB.
@@ -646,6 +732,7 @@ bool startCollection(uint8_t source, uint32_t limit = 0) {
     }
     Settings test = config;
     test.source = source;
+    if (!checkIndividualTiming(test)) return false;
     live = limit == 0;
     if (live) {
         memset(livePeak, 0, sizeof(livePeak));
@@ -677,7 +764,7 @@ bool findShortestSlot(Schedule &plan, uint32_t target) {
             continue;
         }
         const Schedule candidate{best.nodes, static_cast<uint8_t>(chunk),
-                                 static_cast<uint8_t>(fragments), best.leadMs};
+                                 static_cast<uint8_t>(fragments), best.leadMs, best.link};
         const uint32_t ms = slotMs(candidate);
         // Prefer fewer frames, then the larger chunk when both have the same slot time.
         if (ms < bestMs || (ms == bestMs && candidate.fragments <= best.fragments)) {
@@ -732,8 +819,10 @@ Settings calibrationSettings() {
     const uint8_t padFragments = (config.padBytes + MaxChunk - 1) / MaxChunk;
     const uint8_t minFragments = (config.source == SensorSample ? 2 : 1) + padFragments;
     calibration.plan = calibrationPlan(config.plan, max(config.plan.fragments, minFragments));
+    calibration.plan.link = {};
     calibration.gapMs = 0;
     calibration.upload = false;
+    calibration.individual = false;
     return calibration;
 }
 
@@ -759,6 +848,7 @@ bool advanceArmedRun() {
         }
 
         Settings measured = config;
+        measured.individual = false;
         if (!findShortestSlot(measured.plan, peak + FitHeadroom)) {
             Serial.println(F("ERR calibration peak plus headroom exceeds available capacity"));
             finishRun();
@@ -828,12 +918,29 @@ void setOption(const char *key, const char *arg) {
         next.plan.leadMs = static_cast<uint16_t>(value);
     } else if (!strcmp(key, "gap") && parseNumber(arg, 0, 60000, value)) {
         next.gapMs = static_cast<uint16_t>(value);
+    } else if (!strcmp(key, "polling") && (!strcmp(arg, "slots") || !strcmp(arg, "individual"))) {
+        next.individual = !strcmp(arg, "individual");
+    } else if (!strcmp(key, "samplewindow") && parseNumber(arg, 0, MaxIndividualQuietMs, value)) {
+        next.sampleWindowMs = static_cast<uint16_t>(value);
+    } else if (!strcmp(key, "sampleperiod") && parseNumber(arg, 0, MaxPeriodMs, value) && validPeriod(value)) {
+        next.samplePeriodMs = value;
     } else if (!strcmp(key, "retries") && parseNumber(arg, 0, MaxRetries, value)) {
         next.retries = static_cast<uint8_t>(value);
+        next.plan.link.retries = next.retries;
+    } else if (!strcmp(key, "transport") &&
+               (!strcmp(arg, "basic") || !strcmp(arg, "ack") || !strcmp(arg, "radiohead"))) {
+        next.plan.link.transport = !strcmp(arg, "radiohead") ? Transport::RadioHead :
+                                   !strcmp(arg, "ack") ? Transport::Ack : Transport::Basic;
+        if (next.plan.link.transport != Transport::Basic && !next.plan.link.cadMs) next.plan.link.cadMs = 100;
+    } else if (!strcmp(key, "cad") && parseNumber(arg, 0, 10000, value)) {
+        next.plan.link.cadMs = static_cast<uint16_t>(value);
+    } else if (!strcmp(key, "acktimeout") && parseNumber(arg, 60, 1000, value)) {
+        next.plan.link.ackMs = static_cast<uint16_t>(value);
     } else if (!strcmp(key, "pad") && parseNumber(arg, 0, MaxPadding, value)) {
         next.padBytes = static_cast<uint16_t>(value);
-    } else if (!strcmp(key, "format") && (!strcmp(arg, "msgpack") || !strcmp(arg, "json"))) {
-        next.format = !strcmp(arg, "json") ? Json : MsgPack;
+    } else if (!strcmp(key, "format") &&
+               (!strcmp(arg, "msgpack") || !strcmp(arg, "json") || !strcmp(arg, "raw"))) {
+        next.format = !strcmp(arg, "json") ? Json : !strcmp(arg, "raw") ? Compact : MsgPack;
     } else if (!strcmp(key, "source") && (!strcmp(arg, "synthetic") || !strcmp(arg, "sensors"))) {
         next.source = !strcmp(arg, "synthetic") ? SyntheticSample : SensorSample;
     } else if (!strcmp(key, "lte") && (!strcmp(arg, "on") || !strcmp(arg, "off"))) {
@@ -859,6 +966,14 @@ void setOption(const char *key, const char *arg) {
         Serial.println(F("ERR unknown setting or out-of-range value. Type help."));
         return;
     }
+    if (next.individual && next.plan.link.enabled()) {
+        Serial.println(F("ERR use set polling slots for packet ACK or CAD trials"));
+        return;
+    }
+    if (next.format == Compact && next.padBytes) {
+        Serial.println(F("ERR raw uses a fixed record size; set pad 0"));
+        return;
+    }
     if (size_t(next.plan.nodes) * next.plan.chunk * next.plan.fragments > BufferBytes) {
         Serial.println(F("ERR nodes * chunk * fragments exceeds 8192 bytes"));
         return;
@@ -868,7 +983,7 @@ void setOption(const char *key, const char *arg) {
 }
 
 void armRun(uint32_t count) {
-    const Settings probe{{config.plan.nodes, 96, 1, 30}, 0, 700, MsgPack, ProbeSample, false, 0};
+    const Settings probe{{config.plan.nodes, 96, 1, 30, {}}, 0, 700, MsgPack, ProbeSample, false, 0, 0, false, 0};
     armedRounds = count;
     armReadyCount = 0;
     Serial.print(F("ARM waiting for IDs 1-")); Serial.println(config.plan.nodes);
@@ -918,8 +1033,11 @@ void handleCommand(char *line) {
         Serial.println(F("set hub 1-16 | set offer on|off (idle advertisements)"));
         Serial.println(F("set enrollment on|off | leases | set forget <slot>"));
         Serial.println(F("set nodes 1-20 | set chunk 1-245 | set fragments 1-8 | set lead 12-10000 (ms)"));
-        Serial.println(F("set gap 0-60000 (ms) | set pad 0-1800 | set format msgpack|json"));
-        Serial.println(F("set retries 0-3 (missing fragments only; default 3)"));
+        Serial.println(F("set gap 0-60000 (ms) | set pad 0-1800 | set format msgpack|json|raw"));
+        Serial.println(F("set retries 0-10 (default 10)"));
+        Serial.println(F("set transport basic|ack|radiohead | set cad 0-10000 (ms) | set acktimeout 60-1000 (ms)"));
+        Serial.println(F("set polling slots|individual | set samplewindow 0-65000 (ms)"));
+        Serial.println(F("set sampleperiod <ms> (0 grants a sample window before each individual pass)"));
         Serial.println(F("set period <node|all> <ms> | periods (0 clears a period)"));
         Serial.println(F("set source synthetic|sensors | set lte on|off"));
 #if BENCH_ENABLE_SWEEP
@@ -975,10 +1093,11 @@ void handleCommand(char *line) {
         } else if (arming) {
             armRun(count);
         } else if (scanning) {
-            const Settings scan{{MaxNodes, 96, 1, 30}, 0, 0, MsgPack, ProbeSample, false, 0};
+            const Settings scan{{MaxNodes, 96, 1, 30, {}}, 0, 0, MsgPack, ProbeSample, false, 0, 0, false, 0};
             beginRun(scan, count);
         } else if (!strcmp(verb, "compare")) {
             Settings test = config;
+            if (!checkIndividualTiming(test)) return;
             live = false;
             compareJsonNext = true;
             test.format = MsgPack;
@@ -1002,13 +1121,9 @@ bool exchangeRound(SlotMask due, bool paced = false) {
     const Schedule &plan = active.plan;
     const uint8_t kind = paced ? (enrollment ? PacedEnrolledBeacon : PacedBeacon) :
                                 (enrollment ? EnrolledBeacon : Beacon);
-    uint8_t beacon[MaxBeaconBytes] = {NetworkId, kind,
-                                    0, 0, plan.nodes, plan.chunk, plan.fragments,
-                                    0, 0, active.format, active.source, 0, 0};
+    uint8_t beacon[MaxBeaconBytes] = {NetworkId, kind};
     const uint16_t round = ++sequence;
-    write16(beacon + 2, round);
-    write16(beacon + 7, plan.leadMs);
-    write16(beacon + 11, active.padBytes);
+    writeSampleRequest(beacon, {plan, round, active.padBytes, active.format, active.source});
 
     uint8_t beaconLength = BeaconBytes;
     if (paced) {
@@ -1020,6 +1135,10 @@ bool exchangeRound(SlotMask due, bool paced = false) {
             writeBoardKey(beacon + beaconLength, leases.keyAt(slot));
             beaconLength += BoardKeyBytes;
         }
+    }
+    if (plan.link.enabled()) {
+        writeLinkSettings(beacon + beaconLength, plan.link);
+        beaconLength += LinkBytes;
     }
     if (!sendFrame(radio, RH_BROADCAST_ADDRESS, beacon, beaconLength)) {
         // Some nodes may have heard a beacon even when our TX completion timed out.
@@ -1099,6 +1218,103 @@ void checkLiveNodes() {
     liveCheckDue = false;
 }
 
+SlotMask registeredNodes() {
+    if (!enrollment) return slotMask(active.plan.nodes);
+    SlotMask registered = 0;
+    for (uint8_t node = 1; node <= active.plan.nodes; ++node) {
+        if (leases.keyAt(node)) registered |= SlotMask(1) << (node - 1);
+    }
+    return registered;
+}
+
+void pollIndividualNode(uint8_t node) {
+    const SlotMask target = SlotMask(1) << (node - 1);
+    Received &reply = received[node - 1];
+    const uint32_t started = millis();
+    roundRxFrameBytes = 0;
+    SampleRequest request{active.plan, ++sequence, active.padBytes, active.format, active.source};
+    request.plan.leadMs = RetryLeadMs;
+    uint8_t frame[MaxIndividualPollBytes] = {NetworkId, IndividualPoll};
+    writeSampleRequest(frame, request);
+    const uint8_t length = enrollment ? MaxIndividualPollBytes : IndividualPollBytes;
+    if (enrollment) writeBoardKey(frame + IndividualPollBytes, leases.keyAt(node));
+
+    SlotMask firstLoss = 0;
+    for (uint8_t attempt = 0; attempt <= active.retries; ++attempt) {
+        const uint32_t attemptStarted = millis();
+        frame[PollMaskOffset] = reply.parts.missing();
+        frame[PollAttemptOffset] = attempt;
+        const bool sent = sendFrame(radio, node, frame, length);
+        if (attempt) {
+            ++retryWindows;
+            ++retrySlots;
+            if (!sent) ++retryBeaconFailures;
+        } else if (!sent) {
+            ++individualTxFailures;
+        }
+        // The request may have reached the node even if local TX completion timed out.
+        receiveRound(request.round, millis(), target, request.plan.leadMs, true);
+        if (attempt) retryRadioMs += millis() - attemptStarted;
+        else firstLoss = recordFirstPass(target);
+        if (reply.parts.complete()) break;
+    }
+    radioMs += millis() - started;
+    processRound(firstLoss, target, rounds + 1);
+}
+
+void serviceIndividualRun() {
+    if (!individualPending) {
+        serviceEnrollment();
+        const uint32_t now = millis();
+        const SlotMask registered = registeredNodes();
+        if (registered && active.source == SensorSample && active.sampleWindowMs &&
+            individualSamplingClock.take(now)) {
+            sendPacedControl(registered, active.sampleWindowMs, true);
+            nextPacedControl = millis() + IndividualKeepaliveMs;
+            return;
+        }
+        individualDelayMs = 0;
+        if (pacedNodes) {
+            individualPending = takeDueNodes(now, individualDelayMs, registered);
+        } else if (now - lastRoundEnd >= active.gapMs) {
+            individualPending = registered;
+        }
+        if (!individualPending) {
+            if (registered && static_cast<int32_t>(now - nextPacedControl) >= 0) {
+                sendPacedControl(registered, 0, true);
+                nextPacedControl = millis() + IndividualKeepaliveMs;
+            }
+            delay(1);
+            return;
+        }
+        individualStarted = now;
+        nextPacedControl = now + IndividualKeepaliveMs;
+        memset(received, 0, sizeof(received));
+        if (active.source == SensorSample && active.sampleWindowMs && !active.samplePeriodMs) {
+            sendPacedControl(registered, active.sampleWindowMs, true);
+            return;
+        }
+    }
+
+    uint8_t node = 1;
+    while (!(individualPending & (SlotMask(1) << (node - 1)))) ++node;
+    pollIndividualNode(node);
+    individualPending &= ~(SlotMask(1) << (node - 1));
+    if (individualPending) return;
+
+    ++rounds;
+    lastRoundEnd = millis();
+    const uint32_t elapsed = lastRoundEnd - individualStarted;
+    maxRoundMs = max(maxRoundMs, elapsed);
+    maxPollFinishMs = max(maxPollFinishMs, individualDelayMs + elapsed);
+    if (roundLimit && rounds >= roundLimit) {
+        finishRun();
+    } else if (!roundLimit && lastRoundEnd - lastReport >= ReportMs) {
+        lastReport = lastRoundEnd;
+        printStats();
+    }
+}
+
 void loop() {
     if (compareJsonNext && !running) {
         compareJsonNext = false;
@@ -1113,6 +1329,10 @@ void loop() {
         return;
     }
     outstandingQuietMs = 0;
+    if (running && active.individual) {
+        serviceIndividualRun();
+        return;
+    }
     if (ready && (!running || !pacedNodes)) {
         serviceEnrollment();
     }
@@ -1154,11 +1374,12 @@ void loop() {
     if (exchangeRound(due, pacedNodes != 0)) {
         const SlotMask firstLoss = recordFirstPass(due);
         if (firstLoss && active.retries && active.source != ProbeSample) {
-            retryMissing(sequence, due);
+            if (active.plan.link.transport == Transport::Basic) retryMissing(sequence, due);
+            else recoverMissingRecords(sequence, firstLoss, pacedNodes != 0);
         }
         radioMs += millis() - started;
         ++rounds;
-        processRound(firstLoss, due);
+        processRound(firstLoss, due, rounds);
         if (live && !pacedNodes) {
             trackLiveRound();
         }

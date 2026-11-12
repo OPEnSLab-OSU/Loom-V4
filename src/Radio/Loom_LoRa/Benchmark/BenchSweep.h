@@ -19,8 +19,8 @@ struct Profile {
 // A positive extraMs is added to the fitted first-pass window to obtain a fixed poll period.
 // Zero selects back-to-back polls. Every profile runs synthetic and live sensor traffic.
 constexpr Profile Profiles[] = {
-    {120, 0, 16, 0}, {120, 0, 16, 3}, {120, 500, 16, 3}, {120, 2000, 16, 3},
-    {250, 500, 16, 3}, {500, 500, 32, 3}, {120, 2000, 16, 1}, {120, 2000, 16, 0}
+    {120, 0, 16, 0}, {120, 0, 16, MaxRetries}, {120, 500, 16, MaxRetries}, {120, 2000, 16, MaxRetries},
+    {250, 500, 16, MaxRetries}, {500, 500, 32, MaxRetries}, {120, 2000, 16, 1}, {120, 2000, 16, 0}
 };
 constexpr uint8_t ProfileCount = sizeof(Profiles) / sizeof(Profiles[0]);
 
@@ -212,10 +212,12 @@ void stop(const char *reason) {
 void beginSizing() {
     hub::config = savedSettings;
     const Profile &profile = Profiles[profileIndex];
+    hub::config.plan.link = hub::DefaultPlan.link;
     hub::config.plan.leadMs = profile.leadMs;
     hub::config.padBytes = hub::config.gapMs = 0;
     hub::config.format = MsgPack;
     hub::config.source = source;
+    hub::config.individual = false;
     hub::config.upload = false;
     hub::config.retries = profile.retries;
     for (uint32_t &period : hub::uploadPeriods) period = 0;

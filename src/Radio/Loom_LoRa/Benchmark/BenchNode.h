@@ -22,6 +22,8 @@ char padding[MaxPadding + 1] = {};
 uint32_t beacons = 0, sent = 0, skipped = 0;
 uint32_t retriesSent = 0, retriesFailed = 0;
 uint32_t slotBudgetMisses = 0, radioTxFailures = 0, oversizeSamples = 0;
+uint32_t linkRetries = 0;
+uint32_t linkRecovered = 0, linkFailed = 0, linkFailedAttempts = 0;
 uint16_t lastRound = 0;
 size_t jsonBytes = 0, packedBytes = 0;
 const __FlashStringHelper *lastResult = F("waiting for beacon");
@@ -31,7 +33,8 @@ struct CachedSample {
     uint32_t beaconEnd;
     size_t bytes;
     uint16_t round;
-    uint8_t format, hub, slot, lastRetry, firstSlots;
+    uint8_t format, hub, slot, lastRetry, firstSlots, source;
+    bool individual;
 };
 
 CachedSample cached{};
@@ -47,7 +50,9 @@ uint32_t localPeriod = 0, localCaptured = 0, localDropped = 0, localMissed = 0;
 PeriodicDeadline localClock;
 uint32_t quietStart = 0;
 uint16_t quietLength = 0;
-bool localActive = false;
+uint16_t individualReadBudgetMs = LocalReadBudgetMs;
+uint32_t localOverruns = 0;
+bool localActive = false, localIndividual = false;
 
 struct HeardHub {
     uint32_t lastSeen;
@@ -82,6 +87,10 @@ void printStatus() {
     Serial.print(F(" retries_failed=")); Serial.print(retriesFailed);
     Serial.print(F(" slot_budget_misses=")); Serial.print(slotBudgetMisses);
     Serial.print(F(" radio_tx_failures=")); Serial.print(radioTxFailures);
+    Serial.print(F(" link_retries=")); Serial.print(linkRetries);
+    Serial.print(F(" link_recovered_fragments=")); Serial.print(linkRecovered);
+    Serial.print(F(" link_failed_fragments=")); Serial.print(linkFailed);
+    Serial.print(F(" link_failed_attempts=")); Serial.print(linkFailedAttempts);
     Serial.print(F(" oversize_samples=")); Serial.print(oversizeSamples);
     Serial.print(enrollment ? F(" id_mode=auto") : F(" id_mode=fixed"));
     Serial.print(F(" preferred_id=")); Serial.print(preferredId);
@@ -91,6 +100,8 @@ void printStatus() {
     Serial.print(F(" local_captured=")); Serial.print(localCaptured);
     Serial.print(F(" local_dropped=")); Serial.print(localDropped);
     Serial.print(F(" local_skipped_deadlines=")); Serial.print(localMissed);
+    Serial.print(F(" sample_budget_ms=")); Serial.print(individualReadBudgetMs);
+    Serial.print(F(" sample_overruns=")); Serial.print(localOverruns);
     Serial.print(F(" result=")); Serial.println(lastResult);
 }
 
@@ -155,12 +166,13 @@ bool hearHub(uint8_t sender, uint32_t receivedAt) {
 void resetStats() {
     beacons = sent = skipped = 0;
     retriesSent = retriesFailed = 0;
-    slotBudgetMisses = radioTxFailures = oversizeSamples = 0;
+    slotBudgetMisses = radioTxFailures = oversizeSamples = linkRetries = 0;
+    linkRecovered = linkFailed = linkFailedAttempts = 0;
     cached.bytes = 0;
-    localActive = false;
+    localActive = localIndividual = false;
     quietLength = 0;
     localHead = localCount = 0;
-    localCaptured = localDropped = localMissed = 0;
+    localCaptured = localDropped = localMissed = localOverruns = 0;
     lastRound = 0;
     jsonBytes = packedBytes = 0;
     lastResult = F("waiting for beacon");
@@ -175,15 +187,18 @@ bool setLocalSamplePeriod(uint32_t periodMs) {
     localClock.reset(millis(), periodMs);
     localHead = localCount = 0;
     if (!periodMs) {
-        localActive = false;
+        localActive = localIndividual = false;
+        quietLength = 0;
     }
     return true;
 }
 
-void setLocalActive(bool enabled, uint32_t now) {
+void setLocalActive(bool enabled, uint32_t now, bool individual = false) {
     enabled = enabled && localPeriod;
-    if (localActive != enabled) {
+    individual = enabled && individual;
+    if (localActive != enabled || localIndividual != individual) {
         localActive = enabled;
+        localIndividual = individual;
         localClock.reset(now, enabled ? localPeriod : 0);
         quietLength = 0;
         localHead = localCount = 0;
@@ -280,6 +295,9 @@ void handleCommand(char *line) {
         } else {
             printStatus();
         }
+    } else if (!strcmp(verb, "samplebudget") && parseNumber(arg, 1, MaxIndividualQuietMs - GuardMs, value)) {
+        individualReadBudgetMs = static_cast<uint16_t>(value);
+        printStatus();
     } else if (!strcmp(verb, "hub") && arg && !strcmp(arg, "auto")) {
         selectHub(0);
     } else if (!strcmp(verb, "hub") && parseNumber(arg, 1, MaxHubs, value)) {
@@ -320,6 +338,7 @@ void handleCommand(char *line) {
         Serial.println(F("scan | hubs | hub auto | hub <1-16> | ping (selected idle hub)"));
         Serial.println(F("id <1-20> | id auto | name <label> | status | sample | reset | help"));
         Serial.println(F("interval <ms> (local sampling in paced sensor runs; 0 samples on request)"));
+        Serial.println(F("samplebudget <ms> (worst-case sensor read time for individual polling)"));
 #if BENCH_ENABLE_DENDROMETER
         Serial.println(F("encoder (AS5311 diagnostics on an idle node)"));
 #endif
@@ -430,25 +449,80 @@ bool captureLocalSample(uint32_t now) {
         popLocalSample();
         ++localDropped;
     }
-    LocalSample &slot = localQueue[(localHead + localCount) % LocalQueueSize];
+    const uint8_t index = (localHead + localCount) % LocalQueueSize;
+    LocalSample &slot = localQueue[index];
     if (serializeMsgPack(sample, slot.data, bytes) != bytes) {
         ++localDropped;
         return true;
     }
     slot.size = static_cast<uint16_t>(bytes);
-    ++localCount;
+    if (localIndividual) {
+        localHead = index;
+        localCount = 1;
+    } else {
+        ++localCount;
+    }
     ++localCaptured;
     return true;
 }
 
 void serviceLocalSampling(uint32_t now) {
     const uint32_t elapsed = now - quietStart;
-    if (elapsed < quietLength && quietLength - elapsed >= LocalReadBudgetMs &&
+    const uint32_t budget = localIndividual ? individualReadBudgetMs : LocalReadBudgetMs;
+    const uint32_t guard = localIndividual ? GuardMs : 0;
+    if (elapsed < quietLength && quietLength - elapsed >= budget + guard &&
         captureLocalSample(now)) {
+        if (localIndividual && millis() - now > budget) ++localOverruns;
         // A slow sensor may overrun its quiet grant. Do not treat a beacon
         // received during that read as if it had just arrived.
         radio.recv(nullptr, nullptr);
     }
+}
+
+bool sendWithFragmentAck(uint8_t destination, uint8_t *frame, uint8_t length, const LinkSettings &link) {
+    for (uint8_t attempt = 0; attempt <= link.retries; ++attempt) {
+        if (attempt) ++linkRetries;
+        if (!sendFrame(radio, destination, frame, length)) continue;
+        const uint32_t sentAt = millis();
+        while (millis() - sentAt < link.ackMs) {
+            uint8_t ack[HeaderBytes + 1];
+            uint8_t size = sizeof(ack);
+            if (radio.recv(ack, &size) && size == HeaderBytes && radio.headerFrom() == destination &&
+                radio.headerTo() == nodeId && ack[0] == NetworkId && ack[1] == FragmentAck &&
+                memcmp(ack + 2, frame + 2, HeaderBytes - 2) == 0) return true;
+            delay(1);
+        }
+    }
+    return false;
+}
+
+bool sendUplink(uint8_t *frame, uint8_t length, const LinkSettings &link) {
+    const uint8_t destination = hubAddress(cached.hub);
+    const uint32_t before = linkRetries;
+    radio.cadMs = link.cadMs;
+    bool sentFrame;
+    if (link.transport == Transport::RadioHead) {
+        reliableRadio.setThisAddress(nodeId);
+        reliableRadio.setRetries(link.retries);
+        reliableRadio.setTimeout(link.ackMs);
+        const uint32_t priorRadioHeadRetries = reliableRadio.retransmissions();
+        sentFrame = reliableRadio.sendtoWait(frame, length, destination);
+        linkRetries += reliableRadio.retransmissions() - priorRadioHeadRetries;
+    } else if (link.transport == Transport::Ack) {
+        sentFrame = sendWithFragmentAck(destination, frame, length, link);
+    } else {
+        sentFrame = sendFrame(radio, destination, frame, length);
+    }
+    radio.cadMs = 0;
+    if (link.transport != Transport::Basic) {
+        if (sentFrame) {
+            linkRecovered += linkRetries != before;
+        } else {
+            ++linkFailed;
+            linkFailedAttempts += 1 + linkRetries - before;
+        }
+    }
+    return sentFrame;
 }
 
 const __FlashStringHelper *sendCached(uint8_t *frame, uint8_t position, uint8_t fragmentsWanted,
@@ -468,7 +542,7 @@ const __FlashStringHelper *sendCached(uint8_t *frame, uint8_t position, uint8_t 
         const size_t offset = size_t(i) * plan.chunk;
         const uint8_t count = static_cast<uint8_t>(min(size_t(plan.chunk), cached.bytes - offset));
         const uint8_t frameBytes = HeaderBytes + count;
-        if (millis() - windowStart + airtimeMs(frameBytes) + FrameMarginMs > end) {
+        if (millis() - windowStart + linkFrameMs(frameBytes, plan.link) > end) {
             ++slotBudgetMisses;
             return F("slot budget");
         }
@@ -478,7 +552,7 @@ const __FlashStringHelper *sendCached(uint8_t *frame, uint8_t position, uint8_t 
         frame[4] = i;
         frame[5] = fragments;
         memcpy(frame + HeaderBytes, payload + offset, count);
-        if (!sendFrame(radio, hubAddress(cached.hub), frame, frameBytes)) {
+        if (!sendUplink(frame, frameBytes, plan.link)) {
             ++radioTxFailures;
             return F("radio TX failed");
         }
@@ -487,7 +561,7 @@ const __FlashStringHelper *sendCached(uint8_t *frame, uint8_t position, uint8_t 
 }
 
 void handleRetry(uint8_t *frame, uint8_t length, uint8_t senderHub, uint32_t requestEnd) {
-    if (length < RetryHeaderBytes || scanning || pingPending || !cached.bytes ||
+    if (length < RetryHeaderBytes || scanning || pingPending || !cached.bytes || cached.individual ||
         senderHub != selectedHub || senderHub != cached.hub || nodeId != cached.slot ||
         read16(frame + 2) != cached.round || frame[RetryAttemptOffset] <= cached.lastRetry ||
         frame[RetryAttemptOffset] > MaxRetries) {
@@ -522,6 +596,162 @@ void handleRetry(uint8_t *frame, uint8_t length, uint8_t senderHub, uint32_t req
         ++retriesSent;
         lastResult = F("retry sent");
     }
+}
+
+enum class ResponseMode : uint8_t { Slots, Paced, Individual };
+
+void respondToPoll(uint8_t *frame, const SampleRequest &request, uint32_t beaconEnd,
+                   uint8_t position, uint8_t firstSlots, ResponseMode mode, uint8_t attempt = 0) {
+    const Schedule &schedule = request.plan;
+    const uint16_t round = request.round, padBytes = request.padBytes;
+    const uint8_t format = request.format, source = request.source;
+    const bool individual = mode == ResponseMode::Individual;
+    const bool paced = mode == ResponseMode::Paced;
+    auto &sample = manager.getDocument();
+    bool fromQueue = false;
+    if (source == SensorSample && (individual || (paced && localPeriod))) {
+        if (!individual) {
+            setLocalActive(true, beaconEnd);
+            if (!localCount) captureLocalSample(beaconEnd);
+        }
+        if (localCount && (!individual || localIndividual)) {
+            const LocalSample &oldest = localQueue[localHead];
+            fromQueue = !deserializeMsgPack(sample, oldest.data, oldest.size) && manager.isPacketValid();
+            if (!fromQueue) {
+                popLocalSample();
+                ++localDropped;
+            }
+        }
+        if (!fromQueue) {
+            sample.clear();
+            sample["type"] = "empty";
+        }
+        sample["id"]["name"] = manager.get_device_name();
+        sample["id"]["instance"] = manager.get_instance_num();
+    } else if (source == SensorSample) {
+        readSensors();
+    } else {
+        sample.clear();
+        sample["type"] = source == ProbeSample ? "probe" : "data";
+        sample["id"]["name"] = manager.get_device_name();
+        sample["id"]["instance"] = manager.get_instance_num();
+        if (source == SyntheticSample) {
+            manager.addData("Packet", "Number", round);
+        }
+    }
+    if (source != ProbeSample && (source == SyntheticSample || padBytes)) {
+        JsonObject data = manager.get_data_object("Bench");
+        if (source == SyntheticSample) {
+            data["Temperature_C"] = 19.0f + nodeId * 0.25f;
+            data["Humidity_pct"] = 50 + nodeId;
+        }
+        if (padBytes) {
+            memset(padding, 'x', padBytes);
+            padding[padBytes] = '\0';
+            data["Padding"] = static_cast<const char *>(padding);
+        }
+    }
+
+    jsonBytes = measureJson(sample);
+    packedBytes = measureMsgPack(sample);
+    const size_t bytes = format == Compact ? CompactBytes : format == Json ? jsonBytes : packedBytes;
+    const size_t capacity = size_t(schedule.chunk) * schedule.fragments;
+    const __FlashStringHelper *error = nullptr;
+
+    if (!manager.isPacketValid()) {
+        error = F("invalid packet");
+    } else if (!bytes || bytes > capacity || jsonBytes >= MAX_JSON_SIZE) {
+        ++oversizeSamples;
+        error = F("oversize");
+    } else {
+        const size_t written = format == Compact ? packCompact(sample.as<JsonVariantConst>(), nodeId, source, payload)
+            : format == Json ? serializeJson(sample, payload, bytes + 1) : serializeMsgPack(sample, payload, bytes);
+        if (written != bytes) {
+            error = F("encode failed");
+        } else {
+            cached = {schedule, beaconEnd, bytes, round, format, selectedHub, nodeId,
+                      attempt, firstSlots, source, individual};
+            if (fromQueue && !individual) {
+                popLocalSample(); // The cached bytes remain available for this round's retries.
+            }
+            error = sendCached(frame, position, fragmentMask(cachedFragmentCount()),
+                               beaconEnd, schedule.leadMs);
+            if (source == ProbeSample) {
+                cached.bytes = 0;
+            }
+        }
+    }
+
+    if (!error) {
+        ++sent;
+    } else {
+        if (fromQueue && !individual && !cached.bytes) {
+            popLocalSample(); // An unencodable entry must not block later readings.
+            ++localDropped;
+        }
+        ++skipped;
+    }
+    lastResult = error ? error : F("sent");
+    if (sent + skipped == 1) {
+        printStatus();
+    }
+}
+
+void handleDirectedPoll(uint8_t *frame, uint8_t length, uint8_t senderHub, uint32_t receivedAt) {
+    const bool recovery = frame[1] != IndividualPoll;
+    const uint8_t linkOffset = enrollment ? MaxIndividualPollBytes : IndividualPollBytes;
+    const uint8_t expectedLength = linkOffset + (recovery ? LinkBytes : 0);
+    if (length != expectedLength || !nodeId || scanning || pingPending) return;
+    SampleRequest request = readSampleRequest(frame);
+    if (recovery) request.plan.link = readLinkSettings(frame + linkOffset);
+    const uint8_t attempt = frame[PollAttemptOffset], wanted = frame[PollMaskOffset];
+    const uint8_t maxAttempt = recovery ? RecordRecoveryPasses : MaxRetries;
+    if (!request.valid() || request.source == ProbeSample || nodeId > request.plan.nodes ||
+        !wanted || attempt > maxAttempt || (!attempt && (recovery || wanted != UINT8_MAX)) ||
+        (recovery && request.plan.link.transport == Transport::Basic) ||
+        !hearHub(senderHub, receivedAt)) return;
+    if (enrollment && readBoardKey(frame + IndividualPollBytes) != boardKey) {
+        applySlot(JoinAddress);
+        setLocalActive(false, receivedAt);
+        return;
+    }
+
+    const uint32_t attemptBudget = request.plan.leadMs + slotMs(request.plan) +
+                                  airtimeMs(expectedLength) + FrameMarginMs + 2 * GuardMs;
+    const uint32_t cacheLifetime = recovery ? (1UL + RecordRecoveryPasses) * request.plan.nodes * attemptBudget
+                                           : (MaxRetries + 1UL) * attemptBudget;
+    const bool matchesCache = cached.bytes && cached.individual == !recovery && cached.round == request.round &&
+        cached.hub == senderHub && cached.slot == nodeId && cached.format == request.format &&
+        cached.source == request.source && cached.plan.chunk == request.plan.chunk &&
+        cached.plan.fragments == request.plan.fragments && cached.plan.leadMs == request.plan.leadMs &&
+        cached.plan.link.transport == request.plan.link.transport &&
+        cached.plan.link.retries == request.plan.link.retries &&
+        cached.plan.link.cadMs == request.plan.link.cadMs &&
+        cached.plan.link.ackMs == request.plan.link.ackMs &&
+        receivedAt - cached.beaconEnd <= cacheLifetime;
+    const IndividualReply reply = chooseIndividualReply(matchesCache, attempt, cached.lastRetry, wanted);
+    if (reply == IndividualReply::Ignore) return;
+    if (reply == IndividualReply::Resend) {
+        const uint8_t fragments = wanted & fragmentMask(cachedFragmentCount());
+        if (!fragments) return;
+        cached.lastRetry = attempt;
+        const __FlashStringHelper *error = sendCached(frame, 1, fragments, receivedAt, cached.plan.leadMs);
+        if (error) ++retriesFailed;
+        else ++retriesSent;
+        lastResult = error ? error : F("retry sent");
+        return;
+    }
+
+    // A repeated full request can recover a missed request. A fragment-only request needs
+    // the original encoded bytes so fragments from two readings can never be combined.
+    ++beacons;
+    lastRound = request.round;
+    cached.bytes = 0;
+    quietLength = 0;
+    const ResponseMode mode = !recovery ? ResponseMode::Individual
+                            : frame[1] == PacedRecoveryPoll ? ResponseMode::Paced : ResponseMode::Slots;
+    if (request.source != SensorSample || mode == ResponseMode::Slots) setLocalActive(false, receivedAt);
+    respondToPoll(frame, request, receivedAt, 1, 1, mode, attempt);
 }
 
 void loop() {
@@ -569,12 +799,20 @@ void loop() {
         handleRetry(frame, length, senderHub, beaconEnd);
         return;
     }
-    if (frame[1] == PacedControl && destination == RH_BROADCAST_ADDRESS) {
+    if ((frame[1] == IndividualPoll || frame[1] == RecoveryPoll || frame[1] == PacedRecoveryPoll) &&
+        destination == nodeId) {
+        handleDirectedPoll(frame, length, senderHub, beaconEnd);
+        return;
+    }
+    if ((frame[1] == PacedControl || frame[1] == IndividualControl) &&
+        destination == RH_BROADCAST_ADDRESS) {
+        const bool individual = frame[1] == IndividualControl;
+        const uint16_t maxQuiet = individual ? MaxIndividualQuietMs : MaxQuietMs;
         if (length == PacedControlBytes && frame[2] == static_cast<uint8_t>(enrollment) &&
-            frame[3] <= SyntheticSample && read16(frame + PacedQuietOffset) <= MaxQuietMs &&
+            frame[3] <= SyntheticSample && read16(frame + PacedQuietOffset) <= maxQuiet &&
             hearHub(senderHub, beaconEnd)) {
             setLocalActive(frame[3] == SensorSample && retrySlot(readSlotMask(frame + 4), nodeId),
-                           beaconEnd);
+                           beaconEnd, individual);
             if (localActive) {
                 quietStart = beaconEnd;
                 quietLength = read16(frame + PacedQuietOffset);
@@ -608,29 +846,27 @@ void loop() {
         (!paced && frame[1] != (enrollment ? EnrolledBeacon : Beacon))) {
         return;
     }
-    const uint16_t round = read16(frame + 2);
-    const Schedule schedule{frame[4], frame[5], frame[6], read16(frame + 7)};
-    const uint8_t format = frame[9];
-    const uint8_t source = frame[10];
-    const uint16_t padBytes = read16(frame + 11);
+    SampleRequest request = readSampleRequest(frame);
+    const Schedule &schedule = request.plan;
     const uint8_t rosterOffset = BeaconBytes + (paced ? SlotMaskBytes : 0);
     const uint16_t expectedLength = rosterOffset + (enrollment ? schedule.nodes * BoardKeyBytes : 0);
-    if (!schedule.valid() || length != expectedLength || (format != MsgPack && format != Json) ||
-        source > ProbeSample || padBytes > MaxPadding) {
+    if (length == expectedLength + LinkBytes) request.plan.link = readLinkSettings(frame + expectedLength);
+    else if (length != expectedLength) return;
+    if (!request.valid()) {
         return;
     }
     const SlotMask due = paced ? readSlotMask(frame + BeaconBytes) : slotMask(schedule.nodes);
-    if (!due || (due & ~slotMask(schedule.nodes)) || (paced && source == ProbeSample)) {
+    if (!due || (due & ~slotMask(schedule.nodes)) || (paced && request.source == ProbeSample)) {
         return;
     }
     if (!hearHub(senderHub, beaconEnd) || scanning || pingPending) {
         return;
     }
     ++beacons;
-    lastRound = round;
+    lastRound = request.round;
     cached.bytes = 0;
     quietLength = 0;
-    if (!paced || source != SensorSample) {
+    if (!paced || request.source != SensorSample) {
         setLocalActive(false, beaconEnd);
     }
     if (enrollment && nodeId && nodeId <= schedule.nodes &&
@@ -652,93 +888,8 @@ void loop() {
         return; // Not scheduled in this round, so no transmission is expected.
     }
 
-    auto &sample = manager.getDocument();
-    bool fromQueue = false;
-    if (paced && source == SensorSample && localPeriod) {
-        setLocalActive(true, beaconEnd);
-        if (!localCount) {
-            captureLocalSample(beaconEnd);
-        }
-        if (localCount) {
-            const LocalSample &oldest = localQueue[localHead];
-            fromQueue = !deserializeMsgPack(sample, oldest.data, oldest.size) && manager.isPacketValid();
-            if (!fromQueue) {
-                popLocalSample();
-                ++localDropped;
-            }
-        }
-        if (!fromQueue) {
-            sample.clear();
-            sample["type"] = "empty";
-        }
-        sample["id"]["name"] = manager.get_device_name();
-        sample["id"]["instance"] = manager.get_instance_num();
-    } else if (source == SensorSample) {
-        readSensors();
-    } else {
-        sample.clear();
-        sample["type"] = source == ProbeSample ? "probe" : "data";
-        sample["id"]["name"] = manager.get_device_name();
-        sample["id"]["instance"] = manager.get_instance_num();
-        if (source == SyntheticSample) {
-            manager.addData("Packet", "Number", round);
-        }
-    }
-    if (source != ProbeSample && (source == SyntheticSample || padBytes)) {
-        JsonObject data = manager.get_data_object("Bench");
-        if (source == SyntheticSample) {
-            data["Temperature_C"] = 19.0f + nodeId * 0.25f;
-            data["Humidity_pct"] = 50 + nodeId;
-        }
-        if (padBytes) {
-            memset(padding, 'x', padBytes);
-            padding[padBytes] = '\0';
-            data["Padding"] = static_cast<const char *>(padding);
-        }
-    }
-
-    jsonBytes = measureJson(sample);
-    packedBytes = measureMsgPack(sample);
-    const size_t bytes = format == Json ? jsonBytes : packedBytes;
-    const size_t capacity = size_t(schedule.chunk) * schedule.fragments;
-    const __FlashStringHelper *error = nullptr;
-
-    if (!manager.isPacketValid()) {
-        error = F("invalid packet");
-    } else if (!bytes || bytes > capacity || jsonBytes >= MAX_JSON_SIZE) {
-        ++oversizeSamples;
-        error = F("oversize");
-    } else {
-        const size_t written = format == Json ? serializeJson(sample, payload, bytes + 1)
-                                             : serializeMsgPack(sample, payload, bytes);
-        if (written != bytes) {
-            error = F("encode failed");
-        } else {
-            cached = {schedule, beaconEnd, bytes, round, format, selectedHub, nodeId, 0, slotCount(due)};
-            if (fromQueue) {
-                popLocalSample(); // The cached bytes remain available for this round's retries.
-            }
-            error = sendCached(frame, position, fragmentMask(cachedFragmentCount()),
-                               beaconEnd, schedule.leadMs);
-            if (source == ProbeSample) {
-                cached.bytes = 0;
-            }
-        }
-    }
-
-    if (!error) {
-        ++sent;
-    } else {
-        if (fromQueue && !cached.bytes) {
-            popLocalSample(); // An unencodable entry must not block later readings.
-            ++localDropped;
-        }
-        ++skipped;
-    }
-    lastResult = error ? error : F("sent");
-    if (sent + skipped == 1) {
-        printStatus();
-    }
+    respondToPoll(frame, request, beaconEnd, position, slotCount(due),
+                  paced ? ResponseMode::Paced : ResponseMode::Slots);
 }
 
 } // namespace node

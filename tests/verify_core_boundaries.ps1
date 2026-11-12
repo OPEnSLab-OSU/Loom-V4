@@ -33,7 +33,7 @@ foreach ($test in $tests) {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'mongo_fakes') + '" /I"' + (Join-Path $sourceDir 'mqtt_fakes') + '" /I"' + $jsonIncludes + '"'
     } elseif ($test.BaseName -in @('test_mqtt_component', 'test_thingspeak', 'test_remote_manager')) {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'mqtt_fakes') + '" /I"' + $jsonIncludes + '"'
-    } elseif ($test.BaseName -in @('test_lora_packet_header', 'test_buffer_pool', 'test_gnss_metadata', 'test_heartbeat_payload')) {
+    } elseif ($test.BaseName -in @('test_lora_packet_header', 'test_buffer_pool', 'test_gnss_metadata', 'test_heartbeat_payload', 'test_bench_compact')) {
         $fakeIncludes = '/I"' + $jsonIncludes + '"'
     } elseif ($test.BaseName -in @('test_manager_lifecycle', 'test_function_start', 'test_function_start_off')) {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'manager_fakes') + '" /I"' + $jsonIncludes + '"'

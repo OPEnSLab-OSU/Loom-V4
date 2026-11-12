@@ -6,6 +6,7 @@ namespace bench {
 
 constexpr uint32_t MinPeriodMs = 100, MaxPeriodMs = 86400000;
 constexpr uint16_t LocalReadBudgetMs = 350, MaxQuietMs = 3000;
+constexpr uint16_t MaxIndividualQuietMs = 65000;
 
 constexpr bool validPeriod(uint32_t period) {
     return period == 0 || (period >= MinPeriodMs && period <= MaxPeriodMs);

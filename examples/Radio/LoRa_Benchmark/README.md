@@ -72,9 +72,15 @@ After wake the board keeps its role and IDs. A hub resumes advertising and is re
 | `set chunk 1–245`, `set fragments 1–8` | Set bytes per fragment and maximum fragments per slot. Defaults 245 and 1. The product of node count, chunk size, and fragment count must fit in 8,192 bytes. |
 | `set lead 12–10000`, `set gap 0–60000` | Set preparation time after the beacon and idle time between rounds in ms. Defaults 120 and 0. Increase lead for slow sensor reads. |
 | `set period <node\|all> <ms>`, `periods` | Set or show a node's fixed upload period (100 ms to 24 hours, or 0 to clear). Applies to `start`, `run` and `compare`. |
-| `set pad 0–1800`, `set format msgpack\|json` | Add a padding string to vary sample size. Select the wire encoding for ordinary runs. Defaults 0 and MessagePack. |
+| `set pad 0–1800`, `set format msgpack\|json\|raw` | Select the wire encoding. MessagePack and JSON can add padding to vary sample size. Defaults are 0 and MessagePack. |
 | `set source synthetic\|sensors` | Choose the simulated temperature/humidity payload or live Loom sensor fields. Padding is independent. Default synthetic. |
-| `set retries 0–3` | Set the maximum additional retry windows per data round. Default 3. Reflash participating nodes for retry support. |
+| `set retries 0–10` | Allow up to 10 additional attempts by default, after the first send. In basic mode this controls bitmap retry windows. In ACK modes it controls attempts per RF fragment. |
+| `set transport basic\|ack\|radiohead` | Select bitmap recovery, a benchmark ACK for each RF fragment, or RadioHead reliable datagrams. ACK modes use `set polling slots`. |
+| `set cad 0–10000`, `set acktimeout 60–1000` | Set the node data clear-channel budget and ACK timeout in milliseconds. ACK modes default to 100 ms CAD and a 500 ms ACK timeout. RadioHead randomizes its timeout between the configured value and twice that value. |
+| `utc <Unix UTC seconds> <rounds>`, `utc stop` | Start or stop an autonomous schedule on a Feather M0 with a synchronized DS3231 and fixed node IDs. Enter the same future start and round count on all participants. |
+| `utc sd\|ram <epoch> <rounds> [ack_ms tx_dBm cycle_s trial]`, `utc status` | Use compact RadioHead readings in fixed UTC slots, with an SD backlog or a fresh reading each cycle. Use the same settings on the hub and nodes. |
+| `set polling slots\|individual` | Choose broadcast slots or one addressed station at a time for `run`, `start`, and `compare`. |
+| `set samplewindow 0–65000`, `set sampleperiod <ms>` | Set the individual live sampling window and its cadence. A sample period of 0 opens the window before each collection pass. |
 | `set lte on\|off` | Enable or disable MQTT publishing for the next test. Requires an LTE-enabled build to turn on. Default off. |
 
 Stop a run before changing its settings.
@@ -91,6 +97,7 @@ Stop a run before changing its settings.
 | `id <1–20>`, `id auto` | Set a fixed ID and preference, or ask the hub to assign a slot using that preference. |
 | `name <label>` | Set the Manager name sent in packets. The hardware fingerprint stays the same. |
 | `interval <ms>` | Set the local sensor period for paced live runs (100 ms to 24 hours, or 0 to read on request). |
+| `samplebudget <ms>` | Set the maximum expected duration of a blocking local reading in individual mode. Default 350 ms. |
 | `status`, `sample`, `reset`, `help` | Inspect link counters or the last sample, clear them, or list commands. |
 
 Stop the benchmark before manually switching destinations. Discovery can hear idle offers and active test beacons. Known idle hubs answer directed pings even with advertisements disabled. The radios share airtime, so run one benchmark hub at a time per RF channel. For throughput measurements, turn off advertisements on other hubs on that channel. Hub selection tests direct links. Relaying would require a separate forwarding schedule.
@@ -117,6 +124,40 @@ The estimate assumes up to **19 bytes per live dendrometer sample**: temperature
 
 Start with `set retries 0` for the raw baseline. With retries enabled, the hub holds on to received fragments and broadcasts a bitmap for only the missing fragments and nodes. Each requested node resends from its cached sample in a dedicated retry slot. A duplicate fragment cannot inflate delivered samples. A node that missed the original beacon or could not encode a sample has no data to resend. Invalid decoded documents are reported separately. Firmware can set the hub's retry limit with the optional seventh `Boot` argument.
 
+### Compare delivery and throughput
+
+Reflash the hub and nodes together. Open the Windows hub monitor, then run `Run-LoomCadenceComparison.ps1 -LinkMatrix -Source synthetic -NodeCount 2` for simulated samples or use `-Source sensors` for live dendrometers. Each profile defaults to 1,000 rounds, or 2,000 expected records with two nodes. The runner fits each encoding once, applies the same CAD budget to all three transports, and tests inter-round gaps of 0, 250, and 500 ms. Set `-Rounds 100` for a short checkout, `-GapsMs 0` for a single gap, or `-CadMs 10000` to try the release example's CAD budget. It saves per-profile counts and records per minute beside the monitor log. Use the existing hub `sweep` command for the SD timing sweep. The Windows link matrix writes its comparison files on the PC.
+
+The hub reserves enough slot time for all allowed attempts. Shorter inter-round gaps leave that reservation intact. The custom transport ACKs a valid fragment, including a duplicate when its previous ACK was lost. RadioHead's manager ACKs at the datagram layer, then the hub validates the benchmark frame. In the two ACK modes, the node's `status` reports retransmission attempts, recovered fragments, and attempts on failed fragments. Divide `link_failed_attempts` by `link_failed_fragments` for the mean when a fragment fails. ACKs and hub control frames are sent immediately. The optional clear-channel wait applies to node data.
+
+In awake slot runs with retries enabled, the two ACK modes also give each missing or incomplete record up to two directed recovery polls. A node that missed the beacon can answer a full poll. If the hub already has part of the record, the node may send only the missing fragments from the original encoded bytes. The hub's `retry_slots` counts these recovery polls or the basic mode's bitmap slots. It does not count retransmissions made by the link layer. The hub and nodes both need this firmware for recovery polling.
+
+Raw uses a 27-byte record with a field presence mask. It carries packet number, optional sample uptime, temperature and relative humidity in hundredths, AS5311 magnitude and positions, alignment, and displacement in encoder steps. The hub reconstructs the benchmark node name from its ID. Use MessagePack for original names, extra modules, or arbitrary fields.
+
+### UTC slots for sleeping stations
+
+Use fixed IDs and synchronized, running DS3231 clocks on the hub and each station. Arm each board once with the same `utc <future Unix UTC seconds> <rounds>` command, allowing enough time to reach all the boards before the start. Set each station's preferred hub to the listening hub. The shared defaults in [BenchUtc.h](../../../src/Radio/Loom_LoRa/Benchmark/BenchUtc.h) are two stations, a five-minute cycle, 16-second slots, live raw data, and custom ACKs with up to 10 retries. Change the `BENCH_UTC_*` defines consistently across the sketches to compare another configuration. The command checks that the slot can contain the configured retry budget and guard times.
+
+The station derives its slot from its fixed ID and wakes to sample before that slot. Its RFM95 sleeps between slots, and the Feather uses timed standby while waiting. It rechecks the external UTC clock after waking. The hub listens during the scheduled windows without sending a per-round poll or beacon. The schedule is kept in RAM until it finishes, stops, or resets. This mode leaves sensor rail configuration to the node firmware. Use the awake link matrix for accelerated throughput measurements, and a UTC run to check timed wake and delivery on battery-powered nodes.
+
+### SD backlog and reliability matrix
+
+Use `utc sd <epoch> <rounds>` on every board to save readings before sending. The node sends up to four oldest pending compact readings in a RadioHead datagram. The hub validates and saves new readings to its SD card, then sends a separate receipt. The node advances its saved cursor only after a matching receipt. If the data or receipt is lost, the same readings can be sent again in a later slot. The hub remembers the newest saved timestamp for each fixed node ID and skips already saved readings. Keep each node's SD card with its configured ID. After a reboot, arm a new future schedule with the same IDs and trial value 0 to resume the backlog.
+
+The SD files use 8.3 names. `BQ…BIN` contains the node's measurements, `BA…BIN` contains its confirmed queue positions, and `BR…BIN` contains the hub's accepted readings. A measurement entry is a 32-bit cycle epoch, a 27-byte compact record, and a CRC-32. A cursor entry is a 32-bit byte offset and a CRC-32. Multi-byte values are little-endian. The journals retain confirmed data. Startup trims a short trailing write and reports a full-sized damaged tail as a setup error. The defaults use the Hypnos V3.3 SD chip select on D11, 24-second slots, a five-minute cycle, 23 dBm configured power, a 500 ms ACK timeout, and 10 retries per datagram.
+
+At 24 seconds per node, the five-minute cycle can schedule 12 nodes. A 20-node queue run needs at least 480 seconds per cycle at that slot width.
+
+Use `utc ram` for the no-SD comparison. It sends a fresh reading in the same slot schedule and uses the same RadioHead and receipt framing. Any reading still missing after that slot is counted as a loss. Both modes reserve two extra cycles at the end for recovery, with sampling turned off during those cycles. A nonzero trial ID gives each SD trial its own empty journal and keeps the stations awake between slots. Trial ID 0 uses the persistent field journal and standby between slots.
+
+With the hub and both fixed-ID nodes on USB, synchronized DS3231 clocks, and SD cards in all three boards, run this from PowerShell. Substitute the connected COM ports.
+
+```powershell
+.\Run-UtcReliabilityMatrix.ps1 -HubPort COM3 -NodePorts COM9,COM25
+```
+
+The runner tests 100 and 500 ms ACK timeouts at 5, 14, and 23 dBm, each with SD on and off. It keeps 10 retries, two nodes, 50-second cycles, the compact encoding, and LTE off throughout. Each combination schedules 250 new readings per node, for 500 expected. Budget about 3.5 hours per combination and 42 hours for all 12 at the default cadence. The CSV records on-time delivery, backfills, final misses, and duplicates. It also sums the senders' datagrams attempted, datagrams that used at least one link retry, and total link retry attempts. One retried datagram with three attempts after its initial send adds one to `DatagramsRetried` and three to `DatagramRetryAttempts`. A later slot's SD resend counts as a new datagram. To repeat on the same cards, use an unused range of trial IDs via `-FirstTrialId`.
+
 For a range test, keep the radio and slot settings fixed between locations. Run the simulated and sensor `arm 30` checks first, then capture the serial log during a longer run at each distance. Use `start` for a report every ten seconds and `stop` for final totals, or `run <rounds>` with the same fitted plan for controlled comparisons. Record `first_missing`, `first_partial`, `recovered`, `final_missing`, `final_partial`, and `final_invalid` along with the per-node RSSI/SNR and sample totals. Report first-pass and final delivery separately; `retry_radio_s` shows the time that recovery added. Compare a retries-off run and a run with `set retries 2` at each distance before choosing a retry budget.
 
 ### Paced benchmarks
@@ -136,17 +177,40 @@ Every profile below runs simulated and live MessagePack samples, using the exist
 | Profile | Preparation ms | Packet headroom B | Retry limit | Polling allowance ms |
 | --- | --- | --- | --- | --- |
 | 1 | 120 | 16 | 0 | Back-to-back |
-| 2 | 120 | 16 | 3 | Back-to-back |
-| 3 | 120 | 16 | 3 | 500 |
-| 4 | 120 | 16 | 3 | 2,000 |
-| 5 | 250 | 16 | 3 | 500 |
-| 6 | 500 | 32 | 3 | 500 |
+| 2 | 120 | 16 | 10 | Back-to-back |
+| 3 | 120 | 16 | 10 | 500 |
+| 4 | 120 | 16 | 10 | 2,000 |
+| 5 | 250 | 16 | 10 | 500 |
+| 6 | 500 | 32 | 10 | 500 |
 | 7 | 120 | 16 | 1 | 2,000 |
 | 8 | 120 | 16 | 0 | 2,000 |
 
 SD mode creates a fresh `SW0001.CSV` and `SW0001.TXT` pair, advancing the number for later sessions. CSV contains one row per measured test. TXT contains each test's per-node statistics, timing and throughput, plus the current fastest and fewest-retry recommendations for each sample source. It uses `SDManager::writeDebugRecords()` to check, flush and close each append between tests. A failed SD append stops the sweep. Completed records survive an interrupted session. At the time limit, the hub finishes its current radio round and records the partial test, which cannot qualify. A large array may finish a subset of the profiles within the selected hours. Log timing uses board uptime. `BENCH_SD_CS_PIN` defaults to D11 for Hypnos V3.3 and can be set to D10 for V3.2. LTE uploads are disabled during the sweep.
 
 By default, nodes read sensors on request. For an independent sampling clock, set `interval <ms>` on a node. During a paced sensor run the hub grants quiet time between polls, and the node can collect up to four readings in RAM on its own timer. Each assigned upload slot takes **one** oldest reading, with `sample_ms` recording node uptime at capture. A full queue drops its oldest reading and increments `local_dropped`. If the queue is empty, an explicit empty reply counts as successful radio delivery but not as a sensor sample. The queue is for benchmarking: it is not persistent, does not batch multiple readings into one transmission, and a reading is retained for this round's retries rather than held for an end-to-end acknowledgement. Synthetic runs do not use the local sampler.
+
+## Individual polling
+
+Use `set polling individual` on the hub. It visits enrolled stations in ascending ID order, or configured IDs 1 through `nodes` in fixed-ID mode. Each unicast request has one response window. The hub checks the address and transaction number, assembles the fragments, and validates the record and its node identity before asking the next station. A retry of a completely unanswered request can solicit the original response again. A partial reply can only be completed with fragments from the station's original encoded response. `run 100` completes 100 passes through the due stations, and `set retries` limits retries per station. `arm`, `scan`, and the overnight sweep use broadcast slots. See [`pollIndividualNode` and `serviceIndividualRun`](../../../src/Radio/Loom_LoRa/Benchmark/BenchHub.h) and [`handleDirectedPoll`](../../../src/Radio/Loom_LoRa/Benchmark/BenchNode.h).
+
+For a link-only comparison, use `set source synthetic`, `set period all 0`, and `run 100`. The hub uses a 30 ms reply turnaround. The configured chunk size and fragment count bound the response timeout. It can advance as soon as it receives a complete response.
+
+For live measurements, each station samples when its local `interval` is due and there is enough time left in a hub-granted quiet window. The stations can read in parallel during that window. Each request returns the latest cached reading and its `sample_ms` uptime, or an empty response if a station has yet to capture one. Polling faster than the sampling interval can return the same reading multiple times. Station `status` reports `sample_overruns` when a reading exceeds its declared budget. Set `sampleperiod` on the hub to offer sampling windows independently of the collection periods. Choose a grant cadence that can serve the fastest station interval, with enough time outside the windows for collection. See [`captureLocalSample` and `serviceLocalSampling`](../../../src/Radio/Loom_LoRa/Benchmark/BenchNode.h).
+
+For a sensor that can take a minute, set `interval 300000` and `samplebudget 60000` on each station. Then configure a five-minute collection pass with a 62-second sampling window on the hub.
+
+```text
+set polling individual
+set source sensors
+set chunk 135
+set fragments 2
+set samplewindow 62000
+set sampleperiod 0
+set period all 300000
+start
+```
+
+The sampling window begins when the collection pass is due. The hub waits for it to end before requesting the cached readings. `poll_finish_max_ms` includes that wait and the station replies. The sample budget reserves time for a blocking read. Set it from the sensor's worst-case duration, including its driver timeouts. Reflash the hub and stations for individual requests and quiet grants.
 
 For firmware defaults, call `bench::hub::setUploadPeriod(0, 300000)` in the hub sketch to give all slots a five-minute period. A node can optionally use `bench::node::setLocalSamplePeriod(300000)` for its own sensor timer. After hub setup, application code can start a measured run with `bench::hub::startCollection(bench::SyntheticSample, 30)` or `bench::hub::startCollection(bench::SensorSample, 30)`. A limit of 0 runs until stopped. Reflash the hub and all participating nodes together for the three-byte slot masks used by paced beacons, quiet grants, and retries.
 
@@ -160,7 +224,7 @@ Use a fresh `arm 30` for each node count or distance you want to compare. Read d
 
 - **Sensors.** In either sketch, declare Loom modules with `bench::node::manager`. If a rail needs enabling, pass a setup function as the second argument to `bench::setup(Boot, sensorSetup)`. That function runs before the first node-mode Manager initialization. Use `set source sensors` to omit synthetic fields. Both formats send the packaged Loom document, including identity and packet number. The Loom JSON memory pool and MQTT JSON size limit apply.
 - **LTE.** Copy the Hub example's `arduino_secrets.example.h` to `arduino_secrets.h` beside whichever sketch you are flashing. Fill in APN and broker settings and set `BENCH_ENABLE_LTE` to 1 in that sketch. The template selects the OPEnS Jolteon SARA-R5 wiring with A5 PWR_ON and D6 supply enable. The modem starts on the first `set lte on` in hub mode. The default topic for node 1 is `lora-bench/LoRaNode1`.
-- **Bandwidth.** Set `WideBandwidth = true` in the [shared BenchRadio.h](../../../src/Radio/Loom_LoRa/Benchmark/BenchRadio.h) and reflash every radio to compare 500 kHz at SF7. With 125 kHz, one full 245-byte body uses a 434 ms slot. The 52 ms beacon and 120 ms default lead give a modeled radio ceiling of about 1.9 samples/s with two nodes and 2.25 samples/s aggregate with sixteen. Those values exclude losses, decoding, and LTE.
+- **Bandwidth and power.** Set `WideBandwidth = true` in the [shared BenchRadio.h](../../../src/Radio/Loom_LoRa/Benchmark/BenchRadio.h) and reflash every radio to compare 500 kHz at SF7. The default transmit setting is `BENCH_TX_POWER_DBM=23`; the UTC matrix sets its requested power on all participants for each trial. With 125 kHz, one full 245-byte body uses a 434 ms slot. The 52 ms beacon and 120 ms default lead give a modeled radio ceiling of about 1.9 samples/s with two nodes and 2.25 samples/s aggregate with sixteen. Those values exclude losses, decoding, and LTE.
 
 Host simulations passed with and without LTE. They covered staggered startup, late joins, automatic hub discovery, and isolation of probes from LTE. A simulated SAMD21 button test covered press/release, a wake unrelated to D12, a held wake button, shutdown failures, and both roles. A one-hub, two-node simulation verified the live sensor packet and the synthetic baseline. The shared AS5311 driver also passed its existing serial-word tests. Board compilation and hardware validation remain pending due to a Windows ARM compiler launch failure.
 

@@ -2,8 +2,12 @@
 
 #include <Loom_Manager.h>
 #include "BenchRadio.h"
+#include "BenchCompact.h"
 #ifndef BENCH_ENABLE_SWEEP
 #define BENCH_ENABLE_SWEEP 0
+#endif
+#ifndef BENCH_SD_CS_PIN
+#define BENCH_SD_CS_PIN 11 // Hypnos V3.3. V3.2 uses D10.
 #endif
 #ifndef BENCH_ENABLE_DENDROMETER
 #define BENCH_ENABLE_DENDROMETER (!BENCH_ENABLE_LTE)
@@ -52,7 +56,8 @@ struct BootSettings {
     }
 };
 
-RH_RF95 radio(RFM95_CS, RFM95_INT);
+BenchRadio radio(RFM95_CS, RFM95_INT);
+RHReliableDatagram reliableRadio(radio);
 CommandLine console;
 bool ready = false;
 Role role = Role::Node;
@@ -67,6 +72,7 @@ void (*prepareSensors)() = nullptr;
 #endif
 #if BENCH_HAS_RTC_BUTTON
 #include "BenchSleep.h"
+#include "BenchUtc.h"
 #endif
 
 namespace bench {
@@ -101,13 +107,14 @@ void setup(const BootSettings &boot, void (*sensorSetup)() = nullptr) {
     hub::hubId = boot.hubId;
     hub::enrollment = boot.enrollment;
     hub::config.retries = boot.retries;
+    hub::config.plan.link.retries = boot.retries;
     if (!node::setEnrollment(boot.enrollment)) {
         node::setEnrollment(false);
     }
     prepareSensors = sensorSetup;
     role = boot.role;
 
-#if BENCH_ENABLE_SWEEP
+#if BENCH_ENABLE_SWEEP || BENCH_HAS_RTC_BUTTON
     digitalWrite(BENCH_SD_CS_PIN, HIGH);
     pinMode(BENCH_SD_CS_PIN, OUTPUT);
 #endif
@@ -162,11 +169,27 @@ bool handleRoleCommand(char *line) {
 
 void loop() {
 #if BENCH_HAS_RTC_BUTTON
+    if (utcSlots::enabled) {
+        if (char *line = console.read()) {
+            if (!utcSlots::handleCommand(line)) {
+                if (!strcmp(line, "status")) {
+                    utcSlots::printStatus();
+                } else {
+                    Serial.println(F("ERR use status or utc stop during a UTC trial"));
+                }
+            }
+        }
+        if (utcSlots::enabled) utcSlots::service();
+        return;
+    }
     if (serviceSleepButton()) {
         return;
     }
 #endif
     if (char *line = console.read()) {
+#if BENCH_HAS_RTC_BUTTON
+        if (utcSlots::handleCommand(line)) return;
+#endif
 #if BENCH_ENABLE_SWEEP
         if (sweep::handleCommand(line)) return;
 #endif

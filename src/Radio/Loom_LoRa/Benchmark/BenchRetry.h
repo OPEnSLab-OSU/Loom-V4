@@ -7,7 +7,8 @@ namespace bench {
 constexpr uint8_t MaxNodes = 20;
 using SlotMask = uint32_t;
 constexpr uint8_t SlotMaskBytes = (MaxNodes + 7) / 8;
-constexpr uint8_t MaxRetries = 3;
+constexpr uint8_t MaxRetries = 10;
+constexpr uint8_t RecordRecoveryPasses = 2;
 constexpr uint16_t RetryLeadMs = 30;
 constexpr uint8_t RetryAttemptOffset = 4 + SlotMaskBytes;
 constexpr uint8_t RetryHeaderBytes = RetryAttemptOffset + 1;
@@ -47,6 +48,15 @@ inline uint8_t retrySlot(SlotMask mask, uint8_t node) {
 
 constexpr uint8_t fragmentMask(uint8_t count) {
     return count <= 8 ? static_cast<uint8_t>((uint16_t(1) << count) - 1) : 0;
+}
+
+enum class IndividualReply : uint8_t { Ignore, Build, Resend };
+
+inline IndividualReply chooseIndividualReply(bool cached, uint8_t attempt, uint8_t lastAttempt, uint8_t wanted) {
+    if (attempt && cached) {
+        return attempt > lastAttempt ? IndividualReply::Resend : IndividualReply::Ignore;
+    }
+    return wanted == UINT8_MAX ? IndividualReply::Build : IndividualReply::Ignore;
 }
 
 struct FragmentSet {
