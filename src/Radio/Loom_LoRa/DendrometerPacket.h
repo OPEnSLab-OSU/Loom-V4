@@ -1,10 +1,13 @@
 #pragma once
 /**
  * Compact LoRa format for the dendrometer: a whole batch of readings in one message, and the hub's schedule reply.
- * Batch: header [FORMAT][node][count][first packet u16][first time u32][RSSI i8][flags: 1 = more messages follow], then
- *        per reading
+ * Batch: header [FORMAT][node][count][first packet bits 0-15][first time u32][RSSI i8]
+ *        [flags: bit 0 = more messages follow, bits 1-7 = first packet bits 16-22], then per reading
  *        [packet offset][seconds offset u16][temp x100 i16][RH x100 u16][(mV - 3000) / 10]
- *        [5 bytes: mag 12 bits | pos_raw 12 | pos_avg 12 | alignment 2 | button 1][displacement steps i16]
+ *        [5 bytes: mag 12 bits | pos_raw 12 | pos_avg 12 | alignment 2 | button 1 | bit16 XOR bit15]
+ *        [displacement steps bits 0-15]  (steps are 17-bit two's complement; bit 39 holds bit16 XOR bit15,
+ *        so it is 0 for any int16 value, matching old firmware)
+ *        No SHT31 on the node: temp INT16_MIN and RH 0xFFFF, and unpack() leaves the module out.
  * Schedule (hub -> node, after a node's last message): [SCHEDULE][hub time u32][next send time u32][cycle seconds u32],
  *           unix times in UTC; the node then sends every cycle from the next send time on
  * Multi-byte values are little-endian. Both start with a byte below 0x80, so Loom_LoRa hands them over as raw messages.
@@ -33,12 +36,12 @@ public:
     uint8_t length() const { return count ? HEADER_SIZE + count * READING_SIZE : 0; }
     void clear() { count = 0; }
     /* Tell the hub another message of this send comes right after this one, so it waits before replying */
-    void setMoreFollows(bool more) { buf[10] = more; }
+    void setMoreFollows(bool more) { buf[10] = (buf[10] & ~1) | more; }
 
 private:
     uint8_t buf[HEADER_SIZE + MAX_READINGS * READING_SIZE];
     uint8_t count = 0;
-    uint16_t firstPacket = 0;
+    uint32_t firstPacket = 0;
     uint32_t firstTime = 0;
 };
 

@@ -37,7 +37,7 @@ bool Writer::add(JsonDocument& reading, uint8_t node) {
     uint32_t time;
     if (!parseTime(reading["timestamp"]["time_utc"], time))
         return true;
-    uint16_t packet = field(reading, "Packet", "Number").as<uint16_t>();
+    uint32_t packet = field(reading, "Packet", "Number").as<uint32_t>() & 0x7FFFFF;
 
     if (count == MAX_READINGS)
         return false;
@@ -50,14 +50,16 @@ bool Writer::add(JsonDocument& reading, uint8_t node) {
         memcpy(buf + 3, &firstPacket, 2);
         memcpy(buf + 5, &firstTime, 4);
         memcpy(buf + 9, &rssi, 1);
-        buf[10] = 0;
+        buf[10] = (firstPacket >> 16) << 1;
     } else if (packet < firstPacket || packet - firstPacket > 255 || time < firstTime || time - firstTime > 65535) {
         return false;
     }
 
     uint16_t secondsSinceFirst = time - firstTime;
-    int16_t temperature = clampLong(lround(field(reading, "SHT31", "Temperature_C").as<float>() * 100), -32768, 32767);
-    uint16_t humidity = clampLong(lround(field(reading, "SHT31", "Humidity_%RH").as<float>() * 100), 0, 65535);
+    // A node without an SHT31 logs no values at all; a sentinel keeps that from looking like 0 C / 0 %RH
+    JsonVariant tempField = field(reading, "SHT31", "Temperature_C");
+    int16_t temperature = tempField.isNull() ? INT16_MIN : clampLong(lround(tempField.as<float>() * 100), -32768, 32767);
+    uint16_t humidity = tempField.isNull() ? 0xFFFF : clampLong(lround(field(reading, "SHT31", "Humidity_%RH").as<float>() * 100), 0, 65535);
 
     const char* alignment = field(reading, "AS5311", "Alignment") | "Error";
     uint64_t alignmentCode = 3;
@@ -69,7 +71,10 @@ bool Writer::add(JsonDocument& reading, uint8_t node) {
                     | (uint64_t)clampLong(field(reading, "AS5311", "pos_avg").as<long>(), 0, 4095) << 24
                     | alignmentCode << 36
                     | (uint64_t)field(reading, "Button", "Pressed?").as<bool>() << 38;
-    int16_t steps = clampLong(lround(field(reading, "displacement", "um").as<float>() / STEP_UM), -32768, 32767);
+    long steps = clampLong(lround(field(reading, "displacement", "um").as<float>() / STEP_UM), -65535, 65535);
+    // bit 39 = bit 16 XOR bit 15: 0 for anything that fits in 16 bits, as old firmware sends
+    magnet |= (uint64_t)(((uint32_t)steps >> 16 ^ (uint32_t)steps >> 15) & 1) << 39;
+    uint16_t stepsLow = steps;
 
     uint8_t* p = buf + HEADER_SIZE + count * READING_SIZE;
     p[0] = packet - firstPacket;
@@ -78,7 +83,7 @@ bool Writer::add(JsonDocument& reading, uint8_t node) {
     memcpy(p + 5, &humidity, 2);
     p[7] = batteryByte(reading);
     memcpy(p + 8, &magnet, 5);
-    memcpy(p + 13, &steps, 2);
+    memcpy(p + 13, &stepsLow, 2);
 
     buf[2] = ++count;
     return true;
@@ -100,20 +105,22 @@ uint32_t readingTime(const uint8_t* msg, uint8_t index) {
 }
 
 uint32_t readingPacket(const uint8_t* msg, uint8_t index) {
-    uint16_t firstPacket;
-    memcpy(&firstPacket, msg + 3, 2);
-    return firstPacket + msg[HEADER_SIZE + index * READING_SIZE];
+    uint16_t firstPacketLow;
+    memcpy(&firstPacketLow, msg + 3, 2);
+    return (firstPacketLow | (uint32_t)(msg[10] >> 1) << 16) + msg[HEADER_SIZE + index * READING_SIZE];
 }
 
 void unpack(const uint8_t* msg, uint8_t index, JsonDocument& doc, const char* name, DateTime (*toLocal)(DateTime)) {
     const uint8_t* p = msg + HEADER_SIZE + index * READING_SIZE;
-    uint16_t humidity;
-    int16_t temperature, steps;
+    uint16_t humidity, stepsLow;
+    int16_t temperature;
     uint64_t magnet = 0;
     memcpy(&temperature, p + 3, 2);
     memcpy(&humidity, p + 5, 2);
     memcpy(&magnet, p + 8, 5);
-    memcpy(&steps, p + 13, 2);
+    memcpy(&stepsLow, p + 13, 2);
+    uint32_t bit16 = ((magnet >> 39) ^ (stepsLow >> 15)) & 1;
+    int32_t steps = ((int32_t)(stepsLow | bit16 << 16) ^ 0x10000) - 0x10000;  // sign-extend 17 bits
 
     float tempC = temperature / 100.0f;
     float rh = humidity / 100.0f;
@@ -133,10 +140,12 @@ void unpack(const uint8_t* msg, uint8_t index, JsonDocument& doc, const char* na
     JsonObject analog = module("Analog");
     analog["Vbat"] = batteryMV / 1000;
     analog["Vbat_MV"] = batteryMV;
-    JsonObject sht = module("SHT31");
-    sht["Temperature_C"] = tempC;
-    sht["Humidity_%RH"] = rh;
-    sht["VPD"] = (float)(0.61078 * pow(2.71828, (17.2694 * tempC) / (tempC + 237.3)) * (1 - rh / 100));  // node's measureVPD()
+    if (temperature != INT16_MIN || humidity != 0xFFFF) {
+        JsonObject sht = module("SHT31");
+        sht["Temperature_C"] = tempC;
+        sht["Humidity_%RH"] = rh;
+        sht["VPD"] = (float)(0.61078 * pow(2.71828, (17.2694 * tempC) / (tempC + 237.3)) * (1 - rh / 100));  // node's measureVPD()
+    }
     module("LoRa")["RSSI"] = (int8_t)msg[9];
     JsonObject as5311 = module("AS5311");
     as5311["Alignment"] = ALIGNMENT[(magnet >> 36) & 3];
