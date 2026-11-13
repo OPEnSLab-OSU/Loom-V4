@@ -160,18 +160,12 @@ bool Loom_LoRa::receiveFromLoRa(uint8_t *buf, uint8_t *buf_size,
 
     memset(buf, 0, *buf_size);
 
-    LOG(F("Waiting for message..."));
-
     if (timeout) {
         status = radioManager->recvfromAckTimeout(buf, buf_size, timeout,
                                                   fromAddress);
     } else {
         status = radioManager->recvfromAck(buf, buf_size,
                                            fromAddress);
-    }
-
-    if (!status) {
-        WARNING(F("No message received"));
     }
 
     radioDriver.sleep();
@@ -196,16 +190,16 @@ FragReceiveStatus Loom_LoRa::receiveFrag(uint timeout, bool shouldProxy,
         return FragReceiveStatus::Error;
     }
 
-    LOGF("Received packet from %i", *fromAddress);
-
     // Loom's MsgPack packets are always maps (first byte 0x80 or above); anything else is a raw message from sendRaw()
     // that the sketch decodes itself, so hand it back untouched
     if (len > 0 && buf[0] < 0x80) {
         memcpy(rawMessage, buf, len);
         rawMessageLength = len;
-        LOGF("Received %i byte raw message from %i", len, *fromAddress);
+        LOGF("Received %i byte raw message from %i, RSSI %i", len, *fromAddress, (int)radioDriver.lastRssi());
         return FragReceiveStatus::Complete;
     }
+
+    LOGF("Received packet from %i", *fromAddress);
 
     const size_t SAFE_JSON_SIZE = 1500;
     StaticJsonDocument<SAFE_JSON_SIZE> tempDoc;
@@ -525,12 +519,14 @@ bool Loom_LoRa::sendRaw(const uint8_t *data, uint8_t len,
     }
 #endif
 
+    radioManager->resetRetransmissions();
     bool status = radioManager->sendtoWait((uint8_t *)data, len, destinationAddress);
+    unsigned long retries = radioManager->retransmissions();
     if (status) {
-        LOGF("Successfully transmitted %i byte raw message", len);
+        LOGF("Successfully transmitted %i byte raw message to %i after %lu retries", len, destinationAddress, retries);
         signalStrength = radioDriver.lastRssi();
     } else {
-        ERROR(F("Failed to send raw message to specified address!"));
+        ERRORF("Failed to send %i byte raw message to %i after %lu retries", len, destinationAddress, retries);
     }
 
     radioDriver.sleep();

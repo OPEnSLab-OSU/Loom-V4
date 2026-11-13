@@ -27,6 +27,47 @@
 
 #define RECV_DATA_SIZE 256
 
+/**
+ * RH_RF95 with a time limit on the two waits that end only when the radio's interrupt fires: the channel check before
+ * a send and the end of a transmit. If that interrupt never comes (radio brown-out or reset), the stock driver spins
+ * forever, and with no watchdog during a node's send the node would stop measuring until power-cycled.
+ */
+class BoundedRF95 : public RH_RF95 {
+public:
+    using RH_RF95::RH_RF95;
+
+    // Longer than any transmit at any spreading factor (a 251-byte message takes ~8.5 s at SF12, ~0.4 s at the SF7 Loom
+    // uses) and about the same as RadioHead's own per-retry channel-check timeout, so it bounds a hang without
+    // cutting a slow transmit short
+    static const uint16_t WAIT_MS = 10000;
+
+    bool waitPacketSent() override {
+        if (RH_RF95::waitPacketSent(WAIT_MS))
+            return true;
+        WARNING(F("Radio interrupt timed out waiting for a transmit to finish"));
+        setModeIdle();  // drop the transmit that never finished so the next one can start
+        return false;
+    }
+
+    bool isChannelActive() override {
+        if (_mode != RHModeCad) {
+            spiWrite(RH_RF95_REG_01_OP_MODE, RH_RF95_MODE_CAD);
+            spiWrite(RH_RF95_REG_40_DIO_MAPPING1, 0x80);  // interrupt on CAD done
+            _mode = RHModeCad;
+        }
+        unsigned long start = millis();
+        while (_mode == RHModeCad) {
+            if (millis() - start > WAIT_MS) {
+                WARNING(F("Radio interrupt timed out during the channel check"));
+                setModeIdle();
+                return true;  // report busy: waitCAD() then gives up after its timeout and the send fails
+            }
+            YIELD;
+        }
+        return _cad;
+    }
+};
+
 enum class FragReceiveStatus {
     Incomplete,  // no packet has been completed
     Complete,    // packet has been loaded into the global document
@@ -262,7 +303,7 @@ private:
 
     Manager* manager;                  // Instance of the Loom manager
     RHReliableDatagram* radioManager;  // Radio manager
-    RH_RF95 radioDriver;               // Underlying radio driver
+    BoundedRF95 radioDriver;           // Underlying radio driver
     
     Loom_BatchSD *batchSD = nullptr;   // Pointer to the batchSD
     uint8_t rawMessage[MAX_MESSAGE_LENGTH];  // Last raw message received, see rawLength()
