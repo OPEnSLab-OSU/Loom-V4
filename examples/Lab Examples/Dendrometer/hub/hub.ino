@@ -18,18 +18,20 @@ const TIME_ZONE LOCAL_TIME_ZONE = TIME_ZONE::PST;     // for time_local in the l
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 // ADVANCED: the defaults work, change only if you know you need to
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-// Time slots: node N sends N * SLOT_SECONDS after every CYCLE_SECONDS mark in UTC, e.g. node 3 at 00:03, 04:03, 08:03.
+// Time slots: node N sends N * SLOT_SECONDS after every CYCLE_SECONDS mark in UTC, e.g. node 3 at 00:03, 01:23, 02:43.
 // The nodes take these from the hub, so changing them needs no node reflash.
+// Keep the cycle at 16 measurements (MEASURE_MINUTES in node.ino): one LoRa message per send, and a node can miss
+// three sends in a row before readings stop reaching the hub.
 // shortcut: a node sends at most its newest 64 readings (MAX_UNSENT in node.ino) per cycle, so its measurement interval
-// must be at least CYCLE_SECONDS / 64 (3.75 min); shorten the cycle if nodes ever measure more often
-const uint32_t CYCLE_SECONDS = 4UL * 60 * 60;            // how often each node sends: 16 readings at 15 min
+// must be at least CYCLE_SECONDS / 64 (1.25 min); shorten the cycle if nodes ever measure more often
+const uint32_t CYCLE_SECONDS = 80UL * 60;                // how often each node sends: 16 readings at 5 min
 const uint32_t SLOT_SECONDS = 60;                        // per node: a send and its upload take about 10 s
 const uint8_t MAX_NODES = 64;                            // highest node number + 1 that the hub checks for repeats
 const unsigned long REPORT_INTERVAL = 60UL * 60 * 1000;  // the hub's own status upload: hourly
 const unsigned long UPLOAD_RETRY_WAIT = 30UL * 60 * 1000; // after a failed upload, wait 30 min before trying LTE again
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-// Nothing below this line needs changing
+// You shouldn't need to change anything below this line
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Messages one node may send in its slot: up to 64 unsent readings (MAX_UNSENT in node.ino) plus a split
@@ -42,10 +44,12 @@ uint8_t newReadings[MAX_MESSAGES];
 // hub's ACK. Forgotten on reboot and not kept for nodes past MAX_NODES; MongoDB's unique index catches those instead.
 uint32_t lastTime[MAX_NODES];
 uint32_t lastPacket[MAX_NODES];
+bool heard[MAX_NODES]; // which nodes sent in their slot this cycle, to warn about the ones that didn't
 uint8_t highestNode = 0; // highest node number heard, to know when the nodes' slots are over
 
 unsigned long lastUploadFailure = 0;
 bool uploadFailed = false;
+const int WATCHDOG_MS = 16000; // about the longest the SAMD watchdog allows
 
 Manager manager("Hub", 0);
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, LOCAL_TIME_ZONE);
@@ -75,13 +79,10 @@ void setup()
 
     manager.initialize();
 
-    // Upload readings carried over from before a reboot (e.g. the watchdog fired mid-upload).
-    // Done before the watchdog is on: a slow connect here ends with MQTT's retry limit instead of a reboot loop.
-    uploadBatch(0, 0);
-
     // Reset the hub if it freezes instead of hanging until someone presses reset.
-    // Enabled after initialize because the LTE power-up and connect there take longer than 16 s.
-    Watchdog.enable(16000);
+    // Enabled after initialize because the LTE power-up and connect there take longer than 16 s; uploads turn it off
+    // while they run (see endUpload).
+    Watchdog.enable(WATCHDOG_MS);
 }
 
 void loop()
@@ -97,27 +98,57 @@ void loop()
             handleNodeSend();
     }
 
-    // The hub's own report waits until the nodes' slots are over, so it never uploads while a node is sending
+    // The long uploads wait until the nodes' slots are over, so the hub is listening whenever a node may send
+    static bool wasRunning = false;
+    bool running = slotsRunning();
+    if (running)
+    {
+        wasRunning = true;
+        return;
+    }
+    if (wasRunning) // the slot window just ended: name the known nodes that stayed silent
+    {
+        wasRunning = false;
+        for (uint8_t node = 0; node < MAX_NODES; node++)
+        {
+            if ((lastTime[node] || lastPacket[node]) && !heard[node])
+                WARNINGF("Node %i missed its slot", node);
+            heard[node] = false;
+        }
+    }
+
+    // Readings kept from a failed upload or a reboot: retried here once the backoff is over, without waiting for a
+    // node to send. Returns right away when there's nothing to send.
+    uploadBatch(0, 0);
+
+    // The hub's own report; skipped while uploads are backing off, and a failed one doesn't start a backoff
     static unsigned long lastReport = millis();
-    if (millis() - lastReport > REPORT_INTERVAL && !slotsRunning())
+    if (millis() - lastReport > REPORT_INTERVAL)
     {
         manager.set_device_name("Hub");
         manager.set_instance_num(0);
         manager.measure();
         manager.package();
         manager.display_data();
-        // Skipped while uploads are backing off; a failed report doesn't start a backoff (it has no reconnect retry,
-        // so a stale connection alone can fail it)
         if (uploadAllowed())
+        {
+            Watchdog.disable();
             mqtt.publish();
+            endUpload();
+        }
         lastReport = millis();
     }
 }
 
 /* Whether it's the part of the cycle where nodes have their slots */
+// shortcut: highestNode starts at 0 after a reboot, so until nodes are heard again only the first minute counts as
+// slots and a leftover backlog can upload during them (those nodes then send a cycle later); store it if that matters
 bool slotsRunning()
 {
-    return hypnos.getCurrentTime().unixtime() % CYCLE_SECONDS < (highestNode + 1UL) * SLOT_SECONDS;
+    // At most all but the last minute of the cycle: a window covering the whole cycle (node 79 on an 80 min cycle) would
+    // never end, and the backlog retry and the hub's report would never run
+    uint32_t slots = min(highestNode + 1UL, CYCLE_SECONDS / SLOT_SECONDS - 1);
+    return hypnos.getCurrentTime().unixtime() % CYCLE_SECONDS < slots * SLOT_SECONDS;
 }
 
 /**
@@ -135,6 +166,17 @@ void handleNodeSend()
         more = DendrometerPacket::readingCount(messages[n], lengths[n]) && DendrometerPacket::moreFollows(messages[n]);
         n++;
     } while (more && n < MAX_MESSAGES && lora.receiveRaw(6000));
+
+    // How late (negative: early) the node sent, for spotting clock drift
+    for (uint8_t i = 0; i < n; i++)
+        if (DendrometerPacket::readingCount(messages[i], lengths[i]))
+        {
+            uint8_t node = DendrometerPacket::nodeNumber(messages[i]);
+            uint32_t now = hypnos.getCurrentTime().unixtime();
+            LOGF("Node %i sent %ld s into its slot", node,
+                 (long)(now % CYCLE_SECONDS) - (long)(node % (CYCLE_SECONDS / SLOT_SECONDS) * SLOT_SECONDS));
+            break;
+        }
 
     // Reply right away, while the node is still listening (normally one node; a message from another one is rare)
     for (uint8_t i = 0; i < n; i++)
@@ -182,6 +224,8 @@ uint8_t logPackedBatch(const uint8_t *data, uint8_t len)
     uint8_t node = DendrometerPacket::nodeNumber(data);
     if (node > highestNode)
         highestNode = node;
+    if (node < MAX_NODES && slotsRunning())
+        heard[node] = true;
 
     uint8_t logged = 0;
     for (uint8_t i = 0; i < count; i++)
@@ -205,7 +249,6 @@ uint8_t logPackedBatch(const uint8_t *data, uint8_t len)
         manager.set_device_name(NODE_NAME);
         manager.set_instance_num(node);
         manager.addData("Node", "Number", node);
-        manager.display_data();
         hypnos.logToSD();
     }
 
@@ -218,25 +261,29 @@ uint8_t logPackedBatch(const uint8_t *data, uint8_t len)
  * Upload the readings waiting in the batch, then empty it so a reboot doesn't carry them over and upload them again.
  * Normally only the `n` messages just received are waiting (`logged` new readings): send each one's raw bytes as one
  * message (dendro_forwarder.py turns them back into JSON on the server). If an earlier upload failed, the batch also
- * holds those readings, so send them all the old way, one JSON message per reading, once there are at least 16; that can
- * take long enough to run into the next node's slot, which then retries a cycle later. A message with some repeated
- * readings is still sent whole; MongoDB's unique index drops the repeats.
+ * holds those readings, so send them all the old way, one JSON message per reading, once there are at least 16. That
+ * takes ~2.3 s a reading, so it waits until the nodes' slots are over (loop() calls this with n = 0 then). A message with
+ * some repeated readings is still sent whole; MongoDB's unique index drops the repeats.
  */
 void uploadBatch(uint8_t n, uint8_t logged)
 {
     if (!uploadAllowed())
         return;
+    bool raw = n > 0 && batchSD.getCurrentBatch() == logged;
+    if (raw ? logged == 0 : slotsRunning() || !batchSD.shouldPublish())
+        return;
+
+    Watchdog.disable();
     bool ok = true;
-    if (n > 0 && batchSD.getCurrentBatch() == logged)
+    if (raw)
     {
         for (uint8_t i = 0; i < n && ok; i++)
             if (newReadings[i] > 0)
                 ok = mqtt.publishRaw(NODE_NAME, messages[i], lengths[i]);
     }
-    else if (batchSD.shouldPublish())
-        ok = mqtt.publish(batchSD);
     else
-        return;
+        ok = mqtt.publish(batchSD);
+    endUpload();
 
     if (ok)
         batchSD.clear();
@@ -244,8 +291,26 @@ void uploadBatch(uint8_t n, uint8_t logged)
     if (!ok)
     {
         lastUploadFailure = millis();
-        WARNINGF("Upload failed; next try in %lu min, readings are kept until then", UPLOAD_RETRY_WAIT / 60000);
+        if (raw)
+            WARNINGF("Upload of %i message(s) from node %i failed; next try in %lu min, readings are kept until then", n,
+                     DendrometerPacket::nodeNumber(messages[0]), UPLOAD_RETRY_WAIT / 60000);
+        else
+            WARNINGF("Upload of a %i reading backlog failed; next try in %lu min, readings are kept until then",
+                     batchSD.getCurrentBatch(), UPLOAD_RETRY_WAIT / 60000);
     }
+}
+
+/**
+ * Call after an upload that turned the watchdog off. Uploads run without it: a connect to a broker that's down takes
+ * 50-70 s to fail in the modem, longer than the watchdog, and MQTT's retry limit (setMaxRetries) bounds it instead.
+ * shortcut: a modem that hangs for good during an upload isn't reset; add a longer software timeout if that ever happens.
+ * Disconnecting means the next upload, minutes later, starts on a fresh connection instead of one the broker or the
+ * carrier has dropped while idle.
+ */
+void endUpload()
+{
+    mqtt.disconnectFromBroker();
+    Watchdog.enable(WATCHDOG_MS);
 }
 
 /* Whether to try LTE now: not within UPLOAD_RETRY_WAIT of a failed upload */
