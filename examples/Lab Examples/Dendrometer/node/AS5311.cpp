@@ -99,8 +99,7 @@ magnetStatus AS5311::getMagnetStatus()
 {
     uint32_t data = bitbang();
 
-    // invalid data
-    if (!(data & (1 << OCF)) || data & (1 << COF) || __builtin_parity(data)) //__builtin_parity returns 1 if odd parity
+    if (!frameOk(data))
         return magnetStatus::error;
 
     // magnetic field out of range
@@ -162,13 +161,14 @@ uint16_t AS5311::getFilteredPosition()
 void AS5311::measure(Manager &manager)
 {
     int filteredPosition = (int)getFilteredPosition();
-    int rawPosition = (int)getPosition();
+    uint32_t frame = getRawData(); // one read for the position and its validity, so a bad frame can't pass a check made on another
+    int rawPosition = (int)(frame >> DATAOFFSET);
 
     recordMagnetStatus(manager);
     manager.addData("AS5311", "mag", getFieldStrength());
     manager.addData("AS5311", "pos_raw", rawPosition);
     manager.addData("AS5311", "pos_avg", filteredPosition);
-    manager.addData("displacement", "um", measureDisplacement(rawPosition));
+    manager.addData("displacement", "um", measureDisplacement(rawPosition, frameOk(frame)));
 }
 
 /**
@@ -176,12 +176,16 @@ void AS5311::measure(Manager &manager)
  * Keeps a persistent count of sensor range overflows
  * Moving the sensor too much (about 1mm) in between calls to this function will result in invalid data.
  */
-float AS5311::measureDisplacement(int pos)
+float AS5311::measureDisplacement(int pos, bool valid)
 {
     static const int WRAP_THRESHOLD = 2048;
     static const int TICKS = 4096;                   // 2^12 == 4096   see datasheet page 10
     static const float POLE_PAIR_LENGTH_UM = 2000.0; // 2mm == 2000um
     static const float UM_PER_TICK = POLE_PAIR_LENGTH_UM / TICKS;
+
+    // A failed read (Alignment "Error") would become the zero point or a fake wrap; repeat the last good value instead
+    if (!valid)
+        return initialPosition == -1 ? 0 : ((lastPosition - initialPosition) * UM_PER_TICK) + overflows * POLE_PAIR_LENGTH_UM;
 
     if (initialPosition == -1) { // initial position has not been measured
         initialPosition = pos;
@@ -224,4 +228,10 @@ void AS5311::recordMagnetStatus(Manager &manager)
         manager.addData("AS5311", "Alignment", "Error");
         break;
     }
+}
+
+/* A frame is valid when the offset compensation finished (OCF), no CORDIC overflow (COF) and its parity is even */
+bool AS5311::frameOk(uint32_t data)
+{
+    return (data & (1 << OCF)) && !(data & (1 << COF)) && !__builtin_parity(data);
 }

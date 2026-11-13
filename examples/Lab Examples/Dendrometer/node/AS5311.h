@@ -21,7 +21,7 @@ public:
     uint32_t getRawData();
     
     void measure(Manager &);
-    float measureDisplacement(int);
+    float measureDisplacement(int, bool valid);
 
 private:
     const uint8_t CS_PIN;
@@ -36,6 +36,7 @@ private:
     int overflows = 0;
 
     void recordMagnetStatus(Manager &);
+    static bool frameOk(uint32_t);
 
     void initializePins();
     void deinitializePins();

@@ -13,7 +13,8 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 static const uint8_t NODE_NUMBER = 13;                 // different for every node, 1 to 78 (one slot each in the hub's cycle)
 static const char *DEVICE_NAME = "HazelnutDendrometer_"; // must match NODE_NAME in hub.ino
-static const uint16_t MEASURE_MINUTES = 5;            // time between measurements; 0 uses HypnosConfig.json instead
+static const uint16_t MEASURE_MINUTES = 0;            // Override for testing:
+                                                            // time between measurements; 0 uses HypnosConfig.json instead
 //#define LB_VERSION                                  // uncomment for the LB board
 #define LED_COLOR_ORDER NEO_RGB                       // NEO_RGB for through-hole LEDs, NEO_GRB otherwise
 #define DENDROMETER_LORA                              // send readings to the hub (comment out to only log to SD)
