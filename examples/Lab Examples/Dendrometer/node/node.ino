@@ -11,8 +11,9 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 // SETTINGS: change these
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-static const uint8_t NODE_NUMBER = 9;                 // different for every node, 1 to 240
+static const uint8_t NODE_NUMBER = 13;                 // different for every node, 1 to 78 (one slot each in the hub's cycle)
 static const char *DEVICE_NAME = "HazelnutDendrometer_"; // must match NODE_NAME in hub.ino
+static const uint16_t MEASURE_MINUTES = 5;            // time between measurements; 0 uses HypnosConfig.json instead
 //#define LB_VERSION                                  // uncomment for the LB board
 #define LED_COLOR_ORDER NEO_RGB                       // NEO_RGB for through-hole LEDs, NEO_GRB otherwise
 #define DENDROMETER_LORA                              // send readings to the hub (comment out to only log to SD)
@@ -27,7 +28,7 @@ static const uint8_t RETRY_INTERVAL = 4;     // before the hub assigns a slot: r
 static const uint8_t MAX_UNSENT = 64;        // send at most the newest X unsent readings; older ones stay in the CSV
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-// Nothing below this line needs changing
+// You shouldn't need to change anything below this line 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LB_VERSION
@@ -69,7 +70,8 @@ void waitForSchedule();
 #warning Wireless communication disabled!
 #endif
 
-TimeSpan sleepInterval;              // time between measurements, from HypnosConfig.json
+TimeSpan sleepInterval;              // time between measurements: MEASURE_MINUTES, or HypnosConfig.json if that's 0
+static const unsigned long ALIGN_WAIT_MS = 10UL * 60 * 1000; // how long setup waits for a green magnet
 uint32_t nextMeasure = 0;            // unix time (UTC) of the next measurement
 volatile bool buttonPressed = false; // woken by the button
 
@@ -102,10 +104,13 @@ void setup()
     snprintf(logName, sizeof(logName), "%s%idata", DEVICE_NAME, NODE_NUMBER);
     hypnos.setLogName(logName); // SD card CSV file name, e.g. HazelnutDendrometer_3data
     hypnos.enable();
-    sleepInterval = hypnos.getConfigFromSD("HypnosConfig.json");
+    sleepInterval = hypnos.getConfigFromSD("HypnosConfig.json"); // also reads the timezone, so read it either way
+    if (MEASURE_MINUTES > 0)
+        sleepInterval = TimeSpan(MEASURE_MINUTES * 60L); // in seconds: the minutes argument only holds up to 127
 
     manager.initialize();
     setRTC(userInput);
+    nextMeasure = hypnos.getCurrentTime().unixtime(); // phase = boot time, so nodes flashed together don't all send together before they have slots
 
     checkMagnetSensor();
     alignMagnetSensor();
@@ -120,7 +125,11 @@ void loop()
     if (buttonPressed || now + 10 >= nextMeasure)
     {
         measure();
-        nextMeasure = now + sleepInterval.totalseconds();
+        // Keep the phase: readings exactly an interval apart, the next one after now + 10.
+        // A button wake isn't due, so it doesn't shift the schedule.
+        uint32_t interval = sleepInterval.totalseconds();
+        if (nextMeasure <= now + 10)
+            nextMeasure += (now + 10 - nextMeasure) / interval * interval + interval;
         if (buttonPressed) // show the magnet sensor status on the LED
         {
             displayMagnetStatus(magnetSensor.getMagnetStatus());
@@ -242,9 +251,15 @@ void waitForSchedule()
         LOGF("Clock was %li s off the hub's, setting it", (long)(now - hubTime));
         hypnos.setTime(DateTime(hubTime));
         nextMeasure += hubTime - now; // keep the same time to the next measurement
+        now = hubTime;
     }
     nextSend = next;
     slotCycle = cycle;
+    // Measure in the send slot so one wake does both. Only when the cycle is a whole number of intervals: otherwise
+    // re-phasing every cycle would make the reading spacing uneven.
+    uint32_t interval = sleepInterval.totalseconds();
+    if (cycle % interval == 0 && next > now + 11)
+        nextMeasure = next - ((next - (now + 11)) / interval) * interval;
     LOGF("Hub's schedule: next send in %lu s, then every %lu s", (unsigned long)(next - hubTime), (unsigned long)cycle);
 }
 #endif
@@ -283,15 +298,22 @@ void ISR_BUTTON()
 void alignMagnetSensor()
 {
     Serial.println(F("<Dendrometer> Waiting for magnet alignment"));
-    while (true)
+    // Gives up after ALIGN_WAIT_MS so a reset in the field (brown-out, power blip) with the magnet off green still goes
+    // back to measuring instead of waiting here until someone realigns it
+    unsigned long start = millis();
+    while (millis() - start < ALIGN_WAIT_MS)
     {
         magnetStatus status = magnetSensor.getMagnetStatus();
         displayMagnetStatus(status);
         delay(100);
         if (status == magnetStatus::green && checkStableAlignment())
-            break;
+        {
+            flashColor(0, 255, 0);
+            return;
+        }
     }
-    flashColor(0, 255, 0);
+    WARNING(F("Magnet not aligned in time, measuring anyway"));
+    statusLight.set_color(2, 0, 0, 0, 0); // LED off
 }
 
 /* Show a magnet status on the LED: green, yellow, or red for red and error */
