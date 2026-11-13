@@ -131,13 +131,6 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
         TIMER_DISABLE;
         if(batchSD.shouldPublish()){
 
-            if(strlen(projectServer) > 0)
-                // Formulate a topic to publish on with the format "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
-                snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
-            else
-                // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
-                snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
-            
             /* Attempt to connect to the broker */
             if(!connectToBroker())
                 return false;
@@ -168,9 +161,14 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
                     filter["id"] = true;
                     StaticJsonDocument<128> idDoc;
                     deserializeJson(idDoc, (const char*)line, DeserializationOption::Filter(filter)); // const cast avoids zero-copy mutating line
-                    snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name,
-                               idDoc["id"]["name"] | manInst->get_device_name(),
-                               idDoc["id"]["instance"] | manInst->get_instance_num());
+                    const char* name = idDoc["id"]["name"] | manInst->get_device_name();
+                    int instance = idDoc["id"]["instance"] | manInst->get_instance_num();
+                    if(strlen(projectServer) > 0)
+                        // "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
+                        snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s/%s%i"), projectServer, database_name, name, instance);
+                    else
+                        // "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
+                        snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, name, instance);
 
                     if(!publishMessage(topic, line)){
                         // The connection can die while idle between uploads without the client noticing until it writes:
@@ -191,7 +189,8 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
                 }
 
                 // If not just add the packet to the line array
-                else{
+                // A line longer than the buffer (a damaged batch file) is cut short instead of overrunning the stack
+                else if(index < MAX_JSON_SIZE - 1){
                     line[index] = c;
                     index++;
                 }  

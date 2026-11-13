@@ -17,7 +17,6 @@ class MQTTComponent : public Module{
     protected:
 
         bool connectToBroker();                                                                         // Connect to the configured broker
-        void disconnectFromBroker() { mqttClient.stop(); };                                             // Disconnect from the MQTT broker
         const char* getMQTTError();                                                                     // Convert the MQTT error code into a string
 
         /**
@@ -90,6 +89,12 @@ class MQTTComponent : public Module{
         char password[100];                         // Password to log into the broker
 
     public:
+
+        /**
+         * Disconnect from the MQTT broker. Useful after an upload when the next one is minutes away: an idle
+         * connection can be dropped by the broker or carrier without the client noticing until it writes.
+        */
+        void disconnectFromBroker() { mqttClient.stop(); };
 
         /**
          * Set the client ID for the specific MQTT connection
