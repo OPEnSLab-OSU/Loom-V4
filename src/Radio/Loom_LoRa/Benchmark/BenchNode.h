@@ -795,6 +795,9 @@ void loop() {
     if (!senderHub || length < OfferBytes || frame[0] != NetworkId) {
         return;
     }
+#if BENCH_HAS_RTC_BUTTON
+    if (utcSlots::handleRadio(frame, length, senderHub, destination)) return;
+#endif
     if (frame[1] == RetryRequest && destination == RH_BROADCAST_ADDRESS) {
         handleRetry(frame, length, senderHub, beaconEnd);
         return;

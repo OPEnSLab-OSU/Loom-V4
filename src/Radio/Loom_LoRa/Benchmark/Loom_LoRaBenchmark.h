@@ -65,6 +65,14 @@ void (*prepareSensors)() = nullptr;
 
 } // namespace bench
 
+#if BENCH_HAS_RTC_BUTTON
+namespace bench {
+namespace utcSlots {
+bool handleRadio(const uint8_t *frame, uint8_t length, uint8_t senderHub, uint8_t destination);
+}
+}
+#endif
+
 #include "BenchHub.h"
 #include "BenchNode.h"
 #if BENCH_ENABLE_SWEEP

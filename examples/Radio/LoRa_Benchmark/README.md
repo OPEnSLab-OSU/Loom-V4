@@ -79,6 +79,8 @@ After wake the board keeps its role and IDs. A hub resumes advertising and is re
 | `set cad 0–10000`, `set acktimeout 60–1000` | Set the node data clear-channel budget and ACK timeout in milliseconds. ACK modes default to 100 ms CAD and a 500 ms ACK timeout. RadioHead randomizes its timeout between the configured value and twice that value. |
 | `utc <Unix UTC seconds> <rounds>`, `utc stop` | Start or stop an autonomous schedule on a Feather M0 with a synchronized DS3231 and fixed node IDs. Enter the same future start and round count on all participants. |
 | `utc sd\|ram <epoch> <rounds> [ack_ms tx_dBm cycle_s trial]`, `utc status` | Use compact RadioHead readings in fixed UTC slots, with an SD backlog or a fresh reading each cycle. Use the same settings on the hub and nodes. |
+| `utc radio sd\|ram <epoch> <rounds> <ack_ms> <tx_dBm> <cycle_s> <trial> [sync]` | Arm both fixed-ID nodes from the hub over LoRa. Use a nonzero trial ID. The optional `sync` sets the nodes' RTCs from the hub. |
+| `utc clock <Unix UTC seconds>` | Set and verify the RTC on an idle board. |
 | `set polling slots\|individual` | Choose broadcast slots or one addressed station at a time for `run`, `start`, and `compare`. |
 | `set samplewindow 0–65000`, `set sampleperiod <ms>` | Set the individual live sampling window and its cadence. A sample period of 0 opens the window before each collection pass. |
 | `set lte on\|off` | Enable or disable MQTT publishing for the next test. Requires an LTE-enabled build to turn on. Default off. |
@@ -150,11 +152,13 @@ At 24 seconds per node, the five-minute cycle can schedule 12 nodes. A 20-node q
 
 Use `utc ram` for the no-SD comparison. It sends a fresh reading in the same slot schedule and uses the same RadioHead and receipt framing. Any reading still missing after that slot is counted as a loss. Both modes reserve two extra cycles at the end for recovery, with sampling turned off during those cycles. A nonzero trial ID gives each SD trial its own empty journal and keeps the stations awake between slots. Trial ID 0 uses the persistent field journal and standby between slots.
 
-With the hub and both fixed-ID nodes on USB, synchronized DS3231 clocks, and SD cards in all three boards, run this from PowerShell. Substitute the connected COM ports.
+Flash the hub and both nodes with the same firmware. Leave only the hub connected by USB, with the two fixed-ID nodes powered and listening and an SD card in each board. Close any serial monitor that has the hub port open. Run this from PowerShell, substituting the hub's COM port.
 
 ```powershell
-.\Run-UtcReliabilityMatrix.ps1 -HubPort COM3 -NodePorts COM9,COM25
+.\Run-UtcReliabilityMatrix.ps1 -HubPort COM3 -SyncClocks
 ```
+
+The hub sends each node the trial settings and waits for both to confirm. Setup and statistics use the firmware's default transmit power so a low-power test can still return its counters. `-SyncClocks` explicitly sets the hub RTC from the PC and the nodes' RTCs from the hub at the start of each trial. Omit it if the clocks are already synchronized. For direct USB control of all three boards, supply `-NodePorts COM9,COM25` with their actual ports. The hub-only CSV leaves sender totals blank if either node's final report is missing.
 
 The runner tests 100 and 500 ms ACK timeouts at 5, 14, and 23 dBm, each with SD on and off. It keeps 10 retries, two nodes, 50-second cycles, the compact encoding, and LTE off throughout. Each combination schedules 250 new readings per node, for 500 expected. Budget about 3.5 hours per combination and 42 hours for all 12 at the default cadence. The CSV records on-time delivery, backfills, final misses, and duplicates. It also sums the senders' datagrams attempted, datagrams that used at least one link retry, and total link retry attempts. One retried datagram with three attempts after its initial send adds one to `DatagramsRetried` and three to `DatagramRetryAttempts`. A later slot's SD resend counts as a new datagram. To repeat on the same cards, use an unused range of trial IDs via `-FirstTrialId`.
 
