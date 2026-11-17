@@ -238,18 +238,23 @@ void Loom_Hypnos::sdFileDateTime(uint16_t *date, uint16_t *time) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_Hypnos::Loom_Hypnos(Manager &man, HYPNOS_VERSION version, TIME_ZONE zone, bool use_custom_time,
-                         bool useSD)
-    : Module("Hypnos"), manInst(&man), sd_chip_select(version), enableSD(useSD), batch_size(0),
+                         bool useSD, bool useStatusLed)
+    : Module("Hypnos"), manInst(&man), sd_chip_select(version), enableSD(useSD),
+      useStatusLed(useStatusLed), batch_size(0),
       custom_time(use_custom_time), timezone(zone) {
 
     // Establish both rails OFF before exposing the control pins as outputs.
     digitalWrite(5, HIGH);
     digitalWrite(6, LOW);
-    digitalWrite(LED_BUILTIN, LOW);
+    if (useStatusLed) {
+        digitalWrite(LED_BUILTIN, LOW);
+    }
 
     pinMode(5, OUTPUT);
     pinMode(6, OUTPUT);
-    pinMode(LED_BUILTIN, OUTPUT);
+    if (useStatusLed) {
+        pinMode(LED_BUILTIN, OUTPUT);
+    }
 
     // Create the SD Manager if we want to use SD
     if (useSD) {
@@ -329,7 +334,9 @@ void Loom_Hypnos::enable(bool enable33, bool enable5) {
 
     // Enable the configured 3.3v and 5v rails on the Hypnos
     setPowerRails(enable33, enable5);
-    digitalWrite(LED_BUILTIN, HIGH);
+    if (useStatusLed) {
+        digitalWrite(LED_BUILTIN, HIGH);
+    }
 
     // Establish time before SD creates its debug directory and boot-reset journal.
     // On wake, refresh from the RTC: millis() does not include time spent in standby.
@@ -381,7 +388,9 @@ void Loom_Hypnos::disable(bool disable33, bool disable5) {
     }
     // Disable the configured 3.3v and 5v rails on the Hypnos
     setPowerRails(!disable33, !disable5);
-    digitalWrite(LED_BUILTIN, LOW);
+    if (useStatusLed) {
+        digitalWrite(LED_BUILTIN, LOW);
+    }
 
     if (enableSD) {
         // Disable SPI pins/SD chip select to save power

@@ -29,7 +29,8 @@
 
 static Manager manager(DEVICE_NAME,DEVICE_INSTANCE);
 // Hypnos owns rails/RTC. Optional SD diagnostics use the separate console card object.
-static Loom_Hypnos hypnos(manager,HYPNOS_VERSION::V3_3,TIME_ZONE::PST,false,false);
+static Loom_Hypnos hypnos(manager,HYPNOS_VERSION::V3_3,TIME_ZONE::PST,false,false,
+                          SENSOR12_EN != LED_BUILTIN);
 static bool rail3On, rail5On, rail12On;
 static BenchI2c bus;
 static SdFat sd;
@@ -125,8 +126,9 @@ static bool real(const char *s,float &v) {
 }
 static void railStatus() {
   Serial.print(F("D5=")); Serial.print(digitalRead(RAIL3)); Serial.print(F(" D6=")); Serial.print(digitalRead(RAIL5));
-  Serial.print(F(" A3=")); Serial.println(digitalRead(SENSOR12_EN));
-  Serial.println(F("D5 LOW=3VRAIL ON; D6 HIGH=5VRAIL + HIGHVRAIL ON; A3 HIGH=12V ON."));
+  Serial.print(F(" 12V_EN (D")); Serial.print(SENSOR12_EN); Serial.print(F(")="));
+  Serial.println(digitalRead(SENSOR12_EN));
+  Serial.println(F("D5 LOW=3VRAIL ON, D6 HIGH=5VRAIL + HIGHVRAIL ON, 12V_EN HIGH=12V ON."));
   Serial.println(F("Always-on nodes: logic=+3V3, boost=5VOUT, modem=VCC_3.8V (TP20)."));
   Serial.println(F("Protocol commands automatically enable Hypnos 3V/5V when needed. rails off remains available."));
 }
@@ -157,7 +159,7 @@ static void railCommand(char *action,char *value=nullptr) {
   else if (!strcmp(action,"12")) {
     if (value && strcmp(value,"on") && strcmp(value,"off")) { Serial.println(F("rails 12 [on|off]")); return; }
     rail12On=!value || !strcmp(value,"on"); output(SENSOR12_EN,rail12On); delay(600);
-    Serial.println(F("Carrier A3/12V_EN updated; Hypnos 3V/5V states unchanged."));
+    Serial.println(F("Carrier 12V_EN updated."));
   }
   else { Serial.println(F("rails on|off|3|5|12 [on|off]|status")); return; }
   reportRailPins();
@@ -833,6 +835,90 @@ static void sdiPower(bool enabled) {
   sdiReceive(); output(SENSOR12_EN,enabled); rail12On=enabled;
   delay(enabled?1500:20);
 }
+static void sdiStartupCapture() {
+  // Keep U7 in receive mode and sample D9 across sensor power-up.
+  sdiPower(false);
+  delay(3000);
+  const bool enableOff = digitalRead(SENSOR12_EN) == LOW;
+  const bool idle = digitalRead(SDI_DATA);
+
+  constexpr uint32_t windowUs = 650000;
+  uint32_t edgeTimes[256];
+  uint16_t edges = 0, stored = 0;
+  bool level = idle;
+  uint32_t lastSample = 0, maxGap = 0;
+  const uint32_t start = micros();
+  output(SENSOR12_EN,true);
+  rail12On = true;
+  const bool enableOn = digitalRead(SENSOR12_EN) == HIGH;
+  for (;;) {
+    const uint32_t elapsed = micros() - start;
+    if (elapsed >= windowUs) break;
+    const uint32_t gap = elapsed - lastSample;
+    if (gap > maxGap) maxGap = gap;
+    lastSample = elapsed;
+    const bool sample = digitalRead(SDI_DATA);
+    if (sample != level) {
+      if (stored < sizeof(edgeTimes)/sizeof(edgeTimes[0])) edgeTimes[stored++] = elapsed;
+      if (edges != UINT16_MAX) ++edges;
+      level = sample;
+    }
+  }
+
+  Serial.print(F("SDI startup | 12V_EN (D")); Serial.print(SENSOR12_EN);
+  Serial.print(F(") off/on GPIO="));
+  Serial.print(!enableOff); Serial.print('/'); Serial.print(enableOn);
+  Serial.print(F(" | D10 DIR GPIO=")); Serial.println(digitalRead(SDI_DIR));
+  Serial.print(F("D9 startup | idle/end=")); Serial.print(idle); Serial.print('/'); Serial.print(level);
+  Serial.print(F(" | edges=")); Serial.print(edges);
+  Serial.print(F(" | capture us=")); Serial.print(windowUs);
+  Serial.print(F(" | max sample gap us=")); Serial.println(maxGap);
+  if (stored) {
+    Serial.print(F("D9 edges us:"));
+    for (uint16_t i=0; i<stored; ++i) {
+      Serial.print(i ? ',' : ' ');
+      Serial.print(edgeTimes[i]);
+    }
+    Serial.println();
+  }
+  record(SDI,INFO,"Passive startup capture on D9. No SDI command sent.");
+}
+
+static void sdiPathCapture() {
+  if (!ready(SDI)) return;
+  sdiReceive();
+  pinMode(SDI_DATA,INPUT_PULLUP);
+  delayMicroseconds(10);
+  const bool weakPullupHigh = digitalRead(SDI_DATA);
+  pinMode(SDI_DATA,INPUT);
+  Serial.print(F("SDI path | D9 with weak pull-up=")); Serial.println(weakPullupHigh);
+  if (weakPullupHigh || digitalRead(SDI_DATA)) {
+    record(SDI,INFO,"D9 did not stay LOW in receive mode. Pulse test skipped.");
+    return;
+  }
+
+  // Briefly charge C13 through U7 and R24, then see whether the voltage
+  // persists through the reverse path. This pulse is shorter than a serial bit.
+  output(SDI_DIR,true);
+  output(SDI_DATA,true);
+  const bool txHigh = digitalRead(SDI_DATA);
+  delayMicroseconds(100);
+  const uint32_t release = micros();
+  sdiReceive();
+  const bool rxHigh = digitalRead(SDI_DATA);
+  while (digitalRead(SDI_DATA) && uint32_t(micros()-release)<2000) {}
+  const uint32_t highUntil = micros()-release;
+  const bool settledLow = !digitalRead(SDI_DATA);
+
+  Serial.print(F("SDI path | D9 TX HIGH=")); Serial.print(txHigh);
+  Serial.print(F(" | D9 first RX HIGH=")); Serial.print(rxHigh);
+  if (rxHigh) {
+    Serial.print(F(" | RX HIGH lasted about us=")); Serial.print(highUntil);
+  }
+  Serial.print(F(" | D9 returned LOW=")); Serial.println(settledLow);
+  record(SDI,INFO,"Short pulse on the local SDI interface. Check results with the field waveform.");
+}
+
 static constexpr uint32_t SDI_BIT_US = 833;
 
 static bool bitWait(uint32_t deadline) {
@@ -840,12 +926,13 @@ static bool bitWait(uint32_t deadline) {
   return uint32_t(micros()-deadline)<200;
 }
 
-static const char *sdiSend(const char *command, bool sendBreak) {
+static const char *sdiSend(const char *command, bool sendBreak, int *dirAtTx = nullptr) {
   if (digitalRead(SDI_DATA)) return "Data is HIGH before transmit. Expected LOW in receive mode.";
   // Release U7's A output before driving D9. Hold the data line LOW
   // while changing direction so a retry does not generate another break.
   output(SDI_DIR,true);
   output(SDI_DATA,false);
+  if (dirAtTx) *dirAtTx = digitalRead(SDI_DIR);
   if (sendBreak) {
     digitalWrite(SDI_DATA,HIGH); delay(13);
     digitalWrite(SDI_DATA,LOW); delay(9);
@@ -873,20 +960,33 @@ static const char *sdiSend(const char *command, bool sendBreak) {
   return nullptr;
 }
 
-static const char *sdiReadFrame(const char *command, char *response, size_t capacity, bool &silent) {
+struct SdiReceiveTrace {
+  uint32_t firstEdgeUs = UINT32_MAX;
+  uint16_t shortPulses = 0;
+};
+
+static const char *sdiReadFrame(const char *command, char *response, size_t capacity,
+                                bool &silent, SdiReceiveTrace &trace) {
   const uint32_t started = micros();
   size_t used = 0;
   while (uint32_t(micros()-started)<1500000) {
     const uint32_t waitStarted = micros();
-    while (!digitalRead(SDI_DATA)) {
-      if (uint32_t(micros()-waitStarted) >= (used ? 10000u : 20000u)) {
+    const uint32_t waitUs = used ? 10000u : 20000u;
+    uint32_t tick = 0;
+    for (;;) {
+      while (!digitalRead(SDI_DATA) && uint32_t(micros()-waitStarted)<waitUs) {}
+      const uint32_t edge = micros();
+      if (uint32_t(edge-waitStarted)>=waitUs) {
         silent = used == 0;
         return silent ? "No response start bit." : "Reply ended before CRLF.";
       }
+      if (trace.firstEdgeUs == UINT32_MAX) trace.firstEdgeUs = edge-started;
+      tick = edge + SDI_BIT_US/2;
+      if (!bitWait(tick)) return "Start-bit sampling overrun.";
+      if (digitalRead(SDI_DATA)) break;
+      // Keep the original deadline so repeated glitches cannot extend the wait.
+      ++trace.shortPulses;
     }
-    uint32_t tick = micros() + SDI_BIT_US/2;
-    if (!bitWait(tick)) return "Start-bit sampling overrun.";
-    if (!digitalRead(SDI_DATA)) return "Invalid start bit.";
     uint8_t byte = 0, parity = 0;
     for (uint8_t bit=0; bit<7; ++bit) {
       tick += SDI_BIT_US;
@@ -916,7 +1016,7 @@ static const char *sdiReadFrame(const char *command, char *response, size_t capa
   return "Reply deadline exceeded.";
 }
 
-static bool sdiExchange(const char *command, char *response, size_t capacity) {
+static bool sdiExchange(const char *command, char *response, size_t capacity, bool singleAttempt = false) {
   sdiReceive();
   const char *error = nullptr;
   uint8_t attempts = 0;
@@ -925,24 +1025,32 @@ static bool sdiExchange(const char *command, char *response, size_t capacity) {
   // The third send is after the full 100 ms wake window, even for ?! or a!.
   constexpr uint8_t attemptsPerBreak = 3, breakCount = 3;
   constexpr uint32_t retryDelayUs = 65000;
-  for (uint8_t attempt=0; attempt<attemptsPerBreak*breakCount; ++attempt) {
+  const uint8_t maxAttempts = singleAttempt ? 1 : attemptsPerBreak*breakCount;
+  SdiReceiveTrace trace;
+  uint16_t shortPulses = 0;
+  int dirAtTx = -1;
+  bool dirAtRx = false;
+  for (uint8_t attempt=0; attempt<maxAttempts; ++attempt) {
     const bool sendBreak = attempt % attemptsPerBreak == 0;
     if (attempt && sendBreak) delay(25);
     ++attempts;
     response[0] = 0;
     silent = false;
-    error = sdiSend(command,sendBreak);
+    error = sdiSend(command,sendBreak,singleAttempt ? &dirAtTx : nullptr);
     const uint32_t txEnded = micros();
     sdiReceive();
+    if (singleAttempt) dirAtRx = digitalRead(SDI_DIR);
     if (error) break;
-    error = sdiReadFrame(command,response,capacity,silent);
+    trace = {};
+    error = sdiReadFrame(command,response,capacity,silent,trace);
+    shortPulses += trace.shortPulses;
     if (!error || !silent) break;
-    if (attempt+1<attemptsPerBreak*breakCount) {
+    if (attempt+1<maxAttempts) {
       const uint32_t elapsed = micros()-txEnded;
       if (elapsed<retryDelayUs) delay((retryDelayUs-elapsed+999)/1000);
     }
   }
-  if (error || attempts>1) {
+  if (error || attempts>1 || singleAttempt || shortPulses) {
     Serial.print(F("SDI ")); Serial.print(command);
     Serial.print(F(" attempts=")); Serial.print(attempts);
     if (error) {
@@ -952,15 +1060,27 @@ static bool sdiExchange(const char *command, char *response, size_t capacity) {
         for (const char *p=response; *p; ++p) { Serial.print(' '); hex(uint8_t(*p)); }
       }
     }
+    if (shortPulses) {
+      Serial.print(F(" | rejected short HIGH pulses=")); Serial.print(shortPulses);
+    }
+    if (singleAttempt) {
+      if (dirAtTx >= 0) {
+        Serial.print(F(" | D10 TX/RX GPIO="));
+        Serial.print(dirAtTx); Serial.print('/'); Serial.print(dirAtRx);
+      }
+      Serial.print(F(" | first RX HIGH "));
+      if (trace.firstEdgeUs == UINT32_MAX) Serial.print(F("not seen"));
+      else { Serial.print(trace.firstEdgeUs); Serial.print(F(" us after RX start")); }
+    }
     Serial.println();
   }
   return !error;
 }
-static void sdiCommand(const char *cmd) {
+static void sdiCommand(const char *cmd, bool singleAttempt = false) {
   if (!ready(SDI)) return;
   if (!cmd || strlen(cmd)>32 || strlen(cmd)<2 || cmd[strlen(cmd)-1]!='!') { Serial.println(F("sdi <ASCII command ending !>, e.g. sdi 0I! or sdi 0M! then sdi 0D0!")); return; }
   for (const char *p=cmd;*p;++p) if (*p<33 || *p>126) { Serial.println(F("Invalid SDI command.")); return; }
-  char response[128]; bool ok=sdiExchange(cmd,response,sizeof(response));
+  char response[128]; bool ok=sdiExchange(cmd,response,sizeof(response),singleAttempt);
   if (ok) { Serial.print(F("SDI response: ")); Serial.print(response); }
   record(SDI,ok?PASS:FAIL,ok ? "Address and complete 1200-baud 7E1 reply verified." : "Command exchange failed. See the SDI line above.");
 }

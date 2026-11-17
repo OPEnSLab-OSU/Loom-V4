@@ -109,6 +109,9 @@ static void help() {
   Serial.println(F("\nSDI-12"));
   Serial.println(F("  sdi ?!                           Discover the address of one attached sensor"));
   Serial.println(F("  sdi 0I!                          Identify the sensor at address 0"));
+  Serial.println(F("  sdi trace 0I!                    Send once and report first RX pulse timing"));
+  Serial.println(F("  sdi startup                      Cycle sensor power and capture DATA edges"));
+  Serial.println(F("  sdi path                         Probe the local SDI data path"));
   Serial.println(F("  sdi set teros11|teros12 <addr>   Select the model and address for sdi read"));
   Serial.println(F("  sdi read                         Measure with the selected model and address"));
   Serial.println(F("  sdi measure 0                    Measure and print the raw SDI-12 reply"));
@@ -211,6 +214,9 @@ static void dispatch(char *line) {
       else sdiMeasure(sdiAddress,sdiModel);
     }
     else if (b && !strcmp(b,"measure")) sdiMeasure(c);
+    else if (b && !strcmp(b,"trace")) sdiCommand(c,true);
+    else if (b && !strcmp(b,"startup") && !c) sdiStartupCapture();
+    else if (b && !strcmp(b,"path") && !c) sdiPathCapture();
     else sdiCommand(b);
   }
   else if (!strcmp(a,"baseline")) {
