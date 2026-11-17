@@ -444,14 +444,14 @@ bool Loom_LTE::getNetworkTime(int* year, int* month, int* day, int* hour, int* m
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LTE::logDiagnostics(){
+bool Loom_LTE::logDiagnostics(){
     char output[OUTPUT_SIZE];
 
     if(!moduleInitialized){
         LOG("LTE not initialized");
-        return;
+        return false;
     }
-
+    LOG("Testing LTE connectivity");
     int signalQuality = modem.getSignalQuality();
     snprintf(output, OUTPUT_SIZE, "Signal Quality: %d", signalQuality);
     LOG(output);
@@ -498,6 +498,9 @@ void Loom_LTE::logDiagnostics(){
     bool networkConnected = modem.isNetworkConnected();
     snprintf(output, OUTPUT_SIZE, "Network Connected: %s", networkConnected ? "True" : "False");
     LOG(output);
+    // RSSI of 99 is disconnected, less than 5 is a very weak connection. 
+    // if LTE not reigstered to either home or partner network, we will not have an LTE connection
+    return ((signalQuality != 99 && signalQuality > 5) && (registration == REG_OK_HOME || registration == REG_OK_ROAMING));
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

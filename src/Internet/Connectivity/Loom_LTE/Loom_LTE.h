@@ -28,7 +28,8 @@ class Loom_LTE : public NetworkComponent{
     protected:
         /* These aren't used with the Wifi manager */
         void measure() override {};
-        bool isConnected() override { return modem.isGprsConnected(); };
+        // returns if the LTE board ever actually connected to the internet during powerup
+        bool isConnected() override { return currState == LTEState::CONNECTED; };
 
     public:
 
@@ -73,7 +74,8 @@ class Loom_LTE : public NetworkComponent{
         // Get the current time from the network
         bool getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) override;
 
-        void logDiagnostics() override;
+        // prints LTE diagnostics to serial - RSSI and registration status
+        bool logDiagnostics() override;
 
         /**
          * Load the config to connect to the LTE network from a JSON string
