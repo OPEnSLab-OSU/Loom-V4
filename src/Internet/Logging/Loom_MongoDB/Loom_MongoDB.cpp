@@ -177,7 +177,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
                                 }
                             }
                             else{
-                                LOG("Could not recconect to mqtt broker. Retrying next batch");
+                                LOG("Could not reconnect to mqtt broker. Retrying next batch");
                             }
                         
                         }
@@ -225,6 +225,9 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
         FUNCTION_END;
         return false;
     }
+    // we want to kill our active connections before shutting off the LTE board
+    // this will stop our MQTT broker from constantly reporting timeouts. 
+    disconnectFromBroker();
     FUNCTION_END;
     TIMER_ENABLE;
     return true;

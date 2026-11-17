@@ -21,5 +21,28 @@ class NetworkComponent : public Module{
 
         virtual Client* getClient() = 0;
 
-        virtual bool logDiagnostics() {}
+        // structure that mqtt will use to determine if we had a failure due to internet issues
+        typedef struct {
+
+            // value is interpreted differently whether we are using LTE or not
+            int8_t signalQuality = -1;
+
+            // idnicates we are using LTE vs WiFi
+            bool isLte = false;
+
+            // for WiFi, if we are connected to AP
+            // for LTE, if we have a data connection to 
+            bool connected = false;
+            
+            // for LTE, if we are registered to our LTE network
+            bool registered = false;
+
+        } NetworkDiagnostics;
+
+        // returns structure 
+        virtual NetworkDiagnostics logDiagnostics() {}
+
+        virtual bool reconnect() {}
+
+
 };

@@ -77,6 +77,8 @@ class Loom_LTE : public NetworkComponent{
         // prints LTE diagnostics to serial - RSSI and registration status
         bool logDiagnostics() override;
 
+        // used in MQTT Component if our board loses connection in middle of batch
+        bool reconnect() override;
         /**
          * Load the config to connect to the LTE network from a JSON string
          * @param json Json file read, this is freed before returning
@@ -108,6 +110,9 @@ class Loom_LTE : public NetworkComponent{
          */
         bool verifyConnection();
 
+        bool increment_retries();
+
+
         /**
          * Get the client to supply to publish platforms that need to communicate using this internet framework
          */
@@ -129,6 +134,7 @@ class Loom_LTE : public NetworkComponent{
         void ipToString(IPAddress ip, char array[16]) {
             snprintf(array, 16, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
         };
+
 
     private:
 
@@ -167,6 +173,8 @@ class Loom_LTE : public NetworkComponent{
 
         LTEState currState = LTEState::OFF;
 
-        uint_8 connect_retries = 0;
+        uint8_t connect_retries = 0;
+
+        uint8_t reset_retries = 0;
 
 };
