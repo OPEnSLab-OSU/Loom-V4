@@ -107,6 +107,9 @@ void Loom_SDI12::initialize()
     for (int i = 0; i < KNOWN_SENSORS; i++)
     {
         char response[RESPONSE_SIZE];
+        // Enable the sensor only after identification succeeds.
+        in_use_sensors[i].in_use = 0;
+
         if (checkActive(in_use_sensors[i].addr))
         {
             requestSensorInfo(response, in_use_sensors[i].addr);
@@ -126,12 +129,14 @@ void Loom_SDI12::initialize()
                 LOG("Teros11 - Address '3'");
                 snprintf(output, OUTPUT_SIZE, "Please double check sensor with address %c", in_use_sensors[i].addr);
                 LOG(output);
+                in_use_sensors[i].in_use = 0;
             }
         }
         else
         {
             snprintf(output, OUTPUT_SIZE, "%s is not connected, or is using the wrong address. Expected address: %c",
                      in_use_sensors[i].name, in_use_sensors[i].addr);
+            LOG(output);
             in_use_sensors[i].in_use = 0;
         }
     }
@@ -345,7 +350,8 @@ void Loom_SDI12::readResponse(char response[RESPONSE_SIZE])
 
             if (c == '\n')
             {
-                break;
+                response[index] = '\0';
+                return;
             }
 
             if (c == '\r')
@@ -354,18 +360,20 @@ void Loom_SDI12::readResponse(char response[RESPONSE_SIZE])
             }
 
             // Reserve one byte for the null terminator.
-            if (index < RESPONSE_SIZE - 1)
+            if (index >= RESPONSE_SIZE - 1)
             {
-                response[index++] = c;
+                // response[index++] = c;
+                response[0] = '\0';
+                WARNING(F("SDI-12 response exceeded buffer capacity."));
+                return;
             }
-            else
-            {
-                break;
-            }
+
+            response[index++] = c;
         }
     }
-
-    response[index] = '\0';
+    // Discard partial data if the response did not finish in time.
+    response[0] = '\0';
+    WARNING(F("SDI-12 response timed out."));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -516,32 +524,19 @@ void Loom_SDI12::getData(char addr)
     // TEROS 11
     if (addr == '3')
     {
-        p = strtok(response, "+");
-
-        in_use_sensors[3].measurements[1] =
-            atof(strtok(NULL, "+"));
-
-        in_use_sensors[3].measurements[0] =
-            atof(strtok(NULL, "+"));
+        in_use_sensors[3].measurements[1] = valuesD0[0];
+        in_use_sensors[3].measurements[0] = valuesD0[1];
     }
 
     // TEROS 12
     if (addr == '0')
     {
-        p = strtok(response, "+");
-
-        in_use_sensors[0].measurements[1] =
-            atof(strtok(NULL, "+"));
-
-        in_use_sensors[0].measurements[0] =
-            atof(strtok(NULL, "+"));
-
-        in_use_sensors[0].measurements[2] =
-            atof(strtok(NULL, "+"));
+        in_use_sensors[0].measurements[1] = valuesD0[0];
+        in_use_sensors[0].measurements[0] = valuesD0[1];
+        in_use_sensors[0].measurements[2] = valuesD0[2];
     }
 
     // TEROS 54
-    // Both D0 and D1 were successfully parsed in the retry loop.
     if (addr == '1')
     {
         for (int i = 0; i < 4; i++)
@@ -549,20 +544,13 @@ void Loom_SDI12::getData(char addr)
             in_use_sensors[1].measurements[i] = valuesD0[i];
             in_use_sensors[1].measurements[i + 4] = valuesD1[i];
         }
-
-        LOG(F("TEROS 54: Data parsed successfully"));
     }
 
     // TEROS 21
     if (addr == '2')
     {
-        p = strtok(response, "-");
-
-        in_use_sensors[2].measurements[0] =
-            atof(strtok(NULL, "+-")) * (-1);
-
-        in_use_sensors[2].measurements[1] =
-            atof(strtok(NULL, "+"));
+        in_use_sensors[2].measurements[0] = valuesD0[0];
+        in_use_sensors[2].measurements[1] = valuesD0[1];
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
