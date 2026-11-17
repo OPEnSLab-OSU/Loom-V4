@@ -20,7 +20,7 @@ const TIME_ZONE LOCAL_TIME_ZONE = TIME_ZONE::PST;     // for time_local in the l
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 // Time slots: node N sends N * SLOT_SECONDS after every CYCLE_SECONDS mark in UTC, e.g. node 3 at 00:03, 01:23, 02:43.
 // The nodes take these from the hub, so changing them needs no node reflash.
-// Keep the cycle at 16 measurements (MEASURE_MINUTES in node.ino): one LoRa message per send, and a node can miss
+// Keep the cycle at 16 measurements (the interval in each node's HypnosConfig.json): one LoRa message per send, and a node can miss
 // three sends in a row before readings stop reaching the hub.
 // shortcut: a node sends at most its newest 64 readings (MAX_UNSENT in node.ino) per cycle, so its measurement interval
 // must be at least CYCLE_SECONDS / 64 (1.25 min); shorten the cycle if nodes ever measure more often
@@ -64,8 +64,8 @@ Loom_BatchSD batchSD(hypnos, 16, true);
 void setup()
 {
     // Write debug logs to the SD card (/debug/output_N.log)
-    ENABLE_SD_LOGGING;
-    ENABLE_FUNC_SUMMARIES;
+    // ENABLE_SD_LOGGING;
+    // ENABLE_FUNC_SUMMARIES;
 
     manager.beginSerial();
     hypnos.enable();

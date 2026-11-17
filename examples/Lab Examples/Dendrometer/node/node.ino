@@ -11,13 +11,13 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 // SETTINGS: change these
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-static const uint8_t NODE_NUMBER = 13;                 // different for every node, 1 to 78 (one slot each in the hub's cycle)
+static const uint8_t NODE_NUMBER = 20;                 // different for every node, 1 to 78 (one slot each in the hub's cycle)
 static const char *DEVICE_NAME = "HazelnutDendrometer_"; // must match NODE_NAME in hub.ino
-static const uint16_t MEASURE_MINUTES = 0;            // Override for testing:
-                                                            // time between measurements; 0 uses HypnosConfig.json instead
 //#define LB_VERSION                                  // uncomment for the LB board
 #define LED_COLOR_ORDER NEO_RGB                       // NEO_RGB for through-hole LEDs, NEO_GRB otherwise
 #define DENDROMETER_LORA                              // send readings to the hub (comment out to only log to SD)
+#define SINGLE_BATCH                                  // send each reading on its own as it's taken (comment out to
+                                                      // send batches of up to 16 in the hub's time slot)
 //#define DENDROMETER_TEROS10                         // also measure a TEROS 10 soil moisture sensor on A0
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -27,6 +27,7 @@ static const TIME_ZONE LOCAL_TIME_ZONE = TIME_ZONE::PST; // for time_local; a ti
 static const uint8_t TRANSMIT_INTERVAL = 16; // before the hub assigns a slot: send after this many measurements
 static const uint8_t RETRY_INTERVAL = 4;     // before the hub assigns a slot: retry a failed send every X measurements
 static const uint8_t MAX_UNSENT = 64;        // send at most the newest X unsent readings; older ones stay in the CSV
+static const uint8_t TURN_SECONDS = 20;      // SINGLE_BATCH: node N measures and sends N * this into each interval
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 // You shouldn't need to change anything below this line 
@@ -67,11 +68,14 @@ uint32_t nextSend = 0;
 uint32_t slotCycle = 0;
 static const uint16_t REPLY_WAIT_MS = 3000; // how long to listen for the hub's reply after sending
 void waitForSchedule();
+#if defined SINGLE_BATCH
+uint32_t ownTurn(uint32_t t);
+#endif
 #else
 #warning Wireless communication disabled!
 #endif
 
-TimeSpan sleepInterval;              // time between measurements: MEASURE_MINUTES, or HypnosConfig.json if that's 0
+TimeSpan sleepInterval;              // time between measurements, from HypnosConfig.json
 static const unsigned long ALIGN_WAIT_MS = 10UL * 60 * 1000; // how long setup waits for a green magnet
 uint32_t nextMeasure = 0;            // unix time (UTC) of the next measurement
 volatile bool buttonPressed = false; // woken by the button
@@ -92,8 +96,8 @@ void flashColor(uint8_t r, uint8_t g, uint8_t b);
 void setup()
 {
     // Write debug logs to the SD card (/debug/output_N.log)
-    ENABLE_SD_LOGGING;
-    ENABLE_FUNC_SUMMARIES;
+    // ENABLE_SD_LOGGING;
+    // ENABLE_FUNC_SUMMARIES;
 
     // Holding the button at power-up waits for a serial connection and offers to set the clock
     pinMode(BUTTON_PIN, INPUT_PULLUP); // also needed for the button interrupt
@@ -105,13 +109,14 @@ void setup()
     snprintf(logName, sizeof(logName), "%s%idata", DEVICE_NAME, NODE_NUMBER);
     hypnos.setLogName(logName); // SD card CSV file name, e.g. HazelnutDendrometer_3data
     hypnos.enable();
-    sleepInterval = hypnos.getConfigFromSD("HypnosConfig.json"); // also reads the timezone, so read it either way
-    if (MEASURE_MINUTES > 0)
-        sleepInterval = TimeSpan(MEASURE_MINUTES * 60L); // in seconds: the minutes argument only holds up to 127
+    sleepInterval = hypnos.getConfigFromSD("HypnosConfig.json"); // time between measurements, plus the timezone
 
     manager.initialize();
     setRTC(userInput);
     nextMeasure = hypnos.getCurrentTime().unixtime(); // phase = boot time, so nodes flashed together don't all send together before they have slots
+#if defined DENDROMETER_LORA && defined SINGLE_BATCH
+    nextMeasure = ownTurn(nextMeasure);
+#endif
 
     checkMagnetSensor();
     alignMagnetSensor();
@@ -171,6 +176,13 @@ void transmit()
 #if defined DENDROMETER_LORA
     // Unsent readings stay in the batch file until the hub acknowledges them, so after a failure there are more than 16
     int waiting = batchSD.getCurrentBatch();
+#if defined SINGLE_BATCH
+    // Every wake sends just the reading it took. After a failed send the older unsent readings aren't resent; they're
+    // dropped from the batch at the next success and stay in the CSV.
+    if (waiting == 0)
+        return;
+    int skip = waiting - 1;
+#else
     if (nextSend)
     {
         // On the hub's schedule: send in this node's slot, once per cycle
@@ -188,6 +200,7 @@ void transmit()
         return;
     // shortcut: skipped lines stay in the file until the next successful send clears it, fine for days of hub downtime
     int skip = waiting > MAX_UNSENT ? waiting - MAX_UNSENT : 0;
+#endif
 
     DendrometerPacket::Writer packet;
     StaticJsonDocument<1500> reading;
@@ -254,6 +267,11 @@ void waitForSchedule()
         nextMeasure += hubTime - now; // keep the same time to the next measurement
         now = hubTime;
     }
+#if defined SINGLE_BATCH
+    // Each reading goes out as it's taken, so the hub's slot isn't used; just keep this node's turn on the hub's clock
+    nextMeasure = ownTurn(now + 11);
+    return;
+#endif
     nextSend = next;
     slotCycle = cycle;
     // Measure in the send slot so one wake does both. Only when the cycle is a whole number of intervals: otherwise
@@ -263,6 +281,16 @@ void waitForSchedule()
         nextMeasure = next - ((next - (now + 11)) / interval) * interval;
     LOGF("Hub's schedule: next send in %lu s, then every %lu s", (unsigned long)(next - hubTime), (unsigned long)cycle);
 }
+
+#if defined SINGLE_BATCH
+/* The first time at or after t that is this node's turn in the measurement interval, so nodes take turns sending */
+uint32_t ownTurn(uint32_t t)
+{
+    uint32_t interval = sleepInterval.totalseconds();
+    uint32_t offset = (uint32_t)NODE_NUMBER * TURN_SECONDS % interval;
+    return t - t % interval + offset + (t % interval > offset ? interval : 0);
+}
+#endif
 #endif
 
 /* Sleep until the next measurement or this node's send slot, whichever comes first (or the button) */
