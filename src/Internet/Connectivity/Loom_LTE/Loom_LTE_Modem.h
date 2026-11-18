@@ -7,8 +7,12 @@ LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Client.h>
 LOOM_EXTERNAL_INCLUDE_END
 
+enum class LTE_MODEM { SARA_R4, SARA_R5, SIM7090 };
+
+namespace loomGnss { struct Fix; }
+
 /**
- * Small runtime interface over TinyGSM's separate SARA-R4 and SARA-R5 types.
+ * Small runtime interface over TinyGSM's separate modem types.
  * Keeping the concrete drivers behind this interface lets an Arduino sketch
  * select its modem in the Loom_LTE constructor without global build flags.
  */
@@ -41,6 +45,12 @@ class Loom_LTE_Modem {
     virtual bool getNetworkTime(int *year, int *month, int *day, int *hour, int *minute,
                                 int *second, float *timezone) = 0;
     virtual Client *getClient() = 0;
+    virtual bool startGNSS() { return false; }
+    virtual bool stopGNSS() { return false; }
+    virtual bool readGNSS(loomGnss::Fix &) { return false; }
 };
 
-Loom_LTE_Modem *createLteModem(bool saraR5, Stream &stream);
+Loom_LTE_Modem *createLteModem(LTE_MODEM type, Stream &stream);
+inline Loom_LTE_Modem *createLteModem(bool saraR5, Stream &stream) {
+    return createLteModem(saraR5 ? LTE_MODEM::SARA_R5 : LTE_MODEM::SARA_R4, stream);
+}

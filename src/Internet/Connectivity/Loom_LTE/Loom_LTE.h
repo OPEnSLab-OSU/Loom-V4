@@ -142,8 +142,6 @@ struct Fix;
 
 enum LTE_VERSION { SPARKFUN, OPENS };
 
-enum class LTE_MODEM { SARA_R4, SARA_R5 };
-
 // Preserve the old library-wide define as a source-compatible constructor
 // default, but runtime selection is preferred for Arduino IDE sketches.
 #if defined(LOOM_LTE_USE_SARA_R5)
@@ -153,7 +151,7 @@ static constexpr LTE_MODEM LOOM_LTE_DEFAULT_MODEM = LTE_MODEM::SARA_R4;
 #endif
 
 /**
- * Loomified control for a u-blox SARA LTE board.
+ * Loomified control for SARA-R4/R5 and externally powered SIM7090 development boards.
  *
  * The class owns power sequencing, low-level AT readiness checks, cellular
  * registration, APN/PDP activation, socket verification, network diagnostics,
@@ -181,6 +179,8 @@ class Loom_LTE : public NetworkComponent {
      * @param resetPin Optional board-level pin that controls LTE RESET_N. Use -1 to leave reset
      * unused.
      * @param modemType Runtime modem family. R4 is the compatibility default.
+     * SIM7090 uses an externally powered development board at 115200; power/reset pins
+     * are ignored. Use the carrier board's buttons or its own power controller.
      */
     Loom_LTE(Manager &man, const char *apn, const char *user, const char *pass,
              const int powerPin = A5, LTE_VERSION version = SPARKFUN, const int resetPin = -1,
@@ -202,6 +202,16 @@ class Loom_LTE : public NetworkComponent {
      * open the cellular data session.
      */
     void initialize() override;
+    /** Initialize an already powered modem without network registration or GPIO pulses. */
+    bool initializeModemOnly(uint32_t timeoutMs = 5000);
+    /** Disable automatic cellular attachment for an interactive bench session. */
+    void setAutoConnect(bool enabled) { autoConnect = enabled; }
+    /** Copy credentials for the next connection; disconnect the previous session first. */
+    void setCredentials(const char *apn, const char *user = "", const char *pass = "") {
+        copyCredential(apnName, apn, sizeof(apnName));
+        copyCredential(apnUsername, user, sizeof(apnUsername));
+        copyCredential(apnPassword, pass, sizeof(apnPassword));
+    }
 
     /** Adopt an already AT-responsive modem without pulsing PWR_ON or RESET_N.
      * The caller owns board power sequencing. Also opens/reuses the cellular data session. */
@@ -274,11 +284,12 @@ class Loom_LTE : public NetworkComponent {
     LTE_MODEM getModemType() const { return modemType; }
 
     /**
-     * Optional SARA-R510M8S GNSS: explicitly start/stop its receiver and read a cached fix.
+     * Optional SARA-R510M8S or SIM7090 GNSS: start/stop the receiver and read a cached fix.
      * Ordinary R4/R5 sketches never call these methods and send no GNSS commands.
      * Select SARA_R5, confirm the M8S variant/antenna, and call startGNSS() after initialize().
      * No cellular location service or online aiding is enabled. Startup/stop take at most
      * 11 seconds per AT command; reading does not wait for satellite acquisition.
+     * SIM7090 uses TinyGSM CGNSPWR/CGNSINF and requires no cellular data session.
      */
     bool startGNSS();
     bool stopGNSS();
@@ -288,7 +299,7 @@ class Loom_LTE : public NetworkComponent {
     /**
      * Register on the cellular network and activate the APN/PDP data session.
      */
-    bool connect();
+    bool connect(uint32_t networkTimeoutMs = 600000UL, uint8_t maxAttempts = 5);
 
     /** Restore a lost APN/PDP session for an awake hub before retrying its MQTT connection. */
     bool prepareConnection() override;
@@ -333,6 +344,10 @@ class Loom_LTE : public NetworkComponent {
     void copyCredential(char *dst, const char *src, size_t dstSize);
 
     bool isSaraR5() const { return modemType == LTE_MODEM::SARA_R5; }
+    bool isSim7090() const { return modemType == LTE_MODEM::SIM7090; }
+    uint32_t primaryBaud() const {
+        return isSim7090() ? 115200UL : (isSaraR5() ? LOOM_LTE_R5_UART_BAUD : 9600UL);
+    }
 
     // Board-level control pin helpers.
     void driveControlPinIdle(int pin);
@@ -349,7 +364,7 @@ class Loom_LTE : public NetworkComponent {
     bool selectWorkingBaud(uint32_t timeoutMs);
     bool initializeModemFromAT();
     bool bootModemWithRetries(bool allowPowerPulse);
-    bool tryConnectDataSession(uint8_t attempt, uint8_t maxAttempts);
+    bool tryConnectDataSession(uint8_t attempt, uint8_t maxAttempts, uint32_t networkTimeoutMs);
 
     // Raw AT helpers and R5 setup hints.
     bool sendATExpectOK(const char *command, uint32_t timeoutMs = 5000L);
@@ -381,6 +396,7 @@ class Loom_LTE : public NetworkComponent {
 
     bool shouldPowerUp = true;
     bool firstInitialization = true;
+    bool autoConnect = true;
     Loom_BatchSD *batchSD = nullptr;
 
     // True means ON or UNKNOWN after touching PWR_ON. It is not proof of AT readiness;

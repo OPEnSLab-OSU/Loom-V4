@@ -1,0 +1,556 @@
+{
+  "title": "Feather M0 / Hypnos / SIM7090G console",
+  "sourceRoot": "Loom checkout root",
+  "groups": [
+    "features",
+    "setup",
+    "loop",
+    "helpers"
+  ],
+  "nodes": [
+    {
+      "id": "modem",
+      "label": "Loom LTE with TinyGSM SIM7090",
+      "group": "features",
+      "sourceLinks": [
+        "0",
+        "6",
+        "7"
+      ]
+    },
+    {
+      "id": "hypnos",
+      "label": "Hypnos RTC and powered stack",
+      "group": "features",
+      "sourceLinks": [
+        "1",
+        "2"
+      ]
+    },
+    {
+      "id": "setup",
+      "label": "Enable Hypnos and initialize registered modules",
+      "group": "setup",
+      "sourceLinks": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ]
+    },
+    {
+      "id": "input",
+      "label": "Read USB commands and modem UART output",
+      "group": "loop",
+      "sourceLinks": [
+        "8",
+        "9"
+      ]
+    },
+    {
+      "id": "at",
+      "label": "Query modem and print AT replies",
+      "group": "helpers",
+      "sourceLinks": [
+        "10",
+        "11"
+      ]
+    },
+    {
+      "id": "data",
+      "label": "Register and activate cellular data",
+      "group": "helpers",
+      "sourceLinks": [
+        "12",
+        "13",
+        "14",
+        "15",
+        "16"
+      ]
+    },
+    {
+      "id": "socket",
+      "label": "Test TCP or plain HTTP",
+      "group": "helpers",
+      "sourceLinks": [
+        "17"
+      ]
+    },
+    {
+      "id": "gpspower",
+      "label": "Start or stop GNSS",
+      "group": "helpers",
+      "sourceLinks": [
+        "18",
+        "19",
+        "20"
+      ]
+    },
+    {
+      "id": "gpsread",
+      "label": "Read and validate GNSS snapshot",
+      "group": "helpers",
+      "sourceLinks": [
+        "21",
+        "22",
+        "23",
+        "24"
+      ]
+    },
+    {
+      "id": "rtc",
+      "label": "Read RTC or synchronize from network UTC",
+      "group": "helpers",
+      "sourceLinks": [
+        "25",
+        "26"
+      ]
+    },
+    {
+      "id": "sample",
+      "label": "Measure, package and print Loom data",
+      "group": "helpers",
+      "sourceLinks": [
+        "27"
+      ]
+    },
+    {
+      "id": "off",
+      "label": "Request checked SIMCom shutdown",
+      "group": "helpers",
+      "sourceLinks": [
+        "28",
+        "29",
+        "30"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "setup",
+      "to": "input",
+      "label": "After initialization",
+      "sourceLinks": [
+        "1",
+        "8"
+      ]
+    },
+    {
+      "from": "input",
+      "to": "at",
+      "label": "AT or query command",
+      "sourceLinks": [
+        "9",
+        "10"
+      ]
+    },
+    {
+      "from": "input",
+      "to": "data",
+      "label": "connect command",
+      "sourceLinks": [
+        "9",
+        "12"
+      ]
+    },
+    {
+      "from": "input",
+      "to": "socket",
+      "label": "tcp or http command",
+      "sourceLinks": [
+        "9",
+        "17"
+      ]
+    },
+    {
+      "from": "input",
+      "to": "gpspower",
+      "label": "gps on/off/watch command",
+      "sourceLinks": [
+        "9",
+        "18"
+      ]
+    },
+    {
+      "from": "input",
+      "to": "gpsread",
+      "label": "gps read or enabled 5-second watch",
+      "sourceLinks": [
+        "8",
+        "9",
+        "21"
+      ]
+    },
+    {
+      "from": "input",
+      "to": "rtc",
+      "label": "rtc command",
+      "sourceLinks": [
+        "9",
+        "25"
+      ]
+    },
+    {
+      "from": "input",
+      "to": "sample",
+      "label": "sample command",
+      "sourceLinks": [
+        "9",
+        "27"
+      ]
+    },
+    {
+      "from": "input",
+      "to": "off",
+      "label": "off command",
+      "sourceLinks": [
+        "9",
+        "28"
+      ]
+    }
+  ],
+  "sourceLinks": [
+    {
+      "path": "examples/Internet/Connectivity/LTE_SIM7090G_Console/LTE_SIM7090G_Console.ino",
+      "anchor": "Loom_LTE lte(manager, \"hologram\", \"\", \"\", -1, SPARKFUN, -1, LTE_MODEM::SIM7090);",
+      "line": 18,
+      "description": "Single Loom modem, external board power, TinyGSM SIM7090 profile",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "examples/Internet/Connectivity/LTE_SIM7090G_Console/LTE_SIM7090G_Console.ino",
+      "anchor": "void setup() {",
+      "line": 233,
+      "description": "Hypnos before Manager initialization; automatic cellular attachment disabled",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp",
+      "anchor": "void Loom_Hypnos::enable(bool enable33, bool enable5) {",
+      "line": 332,
+      "description": "Enable selected rails and initialize RTC; SD is disabled by the sketch constructor",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "src/Loom_Manager.cpp",
+      "anchor": "void Manager::initialize() {",
+      "line": 302,
+      "description": "Calls registered modules initialize methods",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "src/Internet/Connectivity/Loom_LTE/Loom_LTE.cpp",
+      "anchor": "void Loom_LTE::power_up() {",
+      "line": 647,
+      "description": "SIM7090 branch initializes the externally powered modem without SARA GPIO sequencing",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "src/Internet/Connectivity/Loom_LTE/Loom_LTE.cpp",
+      "anchor": "bool Loom_LTE::initializeModemOnly(uint32_t timeoutMs) {",
+      "line": 637,
+      "description": "UART readiness plus TinyGSM initialization, no connect call",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "src/Internet/Connectivity/Loom_LTE/Loom_LTE_Modem.cpp",
+      "anchor": "if (type == LTE_MODEM::SIM7090) {",
+      "line": 8,
+      "description": "Factory delegates to SIM7090 adapter",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "src/Internet/Connectivity/Loom_LTE/Loom_LTE_Sim7090.cpp",
+      "anchor": "bool init() override {",
+      "line": 16,
+      "description": "TinyGSM init followed by TX/RX-only flow-control setting",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "examples/Internet/Connectivity/LTE_SIM7090G_Console/LTE_SIM7090G_Console.ino",
+      "anchor": "void loop() {",
+      "line": 245,
+      "description": "Bounded modem output and USB line input, periodic GPS polling",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "examples/Internet/Connectivity/LTE_SIM7090G_Console/LTE_SIM7090G_Console.ino",
+      "anchor": "void executeCommand(char *line) {",
+      "line": 134,
+      "description": "Sequential command routing; raw AT is separate from managed TinyGSM calls",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "examples/Internet/Connectivity/LTE_SIM7090G_Console/LTE_SIM7090G_Console.ino",
+      "anchor": "bool runAT(const char *command, uint32_t timeoutMs = 5000) {",
+      "line": 26,
+      "description": "Print command/reply with whole-line OK/ERROR matching and a deadline",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "src/Utilities/Loom_ATReply.h",
+      "anchor": "inline Reply classifyLine(const char *line) {",
+      "line": 7,
+      "description": "Only final OK/ERROR lines are terminal replies",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "examples/Internet/Connectivity/LTE_SIM7090G_Console/LTE_SIM7090G_Console.ino",
+      "anchor": "lte.connect(60000UL, 1)",
+      "line": 180,
+      "description": "One Loom connection attempt with 60-second network registration wait",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "src/Internet/Connectivity/Loom_LTE/Loom_LTE.cpp",
+      "anchor": "bool Loom_LTE::connect(uint32_t networkTimeoutMs, uint8_t maxAttempts) {",
+      "line": 975,
+      "description": "Check readiness and existing session, then bounded number of Loom attempts",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "src/Internet/Connectivity/Loom_LTE/Loom_LTE.cpp",
+      "anchor": "bool Loom_LTE::tryConnectDataSession(uint8_t attempt, uint8_t maxAttempts, uint32_t networkTimeoutMs) {",
+      "line": 907,
+      "description": "Register through TinyGSM then open data session; failure diagnostics",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "src/Internet/Connectivity/Loom_LTE/Loom_LTE_Sim7090.cpp",
+      "anchor": "bool gprsConnect(const char *apn, const char *user, const char *pass) override {",
+      "line": 29,
+      "description": "Delegate PDP activation to TinyGSM and verify packet attachment plus application IP",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "../TinyGSM/src/TinyGsmClientSIM7080.h",
+      "anchor": "bool gprsConnectImpl(const char* apn, const char* user = nullptr,",
+      "line": 268,
+      "description": "Installed driver performs detach, CGDCONT/CNCFG and CNACT activation",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "examples/Internet/Connectivity/LTE_SIM7090G_Console/LTE_SIM7090G_Console.ino",
+      "anchor": "void socketTest(const char *host, uint16_t port, const char *path) {",
+      "line": 93,
+      "description": "Use Loom-owned Client; optionally send GET; bound displayed HTTP response",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "src/Internet/Connectivity/Loom_LTE/Loom_LTE_GNSS.cpp",
+      "anchor": "bool Loom_LTE::startGNSS() {",
+      "line": 15,
+      "description": "SIM7090 receiver state handled through adapter; SARA path remains separate",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "src/Internet/Connectivity/Loom_LTE/Loom_LTE_Sim7090.cpp",
+      "anchor": "bool startGNSS() override { return modem.enableGPS(); }",
+      "line": 35,
+      "description": "Delegate receiver power to TinyGSM",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "../TinyGSM/src/TinyGsmClientSIM70xx.h",
+      "anchor": "bool enableGPSImpl() {",
+      "line": 236,
+      "description": "Installed TinyGSM sends CGNSPWR=1",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "examples/Internet/Connectivity/LTE_SIM7090G_Console/LTE_SIM7090G_Console.ino",
+      "anchor": "void printFix() {",
+      "line": 76,
+      "description": "Print validated coordinates and receiver UTC; report no-fix without inventing location",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "src/Internet/Connectivity/Loom_LTE/Loom_LTE_Sim7090.cpp",
+      "anchor": "bool readGNSS(loomGnss::Fix &fix) override {",
+      "line": 37,
+      "description": "TinyGSM getGPSraw transaction followed by leading-field CSV parsing",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "../TinyGSM/src/TinyGsmClientSIM70xx.h",
+      "anchor": "String getGPSrawImpl() {",
+      "line": 249,
+      "description": "Installed driver reads one CGNSINF line and consumes its final response",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "src/Utilities/Loom_Sim70xxGnss.h",
+      "anchor": "inline bool parseSim70xx(char *text, Fix &out) {",
+      "line": 10,
+      "description": "Validate run/fix, UTC date/time and coordinate ranges; leave output unchanged on failure",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "examples/Internet/Connectivity/LTE_SIM7090G_Console/LTE_SIM7090G_Console.ino",
+      "anchor": "hypnos.networkTimeUpdate()",
+      "line": 211,
+      "description": "Explicit command to update Hypnos RTC from LTE network time",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "src/Hardware/Loom_Hypnos/Loom_Hypnos.cpp",
+      "anchor": "bool Loom_Hypnos::networkTimeUpdate() {",
+      "line": 825,
+      "description": "Use configured network interface and validate UTC before RTC adjustment",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "examples/Internet/Connectivity/LTE_SIM7090G_Console/LTE_SIM7090G_Console.ino",
+      "anchor": "manager.measure(); manager.package();",
+      "line": 223,
+      "description": "Package normal Loom data on request",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "examples/Internet/Connectivity/LTE_SIM7090G_Console/LTE_SIM7090G_Console.ino",
+      "anchor": "lte.power_down();",
+      "line": 227,
+      "description": "Explicit off command; report checked shutdown result",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "src/Internet/Connectivity/Loom_LTE/Loom_LTE_Sim7090.cpp",
+      "anchor": "bool poweroffChecked() override {",
+      "line": 24,
+      "description": "SIMCom CPOWD=1 and required NORMAL POWER DOWN response",
+      "verification": "verified-current-checkout"
+    },
+    {
+      "path": "src/Internet/Connectivity/Loom_LTE/Loom_LTE.cpp",
+      "anchor": "if (!poweroffAcknowledged && isSim7090()) {",
+      "line": 749,
+      "description": "Unacknowledged SIM7090 shutdown cannot permit shared rail removal",
+      "verification": "verified-current-checkout"
+    }
+  ],
+  "featureAssessments": [
+    {
+      "requestId": "$brief",
+      "requirement": "Write an example to use TinyGSM to extend Loom support beyond SARA R4/R5, including GPS and a command suite.",
+      "status": "supported",
+      "nodeIds": [
+        "modem",
+        "hypnos",
+        "setup",
+        "input",
+        "at",
+        "data",
+        "socket",
+        "gpspower",
+        "gpsread",
+        "rtc",
+        "sample",
+        "off"
+      ],
+      "issues": [
+        {
+          "requirement": "Write an example",
+          "reason": "Host GNSS checks and ARM compile/link checks pass. Live upload verification, modem initialization, SIM readiness, Hologram registration on Verizon LTE-M, application IP, real HTTP traffic with GNSS off, RTC sync and Loom packaging pass. GNSS control/raw queries respond, but no valid satellite fix has been observed by the window. Concurrent GNSS/socket traffic, heap/stack margins and transmit power stability remain unverified.",
+          "sourceLinks": [
+            "0",
+            "1",
+            "5"
+          ]
+        }
+      ]
+    },
+    {
+      "requestId": "tinygsm",
+      "requirement": "Use TinyGSM as it supports SIM7090G already.",
+      "status": "supported",
+      "nodeIds": [
+        "modem",
+        "data",
+        "socket"
+      ],
+      "issues": []
+    },
+    {
+      "requestId": "gps",
+      "requirement": "Including the GPS.",
+      "status": "supported",
+      "nodeIds": [
+        "gpspower",
+        "gpsread"
+      ],
+      "issues": [
+        {
+          "requirement": "Including the GPS.",
+          "reason": "Antenna/sky view and actual fixes require bench validation. TinyGSM initialization needs a ready or PIN-locked SIM; raw GNSS AT remains accessible without successful library initialization.",
+          "sourceLinks": [
+            "7",
+            "20",
+            "23",
+            "24"
+          ]
+        }
+      ]
+    },
+    {
+      "requestId": "console",
+      "requirement": "A nice command suite to talk to this thing and see how it works.",
+      "status": "supported",
+      "nodeIds": [
+        "input",
+        "at",
+        "data",
+        "socket",
+        "gpspower",
+        "gpsread",
+        "rtc",
+        "sample",
+        "off"
+      ],
+      "issues": [
+        {
+          "requirement": "A nice command suite",
+          "reason": "TinyGSM data and socket calls block; USB commands pause during their built-in waits.",
+          "sourceLinks": [
+            "16",
+            "17"
+          ]
+        }
+      ]
+    },
+    {
+      "requestId": "wiring",
+      "requirement": "Tell me the wiring too with that dev board PDF.",
+      "status": "supported",
+      "nodeIds": [
+        "modem",
+        "hypnos"
+      ],
+      "issues": [
+        {
+          "requirement": "It will just receive the 5V USB power",
+          "reason": "Use the documented 5V supply plus 3.3V host logic supply with VCC SEL at 3V3; wiring and jumpers are in README. Burst current and source sharing must be checked on hardware.",
+          "sourceLinks": [
+            "0",
+            "2"
+          ]
+        }
+      ]
+    }
+  ],
+  "hardwareReferences": [
+    {
+      "source": "LTE_IoT_14_Click.pdf",
+      "pages": [
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "source": "https://download.mikroe.com/documents/add-on-boards/click/lte-iot-14-click/lte-iot-14-click-schematic.pdf",
+      "page": 1
+    }
+  ],
+  "externalImplementations": "TinyGSM paths refer to the adjacent installed 0.12.0 library, not files bundled with this example."
+}

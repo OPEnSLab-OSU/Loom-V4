@@ -52,7 +52,7 @@ void Loom_LTE::copyCredential(char *dst, const char *src, size_t dstSize) {
 Loom_LTE::Loom_LTE(Manager &man, const char *apn, const char *user, const char *pass, const int pin,
                    LTE_VERSION version, const int rstPin, LTE_MODEM modemType)
     : NetworkComponent("LTE"), modemType(modemType), manager(&man),
-      modem(createLteModem(modemType == LTE_MODEM::SARA_R5, SerialAT)) {
+      modem(createLteModem(modemType, SerialAT)) {
     copyCredential(this->apnName, apn, sizeof(this->apnName));
     copyCredential(this->apnUsername, user, sizeof(this->apnUsername));
     copyCredential(this->apnPassword, pass, sizeof(this->apnPassword));
@@ -60,7 +60,7 @@ Loom_LTE::Loom_LTE(Manager &man, const char *apn, const char *user, const char *
     this->resetPin = rstPin;
 
     lteBoardVersion = version;
-    uartBaud = isSaraR5() ? LOOM_LTE_R5_UART_BAUD : 9600UL;
+    uartBaud = primaryBaud();
     idlePowerPin();
     manager->registerModule(this);
 }
@@ -70,7 +70,7 @@ Loom_LTE::Loom_LTE(Manager &man, const char *apn, const char *user, const char *
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 Loom_LTE::Loom_LTE(Manager &man, LTE_MODEM modemType)
     : NetworkComponent("LTE"), modemType(modemType), manager(&man),
-      modem(createLteModem(modemType == LTE_MODEM::SARA_R5, SerialAT)) {
+      modem(createLteModem(modemType, SerialAT)) {
     memset(apnName, '\0', sizeof(apnName));
     memset(apnUsername, '\0', sizeof(apnUsername));
     memset(apnPassword, '\0', sizeof(apnPassword));
@@ -78,7 +78,7 @@ Loom_LTE::Loom_LTE(Manager &man, LTE_MODEM modemType)
     if (isSaraR5()) {
         lteBoardVersion = OPENS;
     }
-    uartBaud = isSaraR5() ? LOOM_LTE_R5_UART_BAUD : 9600UL;
+    uartBaud = primaryBaud();
 
     idlePowerPin();
     manager->registerModule(this);
@@ -94,6 +94,7 @@ Loom_LTE::~Loom_LTE() { delete modem; }
 // For OPEnS R5 hardware this releases the SARA input through the MOSFET circuit.
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::driveControlPinIdle(int pin) {
+    if (isSim7090()) return; // The development board owns PWRKEY and RESET.
     // Idle means the modem input is released. On OPEnS/Jolteon hardware the
     // Feather drives a MOSFET gate, so the Feather level is the inverse of the
     // actual SARA pin level.
@@ -117,6 +118,7 @@ void Loom_LTE::driveControlPinIdle(int pin) {
 // Active means the SARA-side input is being asserted by the board control circuit.
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::driveControlPinActive(int pin) {
+    if (isSim7090()) return;
     // Active means the SARA input is being pulled low through the board control
     // circuit. This is used for PWR_ON and RESET_N pulses.
     if (pin < 0) {
@@ -266,7 +268,7 @@ bool Loom_LTE::selectWorkingBaud(uint32_t timeoutMs) {
     // AT command. Keep that primary rate in Loom_LTE_Config.h so board startup
     // does not require editing this file.
     // Restore the configured primary baud before returning failure.
-    const uint32_t primaryBaud = isSaraR5() ? LOOM_LTE_R5_UART_BAUD : 9600UL;
+    const uint32_t primaryBaud = this->primaryBaud();
     uartBaud = primaryBaud;
     SerialAT.end();
     delay(100);
@@ -340,7 +342,7 @@ bool Loom_LTE::initializeModemFromAT() {
     }
 
     logPlainFailure(F("INFO: the modem answered AT, but TinyGSM could not initialize it. Check "
-                      "that the selected SARA-R4/R5 constructor profile matches the hardware and "
+                      "that the selected LTE constructor profile matches the hardware and "
                       "the installed TinyGSM version supports that modem."));
     return false;
 }
@@ -568,6 +570,10 @@ void Loom_LTE::initialize() {
 
     // Connect to the LTE network and open the APN/PDP data session.
     moduleInitialized = true;
+    if (!autoConnect) {
+        firstInitialization = false;
+        return;
+    }
     const bool connected = connect();
     // Boot is the normal chance to capture signal before batch mode powers LTE off.
     if (!connected) sampleSignalQuality();
@@ -602,11 +608,16 @@ void Loom_LTE::initialize() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::initializeFromAwake() {
+    if (isSim7090()) {
+        if (!initializeModemOnly()) return false;
+        firstInitialization = false;
+        return connect();
+    }
     LoomWatchdogPause watchdogPause;
     // Silence here cannot establish OFF: this path intentionally never pulses power/reset.
     powerMayBeOn = true;
     moduleInitialized = false;
-    uartBaud = isSaraR5() ? LOOM_LTE_R5_UART_BAUD : 9600UL;
+    uartBaud = primaryBaud();
     SerialAT.begin(uartBaud);
     if (!bootModemWithRetries(false)) return false;
     moduleInitialized = true;
@@ -621,6 +632,16 @@ bool Loom_LTE::shutdownForSleep() {
     powerMayBeOn=true;
     power_down();
     return canRemovePower();
+}
+
+bool Loom_LTE::initializeModemOnly(uint32_t timeoutMs) {
+    LoomWatchdogPause watchdogPause;
+    powerMayBeOn = true; // USB power and the board button are external to Loom.
+    moduleInitialized = false;
+    gnssState = GnssState::UNKNOWN;
+    if (!selectWorkingBaud(timeoutMs) || !initializeModemFromAT()) return false;
+    moduleInitialized = true;
+    return true;
 }
 
 void Loom_LTE::power_up() {
@@ -646,8 +667,15 @@ void Loom_LTE::power_up() {
     // Boot and registration can legitimately exceed a sketch's watchdog period. Pause the
     // actual timer, including runtime-enabled guards, and restore it on every return path.
     LoomWatchdogPause watchdogPause;
+    if (isSim7090()) {
+        if (!(powerMayBeOn && moduleInitialized && modem->testAT(1000L))) {
+            if (!initializeModemOnly()) return;
+        }
+        if (!firstInitialization && autoConnect) (void)connect();
+        return;
+    }
     if (powerMayBeOn && moduleInitialized && modem->testAT(1000L)) {
-        if (!firstInitialization) {
+        if (!firstInitialization && autoConnect) {
             (void)connect();
         }
         return;
@@ -669,7 +697,7 @@ void Loom_LTE::power_up() {
     delay(100);
 
     // Preserve the 4.9 R4 UART while allowing an R5 object to select 115200.
-    uartBaud = isSaraR5() ? LOOM_LTE_R5_UART_BAUD : 9600UL;
+    uartBaud = primaryBaud();
     SerialAT.begin(uartBaud);
     delay(250);
 
@@ -692,7 +720,7 @@ void Loom_LTE::power_up() {
     moduleInitialized = true;
 
     // Connect to the network if we are powering up after the first initialization pass.
-    if (!firstInitialization) {
+    if (!firstInitialization && autoConnect) {
         (void)connect();
     }
     FUNCTION_END;
@@ -718,6 +746,10 @@ void Loom_LTE::power_down() {
         LOG(F("Requesting LTE modem power-off; the modem will close its data session."));
         const uint32_t poweroffStarted = millis();
         const bool poweroffAcknowledged = modem->poweroffChecked();
+        if (!poweroffAcknowledged && isSim7090()) {
+            WARNING(F("SIM7090 shutdown was not acknowledged; retaining uncertain power state."));
+            return;
+        }
         if (!poweroffAcknowledged) {
             // Some SARA firmware removes UART power before its final OK reaches the host. A
             // short AT probe distinguishes that valid shutdown from a modem that is still on.
@@ -872,7 +904,7 @@ void Loom_LTE::logNetworkDiagnostics() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LTE::tryConnectDataSession(uint8_t attempt, uint8_t maxAttempts) {
+bool Loom_LTE::tryConnectDataSession(uint8_t attempt, uint8_t maxAttempts, uint32_t networkTimeoutMs) {
     modem->sendAT(F("+CFUN=1"));
     modem->waitResponse(10000L);
 
@@ -881,7 +913,7 @@ bool Loom_LTE::tryConnectDataSession(uint8_t attempt, uint8_t maxAttempts) {
     modem->waitResponse(10000L);
 
     LOG(F("Waiting for network..."));
-    if (!modem->waitForNetwork(600000L)) {
+    if (!modem->waitForNetwork(networkTimeoutMs)) {
         WARNING(F("No response from network."));
         WARNING(F("INFO: the modem did not finish cellular registration in time. This is "
                   "usually SIM, antenna, carrier coverage, band support, or power stability."));
@@ -898,10 +930,10 @@ bool Loom_LTE::tryConnectDataSession(uint8_t attempt, uint8_t maxAttempts) {
 
     LOG(F("Connected to network!"));
     LOGF("Attempting to connect to LTE Network: %s", apnName);
-    if (!isSaraR5()) {
+    if (modemType == LTE_MODEM::SARA_R4) {
         modem->gprsDisconnect();
         delay(500);
-    } // R5 keeps cellular registration; its adapter configures the internal profile.
+    } // R5 owns its profile; SIM7090's TinyGSM driver performs its own detach/setup.
     if (modem->gprsConnect(apnName, apnUsername, apnPassword)) {
         LOG(F("Successfully Connected!"));
         delay(6000);
@@ -940,12 +972,12 @@ bool Loom_LTE::prepareConnection() {
 // Register on the cellular network and activate the APN/PDP data session.
 // This stage is only entered after boot has already proven AT/TinyGSM readiness.
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LTE::connect() {
+bool Loom_LTE::connect(uint32_t networkTimeoutMs, uint8_t maxAttempts) {
     // Connection is intentionally retried independently from boot. A clean AT
     // boot can still fail later because of SIM, antenna, APN, carrier account,
     // tower coverage, or marginal power during transmit bursts.
     FUNCTION_START(this);
-    constexpr uint8_t maxAttempts = 5;
+    if (maxAttempts == 0) return false;
 
     if (apnName[0] == '\0') {
         WARNING(F("INFO: APN is empty. The modem may register, but the data session will probably "
@@ -967,10 +999,10 @@ bool Loom_LTE::connect() {
 
     applyR5NetworkHints();
 
-    for (uint8_t attempt = 1; attempt <= maxAttempts; attempt++) {
+    for (uint16_t attempt = 1; attempt <= maxAttempts; attempt++) {
         LOGF("LTE connect attempt %u / %u", attempt, maxAttempts);
 
-        if (tryConnectDataSession(attempt, maxAttempts)) {
+        if (tryConnectDataSession(attempt, maxAttempts, networkTimeoutMs)) {
             sampleSignalQuality();
             return true;
         }

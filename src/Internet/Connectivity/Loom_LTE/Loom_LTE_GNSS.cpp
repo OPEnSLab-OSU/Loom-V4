@@ -14,6 +14,13 @@ bool readGnssReply(loomGnss::Fix *fix = nullptr) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::startGNSS() {
     FUNCTION_START;
+    if (isSim7090()) {
+        if (!powerMayBeOn || !moduleInitialized) return false;
+        LoomWatchdogPause watchdogPause;
+        const bool started = modem->startGNSS();
+        gnssState = started ? GnssState::RUNNING : GnssState::UNKNOWN;
+        return started;
+    }
     if (!isSaraR5() || !powerMayBeOn || !moduleInitialized) {
         WARNING(F("GNSS requires an initialized, powered SARA-R5 with an attached receiver."));
         return false;
@@ -49,6 +56,13 @@ bool Loom_LTE::stopGNSS() {
     if (gnssState == GnssState::OFF) {
         return true;
     }
+    if (isSim7090()) {
+        if (!powerMayBeOn) return false;
+        LoomWatchdogPause watchdogPause;
+        const bool stopped = modem->stopGNSS();
+        gnssState = stopped ? GnssState::OFF : GnssState::UNKNOWN;
+        return stopped;
+    }
     if (!isSaraR5() || !powerMayBeOn) {
         return false;
     }
@@ -68,6 +82,11 @@ bool Loom_LTE::stopGNSS() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::readGNSS(loomGnss::Fix &fix) {
     FUNCTION_START;
+    if (isSim7090()) {
+        if (!powerMayBeOn || !moduleInitialized || gnssState != GnssState::RUNNING) return false;
+        LoomWatchdogPause watchdogPause;
+        return modem->readGNSS(fix);
+    }
     if (!isSaraR5() || !powerMayBeOn || !moduleInitialized || gnssState != GnssState::RUNNING) {
         return false;
     }
