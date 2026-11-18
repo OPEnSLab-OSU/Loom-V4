@@ -28,5 +28,6 @@ private:
     uint8_t directionPin;
     uint16_t rawADC = 0;
     float windDirectionDegrees = -1.0f;
+    const char* windDirectionCardinal;
     bool directionValid = false;
 };
