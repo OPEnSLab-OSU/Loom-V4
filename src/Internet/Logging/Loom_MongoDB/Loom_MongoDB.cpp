@@ -230,6 +230,7 @@ void Loom_MongoDB::loadConfigFromJSON(char* json){
     memset(database_name, '\0', 100);
     memset(username, '\0', 100);
     memset(password, '\0', 100);
+    memset(projectServer, '\0', 100);
     port = 0;
     
     /* We should check if any parameter is null */
