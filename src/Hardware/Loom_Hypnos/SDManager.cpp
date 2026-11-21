@@ -145,25 +145,24 @@ bool SDManager::writeLineToFile(const char *filename, const char *content) {
         return false;
     }
 
-    if (!canWriteDebugLogs()) {
-        // Optional debug output must never stall startup or every instrumented function.
+    if (!sdInitialized || (debugAppendBlocked && strncmp(filename, "/debug/", 7) == 0)) {
         return false;
-    }
-    if (LOOM_COMPILE_SD_WRITE_DEBUG && writeDebug) {
-        Serial.print(F("[SD DEBUG] Opening SD file: "));
-        Serial.println(filename);
     }
 
     // Open the given file for writing
     // Keep this handle local. A batch publisher may concurrently retain SDManager::myFile for
     // streaming; reassigning that shared object here invalidates the reader.
+    if (LOOM_COMPILE_SD_WRITE_DEBUG && writeDebug) {
+        Serial.print(F("[SD DEBUG] Opening SD file: "));
+        Serial.println(filename);
+    }
     File outputFile = sd.open(filename, O_RDWR | O_CREAT | O_APPEND);
+    if (LOOM_COMPILE_SD_WRITE_DEBUG && writeDebug) {
+        Serial.println(outputFile ? F("[SD DEBUG] Writing the record") : F("[SD DEBUG] Could not open the file"));
+    }
 
     // Check if the file was actually opened, if so write the content to the file
     if (outputFile) {
-        if (LOOM_COMPILE_SD_WRITE_DEBUG && writeDebug) {
-            Serial.println(F("[SD DEBUG] Writing the record"));
-        }
 
         const uint32_t start = outputFile.fileSize();
         outputFile.clearWriteError();
@@ -171,10 +170,11 @@ bool SDManager::writeLineToFile(const char *filename, const char *content) {
         const bool wroteContent = outputFile.print(content) == contentLength;
         const bool wroteNewline = outputFile.println() == 2;
         const bool writeComplete = wroteContent && wroteNewline && !outputFile.getWriteError();
-        return finishDebugWrite(outputFile, start, writeComplete);
-    }
-    if (LOOM_COMPILE_SD_WRITE_DEBUG && writeDebug) {
-        Serial.println(F("[SD DEBUG] Could not open the file"));
+        const bool debugFile = strncmp(filename, "/debug/", 7) == 0;
+        if (debugFile) {
+            return finishDebugWrite(outputFile, start, writeComplete);
+        }
+        return loomSD::finishAppend(outputFile, start, writeComplete).status == SDWriteStatus::Saved;
     }
     lastDebugWriteStatus = SDWriteStatus::Failed;
     printModuleName("Failed to Open File!");
@@ -193,9 +193,6 @@ bool SDManager::finishDebugWrite(File &file, uint32_t start, bool wroteAll) {
         debugAppendBlocked = true;
         // Report directly: sending this through Logger would attempt another SD write.
         Serial.println(F("[SD DEBUG] The append result is uncertain; SD debug logging is paused until reboot."));
-    }
-    if (LOOM_COMPILE_SD_WRITE_DEBUG && writeDebug) {
-        Serial.println(complete ? F("[SD DEBUG] File saved successfully") : F("[SD DEBUG] File save failed"));
     }
     if (!complete) {
         printModuleName("Failed while writing or closing debug file!");
@@ -236,16 +233,13 @@ bool SDManager::writeJsonToFile(const char *filename, const DynamicJsonDocument 
         Serial.println(filename);
     }
     File outputFile = sd.open(filename, O_RDWR | O_CREAT | O_APPEND);
+    if (LOOM_COMPILE_SD_WRITE_DEBUG && writeDebug) {
+        Serial.println(outputFile ? F("[SD DEBUG] Writing the record") : F("[SD DEBUG] Could not open the file"));
+    }
     if (!outputFile) {
-        if (LOOM_COMPILE_SD_WRITE_DEBUG && writeDebug) {
-            Serial.println(F("[SD DEBUG] Could not open the file"));
-        }
         lastDebugWriteStatus = SDWriteStatus::Failed;
         printModuleName("Failed to open JSON debug file!");
         return false;
-    }
-    if (LOOM_COMPILE_SD_WRITE_DEBUG && writeDebug) {
-        Serial.println(F("[SD DEBUG] Writing the JSON record"));
     }
     const uint32_t start = outputFile.fileSize();
     outputFile.clearWriteError();
@@ -642,13 +636,6 @@ bool SDManager::begin() {
         printModuleName("Failed to Initialize SD Card! SD Card functionality will be disabled, is "
                         "there an SD card inserted into the device?");
         return false;
-    } else {
-        // Make a debug folder if it doesn't already exist
-        if (!sd.exists("debug")) {
-            sd.mkdir("debug");
-        }
-
-        printModuleName("Successfully initialized SD Card!");
     }
 
     // Choose a numbered log file only once per MCU boot, or after setLogName()
@@ -658,9 +645,7 @@ bool SDManager::begin() {
         // Try to open the root of the file system so we can get the files on the device
         if (!root.open("/", O_RDONLY)) {
             sdInitialized = false;
-            printModuleName("ERROR");
             ERROR(F("Failed to open root file system on SD Card!"));
-            printModuleName("After ERROR");
             return false;
         }
         if (!updateCurrentFileName()) {
@@ -690,6 +675,37 @@ bool SDManager::begin() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool SDManager::getDebugFilePath(char *destination, size_t capacity, loomDebugFiles::Kind kind) {
+    if (!canWriteDebugLogs()) {
+        return false;
+    }
+    if (debugSessionNumber < 0) {
+        if (!sd.exists("/debug") && !sd.mkdir("/debug")) {
+            return false;
+        }
+        File directory = sd.open("/debug", O_RDONLY);
+        if (!directory || !directory.isDir()) {
+            return false;
+        }
+        int next = 0;
+        File entry;
+        char name[DEBUG_FILENAME_SIZE];
+        while (entry.openNext(&directory)) {
+            const bool named = entry.getName(name, sizeof(name));
+            entry.close();
+            if (!named || !loomSD::advanceDebugNumber(name, next, getDebugLogName())) {
+                return false;
+            }
+        }
+        if (directory.getError() || entry.getError() || !directory.close()) {
+            return false;
+        }
+        debugSessionNumber = next;
+    }
+    return loomDebugFiles::buildPath(destination, capacity, getDebugLogName(), kind,
+                                    debugSessionNumber);
+}
+
 bool SDManager::updateCurrentFileName() {
     char f_name[DEBUG_FILENAME_SIZE];
     const char *base = overrideFileName[0] ? overrideFileName : device_name;
@@ -711,30 +727,6 @@ bool SDManager::updateCurrentFileName() {
     if (scanFailed) {
         printModuleName("SD directory read failed; log filename was not selected!");
         return false;
-    }
-
-    // Diagnostics may outlive a deleted CSV, and old firmware used independent trace numbers.
-    // Reserve one number above every existing session artifact; never merge two captures.
-    if (sd.exists("/debug")) {
-        if (!root.open("/debug", O_RDONLY)) {
-            printModuleName("Cannot scan debug directory to select a shared session number!");
-            return false;
-        }
-        while (scanningFile.openNext(&root)) {
-            const bool named = scanningFile.getName(f_name, sizeof(f_name));
-            scanningFile.close();
-            if (!named || !loomSD::advanceDebugNumber(f_name, batchSessionNumber, getDebugLogName())) {
-                root.close();
-                printModuleName("Cannot safely select a shared debug/trace session number!");
-                return false;
-            }
-        }
-        const bool debugScanFailed = root.getError() != 0 || scanningFile.getError() != 0;
-        root.close();
-        if (debugScanFailed) {
-            printModuleName("Debug directory read failed; log filename was not selected!");
-            return false;
-        }
     }
 
     buildNumberedName(fileName, sizeof(fileName), base, batchSessionNumber, ".csv");

@@ -11,7 +11,7 @@
 
 Manager manager("Device", 1);
 
-// Create a new Hypnos object setting the version to determine the SD Chip select pin, and starting without the SD card functionality
+// Select the Hypnos version for its SD chip select pin.
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST);
 Loom_ADS1232 ads(manager);
 
@@ -22,8 +22,8 @@ void isrTrigger(){
 
 void setup(){
 
-  // Start the serial interface
-  manager.beginSerial();
+  manager.beginSerial(false);
+  hypnos.setCompileTime(__DATE__, __TIME__);
 
   // Enable the hypnos rails
   hypnos.enable();
@@ -37,22 +37,18 @@ void setup(){
 
 void loop(){
 
-  // Set the RTC interrupt alarm to wake the device in 30 seconds, at the top to schedule next interrupt asap
-  hypnos.setInterruptDuration(TimeSpan(0, 0, 0, 30));
+  if (!hypnos.setSampleInterval(TimeSpan(30))) {
+    manager.pause(30000);
+    hypnos.enable();
+    return;
+  }
 
   // Measure and package the data from the sensors
   manager.measure();
   manager.package();
 
-  // Print the current JSON packet
-  manager.display_data();
-
-  // Log the data to the SD card
-  hypnos.logToSD();
-
-  // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
-  hypnos.reattachRTCInterrupt();
-
-  // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
-  hypnos.sleep(false);
+  if (!hypnos.logToSD()) {
+    Serial.println(F("Could not confirm the Evaporometer sample was saved to SD."));
+  }
+  hypnos.sleep();
 }

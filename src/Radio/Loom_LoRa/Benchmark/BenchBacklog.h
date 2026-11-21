@@ -1,6 +1,11 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <SdFat.h>
+LOOM_EXTERNAL_INCLUDE_END
+#include <Utilities/Loom_LoRaJournalFormat.h>
 #include <Utilities/Loom_SDUtils.h>
 
 namespace bench {
@@ -8,7 +13,8 @@ namespace backlog {
 
 constexpr uint8_t BatchKind = 0x45, ReceiptKind = 0x46;
 constexpr uint8_t BatchHeader = 7, ReceiptBytes = 10, BatchLimit = 4;
-constexpr uint8_t RecordBytes = 4 + CompactBytes, JournalBytes = RecordBytes + 4, CursorBytes = 8;
+constexpr uint8_t RecordBytes = 4 + CompactBytes, JournalBytes = RecordBytes + 4;
+constexpr uint8_t CursorBytes = loomLoRa::journal::CursorSize;
 constexpr uint8_t MaxBatchBytes = BatchHeader + BatchLimit * RecordBytes;
 constexpr uint32_t EarliestUtc = 946684800UL;
 constexpr uint16_t ReceiptWaitMs = 1500;
@@ -30,35 +36,17 @@ void fileName(char (&name)[13], char kind, uint8_t hub, uint8_t node) {
              unsigned(trialId));
 }
 
-uint32_t checksum(const uint8_t *data, size_t size) {
-    uint32_t crc = UINT32_MAX;
-    while (size--) {
-        crc ^= *data++;
-        for (uint8_t bit = 0; bit < 8; ++bit) {
-            crc = (crc >> 1) ^ ((crc & 1) ? 0xedb88320UL : 0);
-        }
-    }
-    return ~crc;
-}
+using loomLoRa::journal::checksum;
+using loomLoRa::journal::validEntry;
 
 bool readEntry(File &file, uint8_t *entry, uint8_t bytes) {
     return file.read(entry, bytes) == bytes && !file.getError();
 }
 
-bool validEntry(const uint8_t *entry, uint8_t bytes) {
-    return checksum(entry, bytes - 4) == read32(entry + bytes - 4);
-}
-
 // Repair a short trailing write. A full-sized record with a bad checksum is left for inspection.
 bool recoverTail(const char *name, uint8_t *tail, uint8_t bytes, uint32_t &size) {
     File file = card.open(name, O_RDWR | O_CREAT);
-    if (!file) return false;
-    const uint32_t original = file.fileSize();
-    size = original - original % bytes;
-    bool ok = !size || (file.seekSet(size - bytes) && readEntry(file, tail, bytes) &&
-                       validEntry(tail, bytes));
-    if (ok && size != original) ok = file.truncate(size) && file.sync();
-    return loomSD::closeAfterWrite(file, ok);
+    return loomSD::recoverFixedRecords(file, tail, bytes, size, validEntry);
 }
 
 bool appendEntries(const char *name, const uint8_t *entries, size_t bytes) {
@@ -106,10 +94,8 @@ bool begin(uint8_t nodes, bool useSD, uint16_t ackMs, uint8_t power, uint32_t ep
     if (!recoverTail(queueName, tail, JournalBytes, queueEnd)) return false;
     if (trialId && queueEnd) return false;
     if (queueEnd) newestQueued = read32(tail);
-    uint32_t cursorSize;
-    if (!recoverTail(cursorName, tail, CursorBytes, cursorSize)) return false;
-    if (cursorSize) cursor = read32(tail);
-    return cursor <= queueEnd && cursor % JournalBytes == 0;
+    File checkpoint = card.open(cursorName, O_RDWR | O_CREAT);
+    return loomLoRa::journal::recoverCursor(checkpoint, queueEnd, JournalBytes, cursor);
 }
 
 bool prepareReading(uint8_t *record, uint32_t stamp) {
@@ -122,8 +108,9 @@ bool prepareReading(uint8_t *record, uint32_t stamp) {
 }
 
 bool queueReading(uint32_t stamp) {
+    if (stamp == newestQueued) return stamp != 0;
     uint8_t entry[JournalBytes];
-    if (stamp <= newestQueued || !prepareReading(entry, stamp)) return false;
+    if (stamp < newestQueued || !prepareReading(entry, stamp)) return false;
     write32(entry + RecordBytes, checksum(entry, RecordBytes));
     if (!appendEntries(queueName, entry, sizeof(entry))) return false;
     queueEnd += sizeof(entry);
@@ -167,44 +154,60 @@ void sendQueued(uint32_t groupStart, uint32_t slot, uint32_t now, uint32_t slotS
     const uint32_t endAfter = (slot - now + slotSeconds - edgeSeconds) * 1000UL;
     while (millis() - preparedAt < sendAfter) delay(1);
     const uint8_t length = BatchHeader + records * RecordBytes;
-    if (millis() - preparedAt + linkFrameMs(length, link) + ReceiptWaitMs > endAfter) return;
+    const uint32_t elapsed = millis() - preparedAt;
+    if (elapsed + linkFrameMs(length, link) + ReceiptWaitMs > endAfter) return;
 
     const uint8_t destination = hubAddress(node::preferredHub);
+    const uint32_t lastStamp = read32(frame + BatchHeader + (records - 1) * RecordBytes);
+    uint8_t receipt[ReceiptBytes] = {NetworkId, ReceiptKind};
+    write32(receipt + 2, groupStart);
+    write32(receipt + 6, lastStamp);
+
     reliableRadio.setThisAddress(node::nodeId);
     reliableRadio.setRetries(link.retries);
     reliableRadio.setTimeout(link.ackMs);
     radio.cadMs = link.cadMs;
-    const uint32_t before = reliableRadio.retransmissions();
-    // A missing link ACK does not rule out a durable receipt. Listen in either case.
-    reliableRadio.sendtoWait(frame, length, destination);
+    const uint32_t before = reliableRadio.storageRetransmissions();
+    const uint16_t sendBudget = link.cadMs + airtimeMs(length) + FrameMarginMs;
+    const bool confirmedOnHub = reliableRadio.sendWithReceipt(
+        frame, length, destination, receipt, sizeof(receipt), ReceiptWaitMs, endAfter - elapsed,
+        sendBudget);
     radio.cadMs = 0;
-    const uint32_t retries = reliableRadio.retransmissions() - before;
+    const uint32_t retries = reliableRadio.storageRetransmissions() - before;
     ++datagramsAttempted;
     if (retries) ++datagramsRetried;
     radioRetries += retries;
-    const uint32_t waiting = millis();
-    const uint32_t lastStamp = read32(frame + BatchHeader + (records - 1) * RecordBytes);
-    while (millis() - waiting < ReceiptWaitMs && millis() - preparedAt < endAfter) {
-        uint8_t reply[ReceiptBytes + 1];
-        uint8_t size = sizeof(reply);
-        if (!radio.recv(reply, &size) || size != ReceiptBytes || reply[0] != NetworkId ||
-            reply[1] != ReceiptKind || radio.headerFrom() != destination ||
-            radio.headerTo() != node::nodeId || read32(reply + 2) != groupStart ||
-            read32(reply + 6) != lastStamp) continue;
-        if (durable) {
-            const uint32_t next = cursor + records * JournalBytes;
-            uint8_t entry[CursorBytes];
-            write32(entry, next);
-            write32(entry + 4, checksum(entry, 4));
-            if (!appendEntries(cursorName, entry, sizeof(entry))) {
-                fault = true;
-                return;
-            }
-            cursor = next;
+    if (!confirmedOnHub) return;
+    if (durable) {
+        const uint32_t next = cursor + records * JournalBytes;
+        uint8_t entry[CursorBytes];
+        write32(entry, next);
+        write32(entry + 4, checksum(entry, 4));
+        if (!appendEntries(cursorName, entry, sizeof(entry))) {
+            fault = true;
+            return;
         }
-        confirmed += records;
-        return;
+        cursor = next;
     }
+    confirmed += records;
+}
+
+bool matchesSavedReading(uint8_t node, const uint8_t *entry) {
+    using namespace loomLoRa::journal;
+    char name[13];
+    fileName(name, 'R', hub::hubId, node);
+    File file = card.open(name);
+    if (!file) {
+        fault = true;
+        return false;
+    }
+    uint8_t stored[JournalBytes];
+    const auto result = findStoredReading(file, file.fileSize(), JournalBytes, entry, stored);
+    if (!file.close() || result == StoredReading::Error) {
+        fault = true;
+        return false;
+    }
+    return result == StoredReading::Match;
 }
 
 bool saveBatch(const uint8_t *body, uint8_t records, uint8_t node, uint32_t groupStart,
@@ -218,10 +221,14 @@ bool saveBatch(const uint8_t *body, uint8_t records, uint8_t node, uint32_t grou
         if (stamp <= previous || stamp > groupStart || record[4] != CompactVersion ||
             !unpackCompact(record + 4, CompactBytes, node, SensorSample, hub::manager)) return false;
         previous = stamp;
-        if (stamp <= newestSaved[node - 1]) continue;
-        uint8_t *entry = journal + newRecords++ * JournalBytes;
+        uint8_t *entry = journal + newRecords * JournalBytes;
         memcpy(entry, record, RecordBytes);
         write32(entry + RecordBytes, checksum(entry, RecordBytes));
+        if (stamp <= newestSaved[node - 1]) {
+            if (durable && !matchesSavedReading(node, entry)) return false;
+            continue;
+        }
+        ++newRecords;
         if (stamp >= trialStart) {
             ++trialRecords;
             if (stamp < groupStart) ++olderRecords;
@@ -249,14 +256,17 @@ bool saveBatch(const uint8_t *body, uint8_t records, uint8_t node, uint32_t grou
 void receiveQueued(uint32_t groupStart, uint32_t windowStart, uint32_t slotMs, uint8_t nodes) {
     while (millis() - windowStart < nodes * slotMs) {
         uint8_t frame[RH_RF95_MAX_MESSAGE_LEN];
-        uint8_t length = sizeof(frame), node, destination;
-        if (!reliableRadio.recvfromAck(frame, &length, &node, &destination)) continue;
+        uint8_t length = sizeof(frame), node, id;
+        if (!reliableRadio.receiveForStorage(frame, length, node, id)) continue;
         const uint32_t elapsed = millis() - windowStart;
-        if (!node || node > nodes || destination != hubAddress(hub::hubId) ||
+        if (!node || node > nodes ||
             elapsed / slotMs != node - 1 || length < BatchHeader ||
             frame[0] != NetworkId || frame[1] != BatchKind || read32(frame + 2) != groupStart) continue;
         const uint8_t records = frame[6];
         if (!records || records > BatchLimit || length != BatchHeader + records * RecordBytes) continue;
+        // Give every valid trial/slot retry a link ACK. saveBatch deduplicates by the
+        // persisted timestamp and returns the same storage receipt after a lost ACK.
+        reliableRadio.acknowledgeFrame(node, id);
         uint32_t lastStamp;
         if (!saveBatch(frame + BatchHeader, records, node, groupStart, lastStamp)) {
             if (fault) return;

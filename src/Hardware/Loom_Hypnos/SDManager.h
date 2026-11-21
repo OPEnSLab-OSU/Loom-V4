@@ -98,13 +98,13 @@ class SDManager : public Module {
     };
 
     /**
-     * Open an independent read handle.
+     * Open an independent file handle. The default is read-only.
      *
      * Callers that retain a file while other Loom code may log to SD must use an independent
      * handle. The ordinary logger opens its own debug file and must not replace a retained batch
      * reader through SDManager::myFile.
      */
-    File openFile(const char *fileName) { return sd.open(fileName); };
+    File openFile(const char *fileName, oflag_t flags = O_RDONLY) { return sd.open(fileName, flags); }
 
     /**
      * Write a single line to a file
@@ -117,8 +117,7 @@ class SDManager : public Module {
      * The callback borrows the handle for this call only; it must not reenter SD or Logger. */
     bool writeDebugRecords(const char *filename, bool (*writer)(Print &, void *), void *context);
 
-    /** Append comma-prefixed Chrome events before a checked JSON trailer. Restores the
-     * previous trailer on failure; the independent NDJSON recording remains recoverable. */
+    /** Append Chrome events, restoring the previous JSON trailer if the append fails. */
     bool appendDebugTrace(const char *filename, bool (*writer)(Print &, void *), void *context);
 
     /** Append pretty JSON to the debug log without a document-sized RAM buffer. */
@@ -136,8 +135,7 @@ class SDManager : public Module {
      */
     bool prepareForReset(const char *reason);
 
-    /** Enable direct-Serial phase markers around single-line SD writes for beta diagnosis. */
-    void setWriteDebug(bool enabled = true) { writeDebug = LOOM_COMPILE_SD_WRITE_DEBUG && enabled; };
+    void setWriteDebug(bool enabled = true) { writeDebug = LOOM_COMPILE_SD_WRITE_DEBUG && enabled; }
 
     /**
      * Get the default SD card file name
@@ -209,7 +207,7 @@ class SDManager : public Module {
     /** Current CSV number. Schema changes may rotate CSV while its upload batch stays put. */
     int getCurrentFileNumber() { return csvFileNumber; };
     // Diagnostic logs stay in this boot/session even if a genuine schema change rotates CSV.
-    int getDebugFileNumber() const { return batchSessionNumber; }
+    int getDebugFileNumber() const { return debugSessionNumber; }
 
     static constexpr size_t DEBUG_FILENAME_SIZE = loomDebugFiles::PATH_SIZE;
     /** Optional prefix for all diagnostic files; defaults to the Manager's device name.
@@ -218,15 +216,12 @@ class SDManager : public Module {
     bool setDebugLogName(const char *name) {
         char requested[loomDebugFiles::NAME_SIZE];
         if (!loomDebugFiles::copyName(requested, sizeof(requested), name)) return false;
-        if (logFileSelected && strcmp(debugLogName, requested) != 0) return false;
+        if (debugSessionNumber >= 0 && strcmp(debugLogName, requested) != 0) return false;
         memcpy(debugLogName, requested, strlen(requested) + 1);
         return true;
     }
     const char *getDebugLogName() const { return debugLogName[0] ? debugLogName : device_name; }
-    bool getDebugFilePath(char *destination, size_t capacity, loomDebugFiles::Kind kind) const {
-        return loomDebugFiles::buildPath(destination, capacity, getDebugLogName(), kind,
-                                        getDebugFileNumber());
-    }
+    bool getDebugFilePath(char *destination, size_t capacity, loomDebugFiles::Kind kind);
 
   private:
     static constexpr size_t LOG_BASENAME_SIZE = Manager::DEVICE_NAME_SIZE;
@@ -270,7 +265,8 @@ class SDManager : public Module {
     bool sdInitialized = false;      // Whether the card is reachable for the current operation
     bool automaticFileTimestamps = false;
     bool logFileSelected = false;    // Whether this MCU boot session already chose its CSV filename
-    bool writeDebug = false;         // Direct-Serial beta trace; never written through Logger
+    int debugSessionNumber = -1;
+    bool writeDebug = false;
     bool debugAppendBlocked = false; // An uncertain debug append needs inspection after this boot.
     SDWriteStatus lastDebugWriteStatus = SDWriteStatus::NotAttempted;
     SDWriteStatus bootResetStatus = SDWriteStatus::NotAttempted; // One record per boot, not wake

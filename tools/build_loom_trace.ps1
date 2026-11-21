@@ -19,7 +19,7 @@ if ($Upload -and [string]::IsNullOrWhiteSpace($Port)) {
 }
 $loomRoot = Split-Path -Parent $PSScriptRoot
 if (-not $Sketch) {
-    $Sketch = Join-Path $loomRoot 'examples/Lab Examples/Wisp/WispV2_Deploy_2026_debug'
+    $Sketch = Join-Path $loomRoot 'tools/trace/sketches/Wisp/WispV2_Deploy_2026_debug'
 }
 $source = (Resolve-Path -LiteralPath $Sketch).Path
 $main = Join-Path $source ((Split-Path -Leaf $source) + '.ino')

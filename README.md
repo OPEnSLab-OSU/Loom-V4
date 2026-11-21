@@ -11,7 +11,7 @@
   ·
   <a href="https://github.com/OPEnSLab-OSU/Loom-V4/wiki">Project Wiki</a>
   ·
-  <a href="#">Quick Start</a>
+  <a href="#run-an-example">Quick Start</a>
 </p>
 
 ## Table of Contents
@@ -25,7 +25,6 @@
     - [Getting Started Resources](#getting-started-resources)
 - [Using Examples](#run-an-example)
 - [Troubleshooting](#troubleshooting)
-- [Best Practices](#best-practices)
 - [Opening Issues](#issues)
 - [Feather Idiosyncrasies](#weird-feather-m0-issues)
 - [Supported Projects](#opens-supported-projects)
@@ -87,18 +86,19 @@ You will also need to install Developet Tools, which requires Admin access.
   
 ### Compile
 
-- Start by compiling our Basic Loom examples (File > Examples > Loom > Sensors > **Analog**) to ensure that it compiles. If not, review the previous steps.
-  - Once the Basic example is open, click the checkbox icon "Verify" in the top. (This may take several minutes to compile, this is to be expected) 
-  - You should get white-color font text readout mentioning a successful compilation and x% memory used.
-![Successful compilation message](https://i.ibb.co/kS8jFbj/Arduino.png)
-  - *Note: may disregard orange-color warning text regarding nRF*
+Open the Analog example under **File > Examples > Loom > Sensors > Analog** and click **Verify**.
+The Arduino IDE reports flash usage when the build succeeds. [Analog sketch](examples/Sensors/Analog/Analog/Analog.ino)
+
+For scheduled LoRa, use the same sketch on the hub and nodes. Set a different address on
+each board, insert an SD card, and set each Hypnos RTC to the current UTC time. The sketch
+lists the hub and node addresses at the top. [LoRa SD Journal](examples/Radio/LoRa_SD_Journal/LoRa_SD_Journal.ino)
+· [Set the Hypnos RTC](examples/Hypnos/Hypnos_RTC_CustomTime/Hypnos_RTC_CustomTime.ino)
 
 ## Troubleshooting
-If you get permissions error accessing the library folder, and are using a Mac, see note in the installation section above.
-If you are updating from an old version of Loom, you may need to do a "clean install" by removing the Arduino15 folder, and starting the process from the beginning to install again.
 
-## Best Practices
-Will Fill in Please.
+For opt-in call timing, heap capture, and offline inspection, see the [trace guide](docs/TRACE_DEBUGGING.md).
+If you get permissions error accessing the library folder, and are using a Mac, see note in the installation section above.
+Use Boards Manager to update or reinstall the Loom SAMD board profile.
 
 ## Feature Studio
 

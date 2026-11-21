@@ -54,8 +54,8 @@ void clearPendingExternalInterrupt(int interruptPin) {
     EExt_Interrupts externalInterrupt = digitalPinToInterrupt(interruptPin);
 #endif
     if (externalInterrupt != NOT_AN_INTERRUPT && externalInterrupt != EXTERNAL_INT_NMI) {
+        // EIC_IRQn is shared. Leave callbacks for any other asserted pin pending.
         EIC->INTFLAG.reg = (1ul << externalInterrupt);
-        NVIC_ClearPendingIRQ(EIC_IRQn);
     }
 #else
     (void)interruptPin;
@@ -1247,7 +1247,8 @@ bool Loom_Hypnos::sleepImpl(bool waitForSerial, bool wakeModules) {
     bool hasAlarmTriggered = false;
 
     // Try to power down the active modules
-    if (shouldPowerUp) {
+    if (!secondaryWake) {
+        shouldPowerUp = true;
         manInst->power_down();
 
         // Compare against the exact DateTime captured when the alarm was set.
@@ -1275,7 +1276,7 @@ bool Loom_Hypnos::sleepImpl(bool waitForSerial, bool wakeModules) {
         // the established resample behavior below.
         WARNING(F("Sample interval overrun; skipping missed slots and keeping the UTC phase."));
         if (!setSampleInterval(TimeSpan(static_cast<int32_t>(sampleIntervalSeconds)))) {
-            if (shouldPowerUp && wakeModules) {
+            if (wakeModules) {
                 restoreModulesAfterSleep(wakeModules);
             }
             return false;
@@ -1286,7 +1287,7 @@ bool Loom_Hypnos::sleepImpl(bool waitForSerial, bool wakeModules) {
     // Prepare the wake source before entering standby. If the RTC alarm becomes
     // active during that preparation, handle it through the normal overrun path
     // instead of treating the asserted line as an attachment failure.
-    if (!hasAlarmTriggered) {
+    if (!secondaryWake && !hasAlarmTriggered) {
         if (!pre_sleep(!wakeModules)) {
             DateTime now;
             const bool missedRtcAlarm = rtcWakeSource && tryGetCurrentTime(now) && alarmScheduled &&
@@ -1297,7 +1298,7 @@ bool Loom_Hypnos::sleepImpl(bool waitForSerial, bool wakeModules) {
                 if (!setSampleInterval(TimeSpan(static_cast<int32_t>(sampleIntervalSeconds))) ||
                     !pre_sleep(!wakeModules)) {
                     ERROR(F("Sleep preparation exceeded the sample interval; staying awake."));
-                    if (shouldPowerUp && wakeModules) {
+                    if (wakeModules) {
                         restoreModulesAfterSleep(wakeModules);
                     }
                     return false;
@@ -1306,7 +1307,7 @@ bool Loom_Hypnos::sleepImpl(bool waitForSerial, bool wakeModules) {
                 hasAlarmTriggered = true;
             } else {
                 ERROR(F("Sleep cancelled: wake-source preparation failed and the RTC alarm was not already due. The device stayed awake."));
-                if (shouldPowerUp && wakeModules) {
+                if (wakeModules) {
                     restoreModulesAfterSleep(wakeModules);
                 }
                 return false;
@@ -1315,23 +1316,60 @@ bool Loom_Hypnos::sleepImpl(bool waitForSerial, bool wakeModules) {
     }
 
     if (!hasAlarmTriggered) {
-        shouldPowerUp = true;
+        if (secondaryWake) {
+            shouldPowerUp = true;
+        }
         {
             // SAMD WDT keeps running in standby. Suspend even a sketch-enabled watchdog, then
             // restore its exact configuration before wake I/O. A configured wake guard below
             // deliberately takes precedence over that restored timeout.
             LoomWatchdogPause watchdogPause;
             do {
-                if (!rtcWakeSource || digitalRead(sleepInterruptPin)!=LOW) LowPower.sleep();
-            // USB/SysTick or another enabled interrupt can return WFI early.
-            // The DS3231 output stays LOW until post_sleep acknowledges it;
-            // do not restore rails or consume a future alarm on an unrelated wake.
-            } while (rtcWakeSource && digitalRead(sleepInterruptPin)!=LOW);
+#if defined(ARDUINO_ARCH_SAMD) && !defined(__SAMD51__)
+                const uint32_t priorMask = __get_PRIMASK();
+                // A pending IRQ releases WFI. Delay dispatch until after WFI so a
+                // secondary edge cannot be handled between the check and standby.
+                __disable_irq();
+#endif
+                if ((!rtcWakeSource || digitalRead(sleepInterruptPin) != LOW) &&
+                    shouldPowerUp && !externalWakeRequested) {
+#if defined(ARDUINO_ARCH_SAMD) && !defined(__SAMD51__)
+                    // pre_sleep() already detached USB. ArduinoLowPower's Serial check
+                    // can delay, so enter standby directly inside this masked section.
+                    const uint32_t tickControl = SysTick->CTRL;
+                    const uint32_t sleepControl = SCB->SCR;
+                    SysTick->CTRL = tickControl & ~SysTick_CTRL_TICKINT_Msk;
+                    SCB->SCR = sleepControl | SCB_SCR_SLEEPDEEP_Msk;
+                    __DSB();
+                    __WFI();
+                    SCB->SCR = sleepControl;
+                    SysTick->CTRL = tickControl;
+#else
+                    LowPower.sleep();
+#endif
+                }
+#if defined(ARDUINO_ARCH_SAMD) && !defined(__SAMD51__)
+                __set_PRIMASK(priorMask);
+#endif
+                // Only a registered secondary event or the RTC may end RTC standby.
+            } while (rtcWakeSource && digitalRead(sleepInterruptPin) != LOW &&
+                     shouldPowerUp && !externalWakeRequested);
         }
-        enableWakeWatchdog();
+        if (rtcWakeSource) {
+            if (!externalWakeRequested && !shouldPowerUp && digitalRead(sleepInterruptPin) != LOW) {
+                // Tipping-bucket wake. Leave rails, the RTC alarm and the wake watchdog alone.
+                secondaryWake = true;
+                return true;
+            }
+            shouldPowerUp = true; // An asserted RTC wins if both interrupts fired.
+        }
+        secondaryWake = false;
+        externalWakeRequested = false;
     }
     // If it has we want to trigger a resample which requires powering the sensors back up
     else {
+        shouldPowerUp = true;
+        externalWakeRequested = false;
         enableWakeWatchdog();
         WARNING("Alarm triggered during sample, specified sample duration was too short! "
                 "Resampling...");
@@ -1340,7 +1378,7 @@ bool Loom_Hypnos::sleepImpl(bool waitForSerial, bool wakeModules) {
         if (sleepInterruptPin >= 0) {
             clearPendingExternalInterrupt(sleepInterruptPin);
         }
-        if (shouldPowerUp && wakeModules) {
+        if (wakeModules) {
             restoreModulesAfterSleep(wakeModules);
         }
         InterruptRegistration *registered = findInterruptRegistration(sleepInterruptPin);

@@ -167,6 +167,31 @@ template <typename FileType> bool closeAfterWrite(FileType &file, bool wroteAll)
     return wroteAll && closed;
 }
 
+template <typename FileType>
+bool readFixedRecord(FileType &file, uint32_t offset, uint8_t *record, uint8_t size) {
+    return file.seekSet(offset) && file.read(record, size) == size && !file.getError();
+}
+
+// Repair only an incomplete tail. Keep a complete record with a bad checksum intact.
+template <typename FileType, typename Validator>
+bool recoverFixedRecords(FileType &file, uint8_t *tail, uint8_t recordSize, uint32_t &end,
+                         Validator valid) {
+    if (!file) {
+        return false;
+    }
+    if (recordSize == 0) {
+        return closeAfterWrite(file, false);
+    }
+    const uint32_t original = file.fileSize();
+    end = original - original % recordSize;
+    bool ok = end == 0 ||
+              (readFixedRecord(file, end - recordSize, tail, recordSize) && valid(tail, recordSize));
+    if (ok && end != original) {
+        ok = file.truncate(end) && file.sync();
+    }
+    return closeAfterWrite(file, ok);
+}
+
 inline char foldAscii(char value) {
     return value >= 'A' && value <= 'Z' ? value + ('a' - 'A') : value;
 }

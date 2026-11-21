@@ -91,6 +91,6 @@ assert.throws(() => main(['--sketch', source], {run(exe, args) {
 }}), /No firmware was uploaded/);
 for (const file of ['build-upload.bat', 'build-upload.sh', 'loom-build.cjs']) {
   assert.equal(fs.readFileSync(path.join(__dirname, '../tools/sketch-launcher', file), 'utf8'),
-    fs.readFileSync(path.join(__dirname, '../examples/Lab Examples/Wisp/WispV2_Deploy_2026_debug', file), 'utf8'), `Source sketch launcher drifted: ${file}`);
+    fs.readFileSync(path.join(__dirname, '../tools/trace/sketches/Wisp/WispV2_Deploy_2026_debug', file), 'utf8'), `Source sketch launcher drifted: ${file}`);
 }
 console.log(`Launcher tests passed: ${count + 2} build/upload scenarios plus argument, port, dependency and bundle checks. Artifacts: ${temp}`);

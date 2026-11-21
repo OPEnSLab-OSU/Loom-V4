@@ -3,34 +3,24 @@
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Hardware/Loom_BatchSD/Loom_BatchSD.h>
 
+#define LOOM_MUX_COMPILED_ADDRESSES 0x74, 0x15
 #include <Hardware/Loom_Multiplexer/Loom_Multiplexer.h>
 
-#include <Sensors/I2C/Loom_DFMultiGasSensor/Loom_DFMultiGasSensor.h>
 #include <Sensors/I2C/Loom_SEN55/Loom_SEN55.h>
 #include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h>
-#include <Sensors/I2C/Loom_T6793/Loom_T6793.h>
 
-#include <Adafruit_SleepyDog.h>
 #include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
 #include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h>
 #include <Logger.h>
+#include <Utilities/Loom_Watchdog.h>
 
 constexpr int ACTIVE_WATCHDOG_MS = 16000;
-
-void enableActiveWatchdog() {
-    Watchdog.enable(ACTIVE_WATCHDOG_MS);
-    Watchdog.reset();
-}
 
 Manager manager("Wisp_brd_mux_", 1); // Set a unique deployment identifier for each stack.
 
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, true);
 
-constexpr uint8_t DFROBOT_ADDR = 0x74;
-constexpr uint8_t T6793_ADDR = 0x15;
-
-// Reads the battery voltage
-Loom_Multiplexer mux(manager, {DFROBOT_ADDR, T6793_ADDR});
+Loom_Multiplexer mux(manager, {LOOM_MUX_COMPILED_ADDRESSES});
 
 // Main air-quality, temperature, humidity, and CO2 sensors.
 Loom_SEN55 SEN55(manager);
@@ -45,11 +35,10 @@ Loom_BatchSD batchSD(hypnos, 72);
 void isrTrigger() { hypnos.wakeup(); }
 
 void setup() {
-    // Keep warnings/errors available; omit routine debug logs and traces.
+    // Keep warnings/errors available; omit routine debug logs.
     Logger::getInstance()->setDebugOutput(false);
     hypnos.setWakeWatchdogTimeout(ACTIVE_WATCHDOG_MS);
 
-    // Wait 20 seconds for the serial console to open
     manager.beginSerial(false);
 
     // Set the LTE board to only powerup when a batch is ready to be sent
@@ -72,6 +61,7 @@ void setup() {
 
     // Read the MQTT creds file to supply the device with MQTT credentials
     mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
+    mqtt.setClientID(manager.get_serial_num()); // Unique broker client for this Feather.
 
     // Initialize all in-use modules
     manager.initialize();
@@ -80,67 +70,41 @@ void setup() {
     hypnos.registerInterrupt(isrTrigger);
 
     hypnos.networkTimeUpdate();
+    Watchdog.enable(ACTIVE_WATCHDOG_MS);
 }
 
 void loop() {
-
-    enableActiveWatchdog();
-
-    // Measure and package the data
     Watchdog.reset();
     manager.measure();
     Watchdog.reset();
     manager.package();
     Watchdog.reset();
 
-    // Log the data to the SD
-    Watchdog.reset();
     if (!hypnos.logToSD()) {
         SDManager *sd = hypnos.getSDManager();
-        const SDLogResult result = sd->getLastLogResult();
-        if (result.csv == SDWriteStatus::Saved && result.batch == SDWriteStatus::Failed) {
-            Watchdog.reset();
-            // Only retry a confirmed rolled-back batch append, never the CSV or an uncertain write.
-            if (!sd->retryBatch()) {
-                WARNING(F("CSV saved, but the one batch-only retry failed."));
-            }
-        } else {
-            ERROR(F(
-                "SD logging incomplete; rejected/uncertain writes are not automatically retried."));
+        if (sd == nullptr || !sd->retryBatch()) {
+            WARNING(F("SD logging incomplete; check the CSV and upload batch."));
         }
     }
     Watchdog.reset();
 
-    // Pass in the batchSD to the mqtt obj to check/ publish a batch of data if ready
-    const bool networkWindow = batchSD.shouldPublish();
-    if (networkWindow) {
-        Watchdog.disable();
-    } else {
-        Watchdog.reset();
-    }
-    mqtt.publish(batchSD);
-    if (networkWindow) {
-        enableActiveWatchdog();
-    } else {
-        Watchdog.reset();
+    if (batchSD.shouldPublish()) {
+        LoomWatchdogPause watchdogPause;
+        if (!mqtt.moduleInitialized) {
+            mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
+        }
+        if (mqtt.moduleInitialized) {
+            mqtt.publish(batchSD);
+        }
+        hypnos.networkTimeUpdate();
     }
 
-    // Set the interrupt duration for 5 minutes
-    Watchdog.reset();
-    hypnos.setInterruptDuration(TimeSpan(0, 0, 5, 0));
-    Watchdog.reset();
-
-    // Reattach the interrupt
-    hypnos.reattachRTCInterrupt();
-    Watchdog.reset();
-
-    // Set the hypnos to sleep, but with power still being supplied to the 5v rail (wait for serial
-    // when testing from a computer) The SAMD21 watchdog continues in standby, so disable it for the
-    // five-minute RTC sleep.
-    Watchdog.disable();
-    hypnos.sleep(false);
-
-    Watchdog.disable(); // Network time may exceed the active watchdog period.
-    hypnos.networkTimeUpdate();
-    enableActiveWatchdog();
+    // Apply any clock correction before arming the next RTC deadline.
+    if (hypnos.scheduleWake(TimeSpan(0, 0, 5, 0))) {
+        hypnos.sleep();
+    } else {
+        LoomWatchdogPause watchdogPause;
+        manager.pause(60000);
+        hypnos.enable();
+    }
 }

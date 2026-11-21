@@ -78,13 +78,6 @@ class MQTTComponent : public Module {
         mqttClient.setKeepAliveInterval(time > 0 ? static_cast<unsigned long>(time) : 1000UL);
     };
 
-    /**
-     * Set the client ID for the specific MQTT connection
-     *
-     * @param id The new ID to set
-     */
-    void setClientID(const char *id) { mqttClient.setId(id ? id : ""); };
-
     /** Copy credentials once into ArduinoMqttClient's retained strings. */
     void setBrokerCredentials(const char *user, const char *pass) {
         mqttClient.setUsernamePassword(user ? user : "", pass ? pass : "");
@@ -110,6 +103,9 @@ class MQTTComponent : public Module {
     int port;          // Port the broker is listening on
 
   public:
+    /** Set a unique broker client ID before the first MQTT connection. */
+    void setClientID(const char *id) { mqttClient.setId(id ? id : ""); }
+
     /** Borrow the configured MQTT client for explicit diagnostics such as subscribing
      * before publishing a test packet. Clear diagnostic callbacks when finished;
      * do not access this stream concurrently with publish/retained-message operations. */

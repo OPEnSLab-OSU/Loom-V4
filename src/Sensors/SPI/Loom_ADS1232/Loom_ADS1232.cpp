@@ -47,7 +47,11 @@ void Loom_ADS1232::measure() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_ADS1232::package() {
     JsonObject json = manInst->get_data_object(getModuleName());
-    json["weight"] = weight;
+    if (moduleInitialized) {
+        json["weight"] = weight;
+    } else {
+        json["weight"] = nullptr;
+    }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -14,9 +14,13 @@ int main() {
     assert(schedule.secondsLeftInSlot(0x21, 599) == 1);
     assert(schedule.secondsUntilWake(0x21, 239) == 1);
     assert(schedule.secondsUntilWake(0x21, 240) == 0);
+    assert(schedule.secondsUntilWake(0x21, 240, true) == 3600);
     assert(schedule.secondsUntilWake(0x21, 599) == 0);
+    assert(schedule.secondsUntilWake(0x21, 599, true) == 3241);
     assert(schedule.secondsUntilWake(0x21, 600) == 3240);
+    assert(schedule.secondsUntilWake(0x21, 600, true) == 3240);
     assert(schedule.secondsUntilWake(0x20, 3540) == 0); // Slot zero prepares in prior cycle.
+    assert(schedule.secondsUntilWake(0x20, 10, true) == 3530);
     assert(schedule.secondsUntilWake(0x2f, 0) == UINT32_MAX);
     assert(!schedule.configure(300, 16)); // Does not fit one hour; old settings survive.
     assert(schedule.mayTransmit(0x21, 300));

@@ -1,6 +1,10 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <OPEnS_RTC.h>
+LOOM_EXTERNAL_INCLUDE_END
 #include <Utilities/Loom_ClockRead.h>
 #include "BenchBacklog.h"
 

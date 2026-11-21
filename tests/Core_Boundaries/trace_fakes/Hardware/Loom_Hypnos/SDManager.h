@@ -57,9 +57,12 @@ class SDManager {
     bool ready = true;
     int sessionNumber = 0;
     std::string debugName = "Wisp";
-    int getDebugFileNumber() const { return sessionNumber; }
-    bool getDebugFilePath(char *destination, size_t capacity, loomDebugFiles::Kind kind) const {
-        return loomDebugFiles::buildPath(destination, capacity, debugName.c_str(), kind, sessionNumber);
+    int getDebugFileNumber() const { return selectedSession; }
+    bool getDebugFilePath(char *destination, size_t capacity, loomDebugFiles::Kind kind) {
+        if (selectedSession < 0) {
+            selectedSession = sessionNumber;
+        }
+        return loomDebugFiles::buildPath(destination, capacity, debugName.c_str(), kind, selectedSession);
     }
     bool canWriteDebugLogs() const { return ready; }
     bool fileExists(const char *path) { return existing.count(path) != 0; }
@@ -92,4 +95,7 @@ class SDManager {
         if (ok) { saved += output.bytes; }
         return ok;
     }
+
+  private:
+    int selectedSession = -1;
 };

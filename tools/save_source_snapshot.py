@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -15,20 +16,24 @@ def main():
     parser.add_argument('--branch', required=True)
     args = parser.parse_args()
     files = {}
-    groups = ('src', 'examples', 'tools', 'tests/Core_Boundaries')
-    suffixes = {'.h', '.cpp', '.ino', '.py', '.js', '.html', '.json'}
+    groups = ('src', 'examples', 'tools', 'tests/Core_Boundaries', 'dependencies/Loom_SAMD21_Core_Patches')
+    suffixes = {'.h', '.cpp', '.ino', '.py', '.js', '.cjs', '.html', '.json', '.patch', '.ps1'}
+    skipped_dirs = {'.local', '.loom-build', '.tinybuild', '__pycache__', 'dist', 'node_modules'}
+    credentials = {'arduino_secrets.h', 'mqtt_creds.json', 'wifi_creds.json', 'lte_creds.json'}
     for group in groups:
-        for source in (ROOT / group).rglob('*'):
-            if not source.is_file() or source.suffix not in suffixes or '__pycache__' in source.parts:
-                continue
-            if source.name in {'arduino_secrets.h', 'mqtt_creds.json'}:
-                continue
-            files[source.relative_to(ROOT).as_posix()] = hashlib.sha256(source.read_bytes()).hexdigest()
+        for folder, directories, names in os.walk(ROOT / group):
+            directories[:] = [name for name in directories if name not in skipped_dirs]
+            for name in names:
+                source = Path(folder) / name
+                if source.suffix not in suffixes or name in credentials or not source.is_file():
+                    continue
+                files[source.relative_to(ROOT).as_posix()] = hashlib.sha256(source.read_bytes()).hexdigest()
     # These settings/runners decide how the candidate will be checked later. Capture them too;
     # matching C++ alone cannot identify a changed fixture include path or formatter policy.
     support_files = ('tests/verify_core_boundaries.ps1', 'tests/verify_source_preflight.ps1',
                      'tests/data_safety_regression.cpp', 'tests/verify_data_safety.ps1',
-                     '.github/workflows/core-boundaries.yml', '.github/workflows/githubci.yml',
+                     'tests/verify_wisp_diagnostic_boundaries.ps1',
+                     '.github/workflows/core-boundaries.yml.txt', '.github/workflows/githubci.yml',
                      '.clang-format', 'library.properties')
     for relative in support_files:
         files[relative] = hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()

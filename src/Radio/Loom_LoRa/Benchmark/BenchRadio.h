@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../Loom_RF95.h"
+
 #include <Radio/Loom_LoRa/Loom_LoRa.h>
 #include "BenchEnrollment.h"
 #include "BenchRetry.h"
@@ -248,9 +250,9 @@ inline bool sendFrame(RH_RF95 &radio, uint8_t destination, const uint8_t *frame,
 
 // Use the SX127x CAD primitive with a short bounded backoff. RadioHead's built-in CAD wait
 // can back off for another 900 ms after its deadline, which would invalidate a short slot.
-class BenchRadio : public RH_RF95 {
+class BenchRadio : public Loom_RF95 {
   public:
-    BenchRadio(uint8_t cs, uint8_t irq) : RH_RF95(cs, irq) {}
+    BenchRadio(uint8_t cs, uint8_t irq) : Loom_RF95(cs, irq) {}
 
     bool send(const uint8_t *data, uint8_t length) override {
         if (cadMs) {

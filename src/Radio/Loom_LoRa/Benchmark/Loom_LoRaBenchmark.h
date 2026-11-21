@@ -1,6 +1,9 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
 #include <Loom_Manager.h>
+#include "../Loom_ReliableDatagram.h"
 #include "BenchRadio.h"
 #include "BenchCompact.h"
 #ifndef BENCH_ENABLE_SWEEP
@@ -23,7 +26,9 @@
 #endif
 #if defined(ARDUINO_ARCH_SAMD) && !defined(__SAMD51__) && BENCH_RTC_BUTTON_PIN >= 0
 #define BENCH_HAS_RTC_BUTTON 1
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <ArduinoLowPower.h>
+LOOM_EXTERNAL_INCLUDE_END
 #include <Utilities/Loom_Watchdog.h>
 #else
 #define BENCH_HAS_RTC_BUTTON 0
@@ -57,7 +62,7 @@ struct BootSettings {
 };
 
 BenchRadio radio(RFM95_CS, RFM95_INT);
-RHReliableDatagram reliableRadio(radio);
+Loom_ReliableDatagram reliableRadio(radio);
 CommandLine console;
 bool ready = false;
 Role role = Role::Node;

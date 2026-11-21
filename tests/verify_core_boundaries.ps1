@@ -27,7 +27,7 @@ foreach ($test in $tests) {
     $testObj = Join-Path $buildDir ($test.BaseName + '.obj')
     $log = Join-Path $buildDir ($test.BaseName + '.log')
     $fakeIncludes = ''
-    if ($test.BaseName -in @('test_ads1115', 'test_analog', 'test_reed_anemometer', 'test_sen66_startup', 'test_df_gas_retained')) {
+    if ($test.BaseName -in @('test_ads1115', 'test_ads1232', 'test_analog', 'test_reed_anemometer', 'test_sen66_startup', 'test_df_gas_retained')) {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'sensor_fakes') + '" /I"' + $jsonIncludes + '"'
     } elseif ($test.BaseName -eq 'test_mongo_batch') {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'mongo_fakes') + '" /I"' + (Join-Path $sourceDir 'mqtt_fakes') + '" /I"' + $jsonIncludes + '"'
@@ -49,6 +49,8 @@ foreach ($test in $tests) {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'trace_auto_fakes') + '" /I"' + (Join-Path $sourceDir 'manager_fakes') + '" /I"' + $jsonIncludes + '"'
     } elseif ($test.BaseName -eq 'test_trace') {
         $fakeIncludes = '/I"' + (Join-Path $sourceDir 'trace_fakes') + '"'
+    } elseif ($test.BaseName -eq 'test_lora_receipt') {
+        $fakeIncludes = '/I"' + (Join-Path $sourceDir 'radiohead_fakes') + '"'
     }
     # Assertions remain enabled. Each program exercises production helpers or readers.
     # Keep logs/products for diagnosis; never delete a caller-supplied directory.

@@ -165,93 +165,14 @@ This example exercises plain TCP/HTTP; TLS certificate setup, SMS workflows and
 deployment sleep scheduling are outside the example. Arbitrary AT commands remain
 available for the other firmware functions.
 
-## Code and control flow
+## Earlier bench results
 
-```mermaid
-flowchart TD
-    A["Setup: enable Hypnos and initialize modem"] --> B["Loop: read USB commands and modem output"]
-    B --> C{"Command or GPS timer?"}
-    C -->|"Data command"| D["Loom LTE connect or TinyGSM socket"]
-    C -->|"GPS command or timer"| E["TinyGSM receiver control or CGNSINF snapshot"]
-    C -->|"AT query"| F["Print UART response"]
-    E --> G{"Valid fix?"}
-    G -->|"Yes"| H["Print coordinates and fix UTC"]
-    G -->|"No"| I["Print acquisition status"]
-    D --> B
-    F --> B
-    H --> B
-    I --> B
-```
+On November 17, 2026, this console ran on a Feather M0 with the Click powered on
+manually. The SIM was ready, and Hologram registered while roaming on Verizon LTE-M
+band 13 with a usable application IPv4 address. TCP and HTTP succeeded with GNSS
+off. The Hypnos RTC read and cellular UTC sync worked, and the console packaged a
+sample with live RSSI and a timestamp.
 
-`assembly.json` contains exact unique source excerpts for declarations, calls,
-branches, helpers and delegated implementations, with feature assessments.
-Baseline examples are `../LTE_with_Hypnos/LTE_with_Hypnos.ino` for initialization
-order and `../LTE_GNSS_Optional/LTE_GNSS_Optional.ino` for the existing fix interface.
-The ordinary R4/R5 defaults are retained. The SIM7090 adapter also verifies packet
-attachment and an application IP after activation, because the installed TinyGSM
-driver can treat its DEACTIVE response match as a true result. It supplies its own
-shutdown and GNSS behavior instead of sending SARA-specific AT commands.
-
-## Validation
-
-`test_sim70xx_gnss` and the existing `test_gnss_utils` host boundary programs pass.
-The SIM test checks signed coordinates, leap dates, missing/no-fix fields, malformed
-numbers, geographic limits and unchanged output on rejected replies. Parsing uses
-TinyGSM's raw GPS transaction and accepts varying trailing field counts.
-
-Host GCC syntax checks against the real installed Arduino, Loom and TinyGSM headers
-pass for the console, all three modem adapters, LTE dispatch/GNSS implementations,
-and the existing SARA GNSS example. This uses `-fsyntax-only -fpermissive` on a
-64-bit host to accommodate SDK pointer casts; it does not validate ARM ABI or linking.
-
-Full ARM compilation and linking pass with Arduino CLI 1.5.1, the installed
-Loomified Feather M0 core 4.9, and its ARM GCC 7.2.1 toolchain, using
-`loom4:samd:adafruit_feather_m0:usbstack=arduino,debug=off`:
-
-| Example | Flash bytes | Available flash |
-| --- | ---: | ---: |
-| `LTE_SIM7090G_Console` | 141076 | 53% used |
-| `LTE_with_Hypnos` (SARA-R4) | 127380 | 48% used |
-| `LTE_GNSS_Optional` (SARA-R5, default GNSS-disabled settings) | 129540 | 49% used |
-
-The earlier **Illegal System DLL Relocation** error occurs when starting the
-installed ARM compiler inside the Codex sandbox. Running the build outside that
-sandbox resolves the startup failure. The console's two UTC buffers accommodate
-the formatter's full integer ranges; its timestamp truncation warnings are fixed.
-Existing core/dependency warnings remain.
-
-All 31 `assembly.json` source anchors match unique excerpts at their recorded
-lines. The library-discovery include-order check passes for 129 sketches. The
-separate repository-wide warning-scope check fails at the existing
-`src/Diagnostics/Loom_TraceSketch.h:28` include of `Loom_TraceHeapLink.h`; that
-diagnostics issue is outside the LTE changes.
-
-On 2026-11-17 the console was uploaded to the connected Loomified Feather M0;
-the bootloader reported successful flash verification. The running USB console
-accepted commands on COM29. Initial modem silence cleared after the Click was
-turned on with its PWR button and `init` was run.
-
-| Live bench check | Observed result |
-| --- | --- |
-| UART / identity | AT communication at 115200; firmware `1951B04SIM7090` |
-| SIM | `CPIN: READY` |
-| Hologram data | Registered roaming on Verizon LTE-M, band 13; packet attachment and application IPv4 assigned |
-| Signal after moving LTE antenna by window | CSQ 15-16 |
-| TCP / HTTP with GNSS off | Numeric-IP HTTP returned 301; `http example.com /` returned 200 OK and response body |
-| Hypnos RTC | Read passed; cellular network UTC synchronization passed |
-| Loom packaging | JSON packet printed with live RSSI and RTC timestamp |
-| GNSS | Start/stop and raw status queries respond; another five-minute standalone run with `CFUN=0`, `CGNSPWR=1` and the existing antenna by a window produced no valid fix |
-
-DNS testing explicitly selected application PDP index 0 with
-`AT+CDNSPDPID=0`. Initial socket attempts with GNSS running failed; after GNSS
-was stopped, raw TCP and the TinyGSM HTTP commands succeeded. Concurrent GNSS
-and socket traffic have not been verified. Raw coordinates without a valid fix
-flag and UTC were correctly rejected by `gps read`.
-
-Runtime heap/stack margins, long-duration operation and supply behavior during
-transmit bursts remain unmeasured. GNSS acquisition needs further sky-view testing.
-The existing antenna was previously used for SARA cellular service and has no
-verified GNSS specification. A known active SMA GPS antenna rated for 3.3 V,
-such as [Adafruit 960](https://www.adafruit.com/product/960) (specified 3-5 V),
-is a suitable replacement for a controlled acquisition test. Keep JP2 at 3V3
-for that antenna. No failure of the receiver itself has been established.
+GNSS start, stop and raw status queries worked in that session. The window-side
+antenna test yielded no valid fix, and simultaneous GNSS and socket use still needs
+verification. These observations apply to the earlier bench build and its wiring.

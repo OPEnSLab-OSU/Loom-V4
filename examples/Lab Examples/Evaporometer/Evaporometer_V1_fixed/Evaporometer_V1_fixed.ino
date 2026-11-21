@@ -81,7 +81,6 @@
 
 // Keep the same serial debug output shape as the original V1 sketch:
 // counts, a, volts, resistance, weight, temperature.
-#define ADC_DEBUG_MODE 1
 
 // ADS1232 / analog front-end settling. These are conservative for debugging
 // because VREF/excitation and channel select settling can look like channel
@@ -116,8 +115,6 @@ const float resistanceLUT[] = {
 
 const int LUT_SIZE = sizeof(resistanceLUT) / sizeof(resistanceLUT[0]);
 
-long lastWeightCounts = 0;
-long lastTempCounts = 0;
 
 bool analogFrontendOn() {
   pinMode(VREFEN, OUTPUT);
@@ -134,7 +131,7 @@ void analogFrontendOff() {
   digitalWrite(VREFEN, LOW);
 }
 
-long readCounts(uint8_t channel) {
+bool readCounts(uint8_t channel, long &counts) {
   // channel = LOADCELL_CHANNEL -> load cell
   // channel = THERMISTOR_CHANNEL -> thermistor
   digitalWrite(ADC_SEL, channel ? HIGH : LOW);
@@ -143,30 +140,22 @@ long readCounts(uint8_t channel) {
   // Flush stale data after channel select. The first conversion after a mux
   // or excitation change can belong to the old channel or still be settling.
   ads.raw_read(ADC_DISCARD_READS);
-  if (!ads.last_read_valid()) return 0;
-  long counts = ads.raw_read(NUM_ADC_READS);
-  if (!ads.last_read_valid()) Serial.println("ads1232_read_timeout");
-  return counts;
-}
-
-float readWeight(uint8_t use_raw_counts = 0) {
-  long weight = readCounts(LOADCELL_CHANNEL);
-  lastWeightCounts = weight;
-
-  if (!use_raw_counts && !CALIBRATION_MODE) {
-    return ((weight - OFFSET) * SCALE);
+  if (ads.last_read_valid()) {
+    counts = ads.raw_read(NUM_ADC_READS);
+    if (ads.last_read_valid()) {
+      return true;
+    }
   }
-
-  return weight;
+  Serial.println("ads1232_read_timeout");
+  return false;
 }
 
-void printWeight() {
-  if (!analogFrontendOn()) return;
-  float weight = readWeight();
-  analogFrontendOff();
-
-  Serial.println("Weight: ");
-  Serial.println(weight);
+float readWeight() {
+  long counts;
+  if (!readCounts(LOADCELL_CHANNEL, counts)) {
+    return NAN;
+  }
+  return CALIBRATION_MODE ? counts : (counts - OFFSET) * SCALE;
 }
 
 // r is resistance of thermistor. Nominally 10k
@@ -194,13 +183,10 @@ float temperatureLookUp(float r) {
 
 float readTemperature() {
   // read thermistor channel
-  long counts = readCounts(THERMISTOR_CHANNEL);
-  lastTempCounts = counts;
-
-#if ADC_DEBUG_MODE
-  Serial.print("counts: ");
-  Serial.println(counts);
-#endif
+  long counts;
+  if (!readCounts(THERMISTOR_CHANNEL, counts)) {
+    return NAN;
+  }
 
   // transform from counts to volts
   // The ADS1232 library returns offset-binary counts centered near 2^23
@@ -209,22 +195,11 @@ float readTemperature() {
   const float v_ref = 3.01f;
   float volts = (((float)counts / ADC_ZERO_COUNTS) - 1.0f) * v_ref / (2.0f * gain);
 
-#if ADC_DEBUG_MODE
-  Serial.print("a: ");
-  Serial.println(volts);
-  Serial.print("volts: ");
-  Serial.println(volts, 4);
-#endif
-
   // transform from volts to resistance of thermistor
   const float R = 10000.0f;
   float denom = (volts / v_ref) + 0.5f;
 
   if (denom <= 0.0f) {
-#if ADC_DEBUG_MODE
-    Serial.print("resistance: ");
-    Serial.println(-1.0f);
-#endif
     return -1;
   }
 
@@ -233,22 +208,8 @@ float readTemperature() {
   // R / (v_sig / v_ref + 0.5) - R = R_t
   float resistance = (R / denom) - R;
 
-#if ADC_DEBUG_MODE
-  Serial.print("resistance: ");
-  Serial.println(resistance);
-#endif
-
   // use the lookup table and interpolation to find temperature
   return temperatureLookUp(resistance);
-}
-
-void printTemperature() {
-  if (!analogFrontendOn()) return;
-  float temp = readTemperature();
-  analogFrontendOff();
-
-  Serial.print("Temperature: ");
-  Serial.println(temp, 8);
 }
 
 float readVbat(){
@@ -277,7 +238,11 @@ void prepareSDForWrite() {
  *
  */
 void logData(float weight, float temp, float vbat){
-  DateTime now = hypnos.getCurrentTime();
+  DateTime now;
+  if (!hypnos.tryGetCurrentTime(now)) {
+    Serial.println("log_rtc_unavailable");
+    return;
+  }
 
   // Preserve the established CSV row exactly, but construct it with one bounded write.
   char date_and_data[128] = {};
@@ -296,11 +261,6 @@ void logData(float weight, float temp, float vbat){
 
   const char* logFile = hypnos.getDefaultFilename();
 
-#if ADC_DEBUG_MODE
-  Serial.print("logging_to: ");
-  Serial.println(logFile);
-#endif
-
   if (!hypnos.getSDManager()->writeLineToFile(logFile, date_and_data)) {
     Serial.println("log_write_failed");
   }
@@ -312,13 +272,17 @@ void isr_Trigger(){
 
 void sleep(uint8_t seconds = 30, uint8_t minutes = 0) {
   analogFrontendOff();
-  hypnos.setInterruptDuration(TimeSpan(0, 0, minutes, seconds));
-  hypnos.reattachRTCInterrupt();
-  hypnos.sleep();
+  if (hypnos.scheduleWake(TimeSpan(0, 0, minutes, seconds))) {
+    hypnos.sleep();
+  } else {
+    manager.pause(5000);
+    prepareSDForWrite();
+    hypnos.enable(true, false);
+  }
 }
 
 void setup() {
-  manager.beginSerial();
+  manager.beginSerial(false);
   Serial.println("Starting Setup");
 
 #if SET_RTC_FROM_SKETCH_COMPILE_TIME
@@ -350,30 +314,23 @@ void setup() {
 }
 
 void loop() {
-  if (!analogFrontendOn()) {
-    analogFrontendOff();
-    manager.pause(1000);
+  const bool ready = analogFrontendOn();
+  const float temp = ready ? readTemperature() : NAN;
+  const float rawWeight = isfinite(temp) ? readWeight() : NAN;
+  analogFrontendOff();
+  if (!isfinite(rawWeight)) {
+    if (LOGGING_MODE) {
+      sleep();
+    } else {
+      manager.pause(1000);
+    }
     return;
   }
 
-  float temp = readTemperature();
-  float weight = 0;
-
-  // Removing the effect of temperature on the load cell.
-  float rawWeight = readWeight();
-
-  if (CALIBRATION_MODE) {
-    weight = rawWeight;
-  }
-  else if (temp >= 0.0f) {
-    weight = rawWeight - ((COEFFICIENT * temp) + BIAS);
-  }
-  else {
-    weight = rawWeight;
-  }
-
-  analogFrontendOff();
-
+  // Remove the temperature-dependent drift from a calibrated weight.
+  const float weight = !CALIBRATION_MODE && temp >= 0.0f
+                           ? rawWeight - ((COEFFICIENT * temp) + BIAS)
+                           : rawWeight;
   float vbat = readVbat();
 
   if (DEMO_MODE) {

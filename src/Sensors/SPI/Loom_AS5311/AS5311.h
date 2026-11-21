@@ -1,6 +1,10 @@
 #pragma once
 
+#include "Loom_WarningGuards.h"
+
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Arduino.h>
+LOOM_EXTERNAL_INCLUDE_END
 class Manager; // The packet writer is needed only by measure(), not by the GPIO reader.
 
 enum class magnetStatus { red, green, yellow, error };
@@ -20,6 +24,7 @@ class AS5311 {
     static bool isValidReading(uint32_t data);
 
     void measure(Manager &);
+    float measureDisplacement() { return measureDisplacement(positionFromWord(getRawData())); }
     float measureDisplacement(int);
 
   private:

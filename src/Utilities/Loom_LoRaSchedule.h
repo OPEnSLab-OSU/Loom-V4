@@ -27,6 +27,7 @@ class Schedule {
     static uint8_t device(uint8_t address) { return address & 15; }
     static bool sameGroup(uint8_t first, uint8_t second) { return group(first) == group(second); }
     uint32_t cycleNumber(uint32_t utc) const { return utc / cycle; }
+    uint32_t cycleStart(uint32_t utc) const { return utc - utc % cycle; }
     uint32_t secondsLeftInSlot(uint8_t address, uint32_t utc) const {
         if (!enabled) {
             return UINT32_MAX;
@@ -43,8 +44,9 @@ class Schedule {
         return slot < count && phase >= slot * window && phase - slot * window < window;
     }
     // Time until the next pre-measurement wake. Zero means this window's preparation/send
-    // period is already open. UINT32_MAX means this address has no configured window.
-    uint32_t secondsUntilWake(uint8_t address, uint32_t utc) const {
+    // period is already open. A node that has finished can skip that window.
+    // UINT32_MAX means this address has no configured window.
+    uint32_t secondsUntilWake(uint8_t address, uint32_t utc, bool skipCurrentWindow = false) const {
         if (!enabled) {
             return 0;
         }
@@ -57,7 +59,7 @@ class Schedule {
         const uint32_t phase = utc % cycle;
         const uint32_t sinceWake = (phase + cycle - wake) % cycle;
         if (sinceWake < early + window) {
-            return 0;
+            return skipCurrentWindow ? cycle - sinceWake : 0;
         }
         return (wake + cycle - phase) % cycle;
     }

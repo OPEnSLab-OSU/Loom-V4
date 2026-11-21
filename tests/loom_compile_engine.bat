@@ -162,7 +162,8 @@ if defined SKETCH_LIST_FILE (
     )
 ) else (
     for /r "%EXAMPLES_ROOT%" %%F in (*.ino) do (
-        echo %%~dpF>>"%RAW_DIRS%"
+        set "CANDIDATE_SKETCH_DIR=%%~dpF"
+        if /i "!CANDIDATE_SKETCH_DIR:\.loom-build\=!"=="!CANDIDATE_SKETCH_DIR!" echo %%~dpF>>"%RAW_DIRS%"
     )
 )
 if not exist "%RAW_DIRS%" (

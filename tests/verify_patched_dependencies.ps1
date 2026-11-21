@@ -97,7 +97,6 @@ $officialCoreFiles = @(
 
 foreach ($coreFile in $officialCoreFiles) {
     $installed = Join-Path $platformRoot $coreFile.Relative
-    $noteSnapshot = Join-Path (Join-Path $loomRoot 'dependencies/Loom_SAMD21_Core_Patches') $coreFile.Relative
 
     if (-not (Test-Path -LiteralPath $installed -PathType Leaf)) {
         Write-Error "Missing official package core file: $installed" -ErrorAction Continue
@@ -113,9 +112,6 @@ foreach ($coreFile in $officialCoreFiles) {
         Write-Output "PASS official $($coreFile.Relative)"
     }
 
-    if (-not (Test-Path -LiteralPath $noteSnapshot -PathType Leaf)) {
-        Write-Warning "Missing inactive core investigation note: $noteSnapshot"
-    }
 }
 
 if ($failed) {
@@ -124,4 +120,3 @@ if ($failed) {
 }
 
 Write-Output 'All Loom-patched third-party libraries match their reviewed copies, and the active SAMD21 core matches the official Loom 4.9 release.'
-Write-Output 'Experimental SERCOM/Wire snapshots under Loom/dependencies are notes only and are not active package inputs.'

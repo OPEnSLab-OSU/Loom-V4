@@ -1,4 +1,5 @@
 #pragma once
+#include "Loom_WarningGuards.h"
 
 // Define these before including this header in any Loom sketch. Existing Wisp
 // build flags remain accepted; the generic spelling takes precedence.
@@ -25,12 +26,16 @@
 #if LOOM_TRACE_HEAP && (!defined(LOOM_TRACE_LINKER_HEAP_HOOKS) || !LOOM_TRACE_LINKER_HEAP_HOOKS)
 // Conditional library discovery supplies linker wrapping for ordinary IDE builds.
 // Explicit CLI heap builds provide their own hooks and do not need this library.
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Loom_TraceHeapLink.h>
+LOOM_EXTERNAL_INCLUDE_END
 #endif
 #include "Loom_Trace.h"
 #include "Loom_TraceAuto.h"
 #include <Logger.h>
+LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Arduino.h>
+LOOM_EXTERNAL_INCLUDE_END
 
 inline bool loomTraceBegin(Loom_Trace &recorder, SDManager &sd) {
     static_assert(LOOM_TRACE_HEAP_WINDOW_EVENTS >= 1 &&

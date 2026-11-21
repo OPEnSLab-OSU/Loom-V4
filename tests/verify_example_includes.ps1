@@ -24,6 +24,7 @@ if ($DeploymentFolder) {
 $failures = @()
 $checked = 0
 foreach ($sketch in $sketches) {
+    if ($sketch.FullName -match '[\\/]\.loom-build[\\/]') { continue }
     foreach ($line in Get-Content -LiteralPath $sketch.FullName) {
         if ($line -match '^\s*#\s*include\s*[<"]([^>"]+)[>"]') {
             $header = $Matches[1].Replace('\', '/')

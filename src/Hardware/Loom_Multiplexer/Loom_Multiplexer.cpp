@@ -6,17 +6,14 @@
 LOOM_EXTERNAL_INCLUDE_BEGIN
 #include <Arduino.h>
 LOOM_EXTERNAL_INCLUDE_END
-#include <cstdarg>
 
 #if LOOM_COMPILE_MUX_DEBUG
-#define LOOM_MUX_DEBUG_LOG(...) debugLog(__VA_ARGS__)
-#define LOOM_MUX_DEBUG_FORMAT(...) debugLogFormatted(__VA_ARGS__)
-#define LOOM_MUX_DEBUG_I2C(...) debugLogI2CResult(__VA_ARGS__)
+#define LOOM_MUX_DEBUG_LINE(...)                                                                  \
+    do {                                                                                          \
+        if (debugOutput) debugLogFormatted(__VA_ARGS__);                                           \
+    } while (false)
 #else
-// Remove diagnostic arguments too: getters and formatting must not run when omitted.
-#define LOOM_MUX_DEBUG_LOG(...) ((void)0)
-#define LOOM_MUX_DEBUG_FORMAT(...) ((void)0)
-#define LOOM_MUX_DEBUG_I2C(...) ((void)0)
+#define LOOM_MUX_DEBUG_LINE(...) ((void)0)
 #endif
 
 namespace {
@@ -86,7 +83,6 @@ void Loom_Multiplexer::setKnownAddresses(const std::vector<byte> &addresses) {
     FUNCTION_START(this);
     assignKnownAddresses(addresses.data(), addresses.size());
 
-    LOOM_MUX_DEBUG_FORMAT("Mux known address count set to %u", (unsigned int)known_addresses.size());
     FUNCTION_END;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -97,12 +93,10 @@ void Loom_Multiplexer::enablePort(uint8_t port) {
 
     if (port >= numPorts) {
         ERRORF("Mux port %u is out of range", port);
-        LOOM_MUX_DEBUG_FORMAT("Mux port %u is out of range", port);
         return;
     }
 
     portEnabled[port] = true;
-    LOOM_MUX_DEBUG_FORMAT("Mux port %u enabled", port);
     FUNCTION_END;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -113,12 +107,10 @@ void Loom_Multiplexer::disablePort(uint8_t port) {
 
     if (port >= numPorts) {
         ERRORF("Mux port %u is out of range", port);
-        LOOM_MUX_DEBUG_FORMAT("Mux port %u is out of range", port);
         return;
     }
 
     portEnabled[port] = false;
-    LOOM_MUX_DEBUG_FORMAT("Mux port %u disabled", port);
     FUNCTION_END;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -144,7 +136,6 @@ void Loom_Multiplexer::useOnlyPorts(const std::vector<uint8_t> &ports) {
         enablePort(port);
     }
 
-    LOOM_MUX_DEBUG_FORMAT("Mux scan restricted to %u requested port(s)", (unsigned int)ports.size());
     FUNCTION_END;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -155,7 +146,6 @@ void Loom_Multiplexer::setTSL2591Options(tsl2591Gain_t light_gain,
     FUNCTION_START(this);
     sensorOptions.tsl2591Gain = light_gain;
     sensorOptions.tsl2591IntegrationTime = integration_time;
-    LOOM_MUX_DEBUG_LOG("TSL2591 auto-load options updated");
     FUNCTION_END;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -165,7 +155,6 @@ void Loom_Multiplexer::setSEN66Options(bool measurePM, bool readNumVals) {
     FUNCTION_START(this);
     sensorOptions.sen66MeasurePM = measurePM;
     sensorOptions.sen66ReadNumVals = readNumVals;
-    LOOM_MUX_DEBUG_LOG("SEN66 auto-load options updated");
     FUNCTION_END;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -175,110 +164,10 @@ void Loom_Multiplexer::setDFGasPowerRetained(bool retained) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Multiplexer::setDebug(bool enabled) {
-    debugOutput = LOOM_COMPILE_MUX_DEBUG && enabled;
-
-    if (LOOM_COMPILE_MUX_DEBUG && debugOutput) {
-        Serial.println(F("[MUX DEBUG] Serial debug enabled"));
-    }
-}
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Multiplexer::setScanDebug(bool enabled) {
-    scanDebugOutput = LOOM_COMPILE_MUX_DEBUG && enabled;
-
-    if (LOOM_COMPILE_MUX_DEBUG && debugOutput) {
-        Serial.print(F("[MUX DEBUG] Scan miss debug "));
-        Serial.println(scanDebugOutput ? F("enabled") : F("disabled"));
-    }
-}
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Multiplexer::debugScan() {
-    FUNCTION_START(this);
-    byte previousMuxAddr = activeMuxAddr;
-    bool previousInitialized = moduleInitialized;
-    byte foundMuxAddr = 0;
-
-    LOOM_MUX_DEBUG_LOG("Starting mux debug scan");
-    Wire.begin();
-
-    foundMuxAddr = findMultiplexer();
-
-    if (foundMuxAddr == 0) {
-        ERROR(F("Debug scan did not find a TCA9548 mux"));
-        LOOM_MUX_DEBUG_LOG("Debug scan did not find a TCA9548 mux");
-        return;
-    }
-
-    activeMuxAddr = foundMuxAddr;
-    moduleInitialized = true;
-
-    LOOM_MUX_DEBUG_FORMAT("Debug scan using mux address 0x%02X", activeMuxAddr);
-
-    if (known_addresses.empty()) {
-        assignKnownAddresses(nullptr, 0);
-        LOOM_MUX_DEBUG_FORMAT("Known address list was empty, using default list of %u",
-                          (unsigned int)known_addresses.size());
-    }
-
-    for (int port = 0; port < numPorts; port++) {
-        if (!isPortEnabled(port)) {
-            LOOM_MUX_DEBUG_FORMAT("Debug scan skipping disabled mux port %i", port);
-            continue;
-        }
-
-        LOOM_MUX_DEBUG_FORMAT("Debug scan selecting mux port %i", port);
-        if (!selectPin(port)) {
-            ERRORF("Failed to select mux port %i; skipping it.", port);
-            continue;
-        }
-        delay(50);
-
-        bool foundOnPort = false;
-
-        for (byte addr : known_addresses) {
-            if (!shouldScanAddress(addr)) {
-                continue;
-            }
-
-            // Emit before entering Wire so a lower-core stall still leaves an exact location.
-            LOOM_FEED_WATCHDOG();
-            LOOM_MUX_DEBUG_FORMAT("Debug scan probing mux port %i at address 0x%02X", port, addr);
-            uint8_t result = probeAddress(addr);
-
-            if (result == 0) {
-                foundOnPort = true;
-                LOOM_MUX_DEBUG_FORMAT("ACK on mux port %i at I2C address 0x%02X", port, addr);
-            } else if (scanDebugOutput) {
-                LOOM_MUX_DEBUG_FORMAT("No ACK on mux port %i at I2C address 0x%02X, Wire error %u",
-                                  port, addr, result);
-            }
-        }
-
-        if (!foundOnPort) {
-            LOOM_MUX_DEBUG_FORMAT("No known devices found on mux port %i", port);
-        }
-    }
-
-    disableChannels();
-
-    activeMuxAddr = previousMuxAddr;
-    moduleInitialized = previousInitialized;
-
-    LOOM_MUX_DEBUG_LOG("Finished mux debug scan");
-    FUNCTION_END;
-}
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::initialize() {
     FUNCTION_START(this);
+    LOOM_MUX_DEBUG_LINE("Starting Wire for mux initialization");
     Wire.begin();
-
-    LOOM_MUX_DEBUG_LOG("Mux initialize entered");
 
     // Do not retain an old address or sensor list if a later re-scan fails.
     clearSensors();
@@ -287,31 +176,21 @@ void Loom_Multiplexer::initialize() {
 
     if (known_addresses.empty()) {
         assignKnownAddresses(nullptr, 0);
-        LOOM_MUX_DEBUG_FORMAT("Known address list was empty, using default list of %u",
-                          (unsigned int)known_addresses.size());
-    } else {
-        LOOM_MUX_DEBUG_FORMAT("Known address list has %u address(es)",
-                          (unsigned int)known_addresses.size());
     }
 
     activeMuxAddr = findMultiplexer();
     if (activeMuxAddr != 0) {
         LOGF("Multiplexer found at address 0x%02X", activeMuxAddr);
-        LOOM_MUX_DEBUG_FORMAT("Multiplexer found at address 0x%02X", activeMuxAddr);
         moduleInitialized = true;
         scanAndLoadSensors();
-        LOOM_MUX_DEBUG_FORMAT("Mux initialization loaded %u sensor(s)", (unsigned int)sensors.size());
         if (sensors.empty()) {
             ERROR(F("No sensors found!"));
-            LOOM_MUX_DEBUG_LOG("No sensors found behind mux");
         }
         disableChannels();
-        LOOM_MUX_DEBUG_LOG("Mux initialize finished");
         return;
     }
 
     ERROR(F("Multiplexer was not found at the standard address or any alternatives"));
-    LOOM_MUX_DEBUG_LOG("Multiplexer was not found at 0x70-0x77");
     FUNCTION_END;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -322,11 +201,9 @@ void Loom_Multiplexer::refreshSensors() {
 
     if (!moduleInitialized) {
         ERROR(F("Cannot refresh sensors because multiplexer is not initialized"));
-        LOOM_MUX_DEBUG_LOG("Cannot refresh sensors because mux is not initialized");
         return;
     }
 
-    LOOM_MUX_DEBUG_LOG("Refreshing mux sensors");
     clearSensors();
     scanAndLoadSensors();
     disableChannels();
@@ -337,7 +214,6 @@ void Loom_Multiplexer::refreshSensors() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_Multiplexer::clearSensors() {
     FUNCTION_START(this);
-    LOOM_MUX_DEBUG_FORMAT("Clearing %u auto-loaded mux sensor(s)", (unsigned int)sensors.size());
 
     for (const MuxSensor &sensor : sensors) {
         Logger::getInstance()->retireTraceObject(sensor.module);
@@ -355,8 +231,6 @@ void Loom_Multiplexer::scanAndLoadSensors() {
 
     if (known_addresses.empty()) {
         assignKnownAddresses(nullptr, 0);
-        LOOM_MUX_DEBUG_FORMAT("Known address list was empty, using default list of %u",
-                          (unsigned int)known_addresses.size());
     }
 
     // Most deployments request one address per attached sensor. Reserve that pointer/metadata
@@ -370,45 +244,37 @@ void Loom_Multiplexer::scanAndLoadSensors() {
     for (int port = 0; port < numPorts; port++) {
         if (!isPortEnabled(port)) {
             LOGF("Skipping disabled mux port %i", port);
-            LOOM_MUX_DEBUG_FORMAT("Skipping disabled mux port %i", port);
             continue;
         }
 
-        LOOM_MUX_DEBUG_FORMAT("Scanning mux port %i", port);
-
+        LOOM_MUX_DEBUG_LINE("Selecting mux port %i for discovery", port);
         if (!selectPin(port)) {
             ERRORF("Failed to select mux port %i; skipping it.", port);
             continue;
         }
         delay(50);
 
-        bool foundOnPort = false;
-
         for (byte addr : known_addresses) {
             if (!shouldScanAddress(addr)) {
                 continue;
             }
 
-            // Emit before entering Wire so a lower-core stall still leaves an exact location.
-            LOOM_MUX_DEBUG_FORMAT("Probing mux port %i at address 0x%02X", port, addr);
+            // Print before entering Wire so a stalled transaction leaves its address in Serial.
+            LOOM_MUX_DEBUG_LINE("Probing mux port %i at address 0x%02X", port, addr);
             const uint8_t result = probeAddress(addr);
             if (result != 0) {
                 if (scanDebugOutput) {
-                    LOOM_MUX_DEBUG_FORMAT("No ACK on mux port %i at I2C address 0x%02X, Wire error %u",
-                                      port, addr, result);
+                    LOOM_MUX_DEBUG_LINE("No ACK on mux port %i at address 0x%02X, Wire error %u",
+                                        port, addr, result);
                 }
                 continue;
             }
 
-            // An ACK means hardware is present, even if Loom has no driver for this address.
-            foundOnPort = true;
             LOGF("Found I2C device on port %i at address 0x%02X", port, addr);
-            LOOM_MUX_DEBUG_FORMAT("Found I2C device on port %i at address 0x%02X", port, addr);
 
             Module *sensor = loadSensor(addr);
             if (sensor == nullptr) {
                 ERRORF("No Loom sensor loader found for I2C address 0x%02X", addr);
-                LOOM_MUX_DEBUG_FORMAT("No Loom sensor loader found for I2C address 0x%02X", addr);
                 continue;
             }
 
@@ -419,8 +285,8 @@ void Loom_Multiplexer::scanAndLoadSensors() {
             if (Logger::getInstance()->hasTrace()) {
                 observeMuxSensor(*Logger::getInstance(), sensor, addr, port, this, false, sensorObjectBytes(addr));
             }
-
-            LOOM_MUX_DEBUG_FORMAT("Initializing sensor %s", sensor->getModuleName());
+            LOOM_MUX_DEBUG_LINE("Initializing %s on mux port %i at address 0x%02X",
+                                sensor->getModuleName(), port, addr);
             sensor->initialize();
             LOOM_FEED_WATCHDOG();
 
@@ -438,14 +304,8 @@ void Loom_Multiplexer::scanAndLoadSensors() {
                 observeMuxSensor(*Logger::getInstance(), sensor, addr, port, this, true, sensorObjectBytes(addr));
             }
             LOGF("Loaded sensor %s on port %i", sensor->getModuleName(), port);
-            LOOM_MUX_DEBUG_FORMAT("Loaded sensor %s on port %i", sensor->getModuleName(), port);
         }
 
-        if (!foundOnPort) {
-            LOOM_MUX_DEBUG_FORMAT("No known devices found on mux port %i", port);
-        }
-
-        LOOM_MUX_DEBUG_FORMAT("Finished scanning mux port %i", port);
     }
     FUNCTION_END;
 }
@@ -456,12 +316,7 @@ void Loom_Multiplexer::measure() {
     FUNCTION_START(this);
 
     if (!moduleInitialized) {
-        LOOM_MUX_DEBUG_LOG("Mux measure skipped because mux is not initialized");
         return;
-    }
-
-    if (sensors.empty()) {
-        LOOM_MUX_DEBUG_LOG("Mux measure skipped because no sensors are loaded");
     }
 
     for (const MuxSensor &sensor : sensors) {
@@ -469,8 +324,8 @@ void Loom_Multiplexer::measure() {
             continue;
         }
         FUNCTION_START(sensor.module, "Mux child: measure()");
-        LOOM_MUX_DEBUG_FORMAT("Measuring mux sensor %s on port %i", sensor.module->getModuleName(),
-                          sensor.port);
+        LOOM_MUX_DEBUG_LINE("Measuring %s on mux port %u", sensor.module->getModuleName(),
+                            sensor.port);
 
         if (!selectPin(sensor.port)) {
             continue;
@@ -506,12 +361,7 @@ void Loom_Multiplexer::package() {
     FUNCTION_START(this);
 
     if (!moduleInitialized) {
-        LOOM_MUX_DEBUG_LOG("Mux package skipped because mux is not initialized");
         return;
-    }
-
-    if (sensors.empty()) {
-        LOOM_MUX_DEBUG_LOG("Mux package skipped because no sensors are loaded");
     }
 
     for (const MuxSensor &sensor : sensors) {
@@ -519,8 +369,8 @@ void Loom_Multiplexer::package() {
             continue;
         }
         FUNCTION_START(sensor.module, "Mux child: package()");
-        LOOM_MUX_DEBUG_FORMAT("Packaging mux sensor %s on port %i", sensor.module->getModuleName(),
-                          sensor.port);
+        LOOM_MUX_DEBUG_LINE("Packaging %s on mux port %u", sensor.module->getModuleName(),
+                            sensor.port);
 
         if (!selectPin(sensor.port)) {
             continue;
@@ -538,7 +388,6 @@ void Loom_Multiplexer::power_up() {
     FUNCTION_START(this);
 
     if (!moduleInitialized) {
-        LOOM_MUX_DEBUG_LOG("Mux power_up is retrying initialization");
         initialize();
         if (!moduleInitialized) {
             return;
@@ -551,8 +400,8 @@ void Loom_Multiplexer::power_up() {
         }
         FUNCTION_START(sensor.module, "Mux child: power_up()");
         LOOM_FEED_WATCHDOG();
-        LOOM_MUX_DEBUG_FORMAT("Powering up mux sensor %s on port %i", sensor.module->getModuleName(),
-                          sensor.port);
+        LOOM_MUX_DEBUG_LINE("Powering up %s on mux port %u", sensor.module->getModuleName(),
+                            sensor.port);
 
         if (!selectPin(sensor.port)) {
             continue;
@@ -572,7 +421,6 @@ void Loom_Multiplexer::power_down() {
     FUNCTION_START(this);
 
     if (!moduleInitialized) {
-        LOOM_MUX_DEBUG_LOG("Mux power_down skipped because mux is not initialized");
         return;
     }
 
@@ -582,8 +430,8 @@ void Loom_Multiplexer::power_down() {
         }
         FUNCTION_START(sensor.module, "Mux child: power_down()");
         LOOM_FEED_WATCHDOG();
-        LOOM_MUX_DEBUG_FORMAT("Powering down mux sensor %s on port %i", sensor.module->getModuleName(),
-                          sensor.port);
+        LOOM_MUX_DEBUG_LINE("Powering down %s on mux port %u", sensor.module->getModuleName(),
+                            sensor.port);
 
         if (!selectPin(sensor.port)) {
             continue;
@@ -652,12 +500,10 @@ bool Loom_Multiplexer::selectPin(uint8_t pin) {
     FUNCTION_START(this);
 
     if (pin >= numPorts) {
-        LOOM_MUX_DEBUG_FORMAT("Cannot select mux port %u because it is out of range", pin);
         return false;
     }
 
     if (activeMuxAddr == 0) {
-        LOOM_MUX_DEBUG_LOG("Cannot select mux port because no mux address is active");
         return false;
     }
 
@@ -665,8 +511,6 @@ bool Loom_Multiplexer::selectPin(uint8_t pin) {
     Wire.write(1 << pin);
     uint8_t result = Wire.endTransmission();
 
-    LOOM_MUX_DEBUG_FORMAT("Selected mux port %u with mask 0x%02X, Wire result %u", pin,
-                      (uint8_t)(1 << pin), result);
     FUNCTION_END;
     return result == 0;
 }
@@ -677,27 +521,16 @@ bool Loom_Multiplexer::disableChannels() {
     FUNCTION_START(this);
 
     if (activeMuxAddr == 0) {
-        LOOM_MUX_DEBUG_LOG("Cannot disable mux channels because no mux address is active");
         return false;
     }
 
+    LOOM_MUX_DEBUG_LINE("Disabling mux channels at address 0x%02X", activeMuxAddr);
     Wire.beginTransmission(activeMuxAddr);
     Wire.write(0);
     uint8_t result = Wire.endTransmission();
 
-    LOOM_MUX_DEBUG_FORMAT("Disabled all mux channels, Wire result %u", result);
     FUNCTION_END;
     return result == 0;
-}
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_Multiplexer::isDeviceConnected(byte addr) {
-    FUNCTION_START(this);
-
-    bool response = probeAddress(addr) == 0;
-    FUNCTION_END;
-    return response;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -713,9 +546,12 @@ uint8_t Loom_Multiplexer::probeAddress(byte addr) {
 byte Loom_Multiplexer::findMultiplexer() {
     FUNCTION_START(this);
     for (byte muxAddr : alt_addresses) {
-        LOOM_MUX_DEBUG_FORMAT("Checking mux address 0x%02X", muxAddr);
+        LOOM_MUX_DEBUG_LINE("Probing mux controller at address 0x%02X", muxAddr);
         const uint8_t result = probeAddress(muxAddr);
-        LOOM_MUX_DEBUG_I2C("Mux address probe", muxAddr, result);
+        if (result != 0 && scanDebugOutput) {
+            LOOM_MUX_DEBUG_LINE("No ACK from mux controller candidate 0x%02X, Wire error %u",
+                                muxAddr, result);
+        }
         if (result == 0 && probeMultiplexer(muxAddr)) {
             return muxAddr;
         }
@@ -727,6 +563,7 @@ byte Loom_Multiplexer::findMultiplexer() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_Multiplexer::probeMultiplexer(byte addr) {
     FUNCTION_START(this);
+    LOOM_MUX_DEBUG_LINE("Reading mux control register at address 0x%02X", addr);
     // A plain ACK is insufficient because Loom sensors also use 0x70-0x77.
     // A TCA9548 reads back its channel-control mask directly.
     if (Wire.requestFrom((int)addr, 1) != 1) {
@@ -737,6 +574,7 @@ bool Loom_Multiplexer::probeMultiplexer(byte addr) {
     const uint8_t testMasks[] = {0x00, 0x01};
     bool verified = true;
     for (uint8_t mask : testMasks) {
+        LOOM_MUX_DEBUG_LINE("Verifying mux mask 0x%02X at address 0x%02X", mask, addr);
         Wire.beginTransmission(addr);
         Wire.write(mask);
         if (Wire.endTransmission() != 0 || Wire.requestFrom((int)addr, 1) != 1 ||
@@ -747,6 +585,7 @@ bool Loom_Multiplexer::probeMultiplexer(byte addr) {
     }
 
     // Restore whichever channel mask was active before the probe.
+    LOOM_MUX_DEBUG_LINE("Restoring mux mask 0x%02X at address 0x%02X", originalMask, addr);
     Wire.beginTransmission(addr);
     Wire.write(originalMask);
     if (Wire.endTransmission() != 0) {
@@ -777,45 +616,6 @@ bool Loom_Multiplexer::shouldScanAddress(byte addr) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-#if LOOM_COMPILE_MUX_DEBUG
-void Loom_Multiplexer::debugLog(const char *message) {
-    if (debugOutput) {
-        Serial.print(F("[MUX DEBUG] "));
-        Serial.println(message);
-    }
-}
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Multiplexer::debugLogFormatted(const char *format, ...) {
-    if (!debugOutput) {
-        return;
-    }
-
-    char output[96];
-    va_list arguments;
-    va_start(arguments, format);
-    vsnprintf(output, sizeof(output), format ? format : "", arguments);
-    va_end(arguments);
-    LOOM_MUX_DEBUG_LOG(output);
-}
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_Multiplexer::debugLogI2CResult(const char *label, byte addr, uint8_t result) {
-    if (!debugOutput) {
-        return;
-    }
-
-    if (result == 0 || scanDebugOutput) {
-        LOOM_MUX_DEBUG_FORMAT("%s 0x%02X: %s, Wire error %u", label, addr, result == 0 ? "ACK" : "NACK",
-                          result);
-    }
-}
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-#endif
 Module *Loom_Multiplexer::loadSensor(const byte addr) {
     FUNCTION_START(this);
 

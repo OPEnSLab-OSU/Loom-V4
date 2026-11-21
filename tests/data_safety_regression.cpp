@@ -1,6 +1,7 @@
 // Host-side fault injection: uses production helpers and the installed ArduinoJson headers.
 #include "Utilities/Loom_SDUtils.h"
 #include "Utilities/Loom_JsonUtils.h"
+#include "Utilities/Loom_LoRaJournalFormat.h"
 #include <ArduinoJson.h>
 #include <assert.h>
 #include <stdio.h>
@@ -115,17 +116,15 @@ void testNames() {
     int shared = 0;
     assert(loomSD::advanceLogNumber("Deploy_Test_0.csv", "Deploy_Test_", shared));
     assert(loomSD::advanceDebugNumber("output_0.log", shared));
-    assert(loomSD::advanceDebugNumber("trace_1.ndjson", shared));
-    assert(loomSD::advanceDebugNumber("trace_2.perfetto.json", shared));
-    assert(shared == 3); // Migration past old independent numbering preserves both captures.
+    assert(shared == 1); // Migration past old independent numbering preserves both captures.
     assert(loomSD::advanceDebugNumber("FUNCSUMMARIES_12.LOG", shared));
     assert(shared == 13);
-    assert(loomSD::advanceDebugNumber("trace_99.ndjson.backup", shared));
+    assert(loomSD::advanceDebugNumber("trace_14.ndjson", shared));
+    assert(shared == 15);
     assert(loomSD::advanceDebugNumber("output_.log", shared));
-    assert(shared == 13);
-    assert(!loomSD::advanceDebugNumber("trace_2147483647.ndjson", shared));
+    assert(shared == 15);
     assert(!loomSD::advanceDebugNumber("output_999999999999999999.log", shared));
-    assert(shared == 13);
+    assert(shared == 15);
 }
 
 void testDebugNames() {
@@ -135,10 +134,6 @@ void testDebugNames() {
     assert(strcmp(path, "/debug/Deploy_Test_debug_3.log") == 0);
     assert(loomDebugFiles::buildPath(path, sizeof(path), "WispBench", Kind::Summaries, 3));
     assert(strcmp(path, "/debug/WispBench_funcSummaries_3.log") == 0);
-    assert(loomDebugFiles::buildPath(path, sizeof(path), "WispBench", Kind::TraceRecords, 3));
-    assert(strcmp(path, "/debug/WispBench_trace_3.ndjson") == 0);
-    assert(loomDebugFiles::buildPath(path, sizeof(path), "WispBench", Kind::TraceTimeline, 3));
-    assert(strcmp(path, "/debug/WispBench_trace_3.perfetto.json") == 0);
     assert(loomDebugFiles::buildPath(path, sizeof(path), "../Bench / A_", Kind::Text, 3));
     assert(strcmp(path, "/debug/___Bench___A_debug_3.log") == 0);
     assert(loomDebugFiles::buildPath(path, sizeof(path), "", Kind::Text, 3));
@@ -148,7 +143,6 @@ void testDebugNames() {
     memset(maximum, 'a', sizeof(maximum) - 1);
     maximum[sizeof(maximum) - 1] = '\0';
     assert(loomDebugFiles::buildPath(path, sizeof(path), maximum, Kind::Summaries, INT_MAX));
-    assert(loomDebugFiles::buildPath(path, sizeof(path), maximum, Kind::TraceTimeline, INT_MAX));
     assert(strlen(path) < sizeof(path));
     char tooLong[loomDebugFiles::NAME_SIZE + 1];
     memset(tooLong, 'a', sizeof(tooLong) - 1);
@@ -165,15 +159,12 @@ void testDebugNames() {
     assert(loomSD::advanceDebugNumber("output_12.log", next, "Deploy_Test_"));
     assert(loomSD::advanceDebugNumber("Deploy_Test_debug_20.log", next, "Deploy_Test_"));
     assert(loomSD::advanceDebugNumber("DEPLOY_TEST_FUNCSUMMARIES_22.LOG", next, "Deploy_Test_"));
-    assert(loomSD::advanceDebugNumber("Deploy_Test_trace_30.ndjson", next, "Deploy_Test_"));
-    assert(loomSD::advanceDebugNumber("Deploy_Test_trace_33.perfetto.json", next, "Deploy_Test_"));
-    assert(next == 34); // Orphan diagnostics must reserve a new shared session.
-    assert(loomSD::advanceDebugNumber("Other_trace_99.ndjson", next, "Deploy_Test_"));
+    assert(next == 23); // Orphan diagnostics must reserve a new shared session.
+    assert(loomSD::advanceDebugNumber("Deploy_Test_trace_24.perfetto.json", next, "Deploy_Test_"));
+    assert(next == 25);
     assert(loomSD::advanceDebugNumber("Deploy_Test_debug_.log", next, "Deploy_Test_"));
-    assert(loomSD::advanceDebugNumber("Deploy_Test_trace_99.ndjson.backup", next, "Deploy_Test_"));
-    assert(next == 34);
+    assert(next == 25);
     assert(!loomSD::advanceDebugNumber("Deploy_Test_debug_2147483647.log", next, "Deploy_Test_"));
-    assert(!loomSD::advanceDebugNumber("Deploy_Test_trace_99999999999999.ndjson", next, "Deploy_Test_"));
     puts("PASS Manager/custom diagnostic names, safe bounds, legacy migration and orphan sessions");
 }
 
@@ -260,6 +251,102 @@ struct FaultOutput {
         return closeOK;
     }
 };
+
+struct JournalFile : FaultOutput {
+    size_t position = 0;
+    bool readFailed = false;
+    explicit operator bool() const { return true; }
+    bool seekSet(uint32_t offset) {
+        position = offset;
+        return offset <= bytes.size();
+    }
+    size_t read(uint8_t *destination, size_t length) {
+        if (readFailed || length > bytes.size() - position) {
+            return 0;
+        }
+        memcpy(destination, bytes.data() + position, length);
+        position += length;
+        return length;
+    }
+    bool getError() const { return readFailed; }
+};
+
+void testJournalRecovery() {
+    using namespace loomLoRa::journal;
+    uint8_t record[8], tail[8];
+    write32(record, 123);
+    write32(record + 4, checksum(record, 4));
+    const std::string valid(reinterpret_cast<const char *>(record), sizeof(record));
+    uint32_t end = 0;
+    for (size_t torn = 0; torn < sizeof(record); ++torn) {
+        JournalFile file;
+        file.bytes = valid + valid.substr(0, torn);
+        assert(loomSD::recoverFixedRecords(file, tail, sizeof(record), end, validEntry));
+        assert(file.bytes == valid && end == sizeof(record) && file.closes == 1);
+        assert(read32(tail) == 123);
+    }
+    JournalFile corrupt;
+    corrupt.bytes = valid + valid;
+    corrupt.bytes.back() ^= 1;
+    const auto preserved = corrupt.bytes;
+    assert(!loomSD::recoverFixedRecords(corrupt, tail, sizeof(record), end, validEntry));
+    assert(corrupt.bytes == preserved && corrupt.closes == 1);
+    puts("PASS LoRa journal partial-tail repair and complete-record preservation");
+}
+
+void testJournalCursorRecovery() {
+    using namespace loomLoRa::journal;
+    constexpr uint8_t queueRecordSize = 16;
+    const auto checkpoint = [](uint32_t offset) {
+        uint8_t record[CursorSize];
+        write32(record, offset);
+        write32(record + 4, checksum(record, 4));
+        return std::string(reinterpret_cast<const char *>(record), sizeof(record));
+    };
+    const auto first = checkpoint(queueRecordSize);
+    const auto second = checkpoint(2 * queueRecordSize);
+    auto bad = second;
+    bad.back() ^= 1;
+    uint32_t cursor = 0;
+
+    JournalFile complete;
+    complete.bytes = first + second;
+    assert(recoverCursor(complete, 32, queueRecordSize, cursor) && cursor == 32);
+    assert(complete.bytes == first + second && complete.syncs == 0 && complete.closes == 1);
+
+    for (const auto &final : {second.substr(0, 4), bad}) {
+        JournalFile torn;
+        torn.bytes = first + final;
+        assert(recoverCursor(torn, 32, queueRecordSize, cursor) && cursor == 16);
+        assert(torn.bytes == first && torn.syncs == 1 && torn.closes == 1);
+    }
+
+    // No usable recent checkpoint, an unaligned offset, or a cursor beyond a restored queue.
+    for (const auto &entries : {first + bad + bad, first + checkpoint(17), first + second}) {
+        JournalFile stale;
+        stale.bytes = entries;
+        assert(recoverCursor(stale, 16, queueRecordSize, cursor) && cursor == 0);
+        assert(stale.bytes.empty() && stale.syncs == 1 && stale.closes == 1);
+    }
+
+    JournalFile unreadable;
+    unreadable.bytes = first + bad;
+    unreadable.readFailed = true;
+    cursor = 99;
+    assert(!recoverCursor(unreadable, 32, queueRecordSize, cursor));
+    assert(cursor == 99 && unreadable.bytes == first + bad && unreadable.closes == 1);
+
+    for (int failure = 0; failure < 3; ++failure) {
+        JournalFile interrupted;
+        interrupted.bytes = first + bad;
+        interrupted.truncateOK = failure != 0;
+        interrupted.failAllSync = failure == 1;
+        interrupted.closeOK = failure != 2;
+        assert(!recoverCursor(interrupted, 32, queueRecordSize, cursor));
+        assert(cursor == 99 && interrupted.closes == 1);
+    }
+    puts("PASS LoRa cursor rollback, safe replay, and SD failure propagation");
+}
 
 void testBatchCommit() {
     DynamicJsonDocument doc(256);
@@ -466,6 +553,8 @@ int main() {
     testClose();
     testJson();
     testBatchCommit();
+    testJournalRecovery();
+    testJournalCursorRecovery();
     testDebugAppend();
     testRecoveryCount();
     testRecoveryDirectory();

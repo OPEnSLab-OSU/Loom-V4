@@ -1,5 +1,4 @@
 #include <Loom_Manager.h> // Loom 4.9
-#include <Diagnostics/Loom_MemoryDiagnostics.h>
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Hardware/Actuators/Loom_Neopixel/Loom_Neopixel.h>
 #include <Sensors/Loom_Analog/Loom_Analog.h>
@@ -59,7 +58,6 @@ Loom_LoRa lora(manager);
 #warning Wireless communication disabled!
 #endif
 
-Loom_MemoryDiagnostics memoryDiagnostics;
 
 // Global Variables
 volatile bool buttonPressed = false; // Check to see if button was pressed
@@ -90,18 +88,16 @@ void setup() {
     bool userInput = !digitalRead(
         BUTTON_PIN); // wait for serial connection ONLY if button is pressed (low reading)
     manager.beginSerial(userInput); // wait for serial connection ONLY if button is pressed
-    memoryDiagnostics.checkpoint(F("post_global_ctor"), manager.getDocument(), -1);
 
     // Build the SD base from the configured node instead of always calling every node "1".
     char logName[Manager::DEVICE_NAME_SIZE];
     snprintf(logName, sizeof(logName), "%s%u", DEVICE_NAME, static_cast<unsigned int>(NODE_NUMBER));
     hypnos.setLogName(logName); // SD card CSV file name
+    hypnos.setCompileTime(__DATE__, __TIME__);
     hypnos.enable();
     sleepInterval = hypnos.getConfigFromSD("HypnosConfig.json");
 
-    memoryDiagnostics.checkpoint(F("pre_initialize"), manager.getDocument(), -1);
     manager.initialize();
-    memoryDiagnostics.checkpoint(F("post_initialize"), manager.getDocument(), -1);
     setRTC(userInput);
 
     checkMagnetSensor();
@@ -114,11 +110,8 @@ void setup() {
  * Main loop
  */
 void loop() {
-    memoryDiagnostics.beginCycle();
-    memoryDiagnostics.checkpoint(F("loop_start"), manager.getDocument(), -1);
     measure();
-    memoryDiagnostics.checkpoint(F("post_measure_sd"), manager.getDocument(), -1);
-    if (buttonPressed) // if interrupt button was pressed, display staus of magnet sensor
+    if (buttonPressed) // Display the magnet status after a button wake.
     {
         displayMagnetStatus(magnetSensor.getMagnetStatus());
         delay(3000);
@@ -126,10 +119,7 @@ void loop() {
         buttonPressed = false;
     }
     transmit();
-    memoryDiagnostics.checkpoint(F("post_transmit"), manager.getDocument(), -1);
-    memoryDiagnostics.checkpoint(F("pre_sleep"), manager.getDocument(), -1);
     sleepCycle();
-    memoryDiagnostics.checkpoint(F("post_wake"), manager.getDocument(), -1);
 }
 
 /**
@@ -145,10 +135,9 @@ void measure() {
     // Log whether system woke up from button or not
     manager.addData("Button", "Pressed?", buttonPressed);
 
-    hypnos.logToSD();
-
-    // delay(5000);
-    // manager.display_data();
+    if (!hypnos.logToSD()) {
+        Serial.println(F("Could not confirm the Dendrometer sample was saved to SD."));
+    }
 }
 
 /**
@@ -177,7 +166,7 @@ void transmit() {
     loopCounter++;
     if (loopCounter >= TRANSMIT_INTERVAL) {
         if (!lora.send(0)) {
-            Serial.println(F("LoRa delivery failed; this sample remains in the node CSV."));
+            Serial.println(F("LoRa delivery failed."));
         }
         loopCounter = 0;
     }
@@ -188,9 +177,11 @@ void transmit() {
  * Shut down the device for a specified time period to save power.
  */
 void sleepCycle() {
-    hypnos.setInterruptDuration(sleepInterval);
-    // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
-    hypnos.reattachRTCInterrupt();
+    if (!hypnos.scheduleWake(sleepInterval)) {
+        manager.pause(60000);
+        hypnos.enable();
+        return;
+    }
     attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), ISR_BUTTON, FALLING);
 
     // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
@@ -203,7 +194,7 @@ void ISR_RTC() { hypnos.wakeup(); }
 
 void ISR_BUTTON() {
     buttonPressed = true;
-    hypnos.wakeup();
+    hypnos.wakeFromExternalInterrupt();
 }
 
 /**

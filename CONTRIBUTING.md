@@ -14,7 +14,7 @@ Please review this guide in its entirety before making a contribution.
 - [Code Standards](#code-standards)
 - [Testing Requirements](#testing-requirements)
 - [Review & Merge Policy](#review--merge-policy)
-- [Releasing a New Board Profile](#board-profile)
+- [Releasing a New Board Profile](#releasing-a-new-board-profile)
 
 ---
 
@@ -45,7 +45,7 @@ Please review this guide in its entirety before making a contribution.
 |---|---|
 | **3.1** | Follow the [Testing Requirements](#testing-requirements) and [Merge Policies](#review-&-merge-policy) before attempting a merge
 | **3.2** | Communicate with the other OPEnS teams once the PR has been approved so that further testing may be done
-| **3.3** | Once the dev branch has been tested and approved by Dr. Chet, create a new PR to `main` and begin the process to release a new board profile [Releasing a New Board Profile](#board-profile)
+| **3.3** | Once the dev branch has been tested and approved by Dr. Chet, create a new PR to `main` and begin the process to release a new board profile [Releasing a New Board Profile](#releasing-a-new-board-profile)
 
 ### After Merging
 | Step | Action |
@@ -182,17 +182,24 @@ Examples:
 ---
 
 ## Releasing a New Board Profile
-- Merge current `dev` branch into `main`
-- Ensure local branch is set to `dev`
-- Rename the `4.X` folder to `loom4`
-- Update and add new libraries
-- Compress the renamed `loom4` folder
-- Get size of compressed folder with `ls -al`
-- Create checksum with `sha256sum.exe < loom4.zip`
-- Create version release on Github and upload the compressed `loom4.zip`
-- After pusing the release, create a new entry in `package_loom4_index.json` and update the `version`, `url`, `checksum`, and `size` fields.
-- Wait an hour for the Arduino IDE to update and redownload to ensure the new libraries are included
-- Refer to this [walkthrough](https://media.oregonstate.edu/media/t/1_6lpxb7mp) for more details
+
+Run the [source preflight](tests/README.md) against the platform you plan to release.
+From that checkout, build an archive using the installed Loom SAMD platform directory
+and the tested ArduinoMqttClient library folder if the platform does not already include it.
+
+```powershell
+New-Item -ItemType Directory -Force .loom-build | Out-Null
+python tools/make_release_package.py --platform-root $LoomPlatform --library-root $ArduinoMqttClient --output .loom-build/loom4.zip
+python tools/make_release_package.py --verify .loom-build/loom4.zip
+```
+
+Compile the release sketches from the extracted archive with an empty sketchbook library
+directory. Omit `--library-root` when the platform already bundles ArduinoMqttClient.
+The verification command reports the archive's SHA-256 and size in bytes.
+After approval and merge to `main`, attach `loom4.zip` to the GitHub release.
+Add the new version, archive URL, SHA-256 and byte count to
+[`auxilary/package_loom4_index.json`](auxilary/package_loom4_index.json), then verify the
+published version through Boards Manager.
 
 ## Code Standards
 - Refer to the [C Style Guide](https://github.com/OPEnSLab-OSU/Loom-V4/wiki/C-Style-Guide#style-guide-for-embedded-programming) found in the Wiki

@@ -10,7 +10,7 @@
 
 // Loom manager must be included first
 #include <Loom_Manager.h>
-#include <ADS1232_Lib.h>
+#include <Sensors/SPI/Loom_ADS1232/ADS1232_Lib_Fixed.h>
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Hardware/Loom_Hypnos/SDManager.h>
 #include <algorithm>
@@ -66,15 +66,16 @@ constexpr char  LOG_FILE[]          = "Device0.csv";
 //                       Global Objects
 // --------------------------------------------------------------------
 Manager     manager("Device", 1);
-ADS1232_Lib ads(PIN_PDWN, PIN_SCLK, PIN_DOUT);
+ADS1232_Lib_Fixed ads(PIN_PDWN, PIN_SCLK, PIN_DOUT);
 Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, true, false);
 SDManager   sd(&manager, 11);
+bool sdReady = false;
 
 // --------------------------------------------------------------------
 //                    Forward Declarations
 // --------------------------------------------------------------------
-void logData(int rawThermValue, float temperature, float weight, float correctedWeight, float vbat);
-float measureWeight();
+bool logData(int rawThermValue, float temperature, float weight, float correctedWeight, float vbat);
+bool measureWeight(float &weight);
 float measureBatteryVoltage();
 void isrTrigger();
 float computeCorrectedWeight(float wMeasured, float temperature);
@@ -84,33 +85,37 @@ float computeCorrectedWeight(float wMeasured, float temperature);
 //    Logs weight, thermistor reading, and battery voltage to the
 //    SD card with a timestamp from the RTC.
 // --------------------------------------------------------------------
-void logData(int rawThermValue, float temperature, float weight, float correctedWeight, float vbat)
+bool logData(int rawThermValue, float temperature, float weight, float correctedWeight, float vbat)
 {
-    // Build time string
+    DateTime now;
+    if (!hypnos.tryGetCurrentTime(now)) {
+        return false;
+    }
+    if (!sdReady) {
+        if (!sd.begin()) {
+            return false;
+        }
+        File file = sd.openFile(LOG_FILE);
+        const bool needsHeader = !file || file.fileSize() == 0;
+        file.close();
+        if (needsHeader &&
+            !sd.writeLineToFile(LOG_FILE, "time,adc_counts,temperature,weight,corrected_weight,voltage")) {
+            return false;
+        }
+    }
+
     char timeBuffer[32] = {};
-    DateTime now = hypnos.getCurrentTime();
     snprintf(timeBuffer, sizeof(timeBuffer), "%02d:%02d:%02d %02d/%02d/%02d",
              now.hour(), now.minute(), now.second(),
              now.day(), now.month(), now.year());
 
-    // Convert data to strings
-    char weightStr[16] = {};
-    snprintf(weightStr, sizeof(weightStr), "%.2f", weight);
-
-    char thermStr[16] = {};
-    snprintf(thermStr, sizeof(thermStr), "%d", rawThermValue);
-
-    char vbatStr[16] = {};
-    snprintf(vbatStr, sizeof(vbatStr), "%.3f", vbat);
-
-    // Build CSV line: time, weight, therm, battery
     char logLine[128] = {};
-    snprintf(logLine, sizeof(logLine),
-             "%s,%d,%.2f,%.2f,%.2f,%.3f",
-             timeBuffer, rawThermValue, temperature, weight, correctedWeight, vbat);
-
-    // Write to SD
-    sd.writeLineToFile(LOG_FILE, logLine);
+    const int length = snprintf(logLine, sizeof(logLine), "%s,%d,%.2f,%.2f,%.2f,%.3f",
+                                timeBuffer, rawThermValue, temperature, weight,
+                                correctedWeight, vbat);
+    sdReady = length > 0 && static_cast<size_t>(length) < sizeof(logLine) &&
+              sd.writeLineToFile(LOG_FILE, logLine);
+    return sdReady;
 }
 
 // --------------------------------------------------------------------
@@ -118,20 +123,27 @@ void logData(int rawThermValue, float temperature, float weight, float corrected
 //     Takes multiple readings from the load cell, sorts them, and
 //     returns the median as a stable measurement.
 // --------------------------------------------------------------------
-float measureWeight()
+bool measureWeight(float &weight)
 {
+    if (!ads.power_up()) {
+        ads.power_down();
+        return false;
+    }
+    delay(1000); // Allow the load cell to stabilize.
     float weights[NUM_WEIGHT_SAMPLES] = {};
 
-    // Take N measurements
-    for(int i = 0; i < NUM_WEIGHT_SAMPLES; i++) {
-        weights[i] = ads.units_read(NUM_READINGS);
+    for (float &reading : weights) {
+        reading = ads.units_read(NUM_READINGS);
+        if (!ads.last_read_valid()) {
+            ads.power_down();
+            return false;
+        }
     }
+    ads.power_down();
 
-    // Sort to pick the median
     std::sort(weights, weights + NUM_WEIGHT_SAMPLES);
-
-    // Return the middle element
-    return weights[NUM_WEIGHT_SAMPLES / 2];
+    weight = weights[NUM_WEIGHT_SAMPLES / 2];
+    return true;
 }
 
 // --------------------------------------------------------------------
@@ -171,8 +183,8 @@ void isrTrigger()
 // --------------------------------------------------------------------
 void setup()
 {
-    manager.beginSerial();
-    Serial.println("Evaporometer Starting...");
+    manager.beginSerial(false);
+    hypnos.setCompileTime(__DATE__, __TIME__);
 
     // Enable Hypnos (power management, RTC, etc.)
     hypnos.enable();
@@ -188,20 +200,12 @@ void setup()
     pinMode(PIN_SD_2, OUTPUT);
     pinMode(PIN_SD_3, OUTPUT);
 
-    // Start SD manager
-    sd.begin();
-
-    // Header for the CSV
-    sd.writeLineToFile(LOG_FILE, "time,adc_counts,temperature,weight,corrected_weight,voltage");
-
     // Set thermistor pin
     pinMode(PIN_THERM, INPUT);
 
     // Configure the load cell offset/scale
     ads.set_offset(LOAD_CELL_OFFSET);
     ads.set_scale(LOAD_CELL_SCALE);
-
-    Serial.println("End of Setup\n\n");
 }
 
 // --------------------------------------------------------------------
@@ -209,65 +213,23 @@ void setup()
 // --------------------------------------------------------------------
 void loop()
 {
-    ads.power_up();        // Turn on the ADS1232 if needed
-    
-    // Get start time
-    DateTime loopStart = hypnos.getCurrentTime();
-
-    // Measure Weight
-    Serial.println();
-    Serial.println();
-    Serial.println("Taking measurements...");
-    manager.pause(1000);   // Delay to allow load cell to stabilize
-    float weight = measureWeight();
-
-    // Read Thermistor (currently just an ADC raw value)
-    int rawThermValue = analogRead(PIN_THERM);
-
-    // Convert raw therm value to float for correction
-    float temperature = static_cast<float>(rawThermValue);
-
-    // Calculate Corrected Weight
-    float correctedWeight = computeCorrectedWeight(weight, temperature);
-
-    // Measure Battery Voltage
-    float vbat = measureBatteryVoltage();
-
-    // Print to serial
-    Serial.print("Weight: ");
-    Serial.print(weight);
-    Serial.print(" g, Temp Raw: ");
-    Serial.print(rawThermValue);
-    Serial.print(" (~T: ");
-    Serial.print(temperature);
-    Serial.print("), Corrected Weight: ");
-    Serial.print(correctedWeight);
-    Serial.print(" g, Battery: ");
-    Serial.print(vbat);
-    Serial.println(" V");
-
-    // Log Data to SD
-    Serial.println("Logging data...");
-    logData(rawThermValue, temperature, weight, correctedWeight, vbat);
-
-    // Get end time
-    DateTime loopEnd = hypnos.getCurrentTime();
-
-    // Calculate how long to sleep
-    TimeSpan totalTime = loopEnd - loopStart;
-    long timeSpent = totalTime.totalseconds();
-    long timeToSleep = TOTAL_PERIOD_SEC - timeSpent;
-    if (timeToSleep <= 0) {
-        Serial.println("Measurement overran the configured period; sampling again without sleeping.");
+    if (!hypnos.setSampleInterval(TimeSpan(TOTAL_PERIOD_SEC))) {
+        manager.pause(TOTAL_PERIOD_SEC * 1000UL);
+        hypnos.enable();
         return;
     }
 
-    Serial.println("Sleeping...");
-    // Sleep Setup
-    hypnos.setInterruptDuration(TimeSpan(0, 0, 0, timeToSleep));
-    hypnos.reattachRTCInterrupt();
-
-    // Go to sleep now
+    float weight;
+    if (measureWeight(weight)) {
+        const int rawThermValue = analogRead(PIN_THERM);
+        const float temperature = static_cast<float>(rawThermValue);
+        const float correctedWeight = computeCorrectedWeight(weight, temperature);
+        if (!logData(rawThermValue, temperature, weight, correctedWeight, measureBatteryVoltage())) {
+            Serial.println(F("Could not confirm the Evaporometer sample was saved to SD."));
+        }
+    } else {
+        Serial.println(F("ADS1232 did not provide a complete weight reading."));
+    }
     hypnos.sleep();
 }
 

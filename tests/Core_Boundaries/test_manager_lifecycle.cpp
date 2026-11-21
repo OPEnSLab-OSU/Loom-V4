@@ -1,17 +1,9 @@
-// Deferred: compile the production Manager after compiler execution resumes.
 // No initialize() call: it reads SAMD hardware serial registers, which these fakes do not model.
 #include <cassert>
 #define WATCHDOG_ENABLE
 #include "Arduino.h"
 #include "Adafruit_SleepyDog.h"
-#if defined(_MSC_VER) && !defined(__clang__)
-// Logger's GCC noinline annotation affects production stack frames, not this dispatch fixture.
-#define __attribute__(attributes)
-#endif
 #include "Logger.h"
-#if defined(_MSC_VER) && !defined(__clang__)
-#undef __attribute__
-#endif
 
 // Keep the real Manager/Module/JSON/watchdog code. Only logging is suppressed in this fixture.
 #undef FUNCTION_START

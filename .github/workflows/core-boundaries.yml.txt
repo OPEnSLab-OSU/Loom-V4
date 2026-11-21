@@ -40,7 +40,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $checks = 'verify_warning_scope.ps1', 'verify_example_includes.ps1',
-                    'verify_wisp_example_mirrors.ps1', 'verify_wisp_diagnostic_boundaries.ps1'
+                    'verify_wisp_diagnostic_boundaries.ps1'
           foreach ($check in $checks) {
             & pwsh -NoProfile -NonInteractive -File (Join-Path tests $check)
             if ($LASTEXITCODE -ne 0) { throw "Source check failed: $check" }
@@ -58,6 +58,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Receipt checks failed.' }
           node tools/service_mock/test_viewer.js
           if ($LASTEXITCODE -ne 0) { throw 'Viewer checks failed.' }
+          $trace = Get-ChildItem tests/test_*.cjs | Where-Object Name -ne test_trace_display_clocks.cjs
+          node --test $trace.FullName
+          if ($LASTEXITCODE -ne 0) { throw 'Trace tooling checks failed.' }
 
       # No board SDK, network credentials, firmware upload or automatic Git writes are needed.
       # Physical faults and real broker/database delivery still require separate acceptance.

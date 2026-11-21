@@ -1,0 +1,61 @@
+--- a/libraries/Wire/Wire.cpp
++++ b/libraries/Wire/Wire.cpp
+@@ -26,6 +26,10 @@
+ 
+ #include "Wire.h"
+ 
++namespace {
++constexpr uint32_t WIRE_READ_TIMEOUT_MS = 100;
++}
++
+ TwoWire::TwoWire(SERCOM * s, uint8_t pinSDA, uint8_t pinSCL)
+ {
+   this->sercom = s;
+@@ -76,19 +80,38 @@
+   if(sercom->startTransmissionWIRE(address, WIRE_READ_FLAG))
+   {
+     // Read first data
+-    rxBuffer.store_char(sercom->readDataWIRE());
++    if (!sercom->availableWIRE())
++      return 0;
++    const uint8_t firstByte = sercom->readDataWIRE();
++    if (!sercom->isBusOwnerWIRE())
++      return 0;
++    rxBuffer.store_char(firstByte);
++    byteRead = 1;
+ 
+     // Connected to slave
+-    for (byteRead = 1; byteRead < quantity; ++byteRead)
++    while (byteRead < quantity && sercom->isBusOwnerWIRE())
+     {
+       sercom->prepareAckBitWIRE();                          // Prepare Acknowledge
+       sercom->prepareCommandBitsWire(WIRE_MASTER_ACT_READ); // Prepare the ACK command for the slave
+-      rxBuffer.store_char(sercom->readDataWIRE());          // Read data and send the ACK
++
++      const uint32_t waitStart = millis();
++      while (!sercom->availableWIRE() && sercom->isBusOwnerWIRE() &&
++             millis() - waitStart < WIRE_READ_TIMEOUT_MS)
++      {
++      }
++      if (!sercom->availableWIRE())
++        break;
++
++      const uint8_t nextByte = sercom->readDataWIRE();      // Read data and send the ACK
++      if (!sercom->isBusOwnerWIRE())
++        break;
++      rxBuffer.store_char(nextByte);
++      ++byteRead;
+     }
+     sercom->prepareNackBitWIRE();                           // Prepare NACK to stop slave transmission
+     //sercom->readDataWIRE();                               // Clear data register to send NACK
+ 
+-    if (stopBit)
++    if (stopBit && sercom->isBusOwnerWIRE())
+     {
+       sercom->prepareCommandBitsWire(WIRE_MASTER_ACT_STOP);   // Send Stop
+     }
+@@ -370,4 +393,3 @@
+     void WIRE5_IT_HANDLER_3(void) { Wire5.onService(); }
+   #endif // __SAMD51__
+ #endif
+-

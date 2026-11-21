@@ -36,7 +36,11 @@ struct LoomTraceCallbacks {
 // FUNCTION_START; syntax and INSTRUMENT() remain available without an object address.
 #define LOOM_LOGGER_JOIN_IMPL(a, b) a##b
 #define LOOM_LOGGER_JOIN(a, b) LOOM_LOGGER_JOIN_IMPL(a, b)
+#if defined(_MSC_VER) && !defined(__clang__)
+#define LOOM_TRACE_FUNCTION_NAME __FUNCSIG__
+#else
 #define LOOM_TRACE_FUNCTION_NAME __PRETTY_FUNCTION__
+#endif
 #define INSTRUMENT()                                                                               \
     FunctionInstrumentor LOOM_LOGGER_JOIN(_loomInstrumentor_, __LINE__)(                           \
         __FILE__, __func__, __LINE__, LOOM_TRACE_FUNCTION_NAME);
@@ -303,7 +307,7 @@ class FunctionInstrumentor {
     friend class Logger;
     Loom_Trace *trace = nullptr;
     // Keep formatting buffers out of the constructor/destructor frames when summaries are off.
-    static __attribute__((noinline)) void
+    static void
     writeSummary(Logger *logger, bool starting, const char *file, const char *func, int lineNum);
 
   public:
@@ -312,7 +316,7 @@ class FunctionInstrumentor {
     FunctionInstrumentor &operator=(const FunctionInstrumentor &) = delete;
 
     // Fold call-site metadata into the existing constructor instead of adding a helper call.
-    __attribute__((always_inline)) FunctionInstrumentor(const FunctionInstrumentationContext &context)
+    FunctionInstrumentor(const FunctionInstrumentationContext &context)
         : FunctionInstrumentor(context.file, context.func, context.lineNum, context.qualifiedFunc,
                                context.object) {}
 
@@ -320,7 +324,9 @@ class FunctionInstrumentor {
                          const char *qualifiedFunc = nullptr, const void *object = nullptr) {
         Logger *logger = Logger::getInstance();
         logger->stackDepth++;
-        beginTrace(logger, file, qualifiedFunc != nullptr ? qualifiedFunc : func, lineNum, object);
+        if (logger->hasTrace()) {
+            beginTrace(logger, file, qualifiedFunc != nullptr ? qualifiedFunc : func, lineNum, object);
+        }
 
         if (logger->shouldLogSummaries()) {
             logger->summaryWriter(logger, true, file, func, lineNum);

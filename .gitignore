@@ -10,8 +10,9 @@ clang-format-results.txt
 **/mqtt_creds.json
 .secrets
 
-# Sketch launcher binaries, staged sources and capture build logs
+# Local firmware builds
 .loom-build/
+__pycache__/
 
 # Local Feature Studio designs, Codex handoffs and generated applications
 tools/feature-studio/.local/

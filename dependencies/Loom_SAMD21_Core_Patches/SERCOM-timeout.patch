@@ -1,0 +1,99 @@
+--- a/cores/arduino/SERCOM.cpp
++++ b/cores/arduino/SERCOM.cpp
+@@ -26,6 +26,12 @@
+ // you can override this value in your variant if needed
+ #define WIRE_RISE_TIME_NANOSECONDS 125
+ #endif
++
++namespace {
++// A normal 100 kHz byte transaction completes in well under a millisecond. Allow substantial
++// clock-stretching margin, but never let a wedged I2C bus halt the SAMD21 forever.
++constexpr uint32_t WIRE_OPERATION_TIMEOUT_MS = 100;
++}
+ 
+ SERCOM::SERCOM(Sercom* s)
+ {
+@@ -523,9 +529,11 @@
+   if(isMasterWIRE()) {
+     sercom->I2CM.CTRLB.bit.CMD = cmd;
+ 
++    const uint32_t waitStart = millis();
+     while(sercom->I2CM.SYNCBUSY.bit.SYSOP)
+     {
+-      // Waiting for synchronization
++      if (millis() - waitStart >= WIRE_OPERATION_TIMEOUT_MS)
++        return;
+     }
+   } else {
+     sercom->I2CS.CTRLB.bit.CMD = cmd;
+@@ -537,8 +545,11 @@
+   // 7-bits address + 1-bits R/W
+   address = (address << 0x1ul) | flag;
+ 
+-  // Wait idle or owner bus mode
+-   while ( !isBusIdleWIRE() && !isBusOwnerWIRE() );
++  // Do not deadlock if another master owns the bus or a slave left it wedged. This matches the
++  // behavior of newer Arduino/Adafruit SAMD cores: the caller receives a failed transaction and
++  // can retry after its normal sensor power-cycle path.
++  if (!isBusIdleWIRE() && !isBusOwnerWIRE())
++    return false;
+ 
+   // Send start and address
+   sercom->I2CM.ADDR.bit.ADDR = address;
+@@ -546,18 +557,23 @@
+   // Address Transmitted
+   if ( flag == WIRE_WRITE_FLAG ) // Write mode
+   {
++    const uint32_t waitStart = millis();
+     while( !sercom->I2CM.INTFLAG.bit.MB )
+     {
+-      // Wait transmission complete
++      if (sercom->I2CM.INTFLAG.bit.ERROR ||
++          millis() - waitStart >= WIRE_OPERATION_TIMEOUT_MS)
++        return false;
+     }
+   }
+   else  // Read mode
+   {
++    const uint32_t waitStart = millis();
+     while( !sercom->I2CM.INTFLAG.bit.SB )
+     {
+         // If the slave NACKS the address, the MB bit will be set.
+         // In that case, send a stop condition and return false.
+-        if (sercom->I2CM.INTFLAG.bit.MB) {
++        if (sercom->I2CM.INTFLAG.bit.MB || sercom->I2CM.INTFLAG.bit.ERROR ||
++            millis() - waitStart >= WIRE_OPERATION_TIMEOUT_MS) {
+             sercom->I2CM.CTRLB.bit.CMD = 3; // Stop condition
+             return false;
+         }
+@@ -586,11 +602,13 @@
+   sercom->I2CM.DATA.bit.DATA = data;
+ 
+   //Wait transmission successful
++  const uint32_t waitStart = millis();
+   while(!sercom->I2CM.INTFLAG.bit.MB) {
+ 
+     // If a bus error occurs, the MB bit may never be set.
+     // Check the bus error bit and bail if it's set.
+-    if (sercom->I2CM.STATUS.bit.BUSERR) {
++    if (sercom->I2CM.INTFLAG.bit.ERROR ||
++        millis() - waitStart >= WIRE_OPERATION_TIMEOUT_MS) {
+       return false;
+     }
+   }
+@@ -676,9 +694,14 @@
+ {
+   if(isMasterWIRE())
+   {
++    const uint32_t waitStart = millis();
+     while( sercom->I2CM.INTFLAG.bit.SB == 0 )
+     {
+-      // Waiting complete receive
++      if (sercom->I2CM.INTFLAG.bit.MB || sercom->I2CM.INTFLAG.bit.ERROR ||
++          millis() - waitStart >= WIRE_OPERATION_TIMEOUT_MS) {
++        sercom->I2CM.CTRLB.bit.CMD = WIRE_MASTER_ACT_STOP;
++        return 0xFF;
++      }
+     }
+ 
+     return sercom->I2CM.DATA.bit.DATA ;

@@ -106,6 +106,10 @@ class Loom_Hypnos : public Module {
   public:
     volatile bool shouldPowerUp = true;
 
+    /** Request a full wake from a secondary ISR without detaching the RTC interrupt. */
+    void wakeFromExternalInterrupt() { externalWakeRequested = true; }
+    bool isSecondaryWake() const { return secondaryWake; }
+
     /**
      * Constructs a new Hypnos Instance using the manager to hold information about the device
      * @param man Reference to the manager
@@ -481,6 +485,8 @@ class Loom_Hypnos : public Module {
     uint32_t lastSampleClockUtc = 0;
     bool armRTCAlarm(const DateTime target); // Shared checked DS3231 arm/readback sequence.
     bool alarmScheduled = false;
+    volatile bool externalWakeRequested = false;
+    bool secondaryWake = false;
 
     /* Sleep functionality */
     bool sleepImpl(bool waitForSerial, bool wakeModules);

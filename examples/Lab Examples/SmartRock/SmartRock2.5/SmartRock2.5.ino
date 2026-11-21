@@ -29,8 +29,7 @@ void isrTrigger() { hypnos.wakeup(); }
 
 void setup() {
 
-    // Wait 20 seconds for the serial console to open
-    manager.beginSerial();
+    manager.beginSerial(false);
     hypnos.setCompileTime(__DATE__, __TIME__);
 
     // Enable the hypnos rails
@@ -47,22 +46,18 @@ void loop() {
     // Schedule before measuring so sensor/logging work is part of the configured period.
     // Subsequent cycles keep the first cycle's UTC phase and skip missed slots after overruns.
     if (!hypnos.setSampleInterval(sleepInterval)) {
-        Serial.println("Sample alarm could not be armed; this cycle will remain awake.");
+        manager.pause(60000);
+        hypnos.enable();
+        return;
     }
 
     // Measure and package the data
     manager.measure();
     manager.package();
 
-    // Print the current JSON packet
-    manager.display_data();
+    if (!hypnos.logToSD()) {
+        Serial.println(F("Could not confirm the SmartRock sample was saved to SD."));
+    }
 
-    // Log the data to the SD card
-    hypnos.logToSD();
-
-    // Reattach to the interrupt after we have set the alarm so we can have repeat triggers
-    hypnos.reattachRTCInterrupt();
-
-    // Put the device into a deep sleep, operation HALTS here until the interrupt is triggered
-    hypnos.sleep(false);
+    hypnos.sleep();
 }

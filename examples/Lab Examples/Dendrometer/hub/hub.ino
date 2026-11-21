@@ -1,7 +1,5 @@
-#include <Logger.h>
-
 #include <Loom_Manager.h> // Loom 4.9
-#include <Diagnostics/Loom_MemoryDiagnostics.h>
+#include <Logger.h>
 
 #include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
 #include <Hardware/Loom_BatchSD/Loom_BatchSD.h>
@@ -24,29 +22,26 @@ Loom_LTE lte(manager, "hologram", "", "", A5);
 // while keeping failed records across later receives and MCU restarts.
 Loom_BatchSD batchSD(hypnos, 1);
 Loom_MongoDB mqtt(manager, lte); // Load mqtt_creds.json from SD in setup().
-Loom_MemoryDiagnostics memoryDiagnostics;
 
 const uint32_t UPLOAD_RETRY_INTERVAL_MS = 30000;
+const uint32_t STORAGE_RETRY_INTERVAL_MS = 30000;
 uint32_t lastUploadAttempt = 0;
+uint32_t lastStorageAttempt = 0;
+bool storageNeedsRetry = false;
 
 void publishPending();
 void saveCurrentPacketToSD();
 void setup() {
+    Logger::getInstance()->setDebugOutput(false);
+    manager.beginSerial(false);
 
-    /* Enables logging logs to the SD card for later viewing under the 'debug' folder */
-    ENABLE_SD_LOGGING;
-
-    // Function summaries cause extra SD open/write/close traffic on every instrumented call.
-    // Leave them disabled during endurance deployments; the bounded [MEM] checkpoints remain on.
-    // Start the serial interface
-    manager.beginSerial();
-    memoryDiagnostics.checkpoint(F("post_global_ctor"), manager.getDocument(), -1);
-
-    // Enable the power rails on the hypnos
+    hypnos.setCompileTime(__DATE__, __TIME__);
     hypnos.enable();
     if (!lora.setReceivePool(receivePool)) {
         Serial.println(F("LoRa receive pool must be attached before receiving fragments."));
     }
+    // Broker client identity is fixed to this Feather even when it forwards a node packet.
+    mqtt.setClientID(manager.get_serial_num());
     mqtt.usePacketIdentityForBatch(); // Each queued node retains its own database/device topic.
 
     setRTC();
@@ -55,50 +50,44 @@ void setup() {
     // for every node packet; only the upload queue waits when the broker is unavailable.
 
     // load MQTT credentials from the SD card, if they exist
-    memoryDiagnostics.checkpoint(F("pre_mqtt_config"), manager.getDocument(), -1);
     char *credentials = hypnos.readFile("mqtt_creds.json");
     if (credentials != nullptr) {
         mqtt.loadConfigFromJSON(credentials); // Takes ownership and frees the buffer.
     } else {
         Serial.println(F("Missing mqtt_creds.json; packets will stay queued on SD."));
     }
-    memoryDiagnostics.checkpoint(F("post_mqtt_config"), manager.getDocument(), -1);
 
     // Initialize the modules
-    memoryDiagnostics.checkpoint(F("pre_initialize"), manager.getDocument(), -1);
     manager.initialize();
     lastUploadAttempt = millis() - UPLOAD_RETRY_INTERVAL_MS; // Allow the first queued upload now.
-    memoryDiagnostics.checkpoint(F("setup_done"), manager.getDocument(), -1);
+    lastStorageAttempt = millis();
 }
 
 void loop() {
-    memoryDiagnostics.beginCycle();
-    memoryDiagnostics.checkpoint(F("pre_lora_receive"), manager.getDocument(), -1);
+    if (millis() - lastStorageAttempt >= STORAGE_RETRY_INTERVAL_MS) {
+        lastStorageAttempt = millis();
+        DateTime utc;
+        if (storageNeedsRetry || !hypnos.getSDManager()->hasSDInitialized() ||
+            !hypnos.tryGetCurrentTime(utc)) {
+            hypnos.enable();
+            storageNeedsRetry = false;
+        }
+    }
     // Wait 5 seconds for a message
     if (lora.receive(5000, true)) {
-        memoryDiagnostics.checkpoint(F("post_lora_receive"), manager.getDocument(), -1);
-        manager.display_data();
-        memoryDiagnostics.checkpoint(F("pre_sd"), manager.getDocument(), -1);
         saveCurrentPacketToSD();
-        memoryDiagnostics.checkpoint(F("post_sd"), manager.getDocument(), -1);
         // publishPending() runs below even if no new packet arrives, so an outage can recover.
         // A radio ACK still proves RF delivery only; check the SD log outcome for storage errors.
     }
     static unsigned long timer = millis();
     if (millis() - timer > REPORT_INTERVAL) {
-        // manager.set_device_name("Hub");
-        // manager.set_instance_num(0);
-
         // receive(..., true) temporarily adopts a node's identity for its packet. Restore the
         // physical hub identity before measuring/packaging the hub's own heartbeat.
         manager.set_device_name("HubName");
         manager.set_instance_num(0);
         manager.measure();
         manager.package();
-        memoryDiagnostics.checkpoint(F("heartbeat_packaged"), manager.getDocument(), -1);
-        manager.display_data();
         saveCurrentPacketToSD(); // Queue the heartbeat through the same checked SD path.
-        memoryDiagnostics.checkpoint(F("heartbeat_queued"), manager.getDocument(), -1);
 
         timer = millis();
     }
@@ -118,6 +107,7 @@ void saveCurrentPacketToSD() {
     if (sd != nullptr && sd->retryBatch()) {
         return;
     }
+    storageNeedsRetry = true;
     Serial.println(
         F("SD save incomplete; inspect CSV/batch results. RF ACK does not prove storage."));
 }
@@ -134,12 +124,13 @@ void publishPending() {
         return;
     }
 
-    memoryDiagnostics.checkpoint(F("pre_mqtt"), manager.getDocument(), -1);
-    if (!mqtt.publish(batchSD)) {
+    if (!mqtt.moduleInitialized) {
+        mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
+    }
+    if (mqtt.moduleInitialized && !mqtt.publish(batchSD)) {
         Serial.println(F("Upload incomplete; the SD batch stays queued for retry."));
     }
     lastUploadAttempt = millis(); // Space attempts after a slow connection, not from its start.
-    memoryDiagnostics.checkpoint(F("post_mqtt"), manager.getDocument(), -1);
 }
 
 void setRTC() {

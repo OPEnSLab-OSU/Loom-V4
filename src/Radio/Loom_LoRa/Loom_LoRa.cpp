@@ -41,7 +41,10 @@ void Loom_LoRa::initialize() {
 
     // Reset the radio
     pinMode(RFM95_RST, OUTPUT);
+    digitalWrite(RFM95_RST, LOW);
+    delay(10);
     digitalWrite(RFM95_RST, HIGH);
+    delay(10);
 
     // Initialize the radio manager
     if (radioManager.init()) {
@@ -65,13 +68,13 @@ void Loom_LoRa::initialize() {
     LOGF("Setting device power level to: %i", powerLevel);
     radioDriver.setTxPower(powerLevel, false);
 
-    // Set timeout time
+    // RadioHead randomizes this timeout up to twice the configured value.
     LOGF("Timeout time set to: %i,", retryTimeout);
-    radioManager.setTimeout(retryTimeout);
+    radioManager.setTimeout(retryTimeout > UINT16_MAX / 2 ? UINT16_MAX / 2 : retryTimeout);
 
     // Set retry attempts
     LOGF("Transmit retry count set to: %i", sendRetryCount);
-    radioManager.setRetries(sendRetryCount);
+    radioManager.setRetries(sendRetryCount == UINT8_MAX ? UINT8_MAX - 1 : sendRetryCount);
 
     // Print the set address of the device
     LOGF("Address set to: %i", radioManager.thisAddress());
@@ -458,6 +461,7 @@ bool Loom_LoRa::transmitToLoRa(JsonObjectConst json, uint8_t destinationAddress)
                                    : static_cast<uint8_t>(sizeof(buffer));
     const bool status = radioManager.sendtoWait(buffer, wireLength, destinationAddress);
     if (!status) {
+        radioDriver.sleep();
         ERROR(F("Failed to send packet to specified address!"));
         return false;
     }

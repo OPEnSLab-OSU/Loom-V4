@@ -1,5 +1,8 @@
 #pragma once
 
+#include "Loom_RF95.h"
+#include "Loom_ReliableDatagram.h"
+
 #include "Loom_WarningGuards.h"
 
 LOOM_EXTERNAL_INCLUDE_BEGIN
@@ -9,10 +12,6 @@ LOOM_EXTERNAL_INCLUDE_END
 #include "Utilities/Loom_LoRaReceiveState.h"
 #include "Utilities/Loom_LoRaSchedule.h"
 #include "Utilities/Loom_BufferPool.h"
-LOOM_EXTERNAL_INCLUDE_BEGIN
-#include <RHReliableDatagram.h>
-#include <RH_RF95.h>
-LOOM_EXTERNAL_INCLUDE_END
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -29,6 +28,7 @@ LOOM_EXTERNAL_INCLUDE_END
 
 class Manager;
 class Loom_BatchSD;
+class Loom_LoRaJournal;
 
 enum class FragReceiveStatus {
     Incomplete, // no packet has been completed
@@ -261,8 +261,9 @@ class Loom_LoRa : public Module {
     bool sendPacketHeader(JsonObject json, uint8_t destinationAddress);
 
     Manager *manager = nullptr;      // Instance of the Loom manager
-    RH_RF95 radioDriver;             // Underlying radio driver
-    RHReliableDatagram radioManager; // RadioHead reliability manager, owned in-place
+    Loom_RF95 radioDriver;             // Underlying radio driver
+    friend class Loom_LoRaJournal;
+    Loom_ReliableDatagram radioManager;
 
     Loom_BatchSD *batchSD = nullptr; // Pointer to the batchSD
 

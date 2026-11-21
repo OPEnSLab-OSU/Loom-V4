@@ -1,153 +1,149 @@
-/** * In lab use case example for the WeatherChimes project *
- * This project uses SHT31, Teros10, TippingBucket, TSL2591, and two MS5803 sensors to log environment data and logs it to both the SD card and also MQTT/MongoDB *
-  * MANAGER MUST BE INCLUDED FIRST IN ALL CODE */ 
-// Configurable WeatherChimes 2026 sketch.
 #include <Loom_Manager.h>
+#include <Logger.h>
+#include <Hardware/Loom_Hypnos/Loom_Hypnos.h>
+#include <Hardware/Loom_TippingBucket/Loom_TippingBucket.h>
+#include <Sensors/Analog/Loom_Teros10/Loom_Teros10.h>
+#include <Sensors/I2C/Loom_MS5803/Loom_MS5803.h>
+#include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h>
+#include <Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h>
+#include <Sensors/Loom_Analog/Loom_Analog.h>
+
+#define USE_LTE true
+#define BATCH_UPLOAD true
+constexpr uint8_t TIP_PIN = A0;
+constexpr uint8_t BATCH_SIZE = 72;
+constexpr uint16_t WATCHDOG_MS = 16000;
+constexpr uint8_t TIP_DEBOUNCE_MS = 20;
+
+Manager manager("Device_Name", 1);
+Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, true);
+Loom_Analog analog(manager);
+Loom_SHT31 sht(manager);
+Loom_TSL2591 tsl(manager);
+Loom_MS5803 ms_water(manager, 119);
+Loom_MS5803 ms_air(manager, 118);
+Loom_TippingBucket bucket(manager, COUNTER_TYPE::MANUAL, 0.01f);
+Loom_Teros10 teros(manager, A1);
+
+#if USE_LTE
+#include <Internet/Connectivity/Loom_LTE/Loom_LTE.h>
+#include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h>
+Loom_LTE lte(manager, "hologram", "", "");
+Loom_MongoDB mqtt(manager, lte);
+#if BATCH_UPLOAD
 #include <Hardware/Loom_BatchSD/Loom_BatchSD.h>
-  #include <Logger.h> 
-  #include <Hardware/Loom_Hypnos/Loom_Hypnos.h> 
-  #include <Sensors/Loom_Analog/Loom_Analog.h> 
-  #include <Sensors/I2C/Loom_SHT31/Loom_SHT31.h> 
-  #include <Sensors/I2C/Loom_TSL2591/Loom_TSL2591.h> 
-  #include <Sensors/I2C/Loom_MS5803/Loom_MS5803.h> 
-  #include <Hardware/Loom_TippingBucket/Loom_TippingBucket.h> 
-  #include <Sensors/Analog/Loom_Teros10/Loom_Teros10.h> 
-  
-  /* ---------------------------------- Hi, this is where we can edit code for each device specifically ---------------------------------------- */ 
-  // give the device a name and instance number 
-  Manager manager("Device_Name", 1); 
+Loom_BatchSD batchSD(hypnos, BATCH_SIZE);
+#endif
+#endif
 
-  // use true if the device should use 4G LTE and false if it should not 
+TimeSpan sleepInterval;
+volatile bool sampleDue = true;
+volatile uint8_t pendingTips = 0;
 
-  #define USE_LTE true 
-  // GLOBAL TOGGLE FOR BATCH MODE 
-  #define BATCH_UPLOAD true 
+void rtcWake() {
+    sampleDue = true;
+    hypnos.wakeup();
+}
 
-  // Batch tracking 
-  uint8_t batchCounter = 0; 
-  uint8_t batchcount = 72; 
-  
-  /* ---------------------------------------- nothing beyond this point should need to change --------------------------------------------------- */ 
-  // Pin to have the secondary interrupt triggered from 
-  #define INT_PIN A0 
-  
-  volatile bool sampleFlag = true; 
-  volatile bool tipFlag = false; 
+void tipWake() {
+    static uint32_t lastTip = 0;
+    static bool seenTip = false;
+    const uint32_t now = millis();
+    if (seenTip && now - lastTip < TIP_DEBOUNCE_MS) {
+        return;
+    }
+    lastTip = now;
+    seenTip = true;
+    hypnos.shouldPowerUp = false;
+    if (pendingTips < UINT8_MAX) {
+        ++pendingTips;
+    }
+}
 
-  TimeSpan sleepInterval; 
+void setup() {
+    Logger::getInstance()->setDebugOutput(false);
+    manager.beginSerial(false);
+    pinMode(TIP_PIN, INPUT);
+    hypnos.setWakeWatchdogTimeout(WATCHDOG_MS);
+    // This stack keeps the rain-gauge and sensor rails powered in standby.
+    hypnos.setWakeConfiguration(POWERRAIL_CONFIG::PR_3V_ON_5V_ON);
+    hypnos.setSleepConfiguration(POWERRAIL_CONFIG::PR_3V_ON_5V_ON);
+    hypnos.setCompileTime(__DATE__, __TIME__);
+#if USE_LTE
+#if BATCH_UPLOAD
+    lte.setBatchSD(batchSD);
+#endif
+    hypnos.setNetworkInterface(&lte);
+#endif
+    hypnos.enable();
+    sleepInterval = hypnos.getConfigFromSD("SD_config.json");
+    bucket.setHypnosInstance(hypnos);
+#if USE_LTE
+    mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
+    mqtt.setClientID(manager.get_serial_num());
+#endif
+    manager.initialize();
+    hypnos.registerInterrupt(rtcWake);
+    attachInterrupt(digitalPinToInterrupt(TIP_PIN), tipWake, FALLING);
+}
 
-  Loom_Hypnos hypnos(manager, HYPNOS_VERSION::V3_3, TIME_ZONE::PST, true); 
-  Loom_Analog analog(manager); 
-  Loom_SHT31 sht(manager); 
-  Loom_TSL2591 tsl(manager); 
-  Loom_MS5803 ms_water(manager, 119); 
-  Loom_MS5803 ms_air(manager, 118); 
-  Loom_TippingBucket bucket(manager, COUNTER_TYPE::MANUAL, 0.01f); 
-  Loom_Teros10 teros(manager, A1); 
-  
-  #if USE_LTE 
-    #include <Internet/Logging/Loom_MongoDB/Loom_MongoDB.h> 
-    #include <Internet/Connectivity/Loom_LTE/Loom_LTE.h> 
-    Loom_LTE lte(manager, "hologram","",""); 
-    Loom_MongoDB mqtt(manager, lte); 
-    #if BATCH_UPLOAD 
-      Loom_BatchSD batchSD(hypnos, batchcount); 
-    #endif 
-  #endif 
-  
-  float calculateWaterHeight() { 
-    return (((ms_water.getPressure()-ms_air.getPressure()) * 100) / (997.77 * 9.81)); 
-    } 
-  void isrTrigger() { 
-    sampleFlag = true; 
-    //detachInterrupt(INT_PIN); 
-    hypnos.wakeup(); 
-    } 
+void loop() {
+    noInterrupts();
+    uint8_t tips = pendingTips;
+    pendingTips = 0;
+    interrupts();
+    if (tips > 0) {
+        delay(TIP_DEBOUNCE_MS); // Keep millis() running through the contact bounce before standby.
+    }
+    while (tips > 0) {
+        bucket.incrementCount();
+        --tips;
+    }
 
-  void tipTrigger() { 
-    hypnos.shouldPowerUp = false; 
-    tipFlag = true; 
-    } 
-      
-    void setup() { 
-      ENABLE_SD_LOGGING; 
-      ENABLE_FUNC_SUMMARIES; 
-      pinMode(INT_PIN, INPUT); 
-      pinMode(LED_BUILTIN, OUTPUT); 
-      manager.beginSerial(); 
-      #if USE_LTE 
-        #if BATCH_UPLOAD 
-          lte.setBatchSD(batchSD); 
-        #endif 
-        hypnos.setNetworkInterface(&lte); 
-      #endif 
-      
-      /////////TESTING///////// 
-      // Both power rails should be on when awake 
-      hypnos.setWakeConfiguration(POWERRAIL_CONFIG::PR_3V_ON_5V_ON); 
-      // Both power rails should remain on when asleep 
-      hypnos.setSleepConfiguration(POWERRAIL_CONFIG::PR_3V_ON_5V_ON); 
-      /////////////////////// 
-      
-      hypnos.enable(); 
-      sleepInterval = hypnos.getConfigFromSD("SD_config.json"); 
-      bucket.setHypnosInstance(hypnos); 
-      #if USE_LTE 
-        mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json")); 
-      #endif 
-      
-      manager.initialize(); 
-      hypnos.registerInterrupt(isrTrigger); 
-      attachInterrupt(INT_PIN, tipTrigger, FALLING); 
-      } 
-      
-      void loop() { 
-        if(sampleFlag) { 
-          detachInterrupt(INT_PIN); 
-          #if BATCH_UPLOAD 
-            batchCounter++; 
-            if (batchCounter >= batchcount) { 
-              TimeSpan extendedSleep = sleepInterval + TimeSpan(0, 0, 2, 0); 
-              hypnos.setInterruptDuration(extendedSleep); 
-              batchCounter = 0; 
-              } 
-            else { 
-              hypnos.setInterruptDuration(sleepInterval); 
-              } 
-          #else
-            hypnos.setInterruptDuration(sleepInterval); 
-          #endif 
-
-          tsl.wake_up();
-          
-          manager.measure(); 
-
-          tsl.sleep();
-
-          manager.package(); 
-
-          manager.addData("Water", "Height_(m)", calculateWaterHeight());
-          manager.display_data(); 
-          hypnos.logToSD(); 
-          #if USE_LTE 
-            #if BATCH_UPLOAD 
-              mqtt.publish(batchSD); 
-            #else 
-              mqtt.publish(); 
-            #endif 
-          #endif 
-          
-          hypnos.reattachRTCInterrupt(); 
-          attachInterrupt(INT_PIN, tipTrigger, FALLING); sampleFlag = false; 
-          } 
-          if(tipFlag) { 
-            digitalWrite(LED_BUILTIN, HIGH); 
-            delay(20); 
-            bucket.incrementCount(); 
-            tipFlag = false; 
-            attachInterrupt(INT_PIN, tipTrigger, FALLING); 
-            digitalWrite(LED_BUILTIN, LOW); 
-            } 
-            
-        hypnos.sleep(); 
+    if (sampleDue && !hypnos.isSecondaryWake()) {
+        Watchdog.enable(WATCHDOG_MS);
+        if (!hypnos.setSampleInterval(sleepInterval)) {
+            Watchdog.disable();
+            manager.pause(60000);
+            hypnos.enable();
+            return;
         }
+        sampleDue = false;
+
+        tsl.wake_up();
+        manager.measure();
+        tsl.sleep();
+        manager.package();
+        if (ms_water.moduleInitialized && ms_air.moduleInitialized) {
+            const float height = (ms_water.getPressure() - ms_air.getPressure()) * 100 /
+                                 (997.77f * 9.81f);
+            manager.addData("Water", "Height_(m)", height);
+        }
+
+        if (!hypnos.logToSD()) {
+            WARNING(F("Chimes sample could not be fully saved to SD."));
+        }
+#if USE_LTE
+#if BATCH_UPLOAD
+        const bool uploadDue = batchSD.shouldPublish();
+#else
+        constexpr bool uploadDue = true;
+#endif
+        if (uploadDue) {
+            if (!mqtt.moduleInitialized) {
+                mqtt.loadConfigFromJSON(hypnos.readFile("mqtt_creds.json"));
+            }
+            if (mqtt.moduleInitialized) {
+#if BATCH_UPLOAD
+                mqtt.publish(batchSD);
+#else
+                mqtt.publish();
+#endif
+            }
+        }
+#endif
+    }
+
+    Watchdog.disable();
+    hypnos.sleep();
+}

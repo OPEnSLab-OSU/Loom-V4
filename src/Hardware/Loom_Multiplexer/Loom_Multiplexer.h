@@ -126,7 +126,7 @@ class Loom_Multiplexer : public Module {
     // Debug scans: inspect what responds on each port without adding packet fields.
     ////////////////////////////////////////////////////////////////////////////////////////////////
     /**
-     * Print mux initialization and scan diagnostics directly to Serial.
+     * Print detailed mux and sensor diagnostics to Serial, including before I2C operations.
      */
     void setDebug(bool enabled = true);
 
@@ -143,7 +143,7 @@ class Loom_Multiplexer : public Module {
     /** Re-scan enabled ports and rebuild the auto-loaded sensor list. */
     void refreshSensors();
 
-    /** Debug-only inventory of existing mux children. No scan or allocation is performed. */
+    /** Record existing mux children without allocating or rescanning. */
     void traceObjects();
 
   private:
@@ -166,7 +166,6 @@ class Loom_Multiplexer : public Module {
 
     bool selectPin(uint8_t pin);       // Select which mux port to transmit to
     bool disableChannels();            // Disables all channels on the multiplexer
-    bool isDeviceConnected(byte addr); // Check if there is a device at the specified address
     uint8_t probeAddress(byte addr);   // Return raw Wire.endTransmission status
     bool probeMultiplexer(byte addr);  // Verify TCA9548 control-register behavior
     bool isPortEnabled(uint8_t port);  // Check if a mux port should be scanned
@@ -181,7 +180,6 @@ class Loom_Multiplexer : public Module {
 
     void debugLog(const char *message); // Print a diagnostic line when debug is enabled
     void debugLogFormatted(const char *format, ...);
-    void debugLogI2CResult(const char *label, byte addr, uint8_t result);
 
     std::vector<byte> known_addresses = {};
     std::array<bool, 8> portEnabled = {true, true, true, true, true, true, true, true};
