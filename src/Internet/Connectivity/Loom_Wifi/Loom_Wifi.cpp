@@ -372,18 +372,24 @@ IPAddress Loom_WIFI::getBroadcast(){
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Loom_WIFI::logDiagnostics(){
+NetworkComponent::NetworkDiagnostics Loom_WIFI::logDiagnostics(){
+
+    NetworkDiagnostics diagnostics = {};
+
     char output[OUTPUT_SIZE];
-    LOG("Testing Wifi Conectivity");
-    if(WiFi.status() != WL_CONNECTED){
-        LOG("Wifi not connected");
-        return false;
-    }
+
+    LOG("Testing Wifi Connectivity");
+
+    diagnostics.connected = isConnected();
+    
+    snprintf(output, OUTPUT_SIZE, "Connected: %s", diagnostics.connected ? "True": "False");
+    
     int signalStrength = WiFi.RSSI();
     snprintf(output, OUTPUT_SIZE, "Wifi Signal Strength: %d", signalStrength);
     LOG(output);
+    diagnostics.signalQuality = signalStrength;
     // unlike LTE modem, wifi returns RSSI in decibals. anything below -80 will be a fair connection. Anything above is very weak. 
-    return (signalStrength < -80);
+    return diagnostics;
 
 
 }

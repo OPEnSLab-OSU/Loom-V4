@@ -75,7 +75,7 @@ class Loom_LTE : public NetworkComponent{
         bool getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) override;
 
         // prints LTE diagnostics to serial - RSSI and registration status
-        bool logDiagnostics() override;
+        NetworkComponent::NetworkDiagnostics logDiagnostics() override;
 
         // used in MQTT Component if our board loses connection in middle of batch
         bool reconnect() override;
@@ -92,9 +92,15 @@ class Loom_LTE : public NetworkComponent{
         void setBatchSD(Loom_BatchSD& batch) { batch_sd = &batch; };
 
         /**
-         * If MCU interrupted and LTE board left in bad state, attempt different reset techniques
+         * If LTE board unresponsive, attempt different reset techniques
          */
         void reset();
+
+        /**
+         * Manually forces a power cycle in the event the LTE board is unresponsive
+         */
+        void hard_reset();
+
         /**
          * Connect to the cellular network
          */
@@ -109,8 +115,6 @@ class Loom_LTE : public NetworkComponent{
          * Attempt to connect to something remote to see if we actually have an internet connection
          */
         bool verifyConnection();
-
-        bool increment_retries();
 
 
         /**
@@ -172,9 +176,5 @@ class Loom_LTE : public NetworkComponent{
         };
 
         LTEState currState = LTEState::OFF;
-
-        uint8_t connect_retries = 0;
-
-        uint8_t reset_retries = 0;
 
 };

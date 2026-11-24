@@ -6,7 +6,7 @@
 #include "../../Connectivity/NetworkComponent.h"
 
 #define MAX_JSON_SIZE 2000                // The maximum length of an MQTT message
-#define MAX_TOPIC_LENGTH 512                // The maximum length of a topic string
+#define MAX_TOPIC_LENGTH 64                // The maximum length of a topic string
 
 /**
  * MQTT Abstraction class that provides basic MQTT communciation functionality
@@ -19,6 +19,24 @@ class MQTTComponent : public Module{
         bool connectToBroker();                                                                         // Connect to the configured broker
         void disconnectFromBroker() { mqttClient.stop(); };                                             // Disconnect from the MQTT broker
         const char* getMQTTError();                                                                     // Convert the MQTT error code into a string
+
+        /**
+         * @param topic The MQTT topic we want to publish our message to
+         * @param message The message we want to publish to the given topic
+         * This function is a wrapper for publishMessage, but applies internet health
+         * checks and retry logic. If we reach MAX_RETRY_ATTEMPTS before succesfully publishing a 
+         * message, we disable telemetry
+         * @return If publish was successful
+         */
+        bool publishData(const char* topic, const char* message);
+
+        /**
+         * Helper function for publishData(). Checks internet diagnostics and handles resetting 
+         * internet medium if required. Also resets mqtt connection in the event that publish 
+         * failed due to stale connection
+         * @return if our internet is connected and we sucessfully reconnected to broker
+         */
+        bool shouldRetryPublish();
 
         /**
          * Publish an MQTT message to a given topic and broker
@@ -58,13 +76,6 @@ class MQTTComponent : public Module{
         void setKeepAlive(int time) { keep_alive = time; };
 
         /**
-         * Set the client ID for the specific MQTT connection
-         *
-         * @param id The new ID to set
-        */
-        void setClientID(const char* id) { mqttClient.setId(id); };
-
-        /**
          * Wrapper for specifying that we want to use a clean session or not (defaults to true)
          *
          * @param cleanSession Wether or not the session should be clean
@@ -83,11 +94,14 @@ class MQTTComponent : public Module{
         char username[100];                         // Username to log into the broker
         char password[100];                         // Password to log into the broker
 
-        // indicates if we should retry connection to mqttBroker. 
-        // if our LTE connection is poor, we will not reattempt. 
-        bool shouldRetry = true;
-
     public:
+
+        /**
+         * Set the client ID for the specific MQTT connection
+         *
+         * @param id The new ID to set
+        */
+        void setClientID(const char* id) { mqttClient.setId(id); };
 
         /**
          * Constructor for base MQTTComponent
@@ -121,6 +135,7 @@ class MQTTComponent : public Module{
     private:
         MqttClient mqttClient;                      // Instance of the MQTT client
         NetworkComponent& internetClient;
+        NetworkComponent::NetworkDiagnostics diagnostics;
 
         int keep_alive = 60000;                     // How long the broker should keep the connection open, defaults to a minute
         int maxRetries = 4;                         // How many times we want to retry the connection

@@ -48,7 +48,7 @@ class Loom_WIFI : public NetworkComponent{
         void power_down() override;
         
         // display signal strength, return true if signal is not weak
-        bool logDiagnostics() override;
+        NetworkComponent::NetworkDiagnostics logDiagnostics() override;
         
         // attempt to reconnect to wifi if we lost connection
         bool reconnect() override;

@@ -16,7 +16,7 @@ void MQTTComponent::initialize(){
 bool MQTTComponent::connectToBroker() {
     FUNCTION_START;
     char output[OUTPUT_SIZE];
-    if(moduleInitialized && internetClient.isConnected()){
+    if(moduleInitialized && internetClient.moduleInitialized){
 
         // Check if we forgot to supply an address or a port number
         if(strlen(address) <= 0  || port == 0){
@@ -72,11 +72,46 @@ bool MQTTComponent::connectToBroker() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+bool MQTTComponent::publishData(const char* topic, const char* message){
+    FUNCTION_START;
+    if(moduleInitialized && internetClient.moduleInitialized){
+
+        if(!publishMessage(topic, message)){
+
+            // check if we have reached 10 consecutive retries before sucessfully sending a packet
+            if(!internetClient.incrementRetries()){
+                LOG("Internet medium has reached 10 consecutive retries without a successful publish. Disabling telemetry");
+                // if we dont power down now before setting initialized to false, manager.power_down()
+                // will fail to execute, and the LTE will stay on for rest of deployment
+                internetClient.power_down();
+                // prevents LTE from powering on next wakeup
+                internetClient.moduleInitialized = false;
+                // disable mqtt as well, will prevent MongoDB::publish() from attempting to publish
+                moduleInitialized = false;
+                return false;
+            }
+
+            if(!shouldRetryPublish()){
+                return false;
+            }
+
+            if(!publishMessage(topic, message)){
+                return false;
+            }
+        } 
+        // if we successfully publish, reset retry counter
+        internetClient.resetRetries();
+        return true;
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 bool MQTTComponent::publishMessage(const char* topic, const char* message, bool retain, int qos){
     FUNCTION_START;
 
     // Make sure the module is initialized
-    if(moduleInitialized && internetClient.isConnected()){
+    if(moduleInitialized && internetClient.moduleInitialized){
         if(mqttClient.connected()){
             // Tell the broker we are still here
             mqttClient.poll();
@@ -84,13 +119,6 @@ bool MQTTComponent::publishMessage(const char* topic, const char* message, bool 
             // Start a message write the data and close the message, publish all messages with retain
             if(mqttClient.beginMessage(topic, retain, qos) != 1){
                 ERROR(F("Failed to begin message!"));
-                // if LTE is too poor, or were not connected, we dont want to retry connection
-                if(!internetClient.logDiagnostics()){
-                    shouldRetry = false;
-                }
-                mqttClient.stop();
-                FUNCTION_END;
-                return false;
             }
 
             // Print the message to the topic
@@ -99,12 +127,8 @@ bool MQTTComponent::publishMessage(const char* topic, const char* message, bool 
             // Check to see if we are actually closing messages properly
             if(mqttClient.endMessage() != 1){
                 ERROR(F("Failed to close message!"));
-                if(!internetClient.logDiagnostics()){
-                    shouldRetry = false;
-                }
-                    mqttClient.stop();
-                    FUNCTION_END;
-                    return false;
+                FUNCTION_END;
+                return false;
             }
             else{
                 LOG(F("Data has been successfully sent!"));
@@ -114,11 +138,10 @@ bool MQTTComponent::publishMessage(const char* topic, const char* message, bool 
         }
         else{
             ERROR("MQTT Client not connected to broker ");
-            internetClient.logDiagnostics();
         }
     }
     else{
-        ERROR("MQTT not initialized, or LTE is not connected");
+        ERROR("Module or NetworkComponent not initialized!");
     }
     FUNCTION_END;
     return false;
@@ -172,6 +195,24 @@ bool MQTTComponent::getCurrentRetained(const char* topic, char message[MAX_JSON_
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool MQTTComponent::deleteRetained(const char* topic) { publishMessage(topic, "", true); }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool MQTTComponent::shouldRetryPublish(){
+    FUNCTION_START;
+    // disable active/stale mqtt connection first
+    disconnectFromBroker();
+
+    diagnostics = internetClient.logDiagnostics();
+
+    if(diagnostics.isLte){
+        if(diagnostics.connected && diagnostics.registered) {
+            return connectToBroker();
+        } if(!internetClient.reconnect()){
+            return false;
+        }
+    }
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////

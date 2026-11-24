@@ -118,7 +118,6 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
 
-        // commenting out for debug testing. 
     // if(Loom_Analog::getBatteryVoltage() < 3.4){
     //     WARNING(F("Module not initialized! Battery doesn't have enough power."));
     //     FUNCTION_END;
@@ -134,7 +133,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
 
             if(strlen(projectServer) > 0)
                 // Formulate a topic to publish on with the format "ProjectName/DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chimes/Chime1
-                snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
+                snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s/%s%i"), projectServer, database_name, manInst->get_device_name(), manInst->get_instance_num());
             else
                 // Formulate a topic to publish on with the format "DatabaseName/DeviceNameInstanceNumber" eg. WeatherChimes/Chime1
                 snprintf_P(topic, MAX_TOPIC_LENGTH, PSTR("%s/%s%i"), database_name, manInst->get_device_name(), manInst->get_instance_num());
@@ -162,31 +161,10 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
                     // Replace the \r with a null character
                     line[index] = '\0';
 
-                    if(!publishMessage(topic, line)){
+                    if(!publishData(topic, line)){
                         snprintf(output, OUTPUT_SIZE, PSTR("Failed to publish packet #%i"), packetNumber+1);
                         WARNING(output);
-                        if(shouldRetry){
-                            LOG("Reconnecting to MQTT broker");
-                            if(connectToBroker()){
-                                LOG("Reconnect successfull, attmepting to re-send message");
-                                if(!publishMessage(topic, line)){
-                                    LOG("Failed to publish again. Retrying next batch");
-                                }
-                                else{
-                                    LOG("Retry Successful!");
-                                }
-                            }
-                            else{
-                                LOG("Could not reconnect to mqtt broker. Retrying next batch");
-                            }
-                        
-                        }
-                        else{
-                            LOG("LTE connection failed, or too poor to reattempt. Retrying next batch");
-                            shouldRetry = true;
-                            FUNCTION_END;
-                            return false;
-                        }
+                        allDataSuccess = false;
                     }
 
                     delay(500);
@@ -225,9 +203,6 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
         FUNCTION_END;
         return false;
     }
-    // we want to kill our active connections before shutting off the LTE board
-    // this will stop our MQTT broker from constantly reporting timeouts. 
-    disconnectFromBroker();
     FUNCTION_END;
     TIMER_ENABLE;
     return true;
@@ -255,6 +230,7 @@ void Loom_MongoDB::loadConfigFromJSON(char* json){
     memset(database_name, '\0', 100);
     memset(username, '\0', 100);
     memset(password, '\0', 100);
+    memset(projectServer, '\0', 100);
     port = 0;
     
     /* We should check if any parameter is null */

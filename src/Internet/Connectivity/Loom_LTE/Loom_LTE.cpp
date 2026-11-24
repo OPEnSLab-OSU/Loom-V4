@@ -141,7 +141,8 @@ void Loom_LTE::power_up(){
             currState = LTEState::DISCONNECTED;
         }else{
             ERROR(F("LTE Board did not power on. Check battery or board connections."));
-            moduleInitialized = false;
+            powerBoardOff();
+
             return;
         }
         TIMER_ENABLE;
@@ -172,12 +173,6 @@ void Loom_LTE::power_up(){
     }
 }
 
-    
-
-
-    FUNCTION_END;
-
-}
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -213,12 +208,12 @@ void Loom_LTE::power_down(){
         ERROR(F("Device is not currently connected. Shutting down"));
         TIMER_ENABLE;
         if(modem.poweroff()){
-            TIMER_DISABLE;
             LOG(F("Powering down complete!"));
             currState = LTEState::OFF;
         }
         else{
-            // device may be unresponsive, initiate hardware reset
+            // device may be unresponsive, initiate forecful shutdown
+            hard_reset();
         }
     }
     TIMER_DISABLE;
@@ -247,12 +242,8 @@ void Loom_LTE::reset(){
     TIMER_DISABLE;
     LOG("Recovery failed. Attempting LTE software reset. This may take up to 10 seconds");
 
-    // Manually force a power reset
-    soft_reset();
-
-    // if LTE board is actually hanging, we need a way to pulse the reset pin 
-    // similar to how we power the board on
-    // TODO: Pulse RESET_N pin
+    // Power board off an on
+    hard_reset();
 
     FUNCTION_END;
 }
@@ -260,7 +251,7 @@ void Loom_LTE::reset(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-void Loom_LTE::soft_reset(){
+void Loom_LTE::hard_reset(){
     powerBoardOff();
     delay(2000);
     powerBoardOn();
@@ -342,6 +333,7 @@ bool Loom_LTE::connect(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::reconnect(){
+    
     LOG("Attempting to reconnect LTE Board");
     if(disconnect()){
         currState = LTEState::DISCONNECTED;
@@ -373,7 +365,7 @@ bool Loom_LTE::disconnect(){
     if(disconnected = modem.gprsDisconnect()){
         delay(200);
     }
-
+    
     FUNCTION_END;
     return disconnected;
 }
@@ -479,20 +471,22 @@ bool Loom_LTE::getNetworkTime(int* year, int* month, int* day, int* hour, int* m
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LTE::logDiagnostics(){
+NetworkComponent::NetworkDiagnostics Loom_LTE::logDiagnostics(){
+
+    NetworkDiagnostics diagnostics = {};
+    diagnostics.isLte = true;
+
     char output[OUTPUT_SIZE];
 
-    if(!moduleInitialized){
-        LOG("LTE not initialized");
-        return false;
-    }
     LOG("Testing LTE connectivity");
     int signalQuality = modem.getSignalQuality();
     snprintf(output, OUTPUT_SIZE, "Signal Quality: %d", signalQuality);
+    diagnostics.signalQuality = signalQuality;
     LOG(output);
     output[0] = '\0';
 
     auto registration = modem.getRegistrationStatus();
+    diagnostics.registered = (registration == REG_OK_HOME || registration == REG_OK_ROAMING);
     const char* regMessage;
 
     switch (registration){
@@ -531,25 +525,14 @@ bool Loom_LTE::logDiagnostics(){
     LOG(output);
     output[0] = '\0';
     bool networkConnected = modem.isGprsConnected();
+    diagnostics.connected = networkConnected;
     snprintf(output, OUTPUT_SIZE, "Network Connected: %s", networkConnected ? "True" : "False");
     LOG(output);
     // RSSI of 99 is disconnected, less than 5 is a very weak connection. 
     // if LTE not reigstered to either home or partner network, we will not have an LTE connection
-    return ((signalQuality != 99 && signalQuality > 5) && (registration == REG_OK_HOME || registration == REG_OK_ROAMING));
+    return diagnostics;
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Loom_LTE::increment_retries(){ 
-    if(connect_retries < 10){
-        return connect_retries++ < 10;
-    } else {
-        moduleInitialized = false;
-        return false;
-    }
-
-}
-
-
-

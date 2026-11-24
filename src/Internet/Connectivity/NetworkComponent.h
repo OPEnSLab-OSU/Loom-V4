@@ -3,6 +3,7 @@
 
 #include "Module.h"
 
+#define MAX_RETRY_ATTEMPTS 10
 
 /**
  * Generic Network Abstraction Layer to provide additional generalized functionality between network components
@@ -21,17 +22,17 @@ class NetworkComponent : public Module{
 
         virtual Client* getClient() = 0;
 
-        // structure that mqtt will use to determine if we had a failure due to internet issues
+        // structure that mqtt component will use to determine if we had a failure due to internet issues
         typedef struct {
 
-            // value is interpreted differently whether we are using LTE or not
+            // value for wifi will be negative, lte will be positive
             int8_t signalQuality = -1;
 
             // idnicates we are using LTE vs WiFi
             bool isLte = false;
 
             // for WiFi, if we are connected to AP
-            // for LTE, if we have a data connection to 
+            // for LTE, if we have a data packet connection
             bool connected = false;
             
             // for LTE, if we are registered to our LTE network
@@ -40,9 +41,16 @@ class NetworkComponent : public Module{
         } NetworkDiagnostics;
 
         // returns structure 
-        virtual NetworkDiagnostics logDiagnostics() {}
+        virtual NetworkDiagnostics logDiagnostics() = 0;
 
-        virtual bool reconnect() {}
+        // attempts to reconnect to network, will enter recovery process if unable to
+        virtual bool reconnect() = 0;
+
+        uint8_t connectionRetries = 0;
+
+        bool incrementRetries() { return connectionRetries++ < MAX_RETRY_ATTEMPTS; }
+
+        void resetRetries() { connectionRetries = 0; }
 
 
 };
