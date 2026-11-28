@@ -100,8 +100,9 @@ void Loom_LTE::power_up(){
     if(currState == LTEState::ERROR){
         reset();
         if(currState == LTEState::ERROR){
-            LOG("Board in unrecoverable state. Disabling LTE");
-            moduleInitialized = false;
+            LOG("LTE recovery failed. Aborting power up.");
+            FUNCTION_END;
+            return;
         }
     }
 
@@ -140,17 +141,15 @@ void Loom_LTE::power_up(){
             LOG(F("Powering up complete!"));
             currState = LTEState::DISCONNECTED;
         }else{
-            ERROR(F("LTE Board did not power on. Check battery or board connections."));
-            powerBoardOff();
-
-            return;
+            ERROR(F("LTE Board did not power on. Attempting reset"));
+            reset();
         }
         TIMER_ENABLE;
     }
     
     if(currState == LTEState::DISCONNECTED){
         connect();
-        if(currState == LTEState::CONNECTING){
+        if(currState == LTEState::CONNECTED){
             // Print APN
             snprintf(output, OUTPUT_SIZE, "APN: %s", APN);
             LOG(output);
@@ -170,6 +169,10 @@ void Loom_LTE::power_up(){
             // However, when we connect to mqtt broker, it will tell us if we are connected or not. 
             return;
         }
+        else{
+            LOG("Board failed to establish connection");
+
+        }
     }
 }
 
@@ -178,46 +181,71 @@ void Loom_LTE::power_up(){
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void Loom_LTE::power_down(){
     FUNCTION_START;
+    TIMER_ENABLE;
+
     if(currState == LTEState::SLEEPING){
         LOG(F("Device is already powered off. Continuing"));
         FUNCTION_END;
         return;
+    }
 
+    if(!modemResponsive()){
+        LOG(F("Modem is currently unresponsive, forcing power off"));
+        powerBoardOff();
+        LOG(F("Forceful shutdown successfull"));
+        currState = LTEState::OFF;
+        return;
     }
-    if (currState == LTEState::CONNECTED) {
-        LOG(F("Powering down GPRS Modem. This should take about 5 seconds..."));
-        TIMER_ENABLE;
-        if(disconnect()){
-            TIMER_DISABLE;
-            LOG(F("Modem succesfully disconnected from the internet"));
-            currState = LTEState::DISCONNECTED;
-            if(modem.poweroff()){
-                LOG(F("Powering down complete!"));
-                currState = LTEState::OFF;
-                FUNCTION_END;
-                return;
-            }
-        }
-        else{
-            TIMER_DISABLE;
-            LOG(F("Device did not disconnect from the network. "));
-        }
 
+    getDiagnostics();
+
+    if(diagnostics.connected){
+        disconnect();
     }
-    else{
-        ERROR(F("Device is not currently connected. Shutting down"));
-        TIMER_ENABLE;
-        if(modem.poweroff()){
-            LOG(F("Powering down complete!"));
-            currState = LTEState::OFF;
-        }
-        else{
-            // device may be unresponsive, initiate forecful shutdown
-            hard_reset();
-        }
+    if(modem.poweroff()){
+        LOG("LTE powered off successfully");
+        currState = LTEState::OFF;
+    } else {
+        LOG("LTE did not power off gracefully... Turning board off forcefully");
+        powerBoardOff();
+        currState = LTEState::OFF;
     }
-    TIMER_DISABLE;
-    FUNCTION_END;
+    // if (currState == LTEState::CONNECTED) {
+    //     LOG(F("Powering down GPRS Modem. This should take about 5 seconds..."));
+    //     TIMER_ENABLE;
+    //     if(disconnect()){
+    //         TIMER_DISABLE;
+    //         LOG(F("Modem succesfully disconnected from the internet"));
+    //         currState = LTEState::DISCONNECTED;
+    //         if(modem.poweroff()){
+    //             LOG(F("Powering down complete!"));
+    //             currState = LTEState::OFF;
+    //             FUNCTION_END;
+    //             return;
+    //         }
+    //         else {
+    //             LOG(F("Modem did not shut down gracefully. Initiating force shutdown"));
+    //             powerBoardOff();
+    //             LOG(F("Forceful shutdown succesfull"));
+    //             currState = LTEState::OFF;
+    //         }
+
+    //     }
+    //     else{
+    //         modem.poweroff();
+    //         currState = LTEState::OFF;
+    //     }
+
+    // }
+    // else{
+    //     ERROR(F("Device is not currently connected. Shutting down"));
+    //     TIMER_ENABLE;
+    //     modem.poweroff();
+    //     LOG(F("Powering down complete!"));
+    //     currState = LTEState::OFF;
+    // }
+    // TIMER_DISABLE;
+    // FUNCTION_END;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -258,10 +286,14 @@ void Loom_LTE::hard_reset(){
     delay(5000);
 
     if (modem.testAT(1000)) {
+        if(modem.init()){
         currState = LTEState::DISCONNECTED;
+        return;
+        }
     } else {
         currState = LTEState::ERROR;
     }
+    currState = LTEState::ERROR;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -280,79 +312,116 @@ void Loom_LTE::package(){
 bool Loom_LTE::connect(){
     FUNCTION_START;
     char output[OUTPUT_SIZE];
-    uint8_t attemptCount = 1; // Tracks number of attempts, 5 is a fail
-    currState = LTEState::REGISTERING;
-    TIMER_DISABLE;
-    do{
-        LOG(F("Waiting for network..."));
-        if(!modem.waitForNetwork()){
-            ERROR(F("No Response from network!"));
-            TIMER_ENABLE;
-            FUNCTION_END;
-            return false;
-        }
-        if(!modem.isNetworkConnected()){
-            ERROR(F("No connection to network!"));
-            TIMER_ENABLE;
-            FUNCTION_END;
+        currState = LTEState::REGISTERING;
+        if(!lteRegister()){
+            currState = LTEState::ERROR;
             return false;
         }
 
         LOG(F("Registered to carrier!"));
         currState = LTEState::CONNECTING;
-
-        // Connect to lte network
-        snprintf(output, OUTPUT_SIZE, "Attempting to connect to LTE Network: %s", APN);
-        LOG(output);
-        if(modem.gprsConnect(APN, gprsUser, gprsPass)){
-            LOG(F("Successfully Connected!"));
-            delay(6000);
-            TIMER_ENABLE;
-            FUNCTION_END;
-            return true;
-        }
-        else{
-            snprintf(output, OUTPUT_SIZE, "Connection failed %u / 5. Retrying...", attemptCount);
-            WARNING(output);
-            delay(10000);
-            attemptCount++;
-        }
-
-        // If the last attempt was the 5th attempt then stop
-        if(attemptCount > 5){
-            ERROR(F("Connection reattempts exceeded 5 tries. Connection Failed"));
-            TIMER_ENABLE;
-            FUNCTION_END;
+        if(!lteDataConnect()){
+            currState = LTEState::ERROR;
             return false;
-            
         }
-    }while(!isConnected());
+        currState = LTEState::CONNECTED;
+        LOG(F("Connected to network!"));
+        TIMER_ENABLE;
+        return true;
+    }
 
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LTE::lteRegister(){
+    FUNCTION_START;
+    char output[OUTPUT_SIZE];
+    TIMER_DISABLE;
+    bool networkResponse = false;
+    bool networkConnection = false;
+
+    for(int i = 1; i < 6; i++){
+        snprintf(output, OUTPUT_SIZE, "Waiting for network - Attempt: %d", i);
+        LOG(output);
+
+        if(!networkResponse && !modem.waitForNetwork()){
+            ERROR(F("No Response from network. Retrying."));
+            delay(3000);
+            continue;
+        } else {
+            networkResponse = true;
+        }
+        if(!networkConnection && !modem.isNetworkConnected()){
+            ERROR(F("No connection to network, retrying"));
+            delay(3000);
+            continue;
+        } else{
+            networkConnection = true;
+        }
+        return true;
+    }
+    LOG(F("Could not register LTE board. Continuing..."));
+    return false;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LTE::lteDataConnect(){
+    FUNCTION_START;
+    char output[OUTPUT_SIZE];
+    TIMER_DISABLE;
+    for(int i = 1; i < 6; i++){
+        snprintf(output, OUTPUT_SIZE, "Attempting network connection - Attempt: %d", i);
+        if(!modem.gprsConnect(APN, gprsUser, gprsPass)){
+            LOG(F("No data packet connection. Retrying..."));
+            delay(6000);
+            continue;
+        }
+        LOG(F("Data packet connection established!"));
+        return true;
+    }
+    LOG(F("Could not connect LTE board. Continuing..."));
+    return false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Loom_LTE::reconnect(){
-    
+    currState = LTEState::DISCONNECTED;
     LOG("Attempting to reconnect LTE Board");
-    if(disconnect()){
-        currState = LTEState::DISCONNECTED;
-        power_up();
-        if(currState == LTEState::CONNECTED){
-            LOG("LTE board succesfully reconnected!");
-        }
+    getDiagnostics();
+    if(modemResponsive()){
+        if(!diagnostics.registered){
+
+            LOG("LTE dropped registration. Attempting reconnect...");
+            connect();
+
+        } else if(!diagnostics.connected){
+
+            LOG("LTE lost data packet connection. Attempting to restore...");
+            
+            if(lteDataConnect()){
+                currState = LTEState::CONNECTED;
+                return true;
+            }
+            else{
+                return false;
+            }
+        } 
     }
     else{
-        LOG("LTE board could not reconnect gracefully. Attempting board recovery");
+        LOG("LTE board unresponsive. Attempting board recovery");
         reset();
         if(currState == LTEState::DISCONNECTED){
             LOG("Board recovery successfull. Attempting connection");
             power_up();
-            if(currState == LTEState::CONNECTED){
-                LOG("LTE Board succesfully reconnected!");
-            }
         }
     }
+    if(currState == LTEState::CONNECTED){
+        LOG("LTE board succesfully reconnected!");
+    }
+
     return (currState == LTEState::CONNECTED);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -471,67 +540,62 @@ bool Loom_LTE::getNetworkTime(int* year, int* month, int* day, int* hour, int* m
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-NetworkComponent::NetworkDiagnostics Loom_LTE::logDiagnostics(){
+void Loom_LTE::logDiagnostics(){
 
-    NetworkDiagnostics diagnostics = {};
-    diagnostics.isLte = true;
+    getDiagnostics();
 
     char output[OUTPUT_SIZE];
 
-    LOG("Testing LTE connectivity");
-    int signalQuality = modem.getSignalQuality();
-    snprintf(output, OUTPUT_SIZE, "Signal Quality: %d", signalQuality);
-    diagnostics.signalQuality = signalQuality;
+    snprintf(output, OUTPUT_SIZE, "Signal Quality: %d", diagnostics.signalQuality);
     LOG(output);
     output[0] = '\0';
 
-    auto registration = modem.getRegistrationStatus();
-    diagnostics.registered = (registration == REG_OK_HOME || registration == REG_OK_ROAMING);
-    const char* regMessage;
+    snprintf(output, OUTPUT_SIZE, "Registration Status: %s", diagnostics.registered ? "Registered" : "Not Registered");
+    LOG(output);
+    output[0] = '\0';
 
-    switch (registration){
-        case REG_NO_RESULT:
-            regMessage = "No Registration Result";
-            break;
-        
-        case REG_UNREGISTERED:
-            regMessage = "Not Registered; not searching";
-            break;
-        
-        case REG_SEARCHING:
-            regMessage = "Not Registered; searching";
-            break;
-        
-        case REG_DENIED:
-            regMessage = "Registration Denied";
-            break;
-        
-        case REG_OK_HOME:
-            regMessage = "Registered on Home Network";
-            break;
-        
-        case REG_OK_ROAMING:
-            regMessage = "Registered while roaming";
-            break;
-        
-        case REG_UNKNOWN:
-            regMessage = "Registration state unknown";
-            break;
-        default:
-            regMessage = "Invalid response from TinyGSM";
+    snprintf(output, OUTPUT_SIZE, "Network Connected: %s", diagnostics.connected ? "True" : "False");
+    LOG(output);
+
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+NetworkComponent::NetworkDiagnostics Loom_LTE::getDiagnostics(){
+
+    diagnostics.isLte = true;
+
+    if(!modemResponsive()){
+        diagnostics.connected = false;
+        diagnostics.registered = false;
+        return diagnostics;
     }
 
-    snprintf(output, OUTPUT_SIZE, "Registration Status: %s", regMessage);
-    LOG(output);
-    output[0] = '\0';
-    bool networkConnected = modem.isGprsConnected();
-    diagnostics.connected = networkConnected;
-    snprintf(output, OUTPUT_SIZE, "Network Connected: %s", networkConnected ? "True" : "False");
-    LOG(output);
-    // RSSI of 99 is disconnected, less than 5 is a very weak connection. 
-    // if LTE not reigstered to either home or partner network, we will not have an LTE connection
+    diagnostics.signalQuality = modem.getSignalQuality();
+  
+
+    auto registration = modem.getRegistrationStatus();
+
+    diagnostics.registered = (registration == REG_OK_HOME || registration == REG_OK_ROAMING);
+
+    diagnostics.connected = modem.isGprsConnected();
+
     return diagnostics;
 
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Loom_LTE::modemResponsive(){
+    FUNCTION_START;
+
+    if(modem.testAT(1000)){
+        return true;
+    }
+
+    delay(250);
+
+    return modem.testAT(1000);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

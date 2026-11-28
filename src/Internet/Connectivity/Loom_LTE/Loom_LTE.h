@@ -29,7 +29,7 @@ class Loom_LTE : public NetworkComponent{
         /* These aren't used with the Wifi manager */
         void measure() override {};
         // returns if the LTE board ever actually connected to the internet during powerup
-        bool isConnected() override { return currState == LTEState::CONNECTED; };
+        bool isConnected() override { return modem.isGprsConnected(); };
 
     public:
 
@@ -75,7 +75,9 @@ class Loom_LTE : public NetworkComponent{
         bool getNetworkTime(int* year, int* month, int* day, int* hour, int* minute, int* second, float* tz) override;
 
         // prints LTE diagnostics to serial - RSSI and registration status
-        NetworkComponent::NetworkDiagnostics logDiagnostics() override;
+        NetworkComponent::NetworkDiagnostics getDiagnostics() override;
+
+        void logDiagnostics() override;
 
         // used in MQTT Component if our board loses connection in middle of batch
         bool reconnect() override;
@@ -116,6 +118,12 @@ class Loom_LTE : public NetworkComponent{
          */
         bool verifyConnection();
 
+        /**
+         * Test if the modem is responsive to AT commands. If we try to send AT commands and its not resposnive, it can block for up
+         * to ten minutes. This allows us to short circuit to recoveries instead of normal sequences which rely on AT commands. 
+         */
+        bool modemResponsive();
+
 
         /**
          * Get the client to supply to publish platforms that need to communicate using this internet framework
@@ -142,9 +150,11 @@ class Loom_LTE : public NetworkComponent{
 
     private:
 
-
+        NetworkDiagnostics diagnostics;
         void powerBoardOn();
         void powerBoardOff();
+        bool lteRegister();
+        bool lteDataConnect();
 
         LTE_VERSION lteBoardVersion = SPARKFUN;
 

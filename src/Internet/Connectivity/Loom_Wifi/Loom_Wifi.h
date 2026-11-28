@@ -48,8 +48,9 @@ class Loom_WIFI : public NetworkComponent{
         void power_down() override;
         
         // display signal strength, return true if signal is not weak
-        NetworkComponent::NetworkDiagnostics logDiagnostics() override;
+        NetworkComponent::NetworkDiagnostics getDiagnostics() override;
         
+        void logDiagnostics() override;
         // attempt to reconnect to wifi if we lost connection
         bool reconnect() override;
 
@@ -156,6 +157,8 @@ class Loom_WIFI : public NetworkComponent{
 
     private:
         Manager* manInst;                   // Pointer to the manager
+
+        NetworkDiagnostics diagnostics;
 
         WiFiClient wifiClient;              // Wifi client that can be used with the MQTT client or other additional objects
         Loom_BatchSD* batchSD = nullptr;

@@ -17,6 +17,29 @@ bool MQTTComponent::connectToBroker() {
     FUNCTION_START;
     char output[OUTPUT_SIZE];
     if(moduleInitialized && internetClient.moduleInitialized){
+        diagnostics = internetClient.getDiagnostics();
+
+        if(!(diagnostics.isLte && diagnostics.connected && diagnostics.registered) || !(diagnostics.connected)){
+            LOG(F("Internet not connected. Attempting recovery"));
+            int attempts = 1;
+            while(internetClient.incrementRetries()){
+                snprintf(output, OUTPUT_SIZE, "Reconnect attempt #%d", attempts);
+                LOG(output);
+                if(shouldRetryPublish()){
+                    break;
+                }
+                attempts++;
+            }
+            diagnostics = internetClient.getDiagnostics();
+
+            if(!diagnostics.connected){
+                internetClient.power_down();
+                internetClient.moduleInitialized = false;
+                moduleInitialized = false;
+                return false;
+            }
+            internetClient.resetRetries();
+        }
 
         // Check if we forgot to supply an address or a port number
         if(strlen(address) <= 0  || port == 0){
@@ -79,26 +102,20 @@ bool MQTTComponent::publishData(const char* topic, const char* message){
         if(!publishMessage(topic, message)){
 
             // check if we have reached 10 consecutive retries before sucessfully sending a packet
-            if(!internetClient.incrementRetries()){
-                LOG("Internet medium has reached 10 consecutive retries without a successful publish. Disabling telemetry");
-                // if we dont power down now before setting initialized to false, manager.power_down()
-                // will fail to execute, and the LTE will stay on for rest of deployment
-                internetClient.power_down();
-                // prevents LTE from powering on next wakeup
-                internetClient.moduleInitialized = false;
-                // disable mqtt as well, will prevent MongoDB::publish() from attempting to publish
-                moduleInitialized = false;
-                return false;
+            while(internetClient.incrementRetries()){
+
+                if(!shouldRetryPublish()){
+                    return false;
+                }
+
+                if(!publishMessage(topic, message)){
+                    continue;
+                }
+                break;
             }
 
-            if(!shouldRetryPublish()){
-                return false;
-            }
-
-            if(!publishMessage(topic, message)){
-                return false;
-            }
-        } 
+        }
+    
         // if we successfully publish, reset retry counter
         internetClient.resetRetries();
         return true;
@@ -201,16 +218,25 @@ bool MQTTComponent::deleteRetained(const char* topic) { publishMessage(topic, ""
 bool MQTTComponent::shouldRetryPublish(){
     FUNCTION_START;
     // disable active/stale mqtt connection first
+    // this call does not block if we havent established a connection yet
+    // so calling it here is safe
     disconnectFromBroker();
 
-    diagnostics = internetClient.logDiagnostics();
+    diagnostics = internetClient.getDiagnostics();
 
     if(diagnostics.isLte){
         if(diagnostics.connected && diagnostics.registered) {
-            return connectToBroker();
+            LOG(F("LTE connection is stable, retrying mqtt connection"));
+            return true;
         } if(!internetClient.reconnect()){
             return false;
         }
+        else{
+            return true;
+        }
+    }
+    else {
+        return true;
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////

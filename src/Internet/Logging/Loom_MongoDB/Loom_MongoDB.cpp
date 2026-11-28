@@ -57,7 +57,7 @@ bool Loom_MongoDB::publish(){
 
         /* Attempt to publish the data to the given topic */
         manInst->getJSONString(jsonString);
-        if(!publishMessage(topic, jsonString)){
+        if(!publishData(topic, jsonString)){
             FUNCTION_END;
             return false;
         }
@@ -97,7 +97,7 @@ bool Loom_MongoDB::publishMetadata(char* metadata){
         
         LOG(F("Attempting to publish metadata!")); 
         /* Attempt to publish the data to the given topic */
-        if(!publishMessage(topic, metadata)){
+        if(!publishData(topic, metadata)){
             FUNCTION_END;
             return false;
         }
@@ -162,9 +162,10 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
                     line[index] = '\0';
 
                     if(!publishData(topic, line)){
-                        snprintf(output, OUTPUT_SIZE, PSTR("Failed to publish packet #%i"), packetNumber+1);
+                        snprintf(output, OUTPUT_SIZE, PSTR("Failed to publish packet #%i. Maximum retries reached."), packetNumber+1);
                         WARNING(output);
                         allDataSuccess = false;
+                        break;
                     }
 
                     delay(500);
@@ -187,6 +188,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
             else{
                 WARNING(F("1 or more packets failed to send!"));
                 FUNCTION_END;
+                disconnectFromBroker();
                 return false;
             }
             
@@ -203,6 +205,7 @@ bool Loom_MongoDB::publish(Loom_BatchSD& batchSD){
         FUNCTION_END;
         return false;
     }
+    disconnectFromBroker();
     FUNCTION_END;
     TIMER_ENABLE;
     return true;

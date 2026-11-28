@@ -41,7 +41,9 @@ class NetworkComponent : public Module{
         } NetworkDiagnostics;
 
         // returns structure 
-        virtual NetworkDiagnostics logDiagnostics() = 0;
+        virtual NetworkDiagnostics getDiagnostics() = 0;
+
+        virtual void logDiagnostics() = 0;
 
         // attempts to reconnect to network, will enter recovery process if unable to
         virtual bool reconnect() = 0;
